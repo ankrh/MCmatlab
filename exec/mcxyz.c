@@ -29,6 +29,7 @@
  *	Use Steve's FindVoxelFace(), Dec. 30, 2010.
  *  Reorganized by Steve. May 8, 2012:
  *      Reads input files, outputs binary files.
+ *	Edited to included a uniformly distributed light source over the entire surface by Mathias Christensen 09/01/2014
  **********/
 
 #include <math.h>
@@ -161,7 +162,7 @@ int main(int argc, const char * argv[]) {
 	
 		// launch parameters
 	fgets(buf, 32,fid);
-	sscanf(buf, "%d", &mcflag);  // mcflag, 0 = uniform, 1 = Gaussian, 2 = iso-pt
+	sscanf(buf, "%d", &mcflag);  // mcflag, 0 = uniform cone, 1 = uniform entire surface, else = isotropic pt. source
 	fgets(buf, 32,fid);
 	sscanf(buf, "%d", &launchflag);  // launchflag, 0 = ignore, 1 = manually set
 	
@@ -282,7 +283,7 @@ int main(int argc, const char * argv[]) {
 	for(j=0; j<NN;j++) 	F[j] = 0; // ensure F[] starts empty.	
 	
 	/**** RUN
-	 Launch N photons, initializing each one before progation.
+	 Launch N photons, initializing each one before propagation.
 	 *****/
 	printf("------------- Begin Monte Carlo -------------\n");
     printf("%s\n",myname);
@@ -360,6 +361,17 @@ int main(int argc, const char * argv[]) {
 				sintheta	= -(y - yfocus)/temp;
 				uy			= sqrt(1-sintheta*sintheta);
 				uz			= sqrt(1 - ux*ux + uy*uy);
+			}
+			else if (mcflag==1) { // Uniform input over entire surface
+				while ((rnd = RandomGen(1,0,NULL)) <= 0.0); // avoids rnd = 0
+				x		= Nx*dx*(rnd-0.5); // Generates a random x coordinate within the box
+				while ((rnd = RandomGen(1,0,NULL)) <= 0.0); // avoids rnd = 0
+				y		= Ny*dy*(rnd-0.5); // Generates a random y coordinate within the box
+				z = zs;
+				// set trajectory to be in the z direction
+				ux			= 1;
+				uy			= 1;
+				uz			= 1;
 			}
 			else { // isotropic pt source
 				costheta = 1.0 - 2.0*RandomGen(1,0,NULL);
