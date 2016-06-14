@@ -1,3 +1,4 @@
+
 % maketissue.m
 %   Creates a cube of optical property pointers,T(y,x,z), saved in
 %       myname_T.bin = a tissue structure file
@@ -18,7 +19,7 @@
 %       1. Prepare makeTissueList.m so that it contains the tissue
 %   types desired.
 %       2. Specify the USER CHOICES.
-%       2. Run this program, maketissue.m.
+%       2. Run this PROGRAM, maketissue.m.
 %
 %   Note: mcxyz.c can use optical properties in cm^-1 or mm^-1 or m^-1,
 %       if the bin size (binsize) is specified in cm or mm or m,
@@ -34,26 +35,26 @@ home
 
 %%% USER CHOICES %%%%%%%% <-------- You must set these parameters ------
 SAVEON      = 1;        % 1 = save myname_T.bin, myname_H.mci 
-                        % 0 = don't save. Just check the program.
+                        % 0 = don't save. Just check the PROGRAM.
 
-myname      = 'skinvessel';% name for files: myname_T.bin, myname_H.mci  
+myname      = 'isopt';% name for files: myname_T.bin, myname_H.mci  
 time_min    = 1;      	% time duration of the simulation [min] <----- run time -----
 nm          = 532;   	% desired wavelength of simulation
-Nbins       = 200;    	% # of bins in each dimension of cube 
-binsize     = 0.0005; 	% size of each bin, eg. [cm] or [mm]
+Nbins       = 100;    	% # of bins in each dimension of cube 
+binsize     = 0.001; 	% size of each bin, eg. [cm] or [mm]
 
 % Set Monte Carlo launch flags
-mcflag      = 0;     	% launch: 0 = uniform beam, 1 = Gaussian, 2 = isotropic pt. 
+mcflag      = 2;     	% launch: 0 = uniform beam, 1 = Gaussian, 2 = isotropic pt. 
 launchflag  = 0;        % 0 = let mcxyz.c calculate launch trajectory
                         % 1 = manually set launch vector.
-boundaryflag = 2;       % 0 = no boundaries, 1 = escape at boundaries
+boundaryflag = 1;       % 0 = no boundaries, 1 = escape at boundaries
                         % 2 = escape at surface only. No x, y, bottom z
                         % boundaries
 
 % Sets position of source
 xs          = 0;      	% x of source
 ys          = 0;        % y of source
-zs          = 0.0101;  	% z of source
+zs          = 0.0500;  	% z of source
 
 % Set position of focus, so mcxyz can calculate launch trajectory
 xfocus      = 0;        % set x,position of focus
@@ -61,8 +62,8 @@ yfocus      = 0;        % set y,position of focus
 zfocus      = inf;    	% set z,position of focus (=inf for collimated beam)
 
 % only used if mcflag == 0 or 1 (uniform or Gaussian beam, not isotropic pt.)
-radius      = 0.02;      % 1/e radius of beam at tissue surface
-waist       = 0.010;  	% 1/e radius of beam at focus
+radius      = 0;      % 1/e radius of beam at tissue surface
+waist       = 0;  	% 1/e radius of beam at focus
 
 % only used if launchflag == 1 (manually set launch trajectory):
 ux0         = 0.7;      % trajectory projected onto x axis
@@ -111,38 +112,11 @@ if isinf(zfocus), zfocus = 1e12; end
 
 T = double(zeros(Ny,Nx,Nz)); 
 
-T = T + 4;      % fill background with skin (dermis)
+T = T + 9;      % fill background with standard tissue
 
-zsurf = 0.0100;  % position of air/skin surface
-
-for iz=1:Nz % for every depth z(iz)
-
-    % air
-    if iz<=round(zsurf/dz)
-        T(:,:,iz) = 2; 
-    end
-
-    % epidermis (60 um thick)
-    if iz>round(zsurf/dz) & iz<=round((zsurf+0.0060)/dz)
-        T(:,:,iz) = 5; 
-    end
-
-    % blood vessel @ xc, zc, radius, oriented along y axis
-    xc      = 0;            % [cm], center of blood vessel
-    zc      = Nz/2*dz;     	% [cm], center of blood vessel
-    vesselradius  = 0.0100;      	% blood vessel radius [cm]
-    for ix=1:Nx
-            xd = x(ix) - xc;	% vessel, x distance from vessel center
-            zd = z(iz) - zc;   	% vessel, z distance from vessel center                
-            r  = sqrt(xd^2 + zd^2);	% r from vessel center
-            if (r<=vesselradius)     	% if r is within vessel
-                T(:,ix,iz) = 3; % blood
-            end
-
-    end %ix
-    
-end % iz
-
+for iz=1:round(.02/dz)
+    T(:,:,iz) = 1;
+end
 
 %%
 if SAVEON

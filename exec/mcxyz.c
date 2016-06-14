@@ -70,7 +70,11 @@ double RFresnel(double n1, double n2, double ca1, double *ca2_Ptr);
 int main(int argc, const char * argv[]) {
     
     if (argc==0) {
-        printf("you forgot to specify a myname for myname_H.mci, myname_T.bin\n");
+        printf("assuming you've compiled mcxyz.c as gomcxyz ...\n");
+		printf("USAGE: gomcxyz name\n");
+		printf("which will load the files name_H.mci and name_T.bin\n");
+		printf("and run the Monte Carlo program.\n");
+		printf("Yields  name_F.bin, which holds the fluence rate distribution.\n");
         return 0;
     }
 	
@@ -98,7 +102,7 @@ int main(int argc, const char * argv[]) {
 	double	Nphotons;       /* number of photons in simulation */
 	
 	/* launch parameters */
-	int		mcflag, launchflag;
+	int		mcflag, launchflag, boundaryflag;
 	float	xfocus, yfocus, zfocus;
 	float	ux0, uy0, uz0;
 	float	radius;
@@ -124,6 +128,8 @@ int main(int argc, const char * argv[]) {
 	time_t	now;
 	double	start_time, finish_time, temp_time; /* for clock() */
 	
+	/* tissue parameters */
+	char	tissuename[50][32];
 	float 	muav[Ntiss];            // muav[0:Ntiss-1], absorption coefficient of ith tissue type
 	float 	musv[Ntiss];            // scattering coeff. 
 	float 	gv[Ntiss];              // anisotropy of scattering
@@ -160,10 +166,12 @@ int main(int argc, const char * argv[]) {
 		sscanf(buf, "%f", &dz);	 // size of bins [cm] 
 	
 		// launch parameters
-	fgets(buf, 32,fid);
-	sscanf(buf, "%d", &mcflag);  // mcflag, 0 = uniform, 1 = Gaussian, 2 = iso-pt
-	fgets(buf, 32,fid);
-	sscanf(buf, "%d", &launchflag);  // launchflag, 0 = ignore, 1 = manually set
+		fgets(buf, 32,fid);
+		sscanf(buf, "%d", &mcflag);  // mcflag, 0 = uniform, 1 = Gaussian, 2 = iso-pt
+		fgets(buf, 32,fid);
+		sscanf(buf, "%d", &launchflag);  // launchflag, 0 = ignore, 1 = manually set
+        fgets(buf, 32,fid);
+        sscanf(buf, "%d", &boundaryflag);  // 0 = no boundaries, 1 = escape at all boundaries, 2 = escape at surface only
 	
 		fgets(buf, 32,fid);
 		sscanf(buf, "%f", &xs);  // initial launch point
@@ -172,24 +180,25 @@ int main(int argc, const char * argv[]) {
 		fgets(buf, 32,fid);
 		sscanf(buf, "%f", &zs);  // initial launch point
 	
-	fgets(buf, 32,fid);
-	sscanf(buf, "%f", &xfocus);  // xfocus
-	fgets(buf, 32,fid);
-	sscanf(buf, "%f", &yfocus);  // yfocus
+		fgets(buf, 32,fid);
+		sscanf(buf, "%f", &xfocus);  // xfocus
+		fgets(buf, 32,fid);
+		sscanf(buf, "%f", &yfocus);  // yfocus
 		fgets(buf, 32,fid);
 		sscanf(buf, "%f", &zfocus);  // zfocus
 
-	fgets(buf, 32,fid);
-	sscanf(buf, "%f", &ux0);  // ux trajectory
-	fgets(buf, 32,fid);
-	sscanf(buf, "%f", &uy0);  // uy trajectory
-	fgets(buf, 32,fid);
-	sscanf(buf, "%f", &uz0);  // uz trajectory
+		fgets(buf, 32,fid);
+		sscanf(buf, "%f", &ux0);  // ux trajectory
+		fgets(buf, 32,fid);
+		sscanf(buf, "%f", &uy0);  // uy trajectory
+		fgets(buf, 32,fid);
+		sscanf(buf, "%f", &uz0);  // uz trajectory
 
-	fgets(buf, 32,fid);
+		fgets(buf, 32,fid);
 		sscanf(buf, "%f", &radius);  // radius
 		fgets(buf, 32,fid);
 		sscanf(buf, "%f", &waist);  // waist
+    
 	
 		// tissue optical properties
 		fgets(buf, 32,fid);
@@ -204,8 +213,6 @@ int main(int argc, const char * argv[]) {
 		}    
     fclose(fid);
     
-	//time_min = 120; // manual (temporary)
-	
     printf("time_min = %0.2f min\n",time_min);
     printf("Nx = %d, dx = %0.4f [cm]\n",Nx,dx);
     printf("Ny = %d, dy = %0.4f [cm]\n",Ny,dy);
@@ -215,16 +222,34 @@ int main(int argc, const char * argv[]) {
     printf("ys = %0.4f [cm]\n",ys);
     printf("zs = %0.4f [cm]\n",zs);
     printf("mcflag = %d [cm]\n",mcflag);
+    if (mcflag==0) printf("launching uniform flat-field beam\n");
+    if (mcflag==1) printf("launching Gaissian beam\n");
+    if (mcflag==2) printf("launching isotropic point source\n");
     printf("xfocus = %0.4f [cm]\n",xfocus);
     printf("yfocus = %0.4f [cm]\n",yfocus);
     printf("zfocus = %0.2e [cm]\n",zfocus);
-    printf("ux0 = %0.4f [cm]\n",ux0);
-    printf("uy0 = %0.4f [cm]\n",uy0);
-    printf("uz0 = %0.4f [cm]\n",uz0);
-    printf("radius = %0.4f [cm]\n",radius);
-    printf("waist  = %0.4f [cm]\n",waist);
-	
-    printf("Nt = %d\n",Nt);
+	if (launchflag==1) {
+		printf("Launchflag ON, so launch the following:\n");
+		printf("ux0 = %0.4f [cm]\n",ux0);
+		printf("uy0 = %0.4f [cm]\n",uy0);
+		printf("uz0 = %0.4f [cm]\n",uz0);
+	}
+	else {
+		printf("Launchflag OFF, so program calculates launch angles.\n");
+		printf("radius = %0.4f [cm]\n",radius);
+		printf("waist  = %0.4f [cm]\n",waist);
+	}
+    if (boundaryflag==0)
+		printf("boundaryflag = 0, so no boundaries.\n");
+    else if (boundaryflag==1)
+		printf("boundaryflag = 1, so escape at all boundaries.\n");    
+	else if (boundaryflag==2)
+		printf("boundaryflag = 2, so escape at surface only.\n");    
+	else{
+        printf("improper boundaryflag. quit.\n");
+        return 0;
+    }
+    printf("# of tissues available, Nt = %d\n",Nt);
     for (i=1; i<=Nt; i++) {
         printf("muav[%ld] = %0.4f [cm^-1]\n",i,muav[i]);
         printf("musv[%ld] = %0.4f [cm^-1]\n",i,musv[i]);
@@ -250,7 +275,7 @@ int main(int argc, const char * argv[]) {
 	NN = Nx*Ny*Nz;
 	v  = ( char *)malloc(NN*sizeof(char));  /* tissue structure */
 	F  = (float *)malloc(NN*sizeof(float));	/* relative fluence rate [W/cm^2/W.delivered] */
-	R  = (float *)malloc(NN*sizeof(float));	/* escaping flux [W/cm^2/W.delivered] */
+	// NOT READY: R  = (float *)malloc(NN*sizeof(float));	/* escaping flux [W/cm^2/W.delivered] */
     
 	// read binary file
     strcpy(filename,myname);
@@ -312,7 +337,7 @@ int main(int argc, const char * argv[]) {
                 printf("%0.0f%% done\n", i_photon/Nphotons*100);
         }
         
-		// At 1000th photon, update Nphotons to achieve desired runtime, time_min.
+		// At 1000th photon, update Nphotons to achieve desired runtime (time_min)
 		if (i_photon==1)
 			temp_time = clock();
 		if (i_photon==1000) {    
@@ -337,7 +362,7 @@ int main(int argc, const char * argv[]) {
 			uy	= uy0;
 			uz	= uz0;
 		}
-		else {
+		else { // use mcflag
 			if (mcflag==0) { // uniform beam
 				// set launch point and width of beam
 				while ((rnd = RandomGen(1,0,NULL)) <= 0.0); // avoids rnd = 0
@@ -354,12 +379,10 @@ int main(int argc, const char * argv[]) {
 				phi		= rnd*2.0*PI;
 				xfocus	= r*cos(phi);
 				yfocus	= r*sin(phi);
-				temp		= sqrt((x - xfocus)*(x - xfocus) + (y - yfocus)*(y - yfocus) + zfocus*zfocus);
-				sintheta	= -(x - xfocus)/temp;
-				ux			= sqrt(1-sintheta*sintheta);
-				sintheta	= -(y - yfocus)/temp;
-				uy			= sqrt(1-sintheta*sintheta);
-				uz			= sqrt(1 - ux*ux + uy*uy);
+				temp	= sqrt((x - xfocus)*(x - xfocus) + (y - yfocus)*(y - yfocus) + zfocus*zfocus);
+				ux		= -(x - xfocus)/temp;
+				uy		= -(y - yfocus)/temp;
+				uz		= sqrt(1 - ux*ux + uy*uy);
 			}
 			else { // isotropic pt source
 				costheta = 1.0 - 2.0*RandomGen(1,0,NULL);
@@ -370,35 +393,30 @@ int main(int argc, const char * argv[]) {
 					sinpsi = sqrt(1.0 - cospsi*cospsi); 
 				else
 					sinpsi = -sqrt(1.0 - cospsi*cospsi);
+				x = xs;
+				y = ys;
+				z = zs;
 				ux = sintheta*cospsi;
 				uy = sintheta*sinpsi;
 				uz = costheta;
 			}
-		}
+		} // end  use mcflag
 		/****************************/
 		
 		/* Get tissue voxel properties of launchpoint.
 		 * If photon beyond outer edge of defined voxels, 
 		 * the tissue equals properties of outermost voxels.
-		 * Therefore, set outermost voxels to common value.
+		 * Therefore, set outermost voxels to infinite background value.
 		 */
-		if (x/dx < -Nx/2) temp = -Nx/2; else temp = x/dx;
-		ix = (int)(Nx/2 + temp);
-		if (y/dy < -Ny/2) temp = -Ny/2; else temp = y/dy;
-		iy = (int)(Ny/2 + temp);
-		if (z < 0) temp = 0; else temp = z/dz;
-		iz = (int)(temp);
-        
-		if (iz>=Nz) iz=Nz-1;
+		ix = (int)(Nx/2 + x/dx);
+		iy = (int)(Ny/2 + y/dy);
+		iz = (int)(z/dz);        
 		if (ix>=Nx) ix=Nx-1;
 		if (iy>=Ny) iy=Ny-1;
-		
-		if (iz<0)   iz=0;
+		if (iz>=Nz) iz=Nz-1;
 		if (ix<0)   ix=0;
 		if (iy<0)   iy=0;
-		
-        bflag = 0; // initialize as 0 = inside volume, but later check as photon propagates.
-       
+		if (iz<0)   iz=0;		
 		/* Get the tissue type of located voxel */
 		i		= (long)(iz*Ny*Nx + ix*Ny + iy);
 		type	= v[i];
@@ -406,6 +424,8 @@ int main(int argc, const char * argv[]) {
 		mus 	= musv[type];
 		g 		= gv[type];
 		
+        bflag = 1; // initialize as 1 = inside volume, but later check as photon propagates.
+        
 		/* HOP_DROP_SPIN_CHECK
 		 Propagate one photon until it dies as determined by ROULETTE.
 		 *******/
@@ -425,16 +445,10 @@ int main(int argc, const char * argv[]) {
 				tempx = x + s*ux;				/* Update positions. [cm] */
 				tempy = y + s*uy;	
 				tempz = z + s*uz;
-                 //printf("%ld:x=%0.4f, ux=%0.4f, z=%0.4f\n",i_photon,tempx,ux,tempz);
 				
 				sv = SameVoxel(x,y,z, tempx, tempy, tempz, dx,dy,dz);
-				
 				if (sv) /* photon in same voxel */
 				{  
-                    // try refraction (fake)
-                    //RFresnel(1.33, 1.4, 0.5, &temp);
-                    
-					//printf("sv = %d: same\n",sv);
 					x=tempx;					/* Update positions. */
 					y=tempy;
 					z=tempz;
@@ -446,7 +460,7 @@ int main(int argc, const char * argv[]) {
                     W -= absorb;					/* decrement WEIGHT by amount absorbed */
 					// If photon within volume of heterogeneity, deposit energy in F[]. 
 					// Normalize F[] later, when save output. 
-                    if (bflag==0) F[i] += absorb;	// only save data if blag==0, i.e., photon inside simulation cube
+                    if (bflag) F[i] += absorb;	// only save data if blag==1, i.e., photon inside simulation cube
 					
 					/* Update sleft */
 					sleft = 0;		/* dimensionless step remaining */
@@ -463,7 +477,7 @@ int main(int argc, const char * argv[]) {
 					W -= absorb;                  /* decrement WEIGHT by amount absorbed */
 					// If photon within volume of heterogeneity, deposit energy in F[]. 
 					// Normalize F[] later, when save output. 
-                    if (bflag==0) F[i] += absorb;	
+                    if (bflag) F[i] += absorb;	
 					
 					/* Update sleft */
 					sleft -= s*mus;  /* dimensionless step remaining */
@@ -475,31 +489,37 @@ int main(int argc, const char * argv[]) {
 					z += s*uz;
 					
 					// pointers to voxel containing optical properties
-					if (x/dx < -Nx/2) temp = -Nx/2; else temp = x/dx;
-					ix = (int)(Nx/2 + temp);
-					if (y/dy < -Ny/2) temp = -Ny/2; else temp = y/dy;
-					iy = (int)(Ny/2 + temp);
-					if (z < 0) temp = 0; else temp = z/dz;
-					iz = (int)(temp);
+                    ix = (int)(Nx/2 + x/dx);
+                    iy = (int)(Ny/2 + y/dy);
+                    iz = (int)(z/dz);
                     
-                    bflag = 0;  // Boundary flag. Initialize as 0 = inside volume, but then check.
-                    if (1==0) { // Infinite medium.
+                    bflag = 1;  // Boundary flag. Initialize as 1 = inside volume, then check.
+                    if (boundaryflag==0) { // Infinite medium.
 								// Check if photon has wandered outside volume.
                                 // If so, set tissue type to boundary value, but let photon wander.
-						if (iz>=Nz) {iz=Nz-1; bflag = 1;}
-						if (ix>=Nx) {ix=Nx-1; bflag = 1;}
-						if (iy>=Ny) {iy=Ny-1; bflag = 1;}
-						if (iz<0)   {iz=0;    bflag = 1;}
-						if (ix<0)   {ix=0;    bflag = 1;}
-						if (iy<0)   {iy=0;    bflag = 1;}
+                                // Set blag to zero, so DROP does not deposit energy.
+						if (iz>=Nz) {iz=Nz-1; bflag = 0;}
+						if (ix>=Nx) {ix=Nx-1; bflag = 0;}
+						if (iy>=Ny) {iy=Ny-1; bflag = 0;}
+						if (iz<0)   {iz=0;    bflag = 0;}
+						if (ix<0)   {ix=0;    bflag = 0;}
+						if (iy<0)   {iy=0;    bflag = 0;}
 					}
-					else { // Escape at boundaries
+					else if (boundaryflag==1) { // Escape at boundaries
 						if (iz>=Nz) {iz=Nz-1; photon_status = DEAD; sleft=0;}
 						if (ix>=Nx) {ix=Nx-1; photon_status = DEAD; sleft=0;}
 						if (iy>=Ny) {iy=Ny-1; photon_status = DEAD; sleft=0;}
 						if (iz<0)   {iz=0;    photon_status = DEAD; sleft=0;}
 						if (ix<0)   {ix=0;    photon_status = DEAD; sleft=0;}
 						if (iy<0)   {iy=0;    photon_status = DEAD; sleft=0;}
+					}
+					else if (boundaryflag==2) { // Escape at top surface, no x,y bottom z boundaries
+						if (iz>=Nz) {iz=Nz-1; bflag = 0;}
+						if (ix>=Nx) {ix=Nx-1; bflag = 0;}
+						if (iy>=Ny) {iy=Ny-1; bflag = 0;}
+						if (iz<0)   {iz=0;    photon_status = DEAD; sleft=0;}
+						if (ix<0)   {ix=0;    bflag = 0;}
+						if (iy<0)   {iy=0;    bflag = 0;}
 					}
 					
                     // update pointer to tissue type
@@ -597,18 +617,16 @@ int main(int argc, const char * argv[]) {
     fclose(fid);
     
     /* save reflectance */
-    //	temp = dx*dy*Nphotons;
-    //	for (i=0; i<Nyx;i++){
-    //		fprintf(fid,"%0.4e\t", R[i]/temp);
-    //	}
-    //	strcpy(filename,myname);
-    //	strcat(filename,"_RRR.bin");
-    //	printf("saving %s\n",filename);
-    //	fid = fopen(filename, "wb");   /* 2D voxel output */
-    //	n = fwrite(R, sizeof(float), Nyx, fid);
-    //	fclose(fid);
-    
-    printf("%s is done.\n",myname);
+// NOT READY: 
+//	strcpy(filename,myname);
+//    strcat(filename,"_Ryx.bin");
+//    printf("saving %s\n",filename);
+//    fid = fopen(filename, "wb");   /* 2D voxel output */
+//	int Nyx = Ny*Nx;
+//    fwrite(R, sizeof(float), Nyx, fid);
+//    fclose(fid);
+//    printf("%s is done.\n",myname);
+	
     printf("------------------------------------------------------\n");
     now = time(NULL);
     printf("%s\n", ctime(&now));
