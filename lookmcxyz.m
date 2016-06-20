@@ -30,12 +30,12 @@ home
 clear
 format compact
 commandwindow
-global tissue
 
 cc = 'rbgm'; % color
 
 %%%% USER CHOICES <---------- you must specify -----
-myname = 'example3';
+myname = 'skinvessel';
+nm     = 532;
 %%%%
 
 
@@ -80,7 +80,7 @@ for i=1:Nt
     gv(i,1) = A(j);
 end
 
-reportHmci
+reportHmci(myname)
 
 %% Load Fluence rate F(y,x,z) 
 filename = sprintf('%s_F.bin',myname);
@@ -121,7 +121,7 @@ xdiff = xmax-xmin;
 
 %% Look at structure, Tzx
 Tzx = reshape(T(Ny/2,:,:),Nx,Nz)';
-tissueProps = makeTissueList(532);
+tissue = makeTissueList(nm);
 Nt = length(tissue);
 
 figure(1);clf
@@ -137,7 +137,7 @@ ylabel('z [cm]')
 title('Tissue types')
 for i=1:Nt
     yy = zmin + (Nt-i)/(Nt-1)*zdiff;
-    text(xmin + xdiff*1.13,yy, sprintf('%d %s',i,tissue(i).s),'fontsize',12)
+    text(xmin + xdiff*1.13,yy, sprintf('%d %s',i,tissue(i).name),'fontsize',12)
 end
 axis equal image
 
@@ -169,7 +169,8 @@ switch mcflag
         end
 end
 
-print -djpeg -r300 'Fig_tissueTypes.jpg'
+name = sprintf('%s_tissue.jpg',myname);
+print('-djpeg','-r300',name)
 
 
 %% Look at Fluence Fzx @ launch point
@@ -186,9 +187,10 @@ ylabel('z [cm]')
 title('Fluence \phi [W/cm^2/W.delivered] ')
 colormap(makec2f)
 axis equal image
-axis([min(x) max(x) min(z) max(z)])
+%axis([min(x) max(x) min(z) max(z)])
 
-print -djpeg -r300 'Fig_Fzx.jpg'
+name = sprintf('%s_Fzx.jpg',myname);
+print('-djpeg','-r300',name)
 
 %% look Fzy
 Fzy = reshape(F(:,Nx/2,:),Ny,Nz)';
@@ -196,7 +198,7 @@ Fzy = reshape(F(:,Nx/2,:),Ny,Nz)';
 iy = round((dy*Ny/2 + 0.15)/dy);
 iz = round(zs/dz);
 zzs  = zs;
-Fdet = mean(reshape(Fzy(iz+[-1:1],iy+[0 1]),6,1));
+%Fdet = mean(reshape(Fzy(iz+[-1:1],iy+[0 1]),6,1));
 
 figure(3);clf
 imagesc(y,z,log10(Fzy),[-1 1]*3)
@@ -210,9 +212,27 @@ title('Fluence \phi [W/cm^2/W.delivered] ')
 colormap(makec2f)
 axis equal image
 
-print -djpeg -r300 'Fig_Fzy.jpg'
+name = sprintf('%s_Fzy.jpg',myname);
+print('-djpeg','-r300',name)
 
 drawnow
 
+%% Fz, Fx
+figure(4);clf
+semilogy(x,Fzx(Nz/2,:),'ro-')
+hold on
+plot(x,Fzx(:,Nx/2,:),'bx-')
+plot([-.05 .05],[1 1]*40,'k--')
+plot([0 0],[10 1e6],'k--')
+
 disp('done')
 
+%% Ryx
+% NOT READY
+% fname = sprintf('%s_Ryx.bin',myname);
+% fid = fopen(fname);
+% [Data count] = fread(fid, Ny*Nx, 'float');
+% fclose(fid);
+% Ryx = reshape(Data,Ny,Nx);
+% figure(5);clf
+% imagesc(log10(Ryx))
