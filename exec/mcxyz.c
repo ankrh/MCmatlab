@@ -168,7 +168,7 @@ int main(int argc, const char * argv[]) {
 	
 		// launch parameters
 		fgets(buf, 32,fid);
-		sscanf(buf, "%d", &mcflag);  // mcflag, 0 = uniform, 1 = Gaussian, 2 = iso-pt
+		sscanf(buf, "%d", &mcflag);  // mcflag, 0 = uniform cone, 1 = uniform entire surface, 2 = iso-pt
 		fgets(buf, 32,fid);
 		sscanf(buf, "%d", &launchflag);  // launchflag, 0 = ignore, 1 = manually set
         fgets(buf, 32,fid);
