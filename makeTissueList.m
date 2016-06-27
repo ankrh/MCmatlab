@@ -7,7 +7,6 @@ function tissue = makeTissueList(nm)
 %       [J/cm^3/K], D is density kg/cm^3, TC is thermal conductivity W/cm/K
 %   Uses 
 %       SpectralLIB.mat
-global tissue
 
 %% Load spectral library
 load spectralLIB.mat
