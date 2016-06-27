@@ -2,14 +2,7 @@
 %   Looks at myname_F.bin, created by mcxyz.c 
 %   where myname is the name of the run: myname_T.bin, myname_H.mci
 %
-% lookmcxyz_alc2.m, July 23
-%       Absorption array is OFF.
 %
-%   Simulates angiolight catheter within 4-mm-dia. vessel
-% with the vessel wall at a particular musp value. 
-%   For this run, musp = 200 cm^-1.
-%
-% Reads 8 mcxyz runs, for 8 catheter positions, zs = 0.2 to 0.6 cm.
 % For each run:
 %   alc#_H.mci --> header:
 %       timin,Nx,Ny,Nz,dy,dx,dz,xs,ys,zx,Nt,muav(),musv(),gv()
@@ -32,10 +25,13 @@ format compact
 commandwindow
 global tissue
 
+saveon_HeatSim=1;
+savename='HeatSimIn_blood3_750.mat';
+
 cc = 'rbgm'; % color
 
 %%%% USER CHOICES <---------- you must specify -----
-myname = 'example3';
+myname = 'blood3_750';
 %%%%
 
 
@@ -49,6 +45,7 @@ A = fscanf(fid,'%f',[1 Inf])';
 fclose(fid);
 
 %% parameters
+nm = 750; % Wavelength in nm, remember to update so it matches the input files for the Monte Carlo
 time_min = A(1);
 Nx = A(2);
 Ny = A(3);
@@ -80,7 +77,7 @@ for i=1:Nt
     gv(i,1) = A(j);
 end
 
-reportHmci
+reportHmci(myname)
 
 %% Load Fluence rate F(y,x,z) 
 filename = sprintf('%s_F.bin',myname);
@@ -121,7 +118,7 @@ xdiff = xmax-xmin;
 
 %% Look at structure, Tzx
 Tzx = reshape(T(Ny/2,:,:),Nx,Nz)';
-tissueProps = makeTissueList(532);
+tissueProps = makeTissueList(nm);
 Nt = length(tissue);
 
 figure(1);clf
@@ -175,18 +172,18 @@ print -djpeg -r300 'Fig_tissueTypes.jpg'
 %% Look at Fluence Fzx @ launch point
 Fzx = reshape(F(Ny/2,:,:),Nx,Nz)'; % in z,x plane through source
 
-figure(2);clf
-imagesc(x,z,log10(Fzx),[-3 3])
-hold on
-text(max(x)*0.9,min(z)-0.04*max(z),'log_{10}( \phi )','fontsize',18)
-colorbar
-set(gca,'fontsize',18)
-xlabel('x [cm]')
-ylabel('z [cm]')
-title('Fluence \phi [W/cm^2/W.delivered] ')
-colormap(makec2f)
-axis equal image
-axis([min(x) max(x) min(z) max(z)])
+% figure(2);clf
+% imagesc(x,z,log10(Fzx),[-3 3])
+% hold on
+% text(max(x)*0.9,min(z)-0.04*max(z),'log_{10}( \phi )','fontsize',18)
+% colorbar
+% set(gca,'fontsize',18)
+% xlabel('x [cm]')
+% ylabel('z [cm]')
+% title('Fluence \phi [W/cm^2/W.delivered] ')
+% %colormap(makec2f)
+% axis equal image
+% axis([min(x) max(x) min(z) max(z)])
 
 print -djpeg -r300 'Fig_Fzx.jpg'
 
@@ -196,23 +193,60 @@ Fzy = reshape(F(:,Nx/2,:),Ny,Nz)';
 iy = round((dy*Ny/2 + 0.15)/dy);
 iz = round(zs/dz);
 zzs  = zs;
-Fdet = mean(reshape(Fzy(iz+[-1:1],iy+[0 1]),6,1));
+%Fdet = mean(reshape(Fzy(iz+[-1:1],iy+[0 1]),6,1));
 
-figure(3);clf
-imagesc(y,z,log10(Fzy),[-1 1]*3)
-hold on
-text(max(x)*0.9,min(z)-0.04*max(z),'log_{10}( \phi )','fontsize',18)
-colorbar
-set(gca,'fontsize',18)
-xlabel('y [cm]')
-ylabel('z [cm]')
-title('Fluence \phi [W/cm^2/W.delivered] ')
-colormap(makec2f)
-axis equal image
+% figure(3);clf
+% imagesc(y,z,log10(Fzy),[-1 1]*3)
+% hold on
+% text(max(x)*0.9,min(z)-0.04*max(z),'log_{10}( \phi )','fontsize',18)
+% colorbar
+% set(gca,'fontsize',18)
+% xlabel('y [cm]')
+% ylabel('z [cm]')
+% title('Fluence \phi [W/cm^2/W.delivered] ')
+% %colormap(makec2f)
+% axis equal image
+% 
+% print -djpeg -r300 'Fig_Fzy.jpg'
+% 
+% drawnow
 
-print -djpeg -r300 'Fig_Fzy.jpg'
 
-drawnow
+%% calculate Power Absorbtion
+
+% F, matrix with fluency / input power
+% T, Matrix containing tissue types
+% tissueProps, list of tissue properties tissueProps( tissue type, #) # = 1 is mua, # = 2 is mus, # = 3 is g
+% 
+Ap=Tissue_Prop_Matrix(T,1,tissueProps).*F;
+
+Azy  = reshape(Ap(:,Nx/2,:),Ny,Nz)';
+% 
+% figure(4);clf
+% imagesc(y,z,log10(Azy),[-1 1]*3)
+% hold on
+% text(max(x)*0.9,min(z)-0.04*max(z),'log_{10}( \phi )','fontsize',18)
+% colorbar
+% set(gca,'fontsize',18)
+% xlabel('y [cm]')
+% ylabel('z [cm]')
+% title('Power Absorbtion \phi [W/cm^3/W.delivered] ')
+% %colormap(makec2f)
+% axis equal image
+% 
+% print -djpeg -r300 'Fig_Azy.jpg'
+% 
+% drawnow
+
+% test dx*dy*dz*sum(sum(sum(Ap)))<=1, to make sure that less than 1W is
+% absorbed per 1W of incident power, this seems to be the case
+
+%% Save HeatSim input
+
+if saveon_HeatSim==1
+    clearvars F Azy Fzy Tzx count Fzx
+    save(savename)
+end   
+
 
 disp('done')
-

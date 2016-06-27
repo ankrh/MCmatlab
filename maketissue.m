@@ -32,25 +32,27 @@ clc
 home
 global tissue
 
-%%% USER CHOICES %%%%%%%% <-------- You must set these parameters ------
-SAVEON      = 0;        % 1 = save myname_T.bin, myname_H.mci 
+%% %%% USER CHOICES %%%%%%%% <-------- You must set these parameters ------
+SAVEON      = 1;        % 1 = save myname_T.bin, myname_H.mci 
                         % 0 = don't save. Just check the program.
 
-myname      = 'example2';% name for files: myname_T.bin, myname_H.mci  
-nm          = 532;   	% desired wavelength of simulation
-time_min    = 120;      	% time duration of the simulation
+                        
+for nm=300:5:1000  % set the range of wavelengths of the monte carlo simulation
+myname      = ['blood4_broad_' num2str(nm)];% name for files: myname_T.bin, myname_H.mci  
+%nm          = 532;   	% desired wavelength of simulation
+time_min    = 6;      	% time duration of the simulation [min]
 Nbins       = 400;    	% # of bins in each dimension of cube 
-binsize     = 0.0020; 	% size of each bin, eg. [cm] or [mm]
+binsize     = 20e-4; 	% size of each bin [cm]
 
 % Set Monte Carlo launch flags
-mcflag      = 0;     	% launch: 0 = uniform beam, 1 = Gaussian, 2 = isotropic pt. 
+mcflag      = 1;     	% launch: 0 = uniform beam, 1 = Uniform over entire surface at height zs, 2 = isotropic pt. 
 launchflag  = 0;        % 0 = let mcxyz.c calculate launch trajectory
                         % 1 = manually set launch vector.
 
 % Sets position of source
-xs          = 0;      	% x of source
-ys          = 0;        % y of source
-zs          = 0.2;     	% z of source
+xs          = 0;      	% x of source [cm]
+ys          = 0;        % y of source [cm]
+zs          = 0.02;     % z of source [cm]
 
 % Set position of focus, so mcxyz can calculate launch trajectory
 xfocus      = 0;        % set x,position of focus
@@ -67,7 +69,7 @@ uy0         = 0.4;      % trajectory projected onto y axis
 uz0         = sqrt(1 - ux0^2 - uy0^2); % such that ux^2 + uy^2 + uz^2 = 1
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
-
+%%
 %%%%%%%%%% 
 % Prepare Monte Carlo 
 %%%
@@ -75,7 +77,7 @@ uz0         = sqrt(1 - ux0^2 - uy0^2); % such that ux^2 + uy^2 + uz^2 = 1
 % Create tissue properties
 tissueProps = makeTissueList(nm);
 
-Nt = length(tissueProps(:,1));
+Nt = length(tissueProps(:,1)); %Nt is the number of tissues
 for i=1:Nt
     muav(i)  = tissueProps(i,1);
     musv(i)  = tissueProps(i,2);
@@ -100,6 +102,7 @@ xmax = max(x);
 
 if isinf(zfocus), zfocus = 1e12; end
 
+%%
 %%%%%%
 % CREATE TISSUE STRUCTURE T(y,x,z)
 %   Create T(y,x,z) by specifying a tissue type (an integer)
@@ -112,33 +115,88 @@ T = double(zeros(Ny,Nx,Nz));
 
 T = T + 4;      % fill background with skin (dermis)
 
-zsurf = 0.100;  % position of air/skin surface
+zsurf = 0.02;  % position of gel/skin surface[cm]
+SC          = 0.002; % Thickness of stratum corneum and stratum lucidum [cm]
+epd_thick = 0.01; %Thickness of the epidermis [cm]
+vessel_thick = 0.050; %thickness of blood layer [cm]
+vessel_depth = 0.02; %depth of vessel[cm]
 
+% hair_diameter = 0.0075; % varies from 17 - 180 micrometers, should increase with colouring and age
+% hair_radius = hair_diameter/2;      	% hair radius [cm]
+% hair_bulb_radius = 1.7*hair_radius; % [cm]
+% ratio_papilla=5/12;
+% papilla_radius = hair_bulb_radius*ratio_papilla;
+% hair_depth = 0.1; % varies from 0.06-0.3cm
+% xi_start = Nx/2-round(hair_radius/dx);
+% xi_end = Nx/2+round(hair_radius/dx);
+% yi_start = Ny/2-round(hair_radius/dy);
+% yi_end = Ny/2+round(hair_radius/dy);
+
+% xi_start2 = Nx/2-round(hair_bulb_radius/dx);
+% xi_end2 = Nx/2+round(hair_bulb_radius/dx);
+% yi_start2 = Ny/2-round(hair_bulb_radius/dy);
+% yi_end2 = Ny/2+round(hair_bulb_radius/dy);
 for iz=1:Nz % for every depth z(iz)
-
-    % air
+    
+    % blood
+    if iz>round((zsurf+vessel_depth)/dz) && iz<=round((zsurf+vessel_depth+vessel_thick)/dz)
+        T(:,:,iz) = 3;
+    end
+    % epidermis
+    if iz>round((zsurf+SC)/dz) && iz<=round((zsurf+SC+epd_thick)/dz)
+        T(:,:,iz) = 5;
+    end
+    % Gel
     if iz<=round(zsurf/dz)
-        T(:,:,iz) = 2; 
+        T(:,:,iz) = 10;
     end
-
-    % epidermis (60 um thick)
-    if iz>round(zsurf/dz) & iz<=round((zsurf+0.0060)/dz)
-        T(:,:,iz) = 5; 
-    end
-
-    % blood vessel @ xc, zc, radius, oriented along y axis
-    xc      = 0;            % [cm], center of blood vessel
-    zc      = Nz/2*dz;     	% [cm], center of blood vessel
-    vesselradius  = 0.0500;      	% blood vessel radius [cm]
-    for ix=1:Nx
-            xd = x(ix) - xc;	% vessel, x distance from vessel center
-            zd = z(iz) - zc;   	% vessel, z distance from vessel center                
-            r  = sqrt(xd^2 + zd^2);	% r from vessel center
-            if (r<=vesselradius)     	% if r is within vessel
-                T(:,ix,iz) = 3; % blood
-            end
-
-    end %ix
+    
+    % Hair @ xc, yc, radius, oriented along z axis
+%     xc      = 0;            % [cm], center of hair
+%     yc      = 0;     	% [cm], center of hair
+%     zc      = zsurf+hair_depth; % center of hair bulb
+%     zc_papilla = zsurf+hair_depth+sqrt(2)*(1-ratio_papilla)*hair_bulb_radius; %[cm] z-coordinate center of the papilla
+%     if iz>round(zsurf/dz) && iz<=round((zsurf+hair_depth)/dz)
+%         for ix=xi_start:xi_end
+%             for iy=yi_start:yi_end
+%                 xd = x(ix) - xc;	% vessel, x distance from vessel center
+%                 yd = y(iy) - yc;   	% vessel, z distance from vessel center
+%                 zd = z(iz)-zc;
+%                 r  = sqrt(xd^2 + yd^2);	% radius from vessel center
+%                 if (r<=hair_radius)     	% if r is within hair
+%                     T(iy,ix,iz) = 9; % hair
+%                 end
+%             end % iy
+%             
+%         end %ix
+%     end
+%     %Hair Bulb
+%     for ix=xi_start2:xi_end2
+%         for iy=yi_start2:yi_end2
+%             xd = x(ix) - xc;	% vessel, x distance from vessel center
+%             yd = y(iy) - yc;   	% vessel, z distance from vessel center
+%             zd = z(iz)-zc;
+%             r2 = sqrt(xd^2 + yd^2 + 1/2*zd^2); % radius from bulb center
+%             if (r2<=hair_bulb_radius)     	% if r2 is within hair bulb
+%                 T(iy,ix,iz) = 9; % hair
+%             end
+%         end % iy
+%         
+%     end %ix
+%     %Papilla
+%     for ix=xi_start2:xi_end2
+%         for iy=yi_start2:yi_end2
+%             xd = x(ix) - xc;	% vessel, x distance from vessel center
+%             yd = y(iy) - yc;   	% vessel, z distance from vessel center
+%             zd = z(iz)-zc_papilla;
+%             r3 = sqrt(xd^2 + yd^2 + 1/2*zd^2); % radius from papilla center
+%             if (r3<=papilla_radius)     	% if r2 is within hair bulb
+%                 T(iy,ix,iz) = 4; % dermis, standin for papilla tissue
+%             end
+%         end % iy
+%         
+%     end %ix
+    
     
 end % iz
 
@@ -201,57 +259,59 @@ end % SAVEON
 %% Look at structure of Tzx at iy=Ny/2
 Txzy = shiftdim(T,1);   % Tyxz --> Txzy
 Tzx  = Txzy(:,:,Ny/2)'; % Tzx
-makeTissueList(532);
-Nt=length(tissue);
 
-figure(1); clf
-fsz = 18;  % font size 
-imagesc(x,z,Tzx,[1 Nt])
-hold on
-set(gca,'fontsize',fsz)
-xlabel('x [cm]')
-ylabel('z [cm]')
-colorbar
-cmap = makecmap(Nt);
-colormap(cmap)
-set(colorbar,'fontsize',1)
-zdiff = zmax-zmin;
-for i=1:Nt
-    y = (Nt-i)/(Nt-1)*Nz;
-    text(Nx*1.2,y, tissue(i).s,'fontsize',12)
+%% DRAW TISSUE MODEL
+% figure(1); clf
+% fsz = 18;  % font size 
+% imagesc(x,z,Tzx,[1 Nt])
+% hold on
+% set(gca,'fontsize',fsz)
+% xlabel('x [cm]')
+% ylabel('z [cm]')
+% cmap = makecmap(Nt);
+% colormap(cmap)
+% colorbar('YTickLabel',{'Escape','Air','Blood','Dermis', 'Epidermis',...
+%     'Skull','Grey matter','White matter','Hair', 'Gel'},'YTick',1:Nt);
+% % label colorbar
+% zdiff = zmax-zmin;
+% %%
+% for i=1:Nt
+%     yy = (Nt-i)/(Nt-1)*Nz*dz;
+%     text(Nx*dx*1.2,yy, tissue(i).s,'fontsize',12)
+% end
+% 
+% text(xmax*0.9,zmin - zdiff*0.06, 'Tissue types','fontsize',18)
+% axis equal image
+% axis([xmin xmax zmin zmax])
+% 
+% 
+% %% draw launch
+% N = 10; % # of beam rays drawn
+% switch mcflag
+%     case 0 % uniform
+%         for i=0:5
+%             for j=-2:2
+%             plot( [xs+radius*i/5 xfocus + waist*j/2],[zs zfocus],'y-')
+%             plot(-[xs+radius*i/5 xfocus + waist*j/2],[zs zfocus],'y-')
+%             end
+%         end
+% 
+%     case 1 % Gaussian
+%         for i=0:5
+%             for j=-2:2
+%             plot( [xs+radius*i/5 xfocus + waist*j/2],[zs zfocus],'y-')
+%             plot(-[xs+radius*i/5 xfocus + waist*j/2],[zs zfocus],'y-')
+%             end
+%         end
+% 
+%     case 2 % iso-point
+%         for i=1:20
+%             th = (i-1)/19*2*pi;
+%             xx = Nx/2*cos(th) + xs;
+%             zz = Nx/2*sin(th) + zs;
+%             plot([xs xx],[zs zz],'y-')
+%         end
+% end
+% 
+% disp('done')
 end
-
-text(xmax*0.9,-zmax*0.06, 'Tissue types','fontsize',18)
-axis equal image
-axis([xmin xmax zmin zmax])
-
-% draw launch
-N = 10; % # of beam rays drawn
-switch mcflag
-    case 0 % uniform
-        for i=0:5
-            for j=-2:2
-            plot( [xs+radius*i/5 xfocus + waist*j/2],[zs zfocus],'r-')
-            plot(-[xs+radius*i/5 xfocus + waist*j/2],[zs zfocus],'r-')
-            end
-        end
-
-    case 1 % Gaussian
-        for i=0:5
-            for j=-2:2
-            plot( [xs+radius*i/5 xfocus + waist*j/2],[zs zfocus],'r-')
-            plot(-[xs+radius*i/5 xfocus + waist*j/2],[zs zfocus],'r-')
-            end
-        end
-
-    case 2 % iso-point
-        for i=1:20
-            th = (i-1)/19*2*pi;
-            xx = Nx/2*cos(th) + xs;
-            zz = Nx/2*sin(th) + zs;
-            plot([xs xx],[zs zz],'r-')
-        end
-end
-
-disp('done')
-
