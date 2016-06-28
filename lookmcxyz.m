@@ -1,3 +1,5 @@
+function lookmcxyz
+
 % lookmcxyz.m
 %   Looks at myname_F.bin, created by mcxyz.c 
 %   where myname is the name of the run: myname_T.bin, myname_H.mci
@@ -26,33 +28,25 @@
 %       Fzy(400,400,8) = 8 z,y images
 %       Fdet(8,1) = signal [1/cm^2] @ detector fiber
 %
-home
-clear
-format compact
-commandwindow
-global tissue
 
-saveon_HeatSim=1;
-savename='HeatSimIn_blood3_750.mat';
-
-cc = 'rbgm'; % color
-
-%%%% USER CHOICES <---------- you must specify -----
-myname = 'skinvessel';
+%% USER CHOICES <---------- you must specify -----
+directoryPath = './Data/';
+myname = 'blood4_broad_532';
 nm     = 532;
-%%%%
+saveon_HeatSim = 1;
 
+%% Load header file
+fprintf('------ mcxyz %s -------\n',myname)
 
-disp(sprintf('------ mcxyz %s -------',myname))
-
-% Load header file
-filename = sprintf('%s_H.mci',myname);
+filename = sprintf('%s%s_H.mci',directoryPath,myname);
 disp(['loading ' filename])
 fid = fopen(filename, 'r');
 A = fscanf(fid,'%f',[1 Inf])';
 fclose(fid);
 
 %% parameters
+format compact
+
 time_min = A(1);
 Nx = A(2);
 Ny = A(3);
@@ -84,38 +78,37 @@ for i=1:Nt
     gv(i,1) = A(j);
 end
 
-reportHmci(myname)
+% reportHmci(myname)
 
 %% Load Fluence rate F(y,x,z) 
-filename = sprintf('%s_F.bin',myname);
+filename = sprintf('%s%s_F.bin',directoryPath,myname);
 disp(['loading ' filename])
 tic
     fid = fopen(filename, 'rb');
-    [Data count] = fread(fid, Ny*Nx*Nz, 'float');
+    data = fread(fid, Ny*Nx*Nz, 'float');
     fclose(fid);
 toc
-F = reshape(Data,Ny,Nx,Nz); % F(y,x,z)
-
+F = reshape(data,Ny,Nx,Nz); % F(y,x,z)
 
 % Load tissue structure in voxels, T(y,x,z) 
-filename = sprintf('%s_T.bin',myname);
+filename = sprintf('%s%s_T.bin',directoryPath,myname);
 disp(['loading ' filename])
 tic
     fid = fopen(filename, 'rb');
-    [Data count] = fread(fid, Ny*Nx*Nz, 'uint8');
+    data = fread(fid, Ny*Nx*Nz, 'uint8');
     fclose(fid);
 toc
-T = reshape(Data,Ny,Nx,Nz); % T(y,x,z)
+T = reshape(data,Ny,Nx,Nz); % T(y,x,z)
 
-clear Data
+clear data
 
 %%
-x = ([1:Nx]-Nx/2-1/2)*dx;
-y = ([1:Ny]-Ny/2-1/2)*dx;
-z = ([1:Nz]-1/2)*dz;
-ux = [2:Nx-1];
-uy = [2:Ny-1];
-uz = [2:Nz-1];
+x = ((1:Nx)-Nx/2-1/2)*dx;
+y = ((1:Ny)-Ny/2-1/2)*dx;
+z = ((1:Nz)-1/2)*dz;
+ux = 2:Nx-1;
+uy = 2:Ny-1;
+uz = 2:Nz-1;
 zmin = min(z);
 zmax = max(z);
 zdiff = zmax-zmin;
@@ -128,7 +121,7 @@ Tzx = reshape(T(Ny/2,:,:),Nx,Nz)';
 tissue = makeTissueList(nm);
 Nt = length(tissue);
 
-figure(1);clf
+figure(1); clf
 imagesc(x(ux),z(uz),Tzx(uz,ux),[1 Nt])
 hold on
 cmap = makecmap(Nt);
@@ -145,7 +138,7 @@ for i=1:Nt
 end
 axis equal image
 
-% draw launch
+%% draw launch
 N = 10; % # of beam rays drawn
 switch mcflag
     case 0 % uniform
@@ -156,12 +149,9 @@ switch mcflag
             end
         end
 
-    case 1 % Gaussian
+    case 1 % uniform over entire surface at height zs
         for i=0:N
-            for j=-2:2
-            plot( [xs+radius*i/N xfocus + waist*j/2],[zs zfocus],'r-')
-            plot(-[xs+radius*i/N xfocus + waist*j/2],[zs zfocus],'r-')
-            end
+            plot( [xmin + (xmax-xmin)*i/N xmin + (xmax-xmin)*i/N],[zs zfocus],'r-')
         end
 
     case 2 % iso-point
@@ -173,7 +163,7 @@ switch mcflag
         end
 end
 
-name = sprintf('%s_tissue.jpg',myname);
+name = sprintf('%s%s_tissue.jpg',directoryPath,myname);
 print('-djpeg','-r300',name)
 
 
@@ -193,7 +183,7 @@ colormap(makec2f)
 axis equal image
 %axis([min(x) max(x) min(z) max(z)])
 
-name = sprintf('%s_Fzx.jpg',myname);
+name = sprintf('%s%s_Fzx.jpg',directoryPath,myname);
 print('-djpeg','-r300',name)
 
 %% look Fzy
@@ -216,7 +206,7 @@ title('Fluence \phi [W/cm^2/W.delivered] ')
 colormap(makec2f)
 axis equal image
 
-name = sprintf('%s_Fzy.jpg',myname);
+name = sprintf('%s%s_Fzy.jpg',directoryPath,myname);
 print('-djpeg','-r300',name)
 
 drawnow
@@ -230,14 +220,12 @@ plot(x,Fzx(:,Nx/2,:),'bx-')
 plot([-.05 .05],[1 1]*40,'k--')
 plot([0 0],[10 1e6],'k--')
 
-disp('done')
 % F, matrix with fluency / input power
 % T, Matrix containing tissue types
 % tissueProps, list of tissue properties tissueProps( tissue type, #) # = 1 is mua, # = 2 is mus, # = 3 is g
 % 
-Ap=Tissue_Prop_Matrix(T,1,tissueProps).*F;
-
-Azy  = reshape(Ap(:,Nx/2,:),Ny,Nz)';
+%Ap = Tissue_Prop_Matrix(T,1,tissue).*F;
+%Azy  = reshape(Ap(:,Nx/2,:),Ny,Nz)';
 % 
 % figure(4);clf
 % imagesc(y,z,log10(Azy),[-1 1]*3)
@@ -262,11 +250,13 @@ Azy  = reshape(Ap(:,Nx/2,:),Ny,Nz)';
 
 if saveon_HeatSim==1
     clearvars F Azy Fzy Tzx count Fzx
-    save(savename)
+    filename = sprintf('%s%s_HS.mat',directoryPath,myname);
+    save(filename)
 end   
 
+disp('done')
 
-disp('done')%% Ryx
+%% Ryx
 % NOT READY
 % fname = sprintf('%s_Ryx.bin',myname);
 % fid = fopen(fname);

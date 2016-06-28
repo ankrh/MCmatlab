@@ -32,9 +32,9 @@ function maketissue
 %% USER CHOICES <-------- You must set these parameters ------
 SAVEON      = 1;        % 1 = save myname_T.bin, myname_H.mci 
                         % 0 = don't save. Just check the program.
-
                         
 nm          = 532;       % set the range of wavelengths of the monte carlo simulation
+directoryPath = './Data/';
 myname      = ['blood4_broad_' num2str(nm)];% name for files: myname_T.bin, myname_H.mci  
 time_min    = 6;      	% time duration of the simulation [min]
 Nbins       = 400;    	% # of bins in each dimension of cube 
@@ -103,13 +103,13 @@ if isinf(zfocus), zfocus = 1e12; end
 %   Note: one need not use every tissue type in the tissue list.
 %   The tissue list is a library of possible tissue types.
 
-T = double(zeros(Ny,Nx,Nz)); 
+T = uint8(zeros(Ny,Nx,Nz)); 
 
 T = T + 4;      % fill background with skin (dermis)
 
-zsurf = 0.02;  % position of gel/skin surface[cm]
+zsurf       = 0.02;  % position of gel/skin surface[cm]
 SC          = 0.002; % Thickness of stratum corneum and stratum lucidum [cm]
-epd_thick = 0.01; %Thickness of the epidermis [cm]
+epd_thick   = 0.01; %Thickness of the epidermis [cm]
 vessel_thick = 0.050; %thickness of blood layer [cm]
 vessel_depth = 0.02; %depth of vessel[cm]
 
@@ -141,7 +141,7 @@ for iz=1:Nz % for every depth z(iz)
     end
     % Gel
     if iz<=round(zsurf/dz)
-        T(:,:,iz) = 10;
+        T(:,:,iz) = 2;
     end
 
 %     % epidermis (60 um thick)
@@ -218,7 +218,7 @@ end % iz
 %% Write the files
 if SAVEON
     % convert T to linear array of integer values, v(i)i = 0;
-    v = uint8(reshape(T,Ny*Nx*Nz,1));
+    v = reshape(T,Ny*Nx*Nz,1);
 
     %% WRITE FILES
     % Write myname_H.mci file
@@ -226,7 +226,7 @@ if SAVEON
     %   and specifies the tissue optical properties for each tissue type.
     commandwindow
     fprintf('--------create %s --------\n',myname)
-    filename = sprintf('%s_H.mci',myname);
+    filename = sprintf('%s%s_H.mci',directoryPath,myname);
     fid = fopen(filename,'w');
         % run parameters
         fprintf(fid,'%0.2f\n',time_min);
@@ -261,7 +261,7 @@ if SAVEON
     fclose(fid);
 
     %% write myname_T.bin file
-    filename = sprintf('%s_T.bin',myname);
+    filename = sprintf('%s%s_T.bin',directoryPath,myname);
     disp(['create ' filename])
     fid = fopen(filename,'wb');
     fwrite(fid,v,'uint8');
@@ -312,7 +312,6 @@ switch mcflag
 
     case 1 % uniform over entire surface at height zs
         for i=0:10
-            Nx/2*dx;
             plot( [xmin + (xmax-xmin)*i/10 xmin + (xmax-xmin)*i/10],[zs zfocus],'r-')
         end
 

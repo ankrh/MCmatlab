@@ -20,7 +20,6 @@ MU(:,1) = interp1(nmLIB,muaoxy,nm);
 MU(:,2) = interp1(nmLIB,muadeoxy,nm);
 MU(:,3) = interp1(nmLIB,muawater,nm);
 MU(:,4) = interp1(nmLIB,muamel,nm);
-LOADED = 1;
 
 %% Create tissueList
 
@@ -138,11 +137,10 @@ tissue(j).mua   = 1;
 tissue(j).mus   = 100;
 tissue(j).g     = 0.90;
 
-disp(sprintf('---- tissueList ------ \tmua   \tmus  \tg  \tmusp'))
+fprintf('---- tissueList ------ \tmua   \tmus  \tg  \tmusp\n')
 for i=1:length(tissue)
-    disp(sprintf('%d\t%15s\t%0.4f\t%0.1f\t%0.3f\t%0.1f',...
+    fprintf('%d\t%15s\t%0.4f\t%0.1f\t%0.3f\t%0.1f\n\n',...
         i,tissue(i).name, tissue(i).mua,tissue(i).mus,tissue(i).g,...
-        tissue(i).mus*(1-tissue(i).g)))
+        tissue(i).mus*(1-tissue(i).g))
 end
-disp(' ')
 
