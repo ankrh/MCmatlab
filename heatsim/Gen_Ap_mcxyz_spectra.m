@@ -21,13 +21,11 @@
 %   'HeatSimIn_model4.mat'
 %
 
-home
-clear
 format compact
-commandwindow
-global tissue
 
-load('Input_spectrum')
+directoryPath = '../Data/';
+
+load([directoryPath 'Input_spectrum'])
 nm_s = nm;
 P_s = Power;
 
@@ -96,7 +94,7 @@ myname = ['blood4_broad_' num2str(nm)];
 disp(sprintf('------ mcxyz %s -------',myname))
 
 % Load header file
-filename = sprintf('%s_H.mci',myname);
+filename = sprintf('%s%s_H.mci',directoryPath,myname);
 disp(['loading ' filename])
 fid = fopen(filename, 'r');
 A = fscanf(fid,'%f',[1 Inf])';
@@ -134,10 +132,10 @@ for i=1:Nt
     gv(i,1) = A(j);
 end
 
-reportHmci(myname)
+reportHmci(directoryPath,myname)
 
 %% Load Fluence rate F(y,x,z) 
-filename = sprintf('%s_F.bin',myname);
+filename = sprintf('%s%s_F.bin',directoryPath,myname);
 disp(['loading ' filename])
 tic
     fid = fopen(filename, 'rb');
@@ -148,7 +146,7 @@ F = reshape(Data,Ny,Nx,Nz); % F(y,x,z)
 
 
 % Load tissue structure in voxels, T(y,x,z) 
-filename = sprintf('%s_T.bin',myname);
+filename = sprintf('%s%s_T.bin',directoryPath,myname);
 disp(['loading ' filename])
 tic
     fid = fopen(filename, 'rb');
@@ -172,8 +170,9 @@ zdiff = zmax-zmin;
 xmin = min(x);
 xmax = max(x);
 xdiff = xmax-xmin;
+cd ..
 tissueProps = makeTissueList(nm);
-
+cd heatsim
 
 
 %% calculate Power Absorbtion
@@ -212,7 +211,7 @@ Azy  = reshape(Ap_total(:,Nx/2,:),Ny,Nz)';
 %% Save HeatSim input
 Ap=Ap_total;
 clearvars F Azy Fzy Tzx count Fzx Ap_total
-save(savename)
+save([directoryPath savename])
 
 end
 

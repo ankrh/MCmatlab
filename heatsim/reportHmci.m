@@ -1,9 +1,9 @@
-function reportHmci(myname)
+function reportHmci(directoryPath,myname)
 % function reportHmci(myname)
 %   Lists the values of the input file  myname_H.mci.
 
 home
-fid = fopen(sprintf('%s_H.mci',myname),'r');
+fid = fopen(sprintf('%s%s_H.mci',directoryPath,myname),'r');
 B = fscanf(fid,'%f');
 fclose(fid);
 
