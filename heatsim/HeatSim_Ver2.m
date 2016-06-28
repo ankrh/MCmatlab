@@ -146,6 +146,7 @@ Temp_post_light=Temp;
 image_count_light_end=image_count-1;
 %% Heat Transfer Simulation with No Illumination
 if postcal==1
+    fprintf(1,'|                    |\n|');
     tic
     for nt = 1:Nt_no_light
         dQx = (dt/dx)*dy*dz*((TC([2:Nx Nx],[1:Ny],[1:Nz])+TC([1:Nx],[1:Ny],[1:Nz]))./2.*(Temp([2:Nx Nx],[1:Ny],[1:Nz])-Temp([1:Nx],[1:Ny],[1:Nz]))+...
@@ -161,8 +162,11 @@ if postcal==1
             Tempzy(:,:,image_count)  = reshape(Temp(:,Nx/2,:),Ny,Nz)';
             image_count=image_count+1;
         end
-        disp(['time: ' num2str(nt*dt) ', total time: ' num2str(Nt_no_light*dt)])
+        if mod(nt/Nt_no_light*20,1) == 0
+            fprintf(1,'-');
+        end
     end
+    fprintf(1,'|\n');
     toc
 end
 %% Look at data
@@ -170,7 +174,7 @@ if model==4
    max(max(Temp_post_light([1:48 52:100],[1:48 52:100],13))) % highest temperature in epidermis 
 end
 
-maxTemp_post_light = max(max(max(Temp_post_light)))
+maxTemp_post_light = max(max(max(Temp_post_light)));
 %[maxTemp_papilla,I]=max(Tempzy(63,50,:)) %maximum temperature in the center of the papilla
 
 Temp_post_lightzy = reshape(Temp_post_light(:,Nx/2,:),Ny,Nz)';
@@ -262,7 +266,7 @@ Tzx = reshape(T(Ny/2,:,:),Nx,Nz)';
 % drawnow
 if save_on==1
     save([directoryPath save_name],'Temp_post_light','Temp','Tempzy','pulse_energy_area','pulse_duration','duration_after','Nx','Ny','Nz','Nt','dx','dy','dz','T',...
-        'x','y','z','tissue')
+        'x','y','z','tissueProps')
 end
 end
 
