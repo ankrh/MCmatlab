@@ -5,16 +5,16 @@
 % maketissue_example2.m, makeTissueList.m, and lookmcxyz.m by importing
 % HeatSimIn.mat
 
-clear all
+directoryPath='../Data/';
 
-load('Input_spectrum')
+load([directoryPath 'Input_spectrum'])
 
 %% Setup of simulation 
 q = 0;
 for fluence = F_min:dF:F_max
     q = q+1;
     num = num2str(q);
-    load(['HeatSimIn_blood4_' num '.mat'])
+    load([directoryPath 'HeatSimIn_blood4_' num '.mat'])
 
 %% Testing parameters
 
@@ -41,7 +41,9 @@ quick_cal   = 1; % quick_cal calculates only on a smaller matrix, go to Quick Ca
                     % specific model
 
 %%% Parameters that is set automatically %%%
+cd ..
 tissueProps = makeTissueList(nm); %Properties of the tissue types
+cd heatsim
 Temp        = Temp_initial*ones(400,400,400); % initial temperature in Celsius
 [~,~,z_mesh]= meshgrid(1:400,1:400,0:dz:(Nz-1)*dz); % Temp gradient
 Temp        = 30+6/((Nz-1)*dz)*z_mesh;              % for testing
@@ -255,7 +257,7 @@ Tzx = reshape(T(Ny/2,:,:),Nx,Nz)';
 % 
 % drawnow
 if save_on==1
-    save(save_name,'Temp_post_light','Temp','Tempzy','pulse_energy_area','pulse_duration','duration_after','Nx','Ny','Nz','Nt','dx','dy','dz','T',...
+    save([directoryPath save_name],'Temp_post_light','Temp','Tempzy','pulse_energy_area','pulse_duration','duration_after','Nx','Ny','Nz','Nt','dx','dy','dz','T',...
         'x','y','z','tissue')
 end
 end
