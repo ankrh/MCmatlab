@@ -49,8 +49,12 @@ Temp        = Temp_initial*ones(400,400,400); % initial temperature in Celsius
 Temp        = 30+6/((Nz-1)*dz)*z_mesh;              % for testing
 
 % Matrices contaning the thermal properties of the tissue
-HC = Tissue_Prop_Matrix(T,4,tissueProps);
-TC = Tissue_Prop_Matrix(T,5,tissueProps);
+HC = zeros(size(T));
+TC = zeros(size(T));
+for tissueNumber=1:length(tissueProps)
+    HC(T==tissueNumber) = tissueProps(tissueNumber).HC;
+    TC(T==tissueNumber) = tissueProps(tissueNumber).TC;
+end
 
 % miscellaneous constants
 area            = (Nx*dx)^2; % surface area of the model
