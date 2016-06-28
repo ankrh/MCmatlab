@@ -1,8 +1,6 @@
-clear all
-close all
-clc 
 
-load('Input_spectrum')
+directoryPath = '../Data/';
+load([directoryPath 'Input_spectrum'])
 
 SC_thick = 0.002; %thickness of the stratum corneum layer [cm]
 m = 0;
@@ -11,7 +9,7 @@ for n=F_min:dF:F_min
     num = num2str(m);
     numb = num2str(n);
     number = strrep(numb,'.',',');
-    load(['HeatSimOut_blood4_' num '.mat']);
+    load([directoryPath 'HeatSimOut_blood4_' num '.mat']);
 %     load(['VL2_bund_' number '.mat']);
 
 Tzy = reshape(T(:,Nx/2,:),Ny,Nz)'; % Make zy cut of the tissue matrix
@@ -168,7 +166,7 @@ annotation('textbox', [0.01, 0.05, 0.2, 0.08], 'string',...
 % axis equal image
 
 end
-break
+return
 %% Animate Temperature
 clear TempMovie
 t_int = length(Tempzy(1,1,:));
@@ -198,7 +196,7 @@ end
 %close(vid);
 %winopen('Temperature_Movie_630nm.avi')
     movie2avi(TempMovie, 'Temperature_Movie_630nm','compression','None','fps',2)
-break
+return
 %% Old code
 
 
