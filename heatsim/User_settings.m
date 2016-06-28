@@ -17,9 +17,9 @@ clc
 
 %% User setting: Define the interval of wavelengths the input spectrum covers.
 
-dnm = 2*5; %Wavelength step size of the spectrum. Needs to be a multiple of 5. [nm];
-nm_min = 410; %Minimum wavelength of the filter. No lower than 300+dnm [nm];
-nm_max = 995; %Maximum wavelength of the filter. No higher than 1000-dnm [nm];
+dnm = 1*5; %Wavelength step size of the spectrum. Needs to be a multiple of 5. [nm];
+nm_min = 532; %Minimum wavelength of the filter. No lower than 300+dnm [nm];
+nm_max = 537; %Maximum wavelength of the filter. No higher than 1000-dnm [nm];
 
 
 %% User setting: Define the pulse. 
@@ -32,7 +32,7 @@ nm_max = 995; %Maximum wavelength of the filter. No higher than 1000-dnm [nm];
 
 dF = 0.2; %Fluence step size. [J/cm2]
 F_min = 10.8; %Minimum fluence to be simulated.
-F_max = 12.0; %Maximum fluence to be simulated.
+F_max = 10.8; %Maximum fluence to be simulated.
 
 %Set the pulse duration in seconds
 pulse = 10e-3; %pulse duration. Default 10 ms. [s]
@@ -43,6 +43,7 @@ pulse = 10e-3; %pulse duration. Default 10 ms. [s]
 %name of the spectrum file. Extension (.txt) should not be written as part
 %of the filename. File must be present in current folder or a subfolder.
 filename = 'VL+_norm0'; 
+directoryPath = '../Data/';
 
 %% Do not edit this section. (Calling the spectrum)
 %Checks if the file specified in filename is in the folder or subfolder
@@ -52,10 +53,10 @@ AllFiles = dirrec(char(fileparts(pwd)),[filename '.txt*']); %file directory
 %Checks that the file exists, and is unique
 if length(AllFiles)>1
     disp('ERROR: The name specified for the file to load the spectrum from was not unique')
-    break
+    return
 elseif isempty(AllFiles) == 1
     disp('ERROR: The name specified for the file to load the spectrum from was not found')
-    break
+    return
 end
 
 %Reads the file
@@ -73,46 +74,46 @@ clear AllFiles fid A
 %Wavelength error checking
 if (dnm/5) ~= round(dnm/5)
     disp('ERROR: Wavelength step size, dnm, is not an integer of 5')
-    break
+    return
 elseif nm_min > nm_max
     disp('ERROR: Minimum wavelength is bigger than maximum wavelength')
-    break
-elseif dnm < 5 || dnm >= (nm_max - nm_min)
+    return
+elseif dnm < 5 || dnm > (nm_max - nm_min)
     disp('ERROR: Wavelength step size, dnm, out of range')
-    break
+    return
 elseif nm_min < 300 + dnm
     disp('ERROR: Minimum wavelength is too low')
-    break
+    return
 elseif nm_max > 1000 - dnm
     disp('ERROR: Maximum wavelength is too high')
-    break
+    return
 end
 
 %Fluence error checking
 if dF <= 0
     disp('ERROR: Fluence step size, dF, out of range')
-    break
+    return
 elseif F_min > F_max
     disp('ERROR: Minimum fluence bigger than maximum fluence')
-    break
+    return
 elseif dF >= (F_max - F_min) && (F_max - F_min) > 0
     disp('ERROR: Fluence step size, dF, out of range')
-    break
+    return
 elseif floor((F_max - F_min)/dF + 1) > 10
     disp('ERROR: Too many fluence data points')
-    break
+    return
 end
 
 %Checks if all appropriate values are numbers
 if isnumeric(dnm) == 0 || isnumeric(nm_min) == 0 || isnumeric(nm_max) == 0
     disp('ERROR: An entered wavelength setting is not a number')
-    break
+    return
 elseif isnumeric(dF) == 0 || isnumeric(F_min) == 0 || isnumeric(F_max) == 0
     disp('ERROR: An entered fleunce setting is not a number')
-    break
+    return
 end
 
 Dnm = 2*dnm;
 clear dnm
 
-save('Input_spectrum')
+save([directoryPath 'Input_spectrum'])
