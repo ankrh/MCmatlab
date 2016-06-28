@@ -181,7 +181,10 @@ cd heatsim
 % T, Matrix containing tissue types
 % tissueProps, list of tissue properties tissueProps( tissue type, #) # = 1 is mua, # = 2 is mus, # = 3 is g
 % 
-Ap = Tissue_Prop_Matrix(T,1,tissueProps).*F;
+for tissueNumber=1:length(tissueProps)
+    T(T==tissueNumber) = tissueProps(tissueNumber).mua;
+end
+Ap = T.*F;
 
 Ap_total = Ap_total+weight(index)*Ap;
 index=index+1;
