@@ -17,7 +17,7 @@ for i=1:64
     elseif  j<=7-dj, cmap(i,:) = [0.5 0.5 0.5]; % gray matter
     elseif  j<=8-dj, cmap(i,:) = [0.5 1 1]; % white matter
     elseif  j<=9-dj, cmap(i,:) = [0.3 .2 .2]; % hair
-    elseif  j<=9-dj, cmap(i,:) = [0 0 1]; % water
-    elseif  j<=9-dj, cmap(i,:) = [1 .5 .5]; % standard tissue
+    elseif  j<=10-dj, cmap(i,:) = [0 0 1]; % water
+    elseif  j<=11-dj, cmap(i,:) = [1 .5 .5]; % standard tissue
     end
 end

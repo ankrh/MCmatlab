@@ -1,4 +1,4 @@
-function maketissue
+function makeTissue
 
 % maketissue.m
 %   Creates a cube of optical property pointers,T(y,x,z), saved in
