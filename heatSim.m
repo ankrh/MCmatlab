@@ -33,7 +33,7 @@ dt                  = 5e-5; % timestep size, should be on the order of or less,
 Temp_initial        = 36; % initial temperature of tissue  
 image_interval      = 1e-3; %[s] profiles will be saved with this interval
 
-% swithches
+% switches
 model       = 4; % # of the tissue model loaded
 save_on     = 1; % 1 to save output, 0 otherwise
 Apcal       = 1; % 1 to simulate the time during illumination, 0 otherwise
@@ -43,9 +43,7 @@ quick_cal   = 1; % quick_cal calculates only on a smaller matrix, go to Quick Ca
                     % specific model
 
 %%% Parameters that is set automatically %%%
-cd ..
 tissueProps = makeTissueList(nm); %Properties of the tissue types
-cd heatsim
 Temp        = Temp_initial*ones(400,400,400); % initial temperature in Celsius
 [~,~,z_mesh]= meshgrid(1:400,1:400,0:dz:(Nz-1)*dz); % Temp gradient
 Temp        = 30+6/((Nz-1)*dz)*z_mesh;              % for testing

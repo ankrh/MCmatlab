@@ -1,4 +1,6 @@
-% Gen_Ap_mcxyz.m
+function genAbsorbedPowerSpectra
+
+% genAbsorbedPowerSpectra.m
 %   loads at several myname_F.bin, created by 3Dmc.exe 
 %   where myname is the name of the run: myname_T.bin, myname_H.mci
 %   and myname end in _xxx where xxx=wavelength in nanometers
@@ -31,11 +33,10 @@ P_s = Power;
 
 m = 0;
 for k = F_min:dF:F_max
-    
-    m = m+1;
-    num = num2str(m);
+
+m = m+1;
+num = num2str(m);
 savename = ['HeatSimIn_blood4_' num '.mat'];
-% savename = ['HeatSimIn_blood4_broad.mat'];
 
 
 %% Remember to define the size of Ap_total %%
@@ -75,21 +76,20 @@ Wavelengths = nm_min:dnm:nm_max;
 %     display('The spectra doesn''t cover all the wavelengths specified');break; 
 % end
 
-for i = 1:length(Wavelengths) 
+for i = length(Wavelengths):-1:1
     [~,I1] = min(abs(nm_s-(Wavelengths(i)-dnm/2)));
     [~,I2] = min(abs(nm_s-(Wavelengths(i)+dnm/2)));
     weight(i) = trapz(nm_s(I1:I2),P_s(I1:I2));
 end
 weight = weight./sum(weight); % Normalise
 
-%%%% USER CHOICES <---------- you must specify -----
+%% USER CHOICES <---------- you must specify -----
 index=1;
 %weight = ones(1,6)/6;
 for i = 1:length(Wavelengths)
-    nm = Wavelengths(i);
+nm = Wavelengths(i);
 myname = ['blood4_broad_' num2str(nm)];
 %%%%
-
 
 disp(sprintf('------ mcxyz %s -------',myname))
 
@@ -170,9 +170,7 @@ zdiff = zmax-zmin;
 xmin = min(x);
 xmax = max(x);
 xdiff = xmax-xmin;
-cd ..
 tissueProps = makeTissueList(nm);
-cd heatsim
 
 
 %% calculate Power Absorbtion

@@ -66,7 +66,7 @@ wall_dam = 0;
 %% Plot showing the dead dermis and epidermis
 maxT = ones(length(Tempzy(:,1,1)),length(Tempzy(1,:,1)));
 Tdead = maxT;
-Temp_dead = 70
+Temp_dead = 70;
 for i=1:length(Tempzy(:,1,1))
     for ii = 1:length(Tempzy(1,:,1))
         maxT(i,ii) = max(Tempzy(i,ii,:));
@@ -129,7 +129,7 @@ for i=1:64
     end
 end
 
-fn = strrep(filename,'_',' ')
+fn = strrep(filename,'_',' ');
 
 figure('units','normalized','outerposition',[0 0 0.95 1]); clf
 imagesc(y,z,Tdead,[0 Nt-1])

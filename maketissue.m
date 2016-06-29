@@ -111,7 +111,7 @@ zsurf       = 0.02;  % position of gel/skin surface[cm]
 SC          = 0.002; % Thickness of stratum corneum and stratum lucidum [cm]
 epd_thick   = 0.01; %Thickness of the epidermis [cm]
 vessel_thick = 0.050; %thickness of blood layer [cm]
-vessel_depth = 0.02; %depth of vessel[cm]
+vessel_depth = 0.02; %depth of vessel [cm]
 
 % hair_diameter = 0.0075; % varies from 17 - 180 micrometers, should increase with colouring and age
 % hair_radius = hair_diameter/2;      	% hair radius [cm]
@@ -141,7 +141,7 @@ for iz=1:Nz % for every depth z(iz)
     end
     % Gel
     if iz<=round(zsurf/dz)
-        T(:,:,iz) = 2;
+        T(:,:,iz) = 10;
     end
 
 %     % epidermis (60 um thick)
@@ -210,14 +210,12 @@ for iz=1:Nz % for every depth z(iz)
 %         end % iy
 %         
 %     end %ix
-    
-    
-end % iz
 
+end % iz
 
 %% Write the files
 if SAVEON
-    % convert T to linear array of integer values, v(i)i = 0;
+
     v = reshape(T,Ny*Nx*Nz,1);
 
     %% WRITE FILES

@@ -64,7 +64,7 @@ for i=1:Nt
     gv(i,1) = A(j);
 end
 
-% reportHmci(myname)
+reportHmci(directoryPath,myname)
 
 %% Load Fluence rate F(y,x,z) 
 filename = sprintf('%s%s_F.bin',directoryPath,myname);
