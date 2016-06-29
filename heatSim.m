@@ -117,12 +117,27 @@ if Apcal==1;
     tic
     for nt = 1:Nt_light
         % Calculates heat propagation
-        dQx = (dt/dx)*dy*dz*((TC([2:Nx Nx],1:Ny,1:Nz)+TC(1:Nx,1:Ny,1:Nz))./2.*(Temp([2:Nx Nx],1:Ny,1:Nz)-Temp(1:Nx,1:Ny,1:Nz))+...
-            -(TC(1:Nx,1:Ny,1:Nz)+TC([1 1:Nx-1],1:Ny,1:Nz))./2.*(Temp(1:Nx,1:Ny,1:Nz)-Temp([1 1:Nx-1],1:Ny,1:Nz)));
-        dQy = (dt/dy)*dx*dz*((TC(1:Nx,[2:Ny Ny],1:Nz)+TC(1:Nx,1:Ny,1:Nz))./2.*(Temp(1:Nx,[2:Ny Ny],1:Nz)-Temp(1:Nx,1:Ny,1:Nz))+...
-            -(TC(1:Nx,1:Ny,1:Nz)+TC(1:Nx,[1 1:Ny-1],1:Nz))./2.*(Temp(1:Nx,1:Ny,1:Nz)-Temp(1:Nx,[1 1:Ny-1],1:Nz)));
-        dQz = (dt/dz)*dx*dy*((TC(1:Nx,1:Ny,[2:Nz Nz])+TC(1:Nx,1:Ny,1:Nz))./2.*(Temp(1:Nx,1:Ny,[2:Nz Nz])-Temp(1:Nx,1:Ny,1:Nz))+...
-            -(TC(1:Nx,1:Ny,1:Nz)+TC(1:Nx,1:Ny,[1 1:Nz-1]))./2.*(Temp(1:Nx,1:Ny,1:Nz)-Temp(1:Nx,1:Ny,[1 1:Nz-1])));
+        dQx = zeros(size(T));
+        diffTempx = diff(Temp,1,1);
+        meanTCx = movmean(TC,2,1,'Endpoints','discard');
+        heatTransferx = diffTempx.*meanTCx;
+        dQx(1:Nx-1,:,:) = (dt/dx)*dy*dz*heatTransferx;
+        dQx(2:Nx,:,:) = dQx(2:Nx,:,:)-(dt/dx)*dy*dz*heatTransferx;
+        
+        dQy = zeros(size(T));
+        diffTempy = diff(Temp,1,2);
+        meanTCy = movmean(TC,2,2,'Endpoints','discard');
+        heatTransfery = diffTempy.*meanTCy;
+        dQy(:,1:Nx-1,:) = (dt/dy)*dx*dz*heatTransfery;
+        dQy(:,2:Nx,:) = dQy(:,2:Nx,:)-(dt/dy)*dx*dz*heatTransfery;
+
+        dQz = zeros(size(T));
+        diffTempz = diff(Temp,1,3);
+        meanTCz = movmean(TC,2,3,'Endpoints','discard');
+        heatTransferz = diffTempz.*meanTCz;
+        dQz(:,:,1:Nz-1) = (dt/dz)*dx*dy*heatTransferz;
+        dQz(:,:,2:Nz) = dQz(:,:,2:Nz)-(dt/dz)*dx*dy*heatTransferz;
+
         % Sum of heat propagation and heat generated from absorbed light
         dQ = dQx+dQy+dQz+Ap*dx*dy*dz*Wdel*dt;
         % Calculating temperature at the next timestep
@@ -143,12 +158,27 @@ if postcal==1
     fprintf(1,'\b');
     tic
     for nt = 1:Nt_no_light
-        dQx = (dt/dx)*dy*dz*((TC([2:Nx Nx],1:Ny,1:Nz)+TC(1:Nx,1:Ny,1:Nz))./2.*(Temp([2:Nx Nx],1:Ny,1:Nz)-Temp(1:Nx,1:Ny,1:Nz))+...
-            -(TC(1:Nx,1:Ny,1:Nz)+TC([1 1:Nx-1],1:Ny,1:Nz))./2.*(Temp(1:Nx,1:Ny,1:Nz)-Temp([1 1:Nx-1],1:Ny,1:Nz)));
-        dQy = (dt/dy)*dx*dz*((TC(1:Nx,[2:Ny Ny],1:Nz)+TC(1:Nx,1:Ny,1:Nz))./2.*(Temp(1:Nx,[2:Ny Ny],1:Nz)-Temp(1:Nx,1:Ny,1:Nz))+...
-            -(TC(1:Nx,1:Ny,1:Nz)+TC(1:Nx,[1 1:Ny-1],1:Nz))./2.*(Temp(1:Nx,1:Ny,1:Nz)-Temp(1:Nx,[1 1:Ny-1],1:Nz)));
-        dQz = (dt/dz)*dx*dy*((TC(1:Nx,1:Ny,[2:Nz Nz])+TC(1:Nx,1:Ny,1:Nz))./2.*(Temp(1:Nx,1:Ny,[2:Nz Nz])-Temp(1:Nx,1:Ny,1:Nz))+...
-            -(TC(1:Nx,1:Ny,1:Nz)+TC(1:Nx,1:Ny,[1 1:Nz-1]))./2.*(Temp(1:Nx,1:Ny,1:Nz)-Temp(1:Nx,1:Ny,[1 1:Nz-1])));
+        dQx = zeros(size(T));
+        diffTempx = diff(Temp,1,1);
+        meanTCx = movmean(TC,2,1,'Endpoints','discard');
+        heatTransferx = diffTempx.*meanTCx;
+        dQx(1:Nx-1,:,:) = (dt/dx)*dy*dz*heatTransferx;
+        dQx(2:Nx,:,:) = dQx(2:Nx,:,:)-(dt/dx)*dy*dz*heatTransferx;
+        
+        dQy = zeros(size(T));
+        diffTempy = diff(Temp,1,2);
+        meanTCy = movmean(TC,2,2,'Endpoints','discard');
+        heatTransfery = diffTempy.*meanTCy;
+        dQy(:,1:Nx-1,:) = (dt/dy)*dx*dz*heatTransfery;
+        dQy(:,2:Nx,:) = dQy(:,2:Nx,:)-(dt/dy)*dx*dz*heatTransfery;
+
+        dQz = zeros(size(T));
+        diffTempz = diff(Temp,1,3);
+        meanTCz = movmean(TC,2,3,'Endpoints','discard');
+        heatTransferz = diffTempz.*meanTCz;
+        dQz(:,:,1:Nz-1) = (dt/dz)*dx*dy*heatTransferz;
+        dQz(:,:,2:Nz) = dQz(:,:,2:Nz)-(dt/dz)*dx*dy*heatTransferz;
+        
         dQ=dQx+dQy+dQz;
         Temp(1:Nx,1:Ny,2:Nz-1)=Temp(1:Nx,1:Ny,2:Nz-1)+dQ(1:Nx,1:Ny,2:Nz-1)./HC(1:Nx,1:Ny,2:Nz-1)./(dx*dy*dz);
         if mod(nt/Nt_no_light*40,1) == 0
