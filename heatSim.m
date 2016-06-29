@@ -39,7 +39,7 @@ save_on     = 1; % 1 to save output, 0 otherwise
 Apcal       = 1; % 1 to simulate the time during illumination, 0 otherwise
 postcal     = 1; % 1 to simulate the time after illumination, 0 otherwise
 Bad_Temp    = 2000; % if the simulation reaches a temperature above this, something is wrong and the simulation terminates
-quick_cal   = 1; % quick_cal calculates only on a smaller matrix, go to Quick Calculation Setup and tailor it to a 
+quick_cal   = 0; % quick_cal calculates only on a smaller matrix, go to Quick Calculation Setup and tailor it to a 
                     % specific model
 
 %%% Parameters that is set automatically %%%
@@ -112,7 +112,7 @@ if quick_cal==1;
     end
 end
 
-%% Heat Transfer Simulation with Illumination
+%% Heat Transfer Simulation during illumination
 if Apcal==1;
     tic
     for nt = 1:Nt_light
@@ -131,18 +131,13 @@ if Apcal==1;
         if max(max(max(Temp)))>Bad_Temp
             break
         end
-        % Saves temperature profiles
-        if mod(dt*nt,image_interval)==0
-            Tempzy(:,:,image_count)  = reshape(Temp(:,Nx/2,:),Ny,Nz)';
-            image_count=image_count+1;
-        end
-        disp(['time: ' num2str(nt*dt) ', total time: ' num2str(Nt_light*dt)])
     end
     toc
 end
+
 Temp_post_light=Temp;
-image_count_light_end=image_count-1;
-%% Heat Transfer Simulation with No Illumination
+
+%% Heat Transfer Simulation after illumination
 if postcal==1
     fprintf(1,'|----------------------------------------|');
     fprintf(1,'\b');
@@ -156,11 +151,6 @@ if postcal==1
             -(TC(1:Nx,1:Ny,1:Nz)+TC(1:Nx,1:Ny,[1 1:Nz-1]))./2.*(Temp(1:Nx,1:Ny,1:Nz)-Temp(1:Nx,1:Ny,[1 1:Nz-1])));
         dQ=dQx+dQy+dQz;
         Temp(1:Nx,1:Ny,2:Nz-1)=Temp(1:Nx,1:Ny,2:Nz-1)+dQ(1:Nx,1:Ny,2:Nz-1)./HC(1:Nx,1:Ny,2:Nz-1)./(dx*dy*dz);
-        % Saves temperature profiles
-        if mod(dt*nt,image_interval)==0
-            Tempzy(:,:,image_count)  = reshape(Temp(:,Nx/2,:),Ny,Nz)';
-            image_count=image_count+1;
-        end
         if mod(nt/Nt_no_light*40,1) == 0
             fprintf(1,'\b');
         end
@@ -168,16 +158,11 @@ if postcal==1
     fprintf(1,'\b');
     toc
 end
-%% Look at data
-if model==4
-   max(max(Temp_post_light([1:48 52:100],[1:48 52:100],13))); % highest temperature in epidermis 
-end
 
-maxTemp_post_light = max(max(max(Temp_post_light)));
-%[maxTemp_papilla,I]=max(Tempzy(63,50,:)) %maximum temperature in the center of the papilla
+%% Look at data
 
 Temp_post_lightzy = reshape(Temp_post_light(:,Nx/2,:),Ny,Nz)';
-Tzx = reshape(T(Ny/2,:,:),Nx,Nz)';
+Tempzy = reshape(Temp(:,Nx/2,:),Ny,Nz)';
 
 figure(5);clf
 imagesc(y,z,Temp_post_lightzy)
@@ -192,7 +177,7 @@ title('Temperature  [^{\circ}C] ')
 axis equal image
 
 figure(6);clf
-imagesc(y,z,Tempzy(:,:,image_count-1))
+imagesc(y,z,Tempzy)
 hold on
 text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
 colorbar
@@ -204,7 +189,7 @@ title('Temperature  [^{\circ}C] ')
 axis equal image
 
 figure(7);clf
-imagesc(y,z,Temp_post_lightzy(:,:)-Tempzy(:,:,1))
+imagesc(y,z,Temp_post_lightzy-Temp_initial)
 hold on
 text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
 colorbar
