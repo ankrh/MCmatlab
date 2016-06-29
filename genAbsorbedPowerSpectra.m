@@ -215,11 +215,3 @@ clearvars F Azy Fzy Tzx count Fzx Ap_total
 save([directoryPath savename])
 
 end
-
-N=2500;
-s=zeros(N,1);
-for a=1:N
-s(a)=tan(a); %*sin(-a/10);
-end
-Fs=2200; %increase value to speed up the sound, decrease to slow it down
-soundsc(s,Fs) 

@@ -265,16 +265,9 @@ Tzx = reshape(T(Ny/2,:,:),Nx,Nz)';
 % %print -djpeg -r300 'Fig_Azy.jpg'
 % 
 % drawnow
+
 if save_on==1
     save([directoryPath save_name],'Temp_post_light','Temp','Tempzy','pulse_energy_area','pulse_duration','duration_after','Nx','Ny','Nz','Nt','dx','dy','dz','T',...
         'x','y','z','tissueProps')
 end
 end
-
-N=2500;
-s=zeros(N,1);
-for a=1:N
-s(a)=tan(a); %*sin(-a/10);
-end
-Fs=2200; %increase value to speed up the sound, decrease to slow it down
-soundsc(s,Fs) 
