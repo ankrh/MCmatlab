@@ -71,12 +71,12 @@ uz0         = sqrt(1 - ux0^2 - uy0^2); % such that ux^2 + uy^2 + uz^2 = 1
 format compact
 
 % Create tissue properties
-tissue = makeTissueList(nm);
-Nt = length(tissue);
+tissueList = makeTissueList(nm);
+Nt = length(tissueList);
 for i=Nt:-1:1
-    muav(i)  = tissue(i).mua;
-    musv(i)  = tissue(i).mus;
-    gv(i)    = tissue(i).g;
+    muav(i)  = tissueList(i).mua;
+    musv(i)  = tissueList(i).mus;
+    gv(i)    = tissueList(i).g;
 end
 
 % Specify Monte Carlo parameters    
@@ -292,7 +292,7 @@ zdiff = zmax-zmin;
 
 for i=1:Nt
     yy = (Nt-i)/(Nt-1)*Nz*dz;
-    text(Nx*dx*1.2,yy, tissue(i).name,'fontsize',12)
+    text(Nx*dx*1.2,yy, tissueList(i).name,'fontsize',12)
 end
 
 text(xmax*0.9,zmin - zdiff*0.06, 'Tissue types','fontsize',18)

@@ -1,22 +1,8 @@
 function lookmcxyz
 
 % lookmcxyz.m
-%   Looks at myname_F.bin, created by mcxyz.c 
+%   Looks at myname_F.bin, created by gomcxyz 
 %   where myname is the name of the run: myname_T.bin, myname_H.mci
-%
-% lookmcxyz_alc2.m, July 23
-%       Absorption array is OFF.
-%
-%   Simulates angiolight catheter within 4-mm-dia. vessel
-% with the vessel wall at a particular musp value. 
-%   For this run, musp = 200 cm^-1.
-%
-% Reads 8 mcxyz runs, for 8 catheter positions, zs = 0.2 to 0.6 cm.
-% For each run:
-%   alc#_H.mci --> header:
-%       timin,Nx,Ny,Nz,dy,dx,dz,xs,ys,zx,Nt,muav(),musv(),gv()
-%   alc#_F.bin --> F(y,x,z) = relative fluence rate [1/cm^2]
-%   alc#_T.bin --> T(y,x,z) = tissue types
 %
 % Displays
 %   Tzx = end-view of tissue structure
@@ -118,8 +104,8 @@ xdiff = xmax-xmin;
 
 %% Look at structure, Tzx
 Tzx = reshape(T(Ny/2,:,:),Nx,Nz)';
-tissue = makeTissueList(nm);
-Nt = length(tissue);
+tissueList = makeTissueList(nm);
+Nt = length(tissueList);
 
 figure(1); clf
 imagesc(x(ux),z(uz),Tzx(uz,ux),[1 Nt])
@@ -134,7 +120,7 @@ ylabel('z [cm]')
 title('Tissue types')
 for i=1:Nt
     yy = zmin + (Nt-i)/(Nt-1)*zdiff;
-    text(xmin + xdiff*1.13,yy, sprintf('%d %s',i,tissue(i).name),'fontsize',12)
+    text(xmin + xdiff*1.13,yy, sprintf('%d %s',i,tissueList(i).name),'fontsize',12)
 end
 axis equal image
 
@@ -222,9 +208,11 @@ plot([0 0],[10 1e6],'k--')
 
 % F, matrix with fluency / input power
 % T, Matrix containing tissue types
-% tissueProps, list of tissue properties tissueProps( tissue type, #) # = 1 is mua, # = 2 is mus, # = 3 is g
+% tissueList, list of tissue properties tissueProps( tissue type, #) # = 1 is mua, # = 2 is mus, # = 3 is g
 % 
-%Ap = Tissue_Prop_Matrix(T,1,tissue).*F;
+%for tissueNumber=1:length(tissueList)
+%    Ap(T==tissueNumber) = tissueList(tissueNumber).mua;
+%end
 %Azy  = reshape(Ap(:,Nx/2,:),Ny,Nz)';
 % 
 % figure(4);clf
