@@ -1,3 +1,5 @@
+function heatSim
+
 % Heat sim
 % The purpose of this program is to simulate
 % the heating of illuminated tissue.
@@ -5,7 +7,7 @@
 % maketissue_example2.m, makeTissueList.m, and lookmcxyz.m by importing
 % HeatSimIn.mat
 
-directoryPath='../Data/';
+directoryPath='./Data/';
 
 load([directoryPath 'Input_spectrum'])
 

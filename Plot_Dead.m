@@ -1,5 +1,5 @@
 
-directoryPath = '../Data/';
+directoryPath = './Data/';
 load([directoryPath 'Input_spectrum'])
 
 SC_thick = 0.002; %thickness of the stratum corneum layer [cm]

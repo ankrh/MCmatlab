@@ -23,7 +23,7 @@
 
 format compact
 
-directoryPath = '../Data/';
+directoryPath = './Data/';
 
 load([directoryPath 'Input_spectrum'])
 nm_s = nm;
