@@ -170,17 +170,18 @@ zdiff = zmax-zmin;
 xmin = min(x);
 xmax = max(x);
 xdiff = xmax-xmin;
-tissueProps = makeTissueList(nm);
+tissueList = makeTissueList(nm);
 
 
 %% calculate Power Absorbtion
 
 % F, matrix with fluency / input power
 % T, Matrix containing tissue types
-% tissueProps, list of tissue properties tissueProps( tissue type, #) # = 1 is mua, # = 2 is mus, # = 3 is g
-% 
-for tissueNumber=1:length(tissueProps)
-    T(T==tissueNumber) = tissueProps(tissueNumber).mua;
+% tissueList, list of tissue properties
+
+Ap = zeros(size(T));
+for tissueNumber=1:length(tissueList)
+    Ap(T==tissueNumber) = tissueList(tissueNumber).mua;
 end
 Ap = T.*F;
 
