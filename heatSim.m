@@ -43,15 +43,15 @@ quick_cal   = 1; % quick_cal calculates only on a smaller matrix, go to Quick Ca
                     % specific model
 
 %%% Parameters that is set automatically %%%
-tissueProps = makeTissueList(nm); %Properties of the tissue types
+tissueList  = makeTissueList(nm); %Properties of the tissue types
 Temp        = Temp_initial*ones(400,400,400); % initial temperature in Celsius
 
 % Matrices contaning the thermal properties of the tissue
 HC = zeros(size(T));
 TC = zeros(size(T));
-for tissueNumber=1:length(tissueProps)
-    HC(T==tissueNumber) = tissueProps(tissueNumber).HC;
-    TC(T==tissueNumber) = tissueProps(tissueNumber).TC;
+for tissueNumber=1:length(tissueList)
+    HC(T==tissueNumber) = tissueList(tissueNumber).HC;
+    TC(T==tissueNumber) = tissueList(tissueNumber).TC;
 end
 
 % miscellaneous constants
@@ -192,7 +192,7 @@ title('Temperature  [^{\circ}C] ')
 axis equal image
 
 figure(6);clf
-imagesc(y,z,Tempzy(:,:,30))
+imagesc(y,z,Tempzy(:,:,image_count-1))
 hold on
 text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
 colorbar

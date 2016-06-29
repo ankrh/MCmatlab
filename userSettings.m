@@ -30,8 +30,8 @@ nm_max = 537; %Maximum wavelength of the filter. No higher than 1000-dnm [nm];
 %to the same number.
 
 dF = 0.2; %Fluence step size. [J/cm2]
-F_min = 1.8; %Minimum fluence to be simulated.
-F_max = 1.8; %Maximum fluence to be simulated.
+F_min = 10; %Minimum fluence to be simulated.
+F_max = 10; %Maximum fluence to be simulated.
 
 %Set the pulse duration in seconds
 pulse = 10e-3; %pulse duration. Default 10 ms. [s]
