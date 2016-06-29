@@ -1,3 +1,4 @@
+function plotDead
 
 directoryPath = './Data/';
 load([directoryPath 'Input_spectrum'])
