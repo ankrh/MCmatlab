@@ -117,31 +117,24 @@ if Apcal==1;
     tic
     for nt = 1:Nt_light
         % Calculates heat propagation
-        dQx = zeros(size(T));
-        diffTempx = diff(Temp,1,1);
-        meanTCx = movmean(TC,2,1,'Endpoints','discard');
-        heatTransferx = diffTempx.*meanTCx;
-        dQx(1:Nx-1,:,:) = (dt/dx)*dy*dz*heatTransferx;
-        dQx(2:Nx,:,:) = dQx(2:Nx,:,:)-(dt/dx)*dy*dz*heatTransferx;
-        
-        dQy = zeros(size(T));
-        diffTempy = diff(Temp,1,2);
-        meanTCy = movmean(TC,2,2,'Endpoints','discard');
-        heatTransfery = diffTempy.*meanTCy;
-        dQy(:,1:Nx-1,:) = (dt/dy)*dx*dz*heatTransfery;
-        dQy(:,2:Nx,:) = dQy(:,2:Nx,:)-(dt/dy)*dx*dz*heatTransfery;
+        dQ = zeros(size(T));
 
-        dQz = zeros(size(T));
-        diffTempz = diff(Temp,1,3);
-        meanTCz = movmean(TC,2,3,'Endpoints','discard');
-        heatTransferz = diffTempz.*meanTCz;
-        dQz(:,:,1:Nz-1) = (dt/dz)*dx*dy*heatTransferz;
-        dQz(:,:,2:Nz) = dQz(:,:,2:Nz)-(dt/dz)*dx*dy*heatTransferz;
+        heatTransfer = diff(Temp,1,1).*movmean(TC,2,1,'Endpoints','discard');
+        dQ(1:Nx-1,:,:) = (dt/dx)*dy*dz*heatTransfer;
+        dQ(2:Nx,:,:) = dQ(2:Nx,:,:)-(dt/dx)*dy*dz*heatTransfer;
+        
+        heatTransfer = diff(Temp,1,2).*movmean(TC,2,2,'Endpoints','discard');
+        dQ(:,1:Nx-1,:) = dQ(:,1:Nx-1,:)+(dt/dy)*dx*dz*heatTransfer;
+        dQ(:,2:Nx,:) = dQ(:,2:Nx,:)-(dt/dy)*dx*dz*heatTransfer;
+
+        heatTransfer = diff(Temp,1,3).*movmean(TC,2,3,'Endpoints','discard');
+        dQ(:,:,1:Nz-1) = dQ(:,:,1:Nz-1)+(dt/dz)*dx*dy*heatTransfer;
+        dQ(:,:,2:Nz) = dQ(:,:,2:Nz)-(dt/dz)*dx*dy*heatTransfer;
 
         % Sum of heat propagation and heat generated from absorbed light
-        dQ = dQx+dQy+dQz+Ap*dx*dy*dz*Wdel*dt;
+        dQ = dQ+Ap*dx*dy*dz*Wdel*dt;
         % Calculating temperature at the next timestep
-        Temp(1:Nx,1:Ny,2:Nz-1) = Temp(1:Nx,1:Ny,2:Nz-1)+dQ(1:Nx,1:Ny,2:Nz-1)./HC(1:Nx,1:Ny,2:Nz-1)./(dx*dy*dz);
+        Temp = Temp + dQ./HC./(dx*dy*dz);
         % Break if the temperature increases too much
         if max(max(max(Temp)))>Bad_Temp
             break
@@ -158,29 +151,21 @@ if postcal==1
     fprintf(1,'\b');
     tic
     for nt = 1:Nt_no_light
-        dQx = zeros(size(T));
-        diffTempx = diff(Temp,1,1);
-        meanTCx = movmean(TC,2,1,'Endpoints','discard');
-        heatTransferx = diffTempx.*meanTCx;
-        dQx(1:Nx-1,:,:) = (dt/dx)*dy*dz*heatTransferx;
-        dQx(2:Nx,:,:) = dQx(2:Nx,:,:)-(dt/dx)*dy*dz*heatTransferx;
-        
-        dQy = zeros(size(T));
-        diffTempy = diff(Temp,1,2);
-        meanTCy = movmean(TC,2,2,'Endpoints','discard');
-        heatTransfery = diffTempy.*meanTCy;
-        dQy(:,1:Nx-1,:) = (dt/dy)*dx*dz*heatTransfery;
-        dQy(:,2:Nx,:) = dQy(:,2:Nx,:)-(dt/dy)*dx*dz*heatTransfery;
+        dQ = zeros(size(T));
 
-        dQz = zeros(size(T));
-        diffTempz = diff(Temp,1,3);
-        meanTCz = movmean(TC,2,3,'Endpoints','discard');
-        heatTransferz = diffTempz.*meanTCz;
-        dQz(:,:,1:Nz-1) = (dt/dz)*dx*dy*heatTransferz;
-        dQz(:,:,2:Nz) = dQz(:,:,2:Nz)-(dt/dz)*dx*dy*heatTransferz;
+        heatTransfer = diff(Temp,1,1).*movmean(TC,2,1,'Endpoints','discard');
+        dQ(1:Nx-1,:,:) = (dt/dx)*dy*dz*heatTransfer;
+        dQ(2:Nx,:,:) = dQ(2:Nx,:,:)-(dt/dx)*dy*dz*heatTransfer;
         
-        dQ=dQx+dQy+dQz;
-        Temp(1:Nx,1:Ny,2:Nz-1)=Temp(1:Nx,1:Ny,2:Nz-1)+dQ(1:Nx,1:Ny,2:Nz-1)./HC(1:Nx,1:Ny,2:Nz-1)./(dx*dy*dz);
+        heatTransfer = diff(Temp,1,2).*movmean(TC,2,2,'Endpoints','discard');
+        dQ(:,1:Nx-1,:) = dQ(:,1:Nx-1,:)+(dt/dy)*dx*dz*heatTransfer;
+        dQ(:,2:Nx,:) = dQ(:,2:Nx,:)-(dt/dy)*dx*dz*heatTransfer;
+
+        heatTransfer = diff(Temp,1,3).*movmean(TC,2,3,'Endpoints','discard');
+        dQ(:,:,1:Nz-1) = dQ(:,:,1:Nz-1)+(dt/dz)*dx*dy*heatTransfer;
+        dQ(:,:,2:Nz) = dQ(:,:,2:Nz)-(dt/dz)*dx*dy*heatTransfer;
+        
+        Temp = Temp + dQ./HC./(dx*dy*dz);
         if mod(nt/Nt_no_light*40,1) == 0
             fprintf(1,'\b');
         end
