@@ -31,15 +31,13 @@ dt                  = 5e-5; % timestep size, should be on the order of or less,
                             %than the smallest value of dx^2*HC/TC (characteristic timescale for heat diffusion in individual voxels
                             % also the pulse duration should be divisible by dt
 Temp_initial        = 36; % initial temperature of tissue  
-image_interval      = 1e-3; %[s] profiles will be saved with this interval
 
 % switches
 model       = 4; % # of the tissue model loaded
 save_on     = 1; % 1 to save output, 0 otherwise
 Apcal       = 1; % 1 to simulate the time during illumination, 0 otherwise
 postcal     = 1; % 1 to simulate the time after illumination, 0 otherwise
-Bad_Temp    = 2000; % if the simulation reaches a temperature above this, something is wrong and the simulation terminates
-quick_cal   = 0; % quick_cal calculates only on a smaller matrix, go to Quick Calculation Setup and tailor it to a 
+quick_cal   = 1; % quick_cal calculates only on a smaller matrix, go to Quick Calculation Setup and tailor it to a 
                     % specific model
 
 %%% Parameters that is set automatically %%%
@@ -60,7 +58,6 @@ pulse_energy    = pulse_energy_area*area; % [J] energy delivered to the volume
 Wdel            = pulse_energy/pulse_duration; % Watt delivered
 Nt_light        = round(pulse_duration/dt); % Number of timesteps with illumination
 Nt_no_light     = round(duration_after/dt); % Numer of timesteps with no illumination 
-image_count     = 1; % a counter used for the 
 
 %Due to the way photons leaving the matrix is handled in mcxyz.c, the Ap
 %values on the borders are much too large, therefore they will be set to
@@ -71,7 +68,6 @@ Ap(1:Nx,1,1:Nz)     = 0;
 Ap(1:Nx,Ny,1:Nz)    = 0;
 Ap(1,1:Ny,1:Nz)     = 0;
 Ap(Nx,1:Ny,1:Nz)    = 0;
-
 
 %% Quick Calculation Setup
 if quick_cal==1;
@@ -112,12 +108,30 @@ if quick_cal==1;
     end
 end
 
+figure(6)
+clf
+image(y,z,squeeze(Temp(:,Nx/2,:))')
+hold on
+text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
+colorbar
+set(gca,'fontsize',18)
+xlabel('y [cm]')
+ylabel('z [cm]')
+title('Temperature [^{\circ}C] ')
+colormap(makec2f)
+axis equal image
+drawnow
+
+
 %% Heat Transfer Simulation during illumination
 if Apcal==1;
+    fprintf(1,'Illuminating\n|----------------------------------------|');
+    
+    fprintf(1,'\b');
     tic
     for nt = 1:Nt_light
         % Calculates heat propagation
-        dQ = zeros(size(T));
+        dQ = zeros(size(Temp));
 
         heatTransfer = diff(Temp,1,1).*movmean(TC,2,1,'Endpoints','discard');
         dQ(1:Nx-1,:,:) = (dt/dx)*dy*dz*heatTransfer;
@@ -135,23 +149,27 @@ if Apcal==1;
         dQ = dQ+Ap*dx*dy*dz*Wdel*dt;
         % Calculating temperature at the next timestep
         Temp = Temp + dQ./HC./(dx*dy*dz);
-        % Break if the temperature increases too much
-        if max(max(max(Temp)))>Bad_Temp
-            break
+        image(y,z,squeeze(Temp(:,Nx/2,:))')
+        drawnow
+
+        if mod(nt/Nt_light*40,1) == 0
+            fprintf(1,'\b');
         end
     end
     toc
+    fprintf(1,'\b');
 end
 
 Temp_post_light=Temp;
 
 %% Heat Transfer Simulation after illumination
 if postcal==1
-    fprintf(1,'|----------------------------------------|');
+    fprintf(1,'Diffusing\n|----------------------------------------|');
+    
     fprintf(1,'\b');
     tic
     for nt = 1:Nt_no_light
-        dQ = zeros(size(T));
+        dQ = zeros(size(Temp));
 
         heatTransfer = diff(Temp,1,1).*movmean(TC,2,1,'Endpoints','discard');
         dQ(1:Nx-1,:,:) = (dt/dx)*dy*dz*heatTransfer;
@@ -165,54 +183,58 @@ if postcal==1
         dQ(:,:,1:Nz-1) = dQ(:,:,1:Nz-1)+(dt/dz)*dx*dy*heatTransfer;
         dQ(:,:,2:Nz) = dQ(:,:,2:Nz)-(dt/dz)*dx*dy*heatTransfer;
         
+        % Calculating temperature at the next timestep
         Temp = Temp + dQ./HC./(dx*dy*dz);
+        image(y,z,squeeze(Temp(:,Nx/2,:))')
+        drawnow
+
         if mod(nt/Nt_no_light*40,1) == 0
             fprintf(1,'\b');
         end
     end
-    fprintf(1,'\b');
     toc
+    fprintf(1,'\b');
 end
 
 %% Look at data
 
-Temp_post_lightzy = reshape(Temp_post_light(:,Nx/2,:),Ny,Nz)';
-Tempzy = reshape(Temp(:,Nx/2,:),Ny,Nz)';
+Temp_post_lightzy = squeeze(Temp_post_light(:,Nx/2,:))';
+Tempzy = squeeze(Temp(:,Nx/2,:))';
 
 figure(5);clf
-imagesc(y,z,Temp_post_lightzy)
+image(y,z,Temp_post_lightzy)
 hold on
 text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
 colorbar
 set(gca,'fontsize',18)
 xlabel('y [cm]')
 ylabel('z [cm]')
-title('Temperature  [^{\circ}C] ')
-%colormap(makec2f)
+title('Temperature after Illumination [^{\circ}C] ')
+colormap(makec2f)
 axis equal image
 
 figure(6);clf
-imagesc(y,z,Tempzy)
+image(y,z,Tempzy)
 hold on
 text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
 colorbar
 set(gca,'fontsize',18)
 xlabel('y [cm]')
 ylabel('z [cm]')
-title('Temperature  [^{\circ}C] ')
-%colormap(makec2f)
+title('Temperature after Diffusion [^{\circ}C] ')
+colormap(makec2f)
 axis equal image
 
 figure(7);clf
-imagesc(y,z,Temp_post_lightzy-Temp_initial)
+image(y,z,Temp_post_lightzy-Temp_initial)
 hold on
 text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
 colorbar
 set(gca,'fontsize',18)
 xlabel('y [cm]')
 ylabel('z [cm]')
-title('Temperature  [^{\circ}C] ')
-%colormap(makec2f)
+title('Temperature Difference [^{\circ}C] ')
+colormap(makec2f)
 axis equal image
 name = sprintf('%s%s_Tzy.jpg',directoryPath,myname);
 print('-djpeg','-r300',name)
