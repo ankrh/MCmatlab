@@ -198,38 +198,32 @@ print('-djpeg','-r300',name)
 drawnow
 %% calculate Power Absorbtion
 
-%% Fz, Fx
-figure(4);clf
-semilogy(x,Fzx(Nz/2,:),'ro-')
-hold on
-plot(x,Fzx(:,Nx/2,:),'bx-')
-plot([-.05 .05],[1 1]*40,'k--')
-plot([0 0],[10 1e6],'k--')
-
 % F, matrix with fluency / input power
 % T, Matrix containing tissue types
 % tissueList, list of tissue properties tissueProps( tissue type, #) # = 1 is mua, # = 2 is mus, # = 3 is g
-% 
-%for tissueNumber=1:length(tissueList)
-%    Ap(T==tissueNumber) = tissueList(tissueNumber).mua;
-%end
-%Azy  = reshape(Ap(:,Nx/2,:),Ny,Nz)';
-% 
-% figure(4);clf
-% imagesc(y,z,log10(Azy),[-1 1]*3)
-% hold on
-% text(max(x)*0.9,min(z)-0.04*max(z),'log_{10}( \phi )','fontsize',18)
-% colorbar
-% set(gca,'fontsize',18)
-% xlabel('y [cm]')
-% ylabel('z [cm]')
-% title('Power Absorbtion \phi [W/cm^3/W.delivered] ')
-% %colormap(makec2f)
-% axis equal image
-% 
-% print -djpeg -r300 'Fig_Azy.jpg'
-% 
-% drawnow
+
+Ap = zeros(size(T));
+for tissueNumber=1:length(tissueList)
+   Ap(T==tissueNumber) = tissueList(tissueNumber).mua;
+end
+Azy = reshape(Ap(:,Nx/2,:),Ny,Nz)';
+
+figure(4);clf
+imagesc(y,z,log10(Azy),[-1 1]*3)
+hold on
+text(max(x)*0.9,min(z)-0.04*max(z),'log_{10}( \phi )','fontsize',18)
+colorbar
+set(gca,'fontsize',18)
+xlabel('y [cm]')
+ylabel('z [cm]')
+title('Power Absorbtion \phi [W/cm^3/W.delivered] ')
+%colormap(makec2f)
+axis equal image
+
+name = sprintf('%s%s_Azy.jpg',directoryPath,myname);
+print('-djpeg','-r300',name)
+
+drawnow
 
 % test dx*dy*dz*sum(sum(sum(Ap)))<=1, to make sure that less than 1W is
 % absorbed per 1W of incident power, this seems to be the case
