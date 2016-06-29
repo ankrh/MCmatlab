@@ -146,7 +146,8 @@ Temp_post_light=Temp;
 image_count_light_end=image_count-1;
 %% Heat Transfer Simulation with No Illumination
 if postcal==1
-    fprintf(1,'|                    |\n|');
+    fprintf(1,'|----------------------------------------|');
+    fprintf(1,'\b');
     tic
     for nt = 1:Nt_no_light
         dQx = (dt/dx)*dy*dz*((TC([2:Nx Nx],[1:Ny],[1:Nz])+TC([1:Nx],[1:Ny],[1:Nz]))./2.*(Temp([2:Nx Nx],[1:Ny],[1:Nz])-Temp([1:Nx],[1:Ny],[1:Nz]))+...
@@ -162,11 +163,11 @@ if postcal==1
             Tempzy(:,:,image_count)  = reshape(Temp(:,Nx/2,:),Ny,Nz)';
             image_count=image_count+1;
         end
-        if mod(nt/Nt_no_light*20,1) == 0
-            fprintf(1,'-');
+        if mod(nt/Nt_no_light*40,1) == 0
+            fprintf(1,'\b');
         end
     end
-    fprintf(1,'|\n');
+    fprintf(1,'\b');
     toc
 end
 %% Look at data
