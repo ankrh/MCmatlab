@@ -45,8 +45,6 @@ quick_cal   = 1; % quick_cal calculates only on a smaller matrix, go to Quick Ca
 %%% Parameters that is set automatically %%%
 tissueProps = makeTissueList(nm); %Properties of the tissue types
 Temp        = Temp_initial*ones(400,400,400); % initial temperature in Celsius
-[~,~,z_mesh]= meshgrid(1:400,1:400,0:dz:(Nz-1)*dz); % Temp gradient
-Temp        = 30+6/((Nz-1)*dz)*z_mesh;              % for testing
 
 % Matrices contaning the thermal properties of the tissue
 HC = zeros(size(T));
@@ -119,16 +117,16 @@ if Apcal==1;
     tic
     for nt = 1:Nt_light
         % Calculates heat propagation
-        dQx = (dt/dx)*dy*dz*((TC([2:Nx Nx],[1:Ny],[1:Nz])+TC([1:Nx],[1:Ny],[1:Nz]))./2.*(Temp([2:Nx Nx],[1:Ny],[1:Nz])-Temp([1:Nx],[1:Ny],[1:Nz]))+...
-            -(TC([1:Nx],[1:Ny],[1:Nz])+TC([1 1:Nx-1],[1:Ny],[1:Nz]))./2.*(Temp([1:Nx],[1:Ny],[1:Nz])-Temp([1 1:Nx-1],[1:Ny],[1:Nz])));
-        dQy =(dt/dy)*dx*dz*((TC([1:Nx],[2:Ny Ny],[1:Nz])+TC([1:Nx],[1:Ny],[1:Nz]))./2.*(Temp([1:Nx],[2:Ny Ny],[1:Nz])-Temp([1:Nx],[1:Ny],[1:Nz]))+...
-            -(TC([1:Nx],[1:Ny],[1:Nz])+TC([1:Nx],[1 1:Ny-1],[1:Nz]))./2.*(Temp([1:Nx],[1:Ny],[1:Nz])-Temp([1:Nx],[1 1:Ny-1],[1:Nz])));
-        dQz =(dt/dz)*dx*dy*((TC([1:Nx],[1:Ny],[2:Nz Nz])+TC([1:Nx],[1:Ny],[1:Nz]))./2.*(Temp([1:Nx],[1:Ny],[2:Nz Nz])-Temp([1:Nx],[1:Ny],[1:Nz]))+...
-            -(TC([1:Nx],[1:Ny],[1:Nz])+TC([1:Nx],[1:Ny],[1 1:Nz-1]))./2.*(Temp([1:Nx],[1:Ny],[1:Nz])-Temp([1:Nx],[1:Ny],[1 1:Nz-1])));
+        dQx = (dt/dx)*dy*dz*((TC([2:Nx Nx],1:Ny,1:Nz)+TC(1:Nx,1:Ny,1:Nz))./2.*(Temp([2:Nx Nx],1:Ny,1:Nz)-Temp(1:Nx,1:Ny,1:Nz))+...
+            -(TC(1:Nx,1:Ny,1:Nz)+TC([1 1:Nx-1],1:Ny,1:Nz))./2.*(Temp(1:Nx,1:Ny,1:Nz)-Temp([1 1:Nx-1],1:Ny,1:Nz)));
+        dQy =(dt/dy)*dx*dz*((TC(1:Nx,[2:Ny Ny],1:Nz)+TC(1:Nx,1:Ny,1:Nz))./2.*(Temp(1:Nx,[2:Ny Ny],1:Nz)-Temp(1:Nx,1:Ny,1:Nz))+...
+            -(TC(1:Nx,1:Ny,1:Nz)+TC(1:Nx,[1 1:Ny-1],1:Nz))./2.*(Temp(1:Nx,1:Ny,1:Nz)-Temp(1:Nx,[1 1:Ny-1],1:Nz)));
+        dQz =(dt/dz)*dx*dy*((TC(1:Nx,1:Ny,[2:Nz Nz])+TC(1:Nx,1:Ny,1:Nz))./2.*(Temp(1:Nx,1:Ny,[2:Nz Nz])-Temp(1:Nx,1:Ny,1:Nz))+...
+            -(TC(1:Nx,1:Ny,1:Nz)+TC(1:Nx,1:Ny,[1 1:Nz-1]))./2.*(Temp(1:Nx,1:Ny,1:Nz)-Temp(1:Nx,1:Ny,[1 1:Nz-1])));
         % Sum of heat propagation and heat generated from absorbed light
-        dQ = dQx+dQy+dQz+Ap*dx*dy*dz*Wdel*dt; 
+        dQ = dQx+dQy+dQz+Ap*dx*dy*dz*Wdel*dt;
         % Calculating temperature at the next timestep
-        Temp([1:Nx],[1:Ny],[2:Nz-1]) = Temp([1:Nx],[1:Ny],[2:Nz-1])+dQ([1:Nx],[1:Ny],[2:Nz-1])./HC([1:Nx],[1:Ny],[2:Nz-1])./(dx*dy*dz);
+        Temp(1:Nx,1:Ny,2:Nz-1) = Temp(1:Nx,1:Ny,2:Nz-1)+dQ(1:Nx,1:Ny,2:Nz-1)./HC(1:Nx,1:Ny,2:Nz-1)./(dx*dy*dz);
         % Break if the temperature increases too much
         if max(max(max(Temp)))>Bad_Temp
             break
@@ -150,14 +148,14 @@ if postcal==1
     fprintf(1,'\b');
     tic
     for nt = 1:Nt_no_light
-        dQx = (dt/dx)*dy*dz*((TC([2:Nx Nx],[1:Ny],[1:Nz])+TC([1:Nx],[1:Ny],[1:Nz]))./2.*(Temp([2:Nx Nx],[1:Ny],[1:Nz])-Temp([1:Nx],[1:Ny],[1:Nz]))+...
-            -(TC([1:Nx],[1:Ny],[1:Nz])+TC([1 1:Nx-1],[1:Ny],[1:Nz]))./2.*(Temp([1:Nx],[1:Ny],[1:Nz])-Temp([1 1:Nx-1],[1:Ny],[1:Nz])));
-        dQy =(dt/dy)*dx*dz*((TC([1:Nx],[2:Ny Ny],[1:Nz])+TC([1:Nx],[1:Ny],[1:Nz]))./2.*(Temp([1:Nx],[2:Ny Ny],[1:Nz])-Temp([1:Nx],[1:Ny],[1:Nz]))+...
-            -(TC([1:Nx],[1:Ny],[1:Nz])+TC([1:Nx],[1 1:Ny-1],[1:Nz]))./2.*(Temp([1:Nx],[1:Ny],[1:Nz])-Temp([1:Nx],[1 1:Ny-1],[1:Nz])));
-        dQz =(dt/dz)*dx*dy*((TC([1:Nx],[1:Ny],[2:Nz Nz])+TC([1:Nx],[1:Ny],[1:Nz]))./2.*(Temp([1:Nx],[1:Ny],[2:Nz Nz])-Temp([1:Nx],[1:Ny],[1:Nz]))+...
-            -(TC([1:Nx],[1:Ny],[1:Nz])+TC([1:Nx],[1:Ny],[1 1:Nz-1]))./2.*(Temp([1:Nx],[1:Ny],[1:Nz])-Temp([1:Nx],[1:Ny],[1 1:Nz-1])));
+        dQx = (dt/dx)*dy*dz*((TC([2:Nx Nx],1:Ny,1:Nz)+TC(1:Nx,1:Ny,1:Nz))./2.*(Temp([2:Nx Nx],1:Ny,1:Nz)-Temp(1:Nx,1:Ny,1:Nz))+...
+            -(TC(1:Nx,1:Ny,1:Nz)+TC([1 1:Nx-1],1:Ny,1:Nz))./2.*(Temp(1:Nx,1:Ny,1:Nz)-Temp([1 1:Nx-1],1:Ny,1:Nz)));
+        dQy =(dt/dy)*dx*dz*((TC(1:Nx,[2:Ny Ny],1:Nz)+TC(1:Nx,1:Ny,1:Nz))./2.*(Temp(1:Nx,[2:Ny Ny],1:Nz)-Temp(1:Nx,1:Ny,1:Nz))+...
+            -(TC(1:Nx,1:Ny,1:Nz)+TC(1:Nx,[1 1:Ny-1],1:Nz))./2.*(Temp(1:Nx,1:Ny,1:Nz)-Temp(1:Nx,[1 1:Ny-1],1:Nz)));
+        dQz =(dt/dz)*dx*dy*((TC(1:Nx,1:Ny,[2:Nz Nz])+TC(1:Nx,1:Ny,1:Nz))./2.*(Temp(1:Nx,1:Ny,[2:Nz Nz])-Temp(1:Nx,1:Ny,1:Nz))+...
+            -(TC(1:Nx,1:Ny,1:Nz)+TC(1:Nx,1:Ny,[1 1:Nz-1]))./2.*(Temp(1:Nx,1:Ny,1:Nz)-Temp(1:Nx,1:Ny,[1 1:Nz-1])));
         dQ=dQx+dQy+dQz;
-        Temp([1:Nx],[1:Ny],[2:Nz-1])=Temp([1:Nx],[1:Ny],[2:Nz-1])+dQ([1:Nx],[1:Ny],[2:Nz-1])./HC([1:Nx],[1:Ny],[2:Nz-1])./(dx*dy*dz);
+        Temp(1:Nx,1:Ny,2:Nz-1)=Temp(1:Nx,1:Ny,2:Nz-1)+dQ(1:Nx,1:Ny,2:Nz-1)./HC(1:Nx,1:Ny,2:Nz-1)./(dx*dy*dz);
         % Saves temperature profiles
         if mod(dt*nt,image_interval)==0
             Tempzy(:,:,image_count)  = reshape(Temp(:,Nx/2,:),Ny,Nz)';
@@ -172,7 +170,7 @@ if postcal==1
 end
 %% Look at data
 if model==4
-   max(max(Temp_post_light([1:48 52:100],[1:48 52:100],13))) % highest temperature in epidermis 
+   max(max(Temp_post_light([1:48 52:100],[1:48 52:100],13))); % highest temperature in epidermis 
 end
 
 maxTemp_post_light = max(max(max(Temp_post_light)));
@@ -181,90 +179,45 @@ maxTemp_post_light = max(max(max(Temp_post_light)));
 Temp_post_lightzy = reshape(Temp_post_light(:,Nx/2,:),Ny,Nz)';
 Tzx = reshape(T(Ny/2,:,:),Nx,Nz)';
 
-% figure(1);clf
-% imagesc(y,z,Tzx,[1 Nt])
-% hold on
-% cmap = makecmap(Nt);
-% colormap(cmap)
-% colorbar
-% set(gca,'fontsize',18)
-% set(colorbar,'fontsize',1)
-% xlabel('x [cm]')
-% ylabel('z [cm]')
-% title('Tissue types')
-% for i=1:Nt
-%     yy = min(z) + (Nt-i)/(Nt-1)*max(z);
-%     text(max(x)+1/6*(max(x)-min(x)),yy, sprintf('%d %s',i,tissue(i).s),'fontsize',12)
-% end
-% axis equal image
-% 
-% % draw launch
-% N = 10; % # of beam rays drawn
-% mcflag=0;
-% switch mcflag
-%     case 0 % uniform
-%         for i=0:N
-%             for j=-2:2
-%             plot( [xs+radius*i/N xfocus + waist*j/2],[zs zfocus],'r-')
-%             plot(-[xs+radius*i/N xfocus + waist*j/2],[zs zfocus],'r-')
-%             end
-%         end
-% 
-%     case 1 % Gaussian
-%         for i=0:N
-%             for j=-2:2
-%             plot( [xs+radius*i/N xfocus + waist*j/2],[zs zfocus],'r-')
-%             plot(-[xs+radius*i/N xfocus + waist*j/2],[zs zfocus],'r-')
-%             end
-%         end
-% 
-%     case 2 % iso-point
-%         for i=1:20
-%             th = (i-1)/19*2*pi;
-%             xx = Nx/2*cos(th) + xs;
-%             zz = Nx/2*sin(th) + zs;
-%             plot([xs xx],[zs zz],'r-')
-%         end
-% end
+figure(5);clf
+imagesc(y,z,Temp_post_lightzy)
+hold on
+text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
+colorbar
+set(gca,'fontsize',18)
+xlabel('y [cm]')
+ylabel('z [cm]')
+title('Temperature  [^{\circ}C] ')
+%colormap(makec2f)
+axis equal image
 
-% figure(5);clf
-% imagesc(y,z,Temp_post_lightzy)
-% hold on
-% text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
-% colorbar
-% set(gca,'fontsize',18)
-% xlabel('y [cm]')
-% ylabel('z [cm]')
-% title('Temperature  [^{\circ}C] ')
-% %colormap(makec2f)
-% axis equal image
-% 
-% figure(6);clf
-% imagesc(y,z,Tempzy(:,:,30))
-% hold on
-% text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
-% colorbar
-% set(gca,'fontsize',18)
-% xlabel('y [cm]')
-% ylabel('z [cm]')
-% title('Temperature  [^{\circ}C] ')
-% %colormap(makec2f)
-% axis equal image
-% 
-% figure(7);clf
-% imagesc(y,z,Temp_post_lightzy(:,:)-Tempzy(:,:,1))
-% hold on
-% text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
-% colorbar
-% set(gca,'fontsize',18)
-% xlabel('y [cm]')
-% ylabel('z [cm]')
-% title('Temperature  [^{\circ}C] ')
-% %colormap(makec2f)
-% axis equal image
-% %print -djpeg -r300 'Fig_Azy.jpg'
-% 
-% drawnow
+figure(6);clf
+imagesc(y,z,Tempzy(:,:,30))
+hold on
+text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
+colorbar
+set(gca,'fontsize',18)
+xlabel('y [cm]')
+ylabel('z [cm]')
+title('Temperature  [^{\circ}C] ')
+%colormap(makec2f)
+axis equal image
+
+figure(7);clf
+imagesc(y,z,Temp_post_lightzy(:,:)-Tempzy(:,:,1))
+hold on
+text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
+colorbar
+set(gca,'fontsize',18)
+xlabel('y [cm]')
+ylabel('z [cm]')
+title('Temperature  [^{\circ}C] ')
+%colormap(makec2f)
+axis equal image
+name = sprintf('%s%s_Tzy.jpg',directoryPath,myname);
+print('-djpeg','-r300',name)
+
+drawnow
 
 if save_on==1
     save([directoryPath save_name],'Temp_post_light','Temp','Tempzy','pulse_energy_area','pulse_duration','duration_after','Nx','Ny','Nz','Nt','dx','dy','dz','T',...
