@@ -1,5 +1,4 @@
-clear all
-clc
+function userSettings
 
 % In this code, user settings can be entered for the input spectrum to be
 % simulated. The user defined variables is: dnm, nm_min, nm_max, dF, F_min,
@@ -43,7 +42,7 @@ pulse = 10e-3; %pulse duration. Default 10 ms. [s]
 %name of the spectrum file. Extension (.txt) should not be written as part
 %of the filename. File must be present in current folder or a subfolder.
 filename = 'VL+_norm0'; 
-directoryPath = '../Data/';
+directoryPath = './Data/';
 
 %% Do not edit this section. (Calling the spectrum)
 %Checks if the file specified in filename is in the folder or subfolder
