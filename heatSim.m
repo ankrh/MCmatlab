@@ -156,11 +156,27 @@ if Apcal==1;
             fprintf(1,'\b');
         end
     end
-    toc
     fprintf(1,'\b');
+    toc
 end
 
-Temp_post_light=Temp;
+Temp_post_light = Temp;
+Temp_post_light_zy = squeeze(Temp_post_light(:,Nx/2,:))';
+
+figure(5);clf
+image(y,z,Temp_post_light_zy)
+hold on
+text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
+colorbar
+set(gca,'fontsize',18)
+xlabel('y [cm]')
+ylabel('z [cm]')
+title('Temperature after Illumination [^{\circ}C] ')
+colormap(makec2f)
+axis equal image
+drawnow
+
+figure(6)
 
 %% Heat Transfer Simulation after illumination
 if postcal==1
@@ -192,29 +208,17 @@ if postcal==1
             fprintf(1,'\b');
         end
     end
-    toc
     fprintf(1,'\b');
+    toc
 end
 
 %% Look at data
 
-Temp_post_lightzy = squeeze(Temp_post_light(:,Nx/2,:))';
-Tempzy = squeeze(Temp(:,Nx/2,:))';
-
-figure(5);clf
-image(y,z,Temp_post_lightzy)
-hold on
-text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
-colorbar
-set(gca,'fontsize',18)
-xlabel('y [cm]')
-ylabel('z [cm]')
-title('Temperature after Illumination [^{\circ}C] ')
-colormap(makec2f)
-axis equal image
+Temp_post_diffuse = Temp;
+Temp_post_diffuse_zy = squeeze(Temp_post_diffuse(:,Nx/2,:))';
 
 figure(6);clf
-image(y,z,Tempzy)
+image(y,z,Temp_post_diffuse_zy)
 hold on
 text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
 colorbar
@@ -226,7 +230,7 @@ colormap(makec2f)
 axis equal image
 
 figure(7);clf
-image(y,z,Temp_post_lightzy-Temp_initial)
+image(y,z,Temp_post_light_zy-Temp_initial)
 hold on
 text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
 colorbar
@@ -234,15 +238,11 @@ set(gca,'fontsize',18)
 xlabel('y [cm]')
 ylabel('z [cm]')
 title('Temperature Difference [^{\circ}C] ')
-colormap(makec2f)
+colormap hot
 axis equal image
-name = sprintf('%s%s_Tzy.jpg',directoryPath,myname);
-print('-djpeg','-r300',name)
-
-drawnow
 
 if save_on==1
-    save([directoryPath save_name],'Temp_post_light','Temp','Tempzy','pulse_energy_area','pulse_duration','duration_after','Nx','Ny','Nz','Nt','dx','dy','dz','T',...
-        'x','y','z','tissueProps')
+    save([directoryPath save_name],'Temp_post_light','Temp_post_diffuse','pulse_energy_area','pulse_duration','duration_after','Nx','Ny','Nz','Nt','dx','dy','dz','T',...
+        'x','y','z','tissueList')
 end
 end
