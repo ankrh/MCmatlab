@@ -138,9 +138,9 @@ for n=F_min:dF:F_max
     annotation('textbox', [0.01, 0.05, 0.2, 0.08], 'string',...
         ['Ratio of upper vessel wall damage: ' num2str(dam_wall) ' %'],'FontSize',14)
 
-    Temp_max_zy = squeeze(Temp_post_light(:,Nx/2,:))';
+    Temp_post_light_zy = squeeze(Temp_post_light(:,Nx/2,:))';
     figure(5);clf
-    image(y,z,Temp_max_zy)
+    image(y,z,Temp_post_light_zy)
     hold on
     text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
     colorbar
