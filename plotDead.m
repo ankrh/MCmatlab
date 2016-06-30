@@ -7,7 +7,8 @@ SC_thick = 0.002; %thickness of the stratum corneum layer [cm]
 m = 0;
 for n=F_min:dF:F_max
     m = m+1;
-    load([directoryPath 'HeatSimOut_blood4_' num2str(m) '.mat']);
+    myname = ['HeatSimOut_blood4_' num2str(m)];
+    load([directoryPath myname '.mat']);
 
     Tzy = squeeze(T(:,Nx/2,:))'; % Make zy cut of the tissue matrix
 
@@ -47,14 +48,14 @@ for n=F_min:dF:F_max
     wall_dam = 0;
 
     %% Plot showing the dead dermis and epidermis
-    Temp_post_light_zy = squeeze(Temp_post_light(:,Nx/2,:))';
+    Temp_max_zy = squeeze(Temp_max(:,Nx/2,:))';
 
-    maxT = ones(length(Temp_post_light_zy(:,1,1)),length(Temp_post_light_zy(1,:,1)));
+    maxT = ones(length(Temp_max_zy(:,1,1)),length(Temp_max_zy(1,:,1)));
     Tdead = maxT;
     Temp_dead = 70;
-    for i=1:length(Temp_post_light_zy(:,1,1))
-        for ii = 1:length(Temp_post_light_zy(1,:,1))
-            maxT(i,ii) = max(Temp_post_light_zy(i,ii,:));
+    for i=1:length(Temp_max_zy(:,1,1))
+        for ii = 1:length(Temp_max_zy(1,:,1))
+            maxT(i,ii) = max(Temp_max_zy(i,ii,:));
             if (Tzy(i,ii) == 1 && maxT(i,ii)>Temp_dead) || (Tzy(i,ii) == 2 && maxT(i,ii)>Temp_dead) ...
                 || (Tzy(i,ii) == 5 && maxT(i,ii)>Temp_dead)
                 Tdead(i,ii) = 0;
@@ -137,9 +138,9 @@ for n=F_min:dF:F_max
     annotation('textbox', [0.01, 0.05, 0.2, 0.08], 'string',...
         ['Ratio of upper vessel wall damage: ' num2str(dam_wall) ' %'],'FontSize',14)
 
-    Temp_post_light_zy = squeeze(Temp_post_light(:,Nx/2,:))';
+    Temp_max_zy = squeeze(Temp_post_light(:,Nx/2,:))';
     figure(5);clf
-    image(y,z,Temp_post_light_zy)
+    image(y,z,Temp_max_zy)
     hold on
     text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
     colorbar
@@ -161,24 +162,24 @@ for n=F_min:dF:F_max
     set(gca,'fontsize',18)
     xlabel('y [cm]')
     ylabel('z [cm]')
-    title('Temperature after Diffusion [^{\circ}C] ')
+    title('Temperature after Diffusion [^{\circ}C]')
     colormap(makec2f)
     axis equal image
     name = sprintf('%s%s_T_post_diffuse_zy.jpg',directoryPath,myname);
     print('-djpeg','-r300',name)
 
     figure(7);clf
-    image(y,z,Temp_post_light_zy-Temp_initial)
+    image(y,z,Temp_max_zy)
     hold on
     text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
     colorbar
     set(gca,'fontsize',18)
     xlabel('y [cm]')
     ylabel('z [cm]')
-    title('Temperature Difference [^{\circ}C] ')
-    colormap hot
+    title('maximum Temperature reached [^{\circ}C]')
+    colormap(makec2f)
     axis equal image
-    name = sprintf('%s%s_Delta_T_zy.jpg',directoryPath,myname);
+    name = sprintf('%s%s_T_max_zy.jpg',directoryPath,myname);
     print('-djpeg','-r300',name)
 
 end

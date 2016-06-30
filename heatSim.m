@@ -199,6 +199,8 @@ for fluence = F_min:dF:F_max
     Temp_post_diffuse = Temp;
     Temp_post_diffuse_zy = squeeze(Temp_post_diffuse(:,Nx/2,:))';
 
+    Temp_max_zy = squeeze(Temp_max(:,Nx/2,:))';
+
     %% Plot the temperature after diffusion and the maximum temperature reached
 
     figure(6);clf
@@ -209,19 +211,19 @@ for fluence = F_min:dF:F_max
     set(gca,'fontsize',18)
     xlabel('y [cm]')
     ylabel('z [cm]')
-    title('Temperature after Diffusion [^{\circ}C] ')
+    title('Temperature after Diffusion [^{\circ}C]')
     colormap(makec2f)
     axis equal image
 
     figure(7);clf
-    image(y,z,Temp_max)
+    image(y,z,Temp_max_zy)
     hold on
     text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
     colorbar
     set(gca,'fontsize',18)
     xlabel('y [cm]')
     ylabel('z [cm]')
-    title('maximum Temperature reached [^{\circ}C] ')
+    title('maximum Temperature reached [^{\circ}C]')
     colormap(makec2f)
     axis equal image
 
