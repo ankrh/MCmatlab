@@ -10,7 +10,7 @@ function genAbsorbedPowerSpectra
 %
 % For each run:
 %   alc#_H.mci --> header:
-%       timin,Nx,Ny,Nz,dy,dx,dz,xs,ys,zx,Nt,muav(),musv(),gv()
+%       timin,H_mci.Nx,H_mci.Ny,H_mci.Nz,dy,H_mci.dx,H_mci.dz,xs,ys,zx,H_mci.Nt,muav(),musv(),gv()
 %   alc#_F.bin --> F(y,x,z) = relative fluence rate [1/cm^2]
 %   alc#_T.bin --> T(y,x,z) = tissue types
 %
@@ -87,47 +87,7 @@ for k = F_min:dF:F_max
         nm = Wavelengths(i_nm);
         myname = ['blood4_broad_' num2str(nm)];
 
-        fprintf('------ mcxyz %s -------\n',myname)
-
-        % Load header file
-        filename = sprintf('%s%s_H.mci',directoryPath,myname);
-        disp(['loading ' filename])
-        fid = fopen(filename, 'r');
-        A = fscanf(fid,'%f',[1 Inf])';
-        fclose(fid);
-
-        %% parameters
-        time_min = A(1);
-        Nx = A(2);
-        Ny = A(3);
-        Nz = A(4);
-        dx = A(5);
-        dy = A(6);
-        dz = A(7);
-        mcflag = A(8);
-        launchflag = A(9);
-        xs = A(10);
-        ys = A(11);
-        zs = A(12);
-        xfocus = A(13);
-        yfocus = A(14);
-        zfocus = A(15);
-        ux0 = A(16);
-        uy0 = A(17);
-        uz0 = A(18);
-        radius = A(19);
-        waist = A(20);
-        Nt = A(21);
-        j = 21;
-        for i=1:Nt
-            j=j+1;
-            muav(i,1) = A(j);
-            j=j+1;
-            musv(i,1) = A(j);
-            j=j+1;
-            gv(i,1) = A(j);
-        end
-
+        %% Load header file
         H_mci = reportHmci(directoryPath,myname);
 
         %% Load Fluence rate F(y,x,z) 
@@ -135,30 +95,30 @@ for k = F_min:dF:F_max
         disp(['loading ' filename])
         tic
             fid = fopen(filename, 'rb');
-            [Data count] = fread(fid, Ny*Nx*Nz, 'float');
+            [Data count] = fread(fid, H_mci.Ny*H_mci.Nx*H_mci.Nz, 'float');
             fclose(fid);
         toc
-        F = reshape(Data,Ny,Nx,Nz); % F(y,x,z)
+        F = reshape(Data,H_mci.Ny,H_mci.Nx,H_mci.Nz); % F(y,x,z)
 
         % Load tissue structure in voxels, T(y,x,z) 
         filename = sprintf('%s%s_T.bin',directoryPath,myname);
         disp(['loading ' filename])
         tic
             fid = fopen(filename, 'rb');
-            [Data count] = fread(fid, Ny*Nx*Nz, 'uint8');
+            [Data count] = fread(fid, H_mci.Ny*H_mci.Nx*H_mci.Nz, 'uint8');
             fclose(fid);
         toc
-        T = reshape(Data,Ny,Nx,Nz); % T(y,x,z)
+        T = reshape(Data,H_mci.Ny,H_mci.Nx,H_mci.Nz); % T(y,x,z)
 
         clear Data
 
         %%
-        x = ([1:Nx]-Nx/2-1/2)*dx;
-        y = ([1:Ny]-Ny/2-1/2)*dx;
-        z = ([1:Nz]-1/2)*dz;
-        ux = [2:Nx-1];
-        uy = [2:Ny-1];
-        uz = [2:Nz-1];
+        x = ([1:H_mci.Nx]-H_mci.Nx/2-1/2)*H_mci.dx;
+        y = ([1:H_mci.Ny]-H_mci.Ny/2-1/2)*H_mci.dx;
+        z = ([1:H_mci.Nz]-1/2)*H_mci.dz;
+        ux = [2:H_mci.Nx-1];
+        uy = [2:H_mci.Ny-1];
+        uz = [2:H_mci.Nz-1];
         zmin = min(z);
         zmax = max(z);
         zdiff = zmax-zmin;
