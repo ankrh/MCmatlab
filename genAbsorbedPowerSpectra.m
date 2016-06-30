@@ -43,7 +43,6 @@ for k = F_min:dF:F_max
     Ap_total=zeros(400,400,400);
     %%
     cc = 'rbgm'; % color
-    dnm = Dnm;
     Wavelengths = nm_min:dnm:nm_max;
     %% Load Spectra
     % ext = '.mat'; % Only find files with this extention
