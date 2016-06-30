@@ -10,7 +10,7 @@ for n=F_min:dF:F_max
     myname = ['HeatSimOut_blood4_' num2str(m)];
     load([directoryPath myname '.mat']);
 
-    Tzy = squeeze(T(:,Nx/2,:))'; % Make zy cut of the tissue matrix
+    Tzy = squeeze(T(:,H_mci.Nx/2,:))'; % Make zy cut of the tissue matrix
 
     %% Tissue model plot
     % At this point Tzy contains integers where 4=dermis,
@@ -19,7 +19,7 @@ for n=F_min:dF:F_max
     Tzy(Tzy==4)=1; Tzy(Tzy==5)=2; Tzy(Tzy==9)=3; Tzy(Tzy==10)=4;
 
     for iz = 1:size(Tzy,1)
-        if iz>round((0.02)/dz) && iz<=round((0.02+SC_thick)/dz)
+        if iz>round((0.02)/H_mci.dz) && iz<=round((0.02+SC_thick)/H_mci.dz)
             Tzy(iz,:) = 5;
         end
     end
@@ -48,7 +48,7 @@ for n=F_min:dF:F_max
     wall_dam = 0;
 
     %% Plot showing the dead dermis and epidermis
-    Temp_max_zy = squeeze(Temp_max(:,Nx/2,:))';
+    Temp_max_zy = squeeze(Temp_max(:,H_mci.Nx/2,:))';
 
     maxT = ones(length(Temp_max_zy(:,1,1)),length(Temp_max_zy(1,:,1)));
     Tdead = maxT;
@@ -79,7 +79,7 @@ for n=F_min:dF:F_max
                 q = q + 1;
             end
 
-            if i>round((0.04-0.0020)/dz) && i<=round((0.04)/dz)
+            if i>round((0.04-0.0020)/H_mci.dz) && i<=round((0.04)/H_mci.dz)
                 if Tzy(i,ii) == 1 && maxT(i,ii) > Temp_dead
                     r = r + 1;
                     wall_dam = wall_dam + 1;
@@ -138,7 +138,7 @@ for n=F_min:dF:F_max
     annotation('textbox', [0.01, 0.05, 0.2, 0.08], 'string',...
         ['Ratio of upper vessel wall damage: ' num2str(dam_wall) ' %'],'FontSize',14)
 
-    Temp_post_light_zy = squeeze(Temp_post_light(:,Nx/2,:))';
+    Temp_post_light_zy = squeeze(Temp_post_light(:,H_mci.Nx/2,:))';
     figure(5);clf
     image(y,z,Temp_post_light_zy)
     hold on
@@ -153,7 +153,7 @@ for n=F_min:dF:F_max
     name = sprintf('%s%s_T_post_light_zy.jpg',directoryPath,myname);
     print('-djpeg','-r300',name)
 
-    Temp_post_diffuse_zy = squeeze(Temp_post_diffuse(:,Nx/2,:))';
+    Temp_post_diffuse_zy = squeeze(Temp_post_diffuse(:,H_mci.Nx/2,:))';
     figure(6);clf
     image(y,z,Temp_post_diffuse_zy)
     hold on

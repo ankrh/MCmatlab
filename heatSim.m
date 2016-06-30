@@ -25,7 +25,7 @@ for fluence = F_min:dF:F_max
     pulse_duration      = pulse; % [s] pulse duration
     duration_after      = 10e-3; % [s] simulation duration after pulse
     dt                  = 5e-5; % timestep size, should be on the order of or less,
-                                %than the smallest value of dx^2*HC/TC (characteristic timescale for heat diffusion in individual voxels
+                                %than the smallest value of H_mci.dx^2*HC/TC (characteristic timescale for heat diffusion in individual voxels
                                 % also the pulse duration should be divisible by dt
     Temp_initial        = 36; % initial temperature of tissue  
 
@@ -48,7 +48,7 @@ for fluence = F_min:dF:F_max
     end
 
     % miscellaneous constants
-    area            = (Nx*dx)^2; % surface area of the model
+    area            = (H_mci.Nx*H_mci.dx)^2; % surface area of the model
     pulse_energy    = pulse_energy_area*area; % [J] energy delivered to the volume
     Wdel            = pulse_energy/pulse_duration; % Watt delivered
     Nt_light        = round(pulse_duration/dt); % Number of timesteps with illumination
@@ -57,23 +57,23 @@ for fluence = F_min:dF:F_max
     % Due to the way photons leaving the matrix is handled in mcxyz.c, the Ap
     % values on the borders are much too large, therefore they will be set to
     % zero
-    Ap(1:Nx,1:Ny,1)     = 0;
-    Ap(1:Nx,1:Ny,Nz)    = 0;
-    Ap(1:Nx,1,1:Nz)     = 0;
-    Ap(1:Nx,Ny,1:Nz)    = 0;
-    Ap(1,1:Ny,1:Nz)     = 0;
-    Ap(Nx,1:Ny,1:Nz)    = 0;
+    Ap(1:H_mci.Nx,1:H_mci.Ny,1)     = 0;
+    Ap(1:H_mci.Nx,1:H_mci.Ny,H_mci.Nz)    = 0;
+    Ap(1:H_mci.Nx,1,1:H_mci.Nz)     = 0;
+    Ap(1:H_mci.Nx,H_mci.Ny,1:H_mci.Nz)    = 0;
+    Ap(1,1:H_mci.Ny,1:H_mci.Nz)     = 0;
+    Ap(H_mci.Nx,1:H_mci.Ny,1:H_mci.Nz)    = 0;
 
     %% Quick Calculation Setup
     if quick_cal==1;
-        Nmax    = Nx;
-        Nx      = 100;
-        Ny      = 100;
-        Nz      = 100;
-        Nx_low  = Nmax/2+1-Nx/2;
+        Nmax    = H_mci.Nx;
+        H_mci.Nx      = 100;
+        H_mci.Ny      = 100;
+        H_mci.Nz      = 100;
+        Nx_low  = Nmax/2+1-H_mci.Nx/2;
         Nz_low  = 1;
-        Nx_high = Nmax/2+Nx/2;
-        Nz_high = Nz;
+        Nx_high = Nmax/2+H_mci.Nx/2;
+        Nz_high = H_mci.Nz;
         z       = z(Nz_low:Nz_high);
         y       = y(Nx_low:Nx_high);
         x       = x(Nx_low:Nx_high);
@@ -87,7 +87,7 @@ for fluence = F_min:dF:F_max
     %% Prepare the temperature plot
     figure(6)
     clf
-    image(y,z,squeeze(Temp(:,Nx/2,:))')
+    image(y,z,squeeze(Temp(:,H_mci.Nx/2,:))')
     hold on
     text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
     colorbar
@@ -110,23 +110,23 @@ for fluence = F_min:dF:F_max
             dQ = zeros(size(Temp));
 
             heatTransfer = diff(Temp,1,1).*movmean(TC,2,1,'Endpoints','discard');
-            dQ(1:Nx-1,:,:) = (dt/dx)*dy*dz*heatTransfer;
-            dQ(2:Nx,:,:) = dQ(2:Nx,:,:)-(dt/dx)*dy*dz*heatTransfer;
+            dQ(1:H_mci.Nx-1,:,:) = (dt/H_mci.dx)*H_mci.dy*H_mci.dz*heatTransfer;
+            dQ(2:H_mci.Nx,:,:) = dQ(2:H_mci.Nx,:,:)-(dt/H_mci.dx)*H_mci.dy*H_mci.dz*heatTransfer;
 
             heatTransfer = diff(Temp,1,2).*movmean(TC,2,2,'Endpoints','discard');
-            dQ(:,1:Nx-1,:) = dQ(:,1:Nx-1,:)+(dt/dy)*dx*dz*heatTransfer;
-            dQ(:,2:Nx,:) = dQ(:,2:Nx,:)-(dt/dy)*dx*dz*heatTransfer;
+            dQ(:,1:H_mci.Nx-1,:) = dQ(:,1:H_mci.Nx-1,:)+(dt/H_mci.dy)*H_mci.dx*H_mci.dz*heatTransfer;
+            dQ(:,2:H_mci.Nx,:) = dQ(:,2:H_mci.Nx,:)-(dt/H_mci.dy)*H_mci.dx*H_mci.dz*heatTransfer;
 
             heatTransfer = diff(Temp,1,3).*movmean(TC,2,3,'Endpoints','discard');
-            dQ(:,:,1:Nz-1) = dQ(:,:,1:Nz-1)+(dt/dz)*dx*dy*heatTransfer;
-            dQ(:,:,2:Nz) = dQ(:,:,2:Nz)-(dt/dz)*dx*dy*heatTransfer;
+            dQ(:,:,1:H_mci.Nz-1) = dQ(:,:,1:H_mci.Nz-1)+(dt/H_mci.dz)*H_mci.dx*H_mci.dy*heatTransfer;
+            dQ(:,:,2:H_mci.Nz) = dQ(:,:,2:H_mci.Nz)-(dt/H_mci.dz)*H_mci.dx*H_mci.dy*heatTransfer;
 
             % sum of heat propagation and heat generated from absorbed light
-            dQ = dQ+Ap*dx*dy*dz*Wdel*dt;
+            dQ = dQ+Ap*H_mci.dx*H_mci.dy*H_mci.dz*Wdel*dt;
             % calculate the temperature at the next timestep
-            Temp = Temp + dQ./HC./(dx*dy*dz);
+            Temp = Temp + dQ./HC./(H_mci.dx*H_mci.dy*H_mci.dz);
             % plot the current temperature
-            image(y,z,squeeze(Temp(:,Nx/2,:))')
+            image(y,z,squeeze(Temp(:,H_mci.Nx/2,:))')
             drawnow
 
             if mod(nt/Nt_light*40,1) == 0
@@ -138,7 +138,7 @@ for fluence = F_min:dF:F_max
     end
 
     Temp_post_light = Temp;
-    Temp_post_light_zy = squeeze(Temp_post_light(:,Nx/2,:))';
+    Temp_post_light_zy = squeeze(Temp_post_light(:,H_mci.Nx/2,:))';
 
     Temp_max = Temp;
     
@@ -169,23 +169,23 @@ for fluence = F_min:dF:F_max
             dQ = zeros(size(Temp));
 
             heatTransfer = diff(Temp,1,1).*movmean(TC,2,1,'Endpoints','discard');
-            dQ(1:Nx-1,:,:) = (dt/dx)*dy*dz*heatTransfer;
-            dQ(2:Nx,:,:) = dQ(2:Nx,:,:)-(dt/dx)*dy*dz*heatTransfer;
+            dQ(1:H_mci.Nx-1,:,:) = (dt/H_mci.dx)*H_mci.dy*H_mci.dz*heatTransfer;
+            dQ(2:H_mci.Nx,:,:) = dQ(2:H_mci.Nx,:,:)-(dt/H_mci.dx)*H_mci.dy*H_mci.dz*heatTransfer;
 
             heatTransfer = diff(Temp,1,2).*movmean(TC,2,2,'Endpoints','discard');
-            dQ(:,1:Nx-1,:) = dQ(:,1:Nx-1,:)+(dt/dy)*dx*dz*heatTransfer;
-            dQ(:,2:Nx,:) = dQ(:,2:Nx,:)-(dt/dy)*dx*dz*heatTransfer;
+            dQ(:,1:H_mci.Nx-1,:) = dQ(:,1:H_mci.Nx-1,:)+(dt/H_mci.dy)*H_mci.dx*H_mci.dz*heatTransfer;
+            dQ(:,2:H_mci.Nx,:) = dQ(:,2:H_mci.Nx,:)-(dt/H_mci.dy)*H_mci.dx*H_mci.dz*heatTransfer;
 
             heatTransfer = diff(Temp,1,3).*movmean(TC,2,3,'Endpoints','discard');
-            dQ(:,:,1:Nz-1) = dQ(:,:,1:Nz-1)+(dt/dz)*dx*dy*heatTransfer;
-            dQ(:,:,2:Nz) = dQ(:,:,2:Nz)-(dt/dz)*dx*dy*heatTransfer;
+            dQ(:,:,1:H_mci.Nz-1) = dQ(:,:,1:H_mci.Nz-1)+(dt/H_mci.dz)*H_mci.dx*H_mci.dy*heatTransfer;
+            dQ(:,:,2:H_mci.Nz) = dQ(:,:,2:H_mci.Nz)-(dt/H_mci.dz)*H_mci.dx*H_mci.dy*heatTransfer;
 
             % calculate the temperature at the next timestep
-            Temp = Temp + dQ./HC./(dx*dy*dz);
+            Temp = Temp + dQ./HC./(H_mci.dx*H_mci.dy*H_mci.dz);
             % save the maximum temperature that was ever reached at each point
             Temp_max = max(cat(4,Temp_max, Temp),[],4);
             % plot the current temperature
-            image(y,z,squeeze(Temp(:,Nx/2,:))')
+            image(y,z,squeeze(Temp(:,H_mci.Nx/2,:))')
             drawnow
 
             if mod(nt/Nt_no_light*40,1) == 0
@@ -197,9 +197,9 @@ for fluence = F_min:dF:F_max
     end
 
     Temp_post_diffuse = Temp;
-    Temp_post_diffuse_zy = squeeze(Temp_post_diffuse(:,Nx/2,:))';
+    Temp_post_diffuse_zy = squeeze(Temp_post_diffuse(:,H_mci.Nx/2,:))';
 
-    Temp_max_zy = squeeze(Temp_max(:,Nx/2,:))';
+    Temp_max_zy = squeeze(Temp_max(:,H_mci.Nx/2,:))';
 
     %% Plot the temperature after diffusion and the maximum temperature reached
 
@@ -229,7 +229,7 @@ for fluence = F_min:dF:F_max
 
     %% Save the data for downstream processing (-> plotDead)
     if save_on==1
-        save([directoryPath save_name],'Temp_post_light','Temp_post_diffuse','Temp_max','pulse_energy_area','pulse_duration','duration_after','Nx','Ny','Nz','Nt','dx','dy','dz','T',...
+        save([directoryPath save_name],'Temp_post_light','Temp_post_diffuse','Temp_max','pulse_energy_area','pulse_duration','duration_after','H_mci','T',...
             'x','y','z','tissueList')
     end
 end
