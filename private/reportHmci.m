@@ -1,4 +1,4 @@
-function reportHmci(directoryPath,myname)
+function H_mci = reportHmci(directoryPath,myname)
 % function reportHmci(directoryPath,myname)
 %   Lists the values of the input file  myname_H.mci.
 
@@ -6,30 +6,31 @@ fid = fopen(sprintf('%s%s_H.mci',directoryPath,myname),'r');
 B = fscanf(fid,'%f');
 fclose(fid);
 
-s(1).s = 'time_min';
-s(2).s = 'Nx';
-s(3).s = 'Ny';
-s(4).s = 'Nz';
-s(5).s = 'dx';
-s(6).s = 'dy';
-s(7).s = 'dz';
-s(8).s = 'mcflag';
-s(9).s = 'launchflag';
-s(10).s = 'xs';
-s(11).s = 'ys';
-s(12).s = 'zs';
-s(13).s = 'xfocus';
-s(14).s = 'yfocus';
-s(15).s = 'zfocus';
-s(16).s = 'ux0';
-s(17).s = 'uy0';
-s(18).s = 'uz0';
-s(19).s = 'radius';
-s(20).s = 'waist';
-s(21).s = 'Nt';
+H_mci(1).name = 'time_min';
+H_mci(2).name = 'Nx';
+H_mci(3).name = 'Ny';
+H_mci(4).name = 'Nz';
+H_mci(5).name = 'dx';
+H_mci(6).name = 'dy';
+H_mci(7).name = 'dz';
+H_mci(8).name = 'mcflag';
+H_mci(9).name = 'launchflag';
+H_mci(10).name = 'xs';
+H_mci(11).name = 'ys';
+H_mci(12).name = 'zs';
+H_mci(13).name = 'xfocus';
+H_mci(14).name = 'yfocus';
+H_mci(15).name = 'zfocus';
+H_mci(16).name = 'ux0';
+H_mci(17).name = 'uy0';
+H_mci(18).name = 'uz0';
+H_mci(19).name = 'radius';
+H_mci(20).name = 'waist';
+H_mci(21).name = 'Nt';
 
 for i=1:21
-    fprintf('%d\t%10s = %0.4f\n',i,s(i).s,B(i))
+    H_mci(i).value = B(i);
+    fprintf('%d\t%10s = %0.4f\n',i,H_mci(i).name,B(i))
 end
 
 for j=1:B(21)

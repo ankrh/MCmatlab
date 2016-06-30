@@ -129,7 +129,7 @@ for k = F_min:dF:F_max
             gv(i,1) = A(j);
         end
 
-        reportHmci(directoryPath,myname)
+        H_mci = reportHmci(directoryPath,myname);
 
         %% Load Fluence rate F(y,x,z) 
         filename = sprintf('%s%s_F.bin',directoryPath,myname);
