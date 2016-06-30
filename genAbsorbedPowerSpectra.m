@@ -76,20 +76,17 @@ for k = F_min:dF:F_max
     %     display('The spectra doesn''t cover all the wavelengths specified');break; 
     % end
 
-    for i = length(Wavelengths):-1:1
-        [~,I1] = min(abs(nm_s-(Wavelengths(i)-dnm/2)));
-        [~,I2] = min(abs(nm_s-(Wavelengths(i)+dnm/2)));
-        weight(i) = trapz(nm_s(I1:I2),P_s(I1:I2));
+    for i_nm = length(Wavelengths):-1:1
+        [~,I1] = min(abs(nm_s-(Wavelengths(i_nm)-dnm/2)));
+        [~,I2] = min(abs(nm_s-(Wavelengths(i_nm)+dnm/2)));
+        weight(i_nm) = trapz(nm_s(I1:I2),P_s(I1:I2));
     end
     weight = weight./sum(weight); % Normalise
 
     %% USER CHOICES <---------- you must specify -----
-    index=1;
-    %weight = ones(1,6)/6;
-    for i = 1:length(Wavelengths)
-        nm = Wavelengths(i);
+    for i_nm = 1:length(Wavelengths)
+        nm = Wavelengths(i_nm);
         myname = ['blood4_broad_' num2str(nm)];
-        %%%%
 
         fprintf('------ mcxyz %s -------\n',myname)
 
@@ -144,7 +141,6 @@ for k = F_min:dF:F_max
         toc
         F = reshape(Data,Ny,Nx,Nz); % F(y,x,z)
 
-
         % Load tissue structure in voxels, T(y,x,z) 
         filename = sprintf('%s%s_T.bin',directoryPath,myname);
         disp(['loading ' filename])
@@ -183,10 +179,9 @@ for k = F_min:dF:F_max
         for tissueNumber=1:length(tissueList)
             Ap(T==tissueNumber) = tissueList(tissueNumber).mua;
         end
-        Ap = T.*F;
+        Ap = Ap.*F;
 
-        Ap_total = Ap_total+weight(index)*Ap;
-        index=index+1;
+        Ap_total = Ap_total+weight(i_nm)*Ap;
     end
 
     %% Save HeatSim input
