@@ -101,9 +101,7 @@ if isinf(zfocus), zfocus = 1e12; end
 %   Note: one need not use every tissue type in the tissue list.
 %   The tissue list is a library of possible tissue types.
 
-T = uint8(zeros(Ny,Nx,Nz)); 
-
-T = T + 4;      % fill background with skin (dermis)
+T = uint8(4*ones(Ny,Nx,Nz)); % fill background with skin (dermis)
 
 zsurf       = 0.02;  % position of gel/skin surface[cm]
 SC          = 0.002; % Thickness of stratum corneum and stratum lucidum [cm]
@@ -265,12 +263,11 @@ if SAVEON
 
 end % SAVEON
 
-
 %% Look at structure of Tzx at iy=Ny/2
 Tzx  = squeeze(T(Ny/2,:,:))'; % Tyxz -> Txz -> Tzx
 
 figure(1); clf
-plotTissue(Tzx,tissueList,x,z)
+plotTissue(Tzx-1,tissueList,x,z)
 hold on
 
 %% draw launch
@@ -296,6 +293,8 @@ switch mcflag
             plot([xs xx],[zs zz],'r-')
         end
 end
+
+axis([min(x) max(x) min(z) max(z)])
 
 disp('done')
 

@@ -10,11 +10,10 @@ zdiff = zmax-zmin;
 image(x,z,T)
 xlabel('x [cm]')
 ylabel('z [cm]')
-axis([xmin xmax zmin zmax])
 axis equal image
 cmap = makecmap(Nt);
 colormap(cmap)
-colorbar('YTickLabel',{tissueList.name},'YTick',1:Nt);
+colorbar('YTickLabel',{tissueList.name},'YTick',(1:Nt)-0.5);
 set(gca,'fontsize',18)
 
 text(xmax*0.9,zmin - zdiff*0.06, 'Tissue types','fontsize',18)

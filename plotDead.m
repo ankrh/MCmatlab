@@ -45,7 +45,7 @@ for n=F_min:dF:F_max
     Temp_post_light_zy = squeeze(Temp_post_light(:,H_mci.Nx/2,:))';
     figure(5);clf
     plotTemp(y,z,Temp_post_light_zy)
-    title('Temperature after Illumination [^{\circ}C] ')
+    title('Temperature after Illumination [^{\circ}C]')
     name = sprintf('%s%s_T_post_light_zy.jpg',directoryPath,myname);
     print('-djpeg','-r300',name)
 

@@ -52,37 +52,16 @@ clear data
 x = ((1:H_mci.Nx)-H_mci.Nx/2-1/2)*H_mci.dx;
 y = ((1:H_mci.Ny)-H_mci.Ny/2-1/2)*H_mci.dx;
 z = ((1:H_mci.Nz)-1/2)*H_mci.dz;
-ux = 2:H_mci.Nx-1;
-uy = 2:H_mci.Ny-1;
-uz = 2:H_mci.Nz-1;
-zmin = min(z);
-zmax = max(z);
-zdiff = zmax-zmin;
 xmin = min(x);
 xmax = max(x);
-xdiff = xmax-xmin;
 
 %% Look at structure, Tzx
-Tzx = reshape(T(H_mci.Ny/2,:,:),H_mci.Nx,H_mci.Nz)';
+Tzx = squeeze(T(H_mci.Ny/2,:,:))'; % Tyxz -> Txz -> Tzx
 tissueList = makeTissueList(nm);
-H_mci.Nt = length(tissueList);
 
 figure(1); clf
-imagesc(x(ux),z(uz),Tzx(uz,ux),[1 H_mci.Nt])
+plotTissue(Tzx,tissueList,x,z)
 hold on
-cmap = makecmap(H_mci.Nt);
-colormap(cmap)
-colorbar
-set(gca,'fontsize',18)
-set(colorbar,'fontsize',1)
-xlabel('x [cm]')
-ylabel('z [cm]')
-title('Tissue types')
-for i=1:H_mci.Nt
-    yy = zmin + (H_mci.Nt-i)/(H_mci.Nt-1)*zdiff;
-    text(xmin + xdiff*1.13,yy, sprintf('%d %s',i,tissueList(i).name),'fontsize',12)
-end
-axis equal image
 
 %% draw launch
 N = 10; % # of beam rays drawn
@@ -114,7 +93,7 @@ print('-djpeg','-r300',name)
 
 
 %% Look at Fluence Fzx @ launch point
-Fzx = reshape(F(H_mci.Ny/2,:,:),H_mci.Nx,H_mci.Nz)'; % in z,x plane through source
+Fzx = squeeze(F(H_mci.Ny/2,:,:))'; % in z,x plane through source
 
 figure(2);clf
 imagesc(x,z,log10(Fzx),[-3 3])
@@ -133,12 +112,7 @@ name = sprintf('%s%s_Fzx.jpg',directoryPath,myname);
 print('-djpeg','-r300',name)
 
 %% look Fzy
-Fzy = reshape(F(:,H_mci.Nx/2,:),H_mci.Ny,H_mci.Nz)';
-
-iy = round((H_mci.dy*H_mci.Ny/2 + 0.15)/H_mci.dy);
-iz = round(H_mci.zs/H_mci.dz);
-zzs  = H_mci.zs;
-%Fdet = mean(reshape(Fzy(iz+[-1:1],iy+[0 1]),6,1));
+Fzy = squeeze(F(:,H_mci.Nx/2,:))'; % in z,y plane through source
 
 figure(3);clf
 imagesc(y,z,log10(Fzy),[-1 1]*3)
@@ -177,7 +151,7 @@ set(gca,'fontsize',18)
 xlabel('y [cm]')
 ylabel('z [cm]')
 title('Power Absorbtion \phi [W/cm^3/W.delivered] ')
-%colormap(makec2f)
+colormap(makec2f)
 axis equal image
 
 name = sprintf('%s%s_Azy.jpg',directoryPath,myname);
@@ -194,7 +168,7 @@ if saveon_HeatSim==1
     clearvars F Azy Fzy Tzx count Fzx
     filename = sprintf('%s%s_HS.mat',directoryPath,myname);
     save(filename)
-end   
+end
 
 disp('done')
 
