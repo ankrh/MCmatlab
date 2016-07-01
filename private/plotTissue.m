@@ -7,7 +7,7 @@ zmin = min(z);
 zmax = max(z);
 zdiff = zmax-zmin;
 
-image(x,z,T)
+image(x,z,T-1) % -1 because the mapping of uint8 to cmap is strange ...
 xlabel('x [cm]')
 ylabel('z [cm]')
 axis equal image
