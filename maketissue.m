@@ -267,7 +267,7 @@ end % SAVEON
 Tzx  = squeeze(T(Ny/2,:,:))'; % Tyxz -> Txz -> Tzx
 
 figure(1); clf
-plotTissue(Tzx-1,tissueList,x,z)
+plotTissue(Tzx,tissueList,x,z)
 hold on
 
 %% draw launch
