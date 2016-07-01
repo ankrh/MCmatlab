@@ -105,7 +105,7 @@ for k = F_min:dF:F_max
         disp(['loading ' filename])
         tic
             fid = fopen(filename, 'rb');
-            [Data count] = fread(fid, H_mci.Ny*H_mci.Nx*H_mci.Nz, 'uint8');
+            [Data count] = fread(fid, H_mci.Ny*H_mci.Nx*H_mci.Nz, 'uint8=>uint8');
             fclose(fid);
         toc
         T = reshape(Data,H_mci.Ny,H_mci.Nx,H_mci.Nz); % T(y,x,z)

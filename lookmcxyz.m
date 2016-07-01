@@ -36,16 +36,15 @@ tic
 toc
 F = reshape(data,H_mci.Ny,H_mci.Nx,H_mci.Nz); % F(y,x,z)
 
-% Load tissue structure in voxels, T(y,x,z) 
+%% Load tissue structure in voxels, T(y,x,z) 
 filename = sprintf('%s%s_T.bin',directoryPath,myname);
 disp(['loading ' filename])
 tic
     fid = fopen(filename, 'rb');
-    data = fread(fid, H_mci.Ny*H_mci.Nx*H_mci.Nz, 'uint8');
+    data = fread(fid, H_mci.Ny*H_mci.Nx*H_mci.Nz, 'uint8=>uint8');
     fclose(fid);
 toc
 T = reshape(data,H_mci.Ny,H_mci.Nx,H_mci.Nz); % T(y,x,z)
-
 clear data
 
 %%
