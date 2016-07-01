@@ -89,8 +89,6 @@ dz = binsize;
 x  = ((1:Nx)'-Nx/2)*dx;
 y  = ((1:Ny)'-Ny/2)*dy;
 z  = (1:Nz)'*dz;
-zmin = min(z);
-zmax = max(z);
 xmin = min(x);
 xmax = max(x);
 
@@ -269,34 +267,11 @@ end % SAVEON
 
 
 %% Look at structure of Tzx at iy=Ny/2
-Txzy = shiftdim(T,1);   % Tyxz --> Txzy
-Tzx  = Txzy(:,:,Ny/2)'; % Tzx
+Tzx  = squeeze(T(Ny/2,:,:))'; % Tyxz -> Txz -> Tzx
 
-%% draw tissue
 figure(1); clf
-fsz = 18;  % font size 
-imagesc(x,z,Tzx,[1 Nt])
+plotTissue(Tzx,tissueList,x,z,Nt,Nx,dx,Nz,dz)
 hold on
-set(gca,'fontsize',fsz)
-xlabel('x [cm]')
-ylabel('z [cm]')
-colorbar('YTickLabel',{'Escape','Air','Blood','Dermis', 'Epidermis',...
-     'Skull','Grey matter','White matter','Hair', 'Gel'},'YTick',1:Nt);
-cmap = makecmap(Nt);
-colormap(cmap)
-set(colorbar,'fontsize',1)
-% label colorbar
-zdiff = zmax-zmin;
-
-for i=1:Nt
-    yy = (Nt-i)/(Nt-1)*Nz*dz;
-    text(Nx*dx*1.2,yy, tissueList(i).name,'fontsize',12)
-end
-
-text(xmax*0.9,zmin - zdiff*0.06, 'Tissue types','fontsize',18)
-axis equal image
-axis([xmin xmax zmin zmax])
-
 
 %% draw launch
 switch mcflag
