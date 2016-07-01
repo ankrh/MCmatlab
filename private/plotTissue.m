@@ -1,20 +1,24 @@
-function plotTissue(T,tissueList,x,z,Nt,Nx,dx,Nz,dz)
+function plotTissue(T,tissueList,x,z)
+
+Nt = length(tissueList);
+Nx = length(x);
+xmin = min(x);
+xmax = max(x);
+dx = (xmax-xmin)/Nx;
+Nz = length(z);
+zmin = min(z);
+zmax = max(z);
+zdiff = zmax-zmin;
+dz = zdiff/Nz;
 
 imagesc(x,z,T,[1 Nt])
 set(gca,'fontsize',18)
 xlabel('x [cm]')
 ylabel('z [cm]')
-colorbar('YTickLabel',{'Escape','Air','Blood','Dermis', 'Epidermis',...
-     'Skull','Grey matter','White matter','Hair', 'Gel'},'YTick',1:Nt);
+colorbar('YTickLabel',{tissueList.name},'YTick',1:Nt);
 cmap = makecmap(Nt);
 colormap(cmap)
 set(colorbar,'fontsize',1)
-% label colorbar
-xmin = min(x);
-xmax = max(x);
-zmin = min(z);
-zmax = max(z);
-zdiff = zmax-zmin;
 
 for i=1:Nt
     yy = (Nt-i)/(Nt-1)*Nz*dz;
