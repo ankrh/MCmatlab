@@ -10,34 +10,6 @@ for n=F_min:dF:F_max
     myname = ['HeatSimOut_blood4_' num2str(m)];
     load([directoryPath myname '.mat']);
 
-    Tzy = squeeze(T(:,H_mci.Nx/2,:))'; % Make zy cut of the tissue matrix
-
-    %% Tissue model plot
-    % At this point Tzy contains integers where 4=dermis,
-    % 5=epidermis, 9=blood and 10=gel.
-    % This is changed to, 1=dermis, 2=epidermis, 3=blood, 4=gel, 5=stratum corneum.
-    Tzy(Tzy==4)=1; Tzy(Tzy==5)=2; Tzy(Tzy==9)=3; Tzy(Tzy==10)=4;
-
-    for iz = 1:size(Tzy,1)
-        if iz>round((0.02)/H_mci.dz) && iz<=round((0.02+SC_thick)/H_mci.dz)
-            Tzy(iz,:) = 5;
-        end
-    end
-
-    % Make the color map
-    Nt = 5; % number of tissues (including dead dermis)
-    cmap = zeros(64,3);
-    dj = 0.05;
-    for i=1:64
-        j = round((i-dj)/64*(Nt-1));
-        if  j<=1-dj, cmap(i,:) = [1 0.8 0.8]; % dermis
-        elseif  j<=2-dj, cmap(i,:) = [0.5 0.2 0.2]; % epidermis
-        elseif  j<=3-dj, cmap(i,:) = [1 0 0]; % blood
-        elseif  j<=4-dj, cmap(i,:) = [0 0 1]; % gel
-        elseif  j<=5-dj, cmap(i,:) = [0.8 0.7 0.8]; %SC
-        end
-    end
-
     p = 0;
     damage = 0;
 
@@ -48,6 +20,7 @@ for n=F_min:dF:F_max
     wall_dam = 0;
 
     %% Plot showing the dead dermis and epidermis
+    Tzy = squeeze(T(:,H_mci.Nx/2,:))'; % Make zy cut of the tissue matrix
     Temp_max_zy = squeeze(Temp_max(:,H_mci.Nx/2,:))';
 
     maxT = ones(length(Temp_max_zy(:,1,1)),length(Temp_max_zy(1,:,1)));
@@ -94,40 +67,13 @@ for n=F_min:dF:F_max
     dam_blood = bl_dam/q*100; %ratio blood damage [%]
     dam_wall = wall_dam/r*100; %ratio of damage of the upper vessel wall [%]
 
-    % At this point Tdead contains integers where 0=dead, 4=dermis,
-    % 5=epidermis, 9=hair and 10=gel.
-    % This is changed to 0=dead, 1=dermis, 2=epidermis, 3=hair and 4=gel.
-    % Tdead(Tdead==4)=1; Tdead(Tdead==5)=2; Tdead(Tdead==9)=3; Tdead(Tdead==10)=4;
-
-    % Make the color map
-    Nt = 7; % number of tissues (including dead dermis)
-    cmap = zeros(64,3);
-    dj = 0.05;
-    for i=1:64
-        j = round((i-dj)/64*(Nt-1));
-        if      j<=1-dj, cmap(i,:) = [1 1 0]; % dead
-        elseif  j<=2-dj, cmap(i,:) = [1 0.8 0.8]; % dermis
-        elseif  j<=3-dj, cmap(i,:) = [0.5 0.2 0.2]; % epidermis
-        elseif  j<=4-dj, cmap(i,:) = [1 0 0]; % Blood
-        elseif  j<=5-dj, cmap(i,:) = [0 0 1]; % gel
-        elseif  j<=6-dj, cmap(i,:) = [0.8 0.7 0.8]; %SC
-        elseif  j<=10-dj, cmap(i,:) = [0,0,0]; %dead blood
-        end
-    end
+    % At this point Tdead contains integers where 0=dead
+    
+    figure(1); clf
+    plotTissue(Tzy,tissueList,x,z)
 
     fn = strrep(filename,'_',' ');
-
-    figure('units','normalized','outerposition',[0 0 0.95 1]); clf
-    imagesc(y,z,Tdead,[0 Nt-1])
-    hold on
-    colormap(cmap)
-    colorbar('YTickLabel',{'Dead', 'Dermis', 'Epidermis',...
-        'Blood', 'Gel','Stratum Corneum','DeadBlood'},'YTick',0:Nt-1);
-    set(gca,'fontsize',18)
-    xlabel('y [cm]')
-    ylabel('z [cm]')
     title([num2str(fn) ' - ' num2str(n) ' J/cm2'])
-    axis equal image
 
     annotation('textbox', [0.01, 0.25, 0.2, 0.08], 'string',...
         ['Ratio of epidermal damage: ' num2str(dam_epi) ' %'],'FontSize',14)
