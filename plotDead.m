@@ -44,45 +44,21 @@ for n=F_min:dF:F_max
 
     Temp_post_light_zy = squeeze(Temp_post_light(:,H_mci.Nx/2,:))';
     figure(5);clf
-    image(y,z,Temp_post_light_zy)
-    hold on
-    text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
-    colorbar
-    set(gca,'fontsize',18)
-    xlabel('y [cm]')
-    ylabel('z [cm]')
+    plotTemp(y,z,Temp_post_light_zy)
     title('Temperature after Illumination [^{\circ}C] ')
-    colormap(makec2f)
-    axis equal image
     name = sprintf('%s%s_T_post_light_zy.jpg',directoryPath,myname);
     print('-djpeg','-r300',name)
 
     Temp_post_diffuse_zy = squeeze(Temp_post_diffuse(:,H_mci.Nx/2,:))';
     figure(6);clf
-    image(y,z,Temp_post_diffuse_zy)
-    hold on
-    text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
-    colorbar
-    set(gca,'fontsize',18)
-    xlabel('y [cm]')
-    ylabel('z [cm]')
+    plotTemp(y,z,Temp_post_diffuse_zy)
     title('Temperature after Diffusion [^{\circ}C]')
-    colormap(makec2f)
-    axis equal image
     name = sprintf('%s%s_T_post_diffuse_zy.jpg',directoryPath,myname);
     print('-djpeg','-r300',name)
 
     figure(7);clf
-    image(y,z,Temp_max_zy)
-    hold on
-    text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
-    colorbar
-    set(gca,'fontsize',18)
-    xlabel('y [cm]')
-    ylabel('z [cm]')
+    plotTemp(y,z,Temp_max_zy)
     title('maximum Temperature reached [^{\circ}C]')
-    colormap(makec2f)
-    axis equal image
     name = sprintf('%s%s_T_max_zy.jpg',directoryPath,myname);
     print('-djpeg','-r300',name)
 

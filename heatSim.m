@@ -85,18 +85,10 @@ for fluence = F_min:dF:F_max
     end
 
     %% Prepare the temperature plot
-    figure(6)
-    clf
-    image(y,z,squeeze(Temp(:,H_mci.Nx/2,:))')
+    figure(6); clf
+    plotTemp(y,z,squeeze(Temp(:,H_mci.Nx/2,:))')
+    title('Temperature [^{\circ}C]')
     hold on
-    text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
-    colorbar
-    set(gca,'fontsize',18)
-    xlabel('y [cm]')
-    ylabel('z [cm]')
-    title('Temperature [^{\circ}C] ')
-    colormap(makec2f)
-    axis equal image
     drawnow
 
     %% Heat Transfer Simulation during illumination
@@ -145,16 +137,8 @@ for fluence = F_min:dF:F_max
     %% Plot the temperature distribution immediately after illumination
 
     figure(5);clf
-    image(y,z,Temp_post_light_zy)
-    hold on
-    text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
-    colorbar
-    set(gca,'fontsize',18)
-    xlabel('y [cm]')
-    ylabel('z [cm]')
-    title('Temperature after Illumination [^{\circ}C] ')
-    colormap(makec2f)
-    axis equal image
+    plotTemp(y,z,Temp_post_light_zy)
+    title('Temperature after Illumination [^{\circ}C]')
     drawnow
 
     figure(6)
@@ -204,28 +188,12 @@ for fluence = F_min:dF:F_max
     %% Plot the temperature after diffusion and the maximum temperature reached
 
     figure(6);clf
-    image(y,z,Temp_post_diffuse_zy)
-    hold on
-    text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
-    colorbar
-    set(gca,'fontsize',18)
-    xlabel('y [cm]')
-    ylabel('z [cm]')
+    plotTemp(y,z,Temp_post_diffuse_zy)
     title('Temperature after Diffusion [^{\circ}C]')
-    colormap(makec2f)
-    axis equal image
 
     figure(7);clf
-    image(y,z,Temp_max_zy)
-    hold on
-    text(max(x)*0.9,min(z)-0.04*max(z),'T [^{\circ}C]','fontsize',18)
-    colorbar
-    set(gca,'fontsize',18)
-    xlabel('y [cm]')
-    ylabel('z [cm]')
+    plotTemp(y,z,Temp_max_zy)
     title('maximum Temperature reached [^{\circ}C]')
-    colormap(makec2f)
-    axis equal image
 
     %% Save the data for downstream processing (-> plotDead)
     if save_on==1
