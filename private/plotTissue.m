@@ -1,15 +1,13 @@
 function plotTissue(T,tissueList,x,z)
 
 Nt = length(tissueList);
-Nx = length(x);
 xmin = min(x);
 xmax = max(x);
-Nz = length(z);
 zmin = min(z);
 zmax = max(z);
 zdiff = zmax-zmin;
 
-imagesc(x,z,T,[1 Nt])
+image(x,z,T)
 xlabel('x [cm]')
 ylabel('z [cm]')
 axis([xmin xmax zmin zmax])
