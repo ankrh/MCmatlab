@@ -1,20 +1,8 @@
+function lookmcxyz
+
 % lookmcxyz.m
-%   Looks at myname_F.bin, created by mcxyz.c 
+%   Looks at myname_F.bin, created by gomcxyz 
 %   where myname is the name of the run: myname_T.bin, myname_H.mci
-%
-% lookmcxyz_alc2.m, July 23
-%       Absorption array is OFF.
-%
-%   Simulates angiolight catheter within 4-mm-dia. vessel
-% with the vessel wall at a particular musp value. 
-%   For this run, musp = 200 cm^-1.
-%
-% Reads 8 mcxyz runs, for 8 catheter positions, zs = 0.2 to 0.6 cm.
-% For each run:
-%   alc#_H.mci --> header:
-%       timin,Nx,Ny,Nz,dy,dx,dz,xs,ys,zx,Nt,muav(),musv(),gv()
-%   alc#_F.bin --> F(y,x,z) = relative fluence rate [1/cm^2]
-%   alc#_T.bin --> T(y,x,z) = tissue types
 %
 % Displays
 %   Tzx = end-view of tissue structure
@@ -26,156 +14,85 @@
 %       Fzy(400,400,8) = 8 z,y images
 %       Fdet(8,1) = signal [1/cm^2] @ detector fiber
 %
-% Updated Feb.7.2017.slj, adding boundaryflag (see A(10))
-home
-clear
+
+%% USER CHOICES <---------- you must specify -----
+directoryPath = 'C:\Users\Kira Schmidt\Desktop\mcxyz\mcxyz';
+myname = 'dentin_sim_850';
+nm     = 850;
+saveon_HeatSim = 1;
+
+%% Load header file
+H_mci = reportHmci(directoryPath,myname);
+
 format compact
-commandwindow
-
-cc = 'rbgm'; % color
-
-%%%% USER CHOICES <---------- you must specify -----
-myname = 'skinvessel'; nm = 532;
-%%%%
-
-
-disp(sprintf('------ mcxyz %s -------',myname))
-
-% Load header file
-filename = sprintf('%s_H.mci',myname);
-disp(['loading ' filename])
-fid = fopen(filename, 'r');
-A = fscanf(fid,'%f',[1 Inf])';
-fclose(fid);
-
-%% parameters
-time_min = A(1);
-Nx = A(2);
-Ny = A(3);
-Nz = A(4);
-dx = A(5);
-dy = A(6);
-dz = A(7);
-mcflag = A(8);
-launchflag = A(9);
-boundaryflag = A(10);
-xs = A(11);
-ys = A(12);
-zs = A(13);
-xfocus = A(14);
-yfocus = A(15);
-zfocus = A(16);
-ux0 = A(17);
-uy0 = A(18);
-uz0 = A(19);
-radius = A(20);
-waist = A(21);
-Nt = A(22);
-j = 22;
-for i=1:Nt
-    j=j+1;
-    muav(i,1) = A(j);
-    j=j+1;
-    musv(i,1) = A(j);
-    j=j+1;
-    gv(i,1) = A(j);
-end
-
-reportHmci(myname)
 
 %% Load Fluence rate F(y,x,z) 
-filename = sprintf('%s_F.bin',myname);
+filename = sprintf('%s%s_F.bin',directoryPath,myname);
 disp(['loading ' filename])
 tic
     fid = fopen(filename, 'rb');
-    [Data count] = fread(fid, Ny*Nx*Nz, 'float');
+    data = fread(fid, H_mci.Ny*H_mci.Nx*H_mci.Nz, 'float');
     fclose(fid);
 toc
-F = reshape(Data,Ny,Nx,Nz); % F(y,x,z)
+F = reshape(data,H_mci.Ny,H_mci.Nx,H_mci.Nz); % F(y,x,z)
 
-
-% Load tissue structure in voxels, T(y,x,z) 
-filename = sprintf('%s_T.bin',myname);
+%% Load tissue structure in voxels, T(y,x,z) 
+filename = sprintf('%s%s_T.bin',directoryPath,myname);
 disp(['loading ' filename])
 tic
     fid = fopen(filename, 'rb');
-    [Data count] = fread(fid, Ny*Nx*Nz, 'uint8');
+    data = fread(fid, H_mci.Ny*H_mci.Nx*H_mci.Nz, 'uint8=>uint8');
     fclose(fid);
 toc
-T = reshape(Data,Ny,Nx,Nz); % T(y,x,z)
-
-clear Data
+T = reshape(data,H_mci.Ny,H_mci.Nx,H_mci.Nz); % T(y,x,z)
+clear data
 
 %%
-x = ([1:Nx]-Nx/2-1/2)*dx;
-y = ([1:Ny]-Ny/2-1/2)*dx;
-z = ([1:Nz]-1/2)*dz;
-ux = [2:Nx-1];
-uy = [2:Ny-1];
-uz = [2:Nz-1];
-zmin = min(z);
-zmax = max(z);
-zdiff = zmax-zmin;
+x = ((1:H_mci.Nx)-H_mci.Nx/2-1/2)*H_mci.dx;
+y = ((1:H_mci.Ny)-H_mci.Ny/2-1/2)*H_mci.dx;
+z = ((1:H_mci.Nz)-1/2)*H_mci.dz;
 xmin = min(x);
 xmax = max(x);
-xdiff = xmax-xmin;
 
 %% Look at structure, Tzx
-Tzx = reshape(T(Ny/2,:,:),Nx,Nz)';
-tissue = makeTissueList(nm);
-Nt = length(tissue);
+Tzx = squeeze(T(H_mci.Ny/2,:,:))'; % Tyxz -> Txz -> Tzx
+tissueList = makeTissueList(nm);
 
-figure(1);clf
-imagesc(x(ux),z(uz),Tzx(uz,ux),[1 Nt])
+figure(1); clf
+plotTissue(Tzx,tissueList,x,z)
 hold on
-cmap = makecmap(Nt);
-colormap(cmap)
-colorbar
-set(gca,'fontsize',18)
-set(colorbar,'fontsize',1)
-xlabel('x [cm]')
-ylabel('z [cm]')
-title('Tissue types','fontweight','normal')
-for i=1:Nt
-    yy = zmin + (Nt-i)/(Nt-1)*zdiff;
-    text(xmin + xdiff*1.1,yy, sprintf('%d %s',i,tissue(i).name),'fontsize',9)
-end
 
-% draw launch
+%% draw launch
 N = 10; % # of beam rays drawn
-switch mcflag
+switch H_mci.mcflag
     case 0 % uniform
         for i=0:N
             for j=-2:2
-            plot( [xs+radius*i/N xfocus + waist*j/2],[zs zfocus],'r-')
-            plot(-[xs+radius*i/N xfocus + waist*j/2],[zs zfocus],'r-')
+            plot( [H_mci.xs+H_mci.radius*i/N H_mci.xfocus + H_mci.waist*j/2],[H_mci.zs H_mci.zfocus],'r-')
+            plot(-[H_mci.xs+H_mci.radius*i/N H_mci.xfocus + H_mci.waist*j/2],[H_mci.zs H_mci.zfocus],'r-')
             end
         end
 
-    case 1 % Gaussian
+    case 1 % uniform over entire surface at height H_mci.zs
         for i=0:N
-            for j=-2:2
-            plot( [xs+radius*i/N xfocus + waist*j/2],[zs zfocus],'r-')
-            plot(-[xs+radius*i/N xfocus + waist*j/2],[zs zfocus],'r-')
-            end
+            plot( [xmin + (xmax-xmin)*i/N xmin + (xmax-xmin)*i/N],[H_mci.zs H_mci.zfocus],'r-')
         end
 
     case 2 % iso-point
         for i=1:20
             th = (i-1)/19*2*pi;
-            xx = Nx/2*cos(th) + xs;
-            zz = Nx/2*sin(th) + zs;
-            plot([xs xx],[zs zz],'r-')
+            xx = H_mci.Nx/2*cos(th) + H_mci.xs;
+            zz = H_mci.Nx/2*sin(th) + H_mci.zs;
+            plot([H_mci.xs xx],[H_mci.zs zz],'r-')
         end
 end
 
-name = sprintf('%s_tissue.jpg',myname);
+name = sprintf('%s%s_tissue.jpg',directoryPath,myname);
 print('-djpeg','-r300',name)
 
 
-
 %% Look at Fluence Fzx @ launch point
-Fzx = reshape(F(Ny/2,:,:),Nx,Nz)'; % in z,x plane through source
+Fzx = squeeze(F(H_mci.Ny/2,:,:))'; % in z,x plane through source
 
 figure(2);clf
 imagesc(x,z,log10(Fzx),[-3 3])
@@ -185,21 +102,16 @@ colorbar
 set(gca,'fontsize',18)
 xlabel('x [cm]')
 ylabel('z [cm]')
-title('Fluence \phi [W/cm^2/W.delivered] ','fontweight','normal')
+title('Fluence \phi [W/cm^2/W.delivered] ')
 colormap(makec2f)
 axis equal image
 %axis([min(x) max(x) min(z) max(z)])
 
-name = sprintf('%s_Fzx.jpg',myname);
+name = sprintf('%s%s_Fzx.jpg',directoryPath,myname);
 print('-djpeg','-r300',name)
 
 %% look Fzy
-Fzy = reshape(F(:,Nx/2,:),Ny,Nz)';
-
-iy = round((dy*Ny/2 + 0.15)/dy);
-iz = round(zs/dz);
-zzs  = zs;
-%Fdet = mean(reshape(Fzy(iz+[-1:1],iy+[0 1]),6,1));
+Fzy = squeeze(F(:,H_mci.Nx/2,:))'; % in z,y plane through source
 
 figure(3);clf
 imagesc(y,z,log10(Fzy),[-1 1]*3)
@@ -209,15 +121,62 @@ colorbar
 set(gca,'fontsize',18)
 xlabel('y [cm]')
 ylabel('z [cm]')
-title('Fluence \phi [W/cm^2/W.delivered] ','fontweight','normal')
+title('Fluence \phi [W/cm^2/W.delivered] ')
 colormap(makec2f)
 axis equal image
 
-name = sprintf('%s_Fzy.jpg',myname);
+name = sprintf('%s%s_Fzy.jpg',directoryPath,myname);
+print('-djpeg','-r300',name)
+
+drawnow
+%% calculate Power Absorbtion
+
+% F, matrix with fluency / input power
+% T, Matrix containing tissue types
+% tissueList, list of tissue properties tissueProps( tissue type, #) # = 1 is mua, # = 2 is mus, # = 3 is g
+
+Ap = zeros(size(T));
+for tissueNumber=1:length(tissueList)
+   Ap(T==tissueNumber) = tissueList(tissueNumber).mua;
+end
+Azy = reshape(Ap(:,H_mci.Nx/2,:),H_mci.Ny,H_mci.Nz)';
+
+figure(4);clf
+imagesc(y,z,log10(Azy),[-1 1]*3)
+hold on
+text(max(x)*0.9,min(z)-0.04*max(z),'log_{10}( \phi )','fontsize',18)
+colorbar
+set(gca,'fontsize',18)
+xlabel('y [cm]')
+ylabel('z [cm]')
+title('Power Absorbtion \phi [W/cm^3/W.delivered] ')
+colormap(makec2f)
+axis equal image
+
+name = sprintf('%s%s_Azy.jpg',directoryPath,myname);
 print('-djpeg','-r300',name)
 
 drawnow
 
+% test H_mci.dx*H_mci.dy*H_mci.dz*sum(sum(sum(Ap)))<=1, to make sure that less than 1W is
+% absorbed per 1W of incident power, this seems to be the case
+
+%% Save HeatSim input
+
+if saveon_HeatSim==1
+    clearvars F Azy Fzy Tzx count Fzx
+    filename = sprintf('%s%s_HS.mat',directoryPath,myname);
+    save(filename)
+end
+
 disp('done')
 
-
+%% Ryx
+% NOT READY
+% fname = sprintf('%s_Ryx.bin',myname);
+% fid = fopen(fname);
+% [Data count] = fread(fid, H_mci.Ny*H_mci.Nx, 'float');
+% fclose(fid);
+% Ryx = reshape(Data,H_mci.Ny,H_mci.Nx);
+% figure(5);clf
+% imagesc(log10(Ryx))

@@ -30,18 +30,18 @@ function makeTissue
 %       
 
 %% USER CHOICES <-------- You must set these parameters ------
-SAVEON      = 0;        % 1 = save myname_T.bin, myname_H.mci 
+SAVEON      = 1;        % 1 = save myname_T.bin, myname_H.mci 
                         % 0 = don't save. Just check the program.
                         
 nm          = 850;       % set the range of wavelengths of the monte carlo simulation
-directoryPath = './Data/';
-myname      = ['blood4_broad_' num2str(nm)];% name for files: myname_T.bin, myname_H.mci  
+directoryPath = 'C:\Users\Kira Schmidt\Desktop\mcxyz';
+myname      = ['dentin_sim_' num2str(nm)];% name for files: myname_T.bin, myname_H.mci  
 time_min    = 5;      	% time duration of the simulation [min]
 Nbins       = 400;    	% # of bins in each dimension of cube 
 binsize     = 20e-4; 	% size of each bin [cm]
 
 % Set Monte Carlo launch flags
-mcflag      = 2;     	% launch: 0 = uniform beam, 1 = uniform over entire surface at height zs, 2 = isotropic pt. 
+mcflag      = 1;     	% launch: 0 = uniform beam, 1 = uniform over entire surface at height zs, 2 = isotropic pt. 
 launchflag  = 0;        % 0 = let mcxyz.c calculate launch trajectory
                         % 1 = manually set launch vector.
 boundaryflag = 2;       % 0 = no boundaries, 1 = escape at boundaries
@@ -49,8 +49,8 @@ boundaryflag = 2;       % 0 = no boundaries, 1 = escape at boundaries
                         % boundaries
 
 % Sets position of source
-xs          = 0.5;      	% x of source [cm]
-ys          = 0.5;        % y of source [cm]
+xs          = 0;      	% x of source [cm]
+ys          = 0;        % y of source [cm]
 zs          = 0.02;     % z of source [cm]
 
 % Set position of focus, so mcxyz can calculate launch trajectory
@@ -104,10 +104,10 @@ if isinf(zfocus), zfocus = 1e12; end
 T = uint8(4*ones(Ny,Nx,Nz)); % fill background with skin (dermis)
 
 zsurf       = 0.02;  % position of gel/skin surface[cm]
-SC          = 0.002; % Thickness of stratum corneum and stratum lucidum [cm]
-epd_thick   = 0.01; %Thickness of the epidermis [cm]
-vessel_thick = 0.050; %thickness of blood layer [cm]
-vessel_depth = 0.02; %depth of vessel [cm]
+dentin_depth = 0.01
+%SC          = 0.002; % Thickness of stratum corneum and stratum lucidum [cm]
+dentin_thick   = 0.01; %Thickness of the dentin [cm]
+%enamel_thick = 0.050; %thickness of enamel [cm]
 
 % hair_diameter = 0.0075; % varies from 17 - 180 micrometers, should increase with colouring and age
 % hair_radius = hair_diameter/2;      	% hair radius [cm]
@@ -127,18 +127,18 @@ vessel_depth = 0.02; %depth of vessel [cm]
 
 for iz=1:Nz % for every depth z(iz)
     
-    % blood
-    if iz>round((zsurf+vessel_depth)/dz) && iz<=round((zsurf+vessel_depth+vessel_thick)/dz)
+    % dentin
+    if iz>round((zsurf+dentin_depth)/dz) && iz<=round((zsurf+dentin_depth+dentin_thick)/dz)
         T(:,:,iz) = 3;
     end
     % epidermis
-    if iz>round((zsurf+SC)/dz) && iz<=round((zsurf+SC+epd_thick)/dz)
-        T(:,:,iz) = 5;
-    end
+    %if iz>round((zsurf+SC)/dz) && iz<=round((zsurf+SC+dentin_thick)/dz)
+        %T(:,:,iz) = 5;
+    %end
     % Gel
-    if iz<=round(zsurf/dz)
-        T(:,:,iz) = 10;
-    end
+    %if iz<=round(zsurf/dz)
+       % T(:,:,iz) = 10;
+    %end
 
 %     % epidermis (60 um thick)
 %     if iz>round(zsurf/dz) && iz<=round((zsurf+0.0060)/dz)

@@ -16,9 +16,9 @@ function userSettings
 
 %% User setting: Define the interval of wavelengths the input spectrum covers.
 
-dnm = 1*5; %Wavelength step size of the spectrum. Needs to be a multiple of 5. [nm];
-nm_min = 632; %Minimum wavelength of the filter. No lower than 300+dnm [nm];
-nm_max = 637; %Maximum wavelength of the filter. No higher than 1000-dnm [nm];
+dnm = 0*5; %Wavelength step size of the spectrum. Needs to be a multiple of 5. [nm];
+nm_min = 850; %Minimum wavelength of the filter. No lower than 300+dnm [nm];
+nm_max = 850; %Maximum wavelength of the filter. No higher than 1000-dnm [nm];
 
 
 %% User setting: Define the pulse. 
@@ -42,7 +42,7 @@ pulse = 10e-3; %pulse duration. Default 10 ms. [s]
 %name of the spectrum file. Extension (.txt) should not be written as part
 %of the filename. File must be present in current folder or a subfolder.
 filename = 'VL+_norm0'; 
-directoryPath = './Data/';
+directoryPath = 'C:\Users\Kira Schmidt\Desktop\mcxyz';
 
 %% Do not edit this section. (Calling the spectrum)
 %Checks if the file specified in filename is in the folder or subfolder

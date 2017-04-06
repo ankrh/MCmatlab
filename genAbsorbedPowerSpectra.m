@@ -25,7 +25,7 @@ function genAbsorbedPowerSpectra
 
 format compact
 
-directoryPath = './Data/';
+directoryPath = 'C:\Users\Kira Schmidt\Desktop\mcxyz';
 
 load([directoryPath 'Input_spectrum'])
 nm_s = nm;
@@ -36,7 +36,7 @@ for k = F_min:dF:F_max
 
     m = m+1;
     num = num2str(m);
-    savename = ['HeatSimIn_blood4_' num '.mat'];
+    savename = ['HeatSimIn_dentin_' num '.mat'];
 
 
     %% Remember to define the size of Ap_total %%
@@ -85,7 +85,7 @@ for k = F_min:dF:F_max
     %% USER CHOICES <---------- you must specify -----
     for i_nm = 1:length(Wavelengths)
         nm = Wavelengths(i_nm);
-        myname = ['blood4_broad_' num2str(nm)];
+        myname = ['dentin_sim_' num2str(nm)];
 
         %% Load header file
         H_mci = reportHmci(directoryPath,myname);
