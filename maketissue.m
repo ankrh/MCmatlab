@@ -34,7 +34,7 @@ SAVEON      = 1;        % 1 = save myname_T.bin, myname_H.mci
                         % 0 = don't save. Just check the program.
                         
 nm          = 850;       % set the range of wavelengths of the monte carlo simulation
-directoryPath = 'C:\Users\Kira Schmidt\Desktop\mcxyz';
+directoryPath = 'C:\Users\Kira Schmidt\Documents\mcxyz\';
 myname      = ['dentin_sim_' num2str(nm)];% name for files: myname_T.bin, myname_H.mci  
 time_min    = 5;      	% time duration of the simulation [min]
 Nbins       = 400;    	% # of bins in each dimension of cube 
@@ -51,7 +51,7 @@ boundaryflag = 2;       % 0 = no boundaries, 1 = escape at boundaries
 % Sets position of source
 xs          = 0;      	% x of source [cm]
 ys          = 0;        % y of source [cm]
-zs          = 0.02;     % z of source [cm]
+zs          = 0;     % z of source [cm]
 
 % Set position of focus, so mcxyz can calculate launch trajectory
 xfocus      = 0;        % set x,position of focus
@@ -101,13 +101,13 @@ if isinf(zfocus), zfocus = 1e12; end
 %   Note: one need not use every tissue type in the tissue list.
 %   The tissue list is a library of possible tissue types.
 
-T = uint8(4*ones(Ny,Nx,Nz)); % fill background with skin (dermis)
+T = uint8(3*ones(Ny,Nx,Nz)); % fill background with skin (dermis)
 
-zsurf       = 0.02;  % position of gel/skin surface[cm]
-dentin_depth = 0.01
-%SC          = 0.002; % Thickness of stratum corneum and stratum lucidum [cm]
-dentin_thick   = 0.01; %Thickness of the dentin [cm]
-%enamel_thick = 0.050; %thickness of enamel [cm]
+zsurf       = 0.01;  % position of [cm]
+dentin_depth = 0.02
+enamel_depth = 0.3; % Enamel depth [cm]
+dentin_thick = 0.25; %Thickness of the dentin [cm]
+enamel_thick = 0.25; %thickness of enamel [cm]
 
 % hair_diameter = 0.0075; % varies from 17 - 180 micrometers, should increase with colouring and age
 % hair_radius = hair_diameter/2;      	% hair radius [cm]
@@ -127,14 +127,15 @@ dentin_thick   = 0.01; %Thickness of the dentin [cm]
 
 for iz=1:Nz % for every depth z(iz)
     
+    %enamel
+    if iz>round((zsurf+enamel_depth)/dz) && iz<=round((zsurf+enamel_depth+enamel_thick)/dz)
+        T(:,:,iz) = 2;
+    end
     % dentin
     if iz>round((zsurf+dentin_depth)/dz) && iz<=round((zsurf+dentin_depth+dentin_thick)/dz)
-        T(:,:,iz) = 3;
+        T(:,:,iz) = 1;
     end
-    % epidermis
-    %if iz>round((zsurf+SC)/dz) && iz<=round((zsurf+SC+dentin_thick)/dz)
-        %T(:,:,iz) = 5;
-    %end
+    
     % Gel
     %if iz<=round(zsurf/dz)
        % T(:,:,iz) = 10;

@@ -25,22 +25,21 @@ MU(:,4) = interp1(nmLIB,muamel,nm);
 
 j=1;
 tissueList(j).name  = 'dentin';
-tissueList(j).mua   = 0.0001;
-tissueList(j).mus   = 1.0;
+tissueList(j).mua   = 0.04; %in cm ^ -1 
+tissueList(j).mus   = 270; %range between 260-280
 tissueList(j).g     = 0.93;
-tissueList(j).HC    = 1.59; % Heat Capacity
-tissueList(j).D     = 1e-6; % Density, [kg/cm^3]
-tissueList(j).TC    = 5.69e-3; % Thermal Conductivity
-
+tissueList(j).HC    = 1260; % Heat Capacity
+tissueList(j).D     = 2.200e-3; % Density, [kg/cm^3]
+tissueList(j).TC    = 0.6; % Thermal Conductivity
 
 j=2;
-tissueList(j).name  = 'enamel';
-tissueList(j).mua   = 0.001;
-tissueList(j).mus   = 10;
+tissueList(j).name = 'enamel'
+tissueList(j).mua   = 0.01; %in cm ^ -1 
+tissueList(j).mus   = 1.0;
 tissueList(j).g     = 0.96;
-tissueList(j).HC    = 0.71;
-tissueList(j).D     = 1e-6;
-tissueList(j).TC    = 9.34e-3;
+tissueList(j).HC    = 750; % Heat Capacity
+tissueList(j).D     = 2.900e-3; % Density, [kg/cm^3]
+tissueList(j).TC    = 0.9; % Thermal Conductivity
 
 j=3;
 tissueList(j).name  = 'air';
@@ -48,7 +47,7 @@ tissueList(j).mua   = 0.001;
 tissueList(j).mus   = 10;
 tissueList(j).g     = 1.0;
 tissueList(j).HC    = 1003*1e-6;
-tissueList(j).D     = 1;
+tissueList(j).D     = 1e-6;
 tissueList(j).TC    = 3e-4;
 
 j=4;
@@ -56,9 +55,9 @@ tissueList(j).name  = 'water';
 tissueList(j).mua   = 0.001;
 tissueList(j).mus   = 10;
 tissueList(j).g     = 1.0;
-tissueList(j).HC    = 4.2;
-tissueList(j).D     = 1.0;
-tissueList(j).TC    = 6.2; % between 0.561 and 0.679 W/m/K in cm its 6.2
+tissueList(j).HC    = 4190;
+tissueList(j).D     = 1e-3;
+tissueList(j).TC    = 0.44;
 
 j=5;
 tissueList(j).name  = 'blood';
@@ -78,6 +77,7 @@ tissueList(j).g   = gg;
 tissueList(j).HC    = 3617*1050e-6;
 tissueList(j).D     = 1050e-6;
 tissueList(j).TC    = 0.52e-2;
+
 
 
 
