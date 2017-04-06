@@ -30,18 +30,18 @@ function makeTissue
 %       
 
 %% USER CHOICES <-------- You must set these parameters ------
-SAVEON      = 1;        % 1 = save myname_T.bin, myname_H.mci 
+SAVEON      = 0;        % 1 = save myname_T.bin, myname_H.mci 
                         % 0 = don't save. Just check the program.
                         
-nm          = 532;       % set the range of wavelengths of the monte carlo simulation
+nm          = 850;       % set the range of wavelengths of the monte carlo simulation
 directoryPath = './Data/';
 myname      = ['blood4_broad_' num2str(nm)];% name for files: myname_T.bin, myname_H.mci  
-time_min    = 6;      	% time duration of the simulation [min]
+time_min    = 5;      	% time duration of the simulation [min]
 Nbins       = 400;    	% # of bins in each dimension of cube 
 binsize     = 20e-4; 	% size of each bin [cm]
 
 % Set Monte Carlo launch flags
-mcflag      = 1;     	% launch: 0 = uniform beam, 1 = uniform over entire surface at height zs, 2 = isotropic pt. 
+mcflag      = 2;     	% launch: 0 = uniform beam, 1 = uniform over entire surface at height zs, 2 = isotropic pt. 
 launchflag  = 0;        % 0 = let mcxyz.c calculate launch trajectory
                         % 1 = manually set launch vector.
 boundaryflag = 2;       % 0 = no boundaries, 1 = escape at boundaries
@@ -49,8 +49,8 @@ boundaryflag = 2;       % 0 = no boundaries, 1 = escape at boundaries
                         % boundaries
 
 % Sets position of source
-xs          = 0;      	% x of source [cm]
-ys          = 0;        % y of source [cm]
+xs          = 0.5;      	% x of source [cm]
+ys          = 0.5;        % y of source [cm]
 zs          = 0.02;     % z of source [cm]
 
 % Set position of focus, so mcxyz can calculate launch trajectory
