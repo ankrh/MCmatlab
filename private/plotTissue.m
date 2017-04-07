@@ -11,10 +11,10 @@ image(x,z,T-1) % -1 because the mapping of uint8 to cmap is strange ...
 xlabel('x [cm]')
 ylabel('z [cm]')
 axis equal image
-cmap = makecmap(Nt);
+cmap = makecmap();
 colormap(cmap)
 caxis([0 length(cmap)])
-colorbar%('YTickLabel',{tissueList.name},'YTick',(1:Nt)-0.5);
+colorbar('YTickLabel',{tissueList.name},'YTick',(1:Nt)-0.5);
 set(gca,'fontsize',18)
 
 text(xmax*0.9,zmin - zdiff*0.06, 'Tissue types','fontsize',18)
