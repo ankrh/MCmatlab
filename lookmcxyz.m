@@ -95,7 +95,7 @@ print('-djpeg','-r300',name)
 Fzx = squeeze(F(H_mci.Ny/2,:,:))'; % in z,x plane through source
 
 figure(2);clf
-imagesc(x,z,log10(Fzx),[-3 3])
+imagesc(x,z,log10(Fzx))
 hold on
 text(max(x)*0.9,min(z)-0.04*max(z),'log_{10}( \phi )','fontsize',18)
 colorbar
@@ -114,7 +114,7 @@ print('-djpeg','-r300',name)
 Fzy = squeeze(F(:,H_mci.Nx/2,:))'; % in z,y plane through source
 
 figure(3);clf
-imagesc(y,z,log10(Fzy),[-1 1]*3)
+imagesc(y,z,log10(Fzy))
 hold on
 text(max(x)*0.9,min(z)-0.04*max(z),'log_{10}( \phi )','fontsize',18)
 colorbar
