@@ -87,6 +87,8 @@ switch H_mci.mcflag
         end
 end
 
+axis([min(x) max(x) min(z) max(z)])
+
 name = sprintf('%s%s_tissue.jpg',directoryPath,myname);
 print('-djpeg','-r300',name)
 
@@ -140,9 +142,10 @@ for tissueNumber=1:length(tissueList)
    Ap(T==tissueNumber) = tissueList(tissueNumber).mua;
 end
 Azy = reshape(Ap(:,H_mci.Nx/2,:),H_mci.Ny,H_mci.Nz)';
+Azy = Azy.*Fzy;
 
 figure(4);clf
-imagesc(y,z,log10(Azy),[-1 1]*3)
+imagesc(y,z,log10(Azy))
 hold on
 text(max(x)*0.9,min(z)-0.04*max(z),'log_{10}( \phi )','fontsize',18)
 colorbar
