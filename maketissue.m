@@ -36,9 +36,9 @@ SAVEON      = 1;        % 1 = save myname_T.bin, myname_H.mci
 nm          = 850;       % set the range of wavelengths of the monte carlo simulation
 directoryPath = 'C:\Users\Kira Schmidt\Documents\mcxyz\';
 myname      = ['dentin_sim_' num2str(nm)];% name for files: myname_T.bin, myname_H.mci  
-time_min    = 5;      	% time duration of the simulation [min]
-Nbins       = 400;    	% # of bins in each dimension of cube 
-binsize     = 20e-4; 	% size of each bin [cm]
+time_min    = 360;      	% time duration of the simulation [min]
+Nbins       = 200;    	% # of bins in each dimension of cube 
+binsize     = 10e-4; 	% size of each bin [cm]
 
 % Set Monte Carlo launch flags
 mcflag      = 1;     	% launch: 0 = uniform beam, 1 = uniform over entire surface at height zs, 2 = isotropic pt. 
