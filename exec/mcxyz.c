@@ -380,7 +380,7 @@ int main(int argc, const char * argv[]) {
 				phi		= rnd*2.0*PI;
 				xfocus	= r*cos(phi);
 				yfocus	= r*sin(phi);
-				temp	= sqrt((x - xfocus)*(x - xfocus) + (y - yfocus)*(y - yfocus) + zfocus*zfocus);
+				temp	= sqrt((x - xfocus)*(x - xfocus) + (y - yfocus)*(y - yfocus) + (z - zfocus)*(z - zfocus));
 				ux		= -(x - xfocus)/temp;
 				uy		= -(y - yfocus)/temp;
 				uz		= sqrt(1 - ux*ux - uy*uy);
