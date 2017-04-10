@@ -447,7 +447,7 @@ int main(int argc, const char * argv[]) {
 			/**** HOP
 			 Take step to new position
 			 s = dimensionless stepsize
-			 x, uy, uz are cosines of current photon trajectory
+			 ux, uy, uz are sines of current photon trajectory
 			 *****/
 			while ((rnd = RandomNum) <= 0.0);   /* yields 0 < rnd <= 1 */
 			sleft	= -log(rnd);				/* dimensionless step */
@@ -473,7 +473,7 @@ int main(int argc, const char * argv[]) {
                     W -= absorb;					/* decrement WEIGHT by amount absorbed */
 					// If photon within volume of heterogeneity, deposit energy in F[]. 
 					// Normalize F[] later, when save output. 
-                    if (bflag) F[i] += absorb;	// only save data if blag==1, i.e., photon inside simulation cube
+                    if (bflag) F[i] += absorb;	// only save data if bflag==1, i.e., photon inside simulation cube
 					
 					/* Update sleft */
 					sleft = 0;		/* dimensionless step remaining */
@@ -510,7 +510,7 @@ int main(int argc, const char * argv[]) {
                     if (boundaryflag==0) { // Infinite medium.
 								// Check if photon has wandered outside volume.
                                 // If so, set tissue type to boundary value, but let photon wander.
-                                // Set blag to zero, so DROP does not deposit energy.
+                                // Set bflag to zero, so DROP does not deposit energy.
 						if (iz>=Nz) {iz=Nz-1; bflag = 0;}
 						if (ix>=Nx) {ix=Nx-1; bflag = 0;}
 						if (iy>=Ny) {iy=Ny-1; bflag = 0;}
