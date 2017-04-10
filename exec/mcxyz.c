@@ -104,7 +104,7 @@ int main(int argc, const char * argv[]) {
 	
 	/* launch parameters */
 	int		mcflag, launchflag, boundaryflag;
-	float	xfocus, yfocus, zfocus;
+	float	xfocus, yfocus, zfocus, xtarget, ytarget, ztarget;
 	float	ux0, uy0, uz0;
 	float	radius;
 	float	waist;
@@ -378,11 +378,12 @@ int main(int argc, const char * argv[]) {
 				r		= waist*sqrt(rnd); // radius of beam at focus
 				while ((rnd = RandomGen(1,0,NULL)) <= 0.0); // avoids rnd = 0
 				phi		= rnd*2.0*PI;
-				xfocus	= r*cos(phi);
-				yfocus	= r*sin(phi);
-				temp	= sqrt((x - xfocus)*(x - xfocus) + (y - yfocus)*(y - yfocus) + (z - zfocus)*(z - zfocus));
-				ux		= -(x - xfocus)/temp;
-				uy		= -(y - yfocus)/temp;
+				xtarget	= xfocus + r*cos(phi);
+				ytarget	= yfocus + r*sin(phi);
+				ztarget = zfocus;
+				temp	= sqrt((x - xtarget)*(x - xtarget) + (y - ytarget)*(y - ytarget) + (z - ztarget)*(z - ztarget));
+				ux		= -(x - xtarget)/temp;
+				uy		= -(y - ytarget)/temp;
 				uz		= sqrt(1 - ux*ux - uy*uy);
 			}
 			else if (mcflag==1) { // Uniform input over entire surface
