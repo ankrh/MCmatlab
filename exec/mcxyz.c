@@ -383,7 +383,7 @@ int main(int argc, const char * argv[]) {
 				temp	= sqrt((x - xfocus)*(x - xfocus) + (y - yfocus)*(y - yfocus) + zfocus*zfocus);
 				ux		= -(x - xfocus)/temp;
 				uy		= -(y - yfocus)/temp;
-				uz		= sqrt(1 - ux*ux + uy*uy);
+				uz		= sqrt(1 - ux*ux - uy*uy);
 			}
 			else if (mcflag==1) { // Uniform input over entire surface
 				while ((rnd = RandomGen(1,0,NULL)) <= 0.0); // avoids rnd = 0
