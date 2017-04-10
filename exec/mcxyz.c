@@ -392,8 +392,8 @@ int main(int argc, const char * argv[]) {
 				y		= Ny*dy*(rnd-0.5); // Generates a random y coordinate within the box
 				z = zs;
 				// set trajectory to be in the z direction
-				ux			= 1;
-				uy			= 1;
+				ux			= 0;
+				uy			= 0;
 				uz			= 1;
 			}
 			else { // isotropic pt source
