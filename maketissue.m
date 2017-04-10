@@ -36,9 +36,9 @@ SAVEON      = 1;        % 1 = save myname_T.bin, myname_H.mci
 nm          = 850;       % set the range of wavelengths of the monte carlo simulation
 directoryPath = 'C:\Users\Kira Schmidt\Documents\mcxyz\';
 myname      = ['dentin_sim_' num2str(nm)];% name for files: myname_T.bin, myname_H.mci  
-time_min    = 360;      	% time duration of the simulation [min]
-Nbins       = 200;    	% # of bins in each dimension of cube 
-binsize     = 10e-4; 	% size of each bin [cm]
+time_min    = 600;      	% time duration of the simulation [min]
+Nbins       = 250;    	% # of bins in each dimension of cube 
+binsize     = 25e-4; 	% size of each bin [cm]
 
 % Set Monte Carlo launch flags
 mcflag      = 1;     	% launch: 0 = uniform beam, 1 = uniform over entire surface at height zs, 2 = isotropic pt. 
@@ -59,7 +59,7 @@ yfocus      = 0;        % set y,position of focus
 zfocus      = inf;    	% set z,position of focus (=inf for collimated beam)
 
 % only used if mcflag == 0 (uniform beam)
-radius      = 0.2;      % 1/e radius of beam at tissue surface
+radius      = 0.05;      % 1/e radius of beam at tissue surface
 waist       = 0.010;  	% 1/e radius of beam at focus
 
 % only used if launchflag == 1 (manually set launch trajectory):
@@ -101,98 +101,139 @@ if isinf(zfocus), zfocus = 1e12; end
 %   Note: one need not use every tissue type in the tissue list.
 %   The tissue list is a library of possible tissue types.
 
-T = uint8(3*ones(Ny,Nx,Nz)); % fill background with skin (dermis)
+T = uint8(3*ones(Ny,Nx,Nz)); % fill background with air
 
 zsurf       = 0.01;  % position of [cm]
-dentin_depth = 0.02
-enamel_depth = 0.3; % Enamel depth [cm]
+dentin_depth = 0.26;
+enamel_depth = 0.001; % Enamel depth [cm]
 dentin_thick = 0.25; %Thickness of the dentin [cm]
 enamel_thick = 0.25; %thickness of enamel [cm]
 
-% hair_diameter = 0.0075; % varies from 17 - 180 micrometers, should increase with colouring and age
-% hair_radius = hair_diameter/2;      	% hair radius [cm]
-% hair_bulb_radius = 1.7*hair_radius; % [cm]
-% ratio_papilla=5/12;
-% papilla_radius = hair_bulb_radius*ratio_papilla;
-% hair_depth = 0.1; % varies from 0.06-0.3cm
-% xi_start = Nx/2-round(hair_radius/dx);
-% xi_end = Nx/2+round(hair_radius/dx);
-% yi_start = Ny/2-round(hair_radius/dy);
-% yi_end = Ny/2+round(hair_radius/dy);
+enamel_diameter = 0.2; % varies from 17 - 180 micrometers, should decrease with age
+enamel_radius = enamel_diameter/2;      	% hair radius [cm]
 
-% xi_start2 = Nx/2-round(hair_bulb_radius/dx);
-% xi_end2 = Nx/2+round(hair_bulb_radius/dx);
-% yi_start2 = Ny/2-round(hair_bulb_radius/dy);
-% yi_end2 = Ny/2+round(hair_bulb_radius/dy);
+xi_start = Nx/2-round(enamel_radius/dx);
+xi_end = Nx/2+round(enamel_radius/dx);
+yi_start = Ny/2-round(enamel_radius/dy);
+yi_end = Ny/2+round(enamel_radius/dy);
+
+xi_start2 = Nx/2-round(enamel_radius/dx);
+xi_end2 = Nx/2+round(enamel_radius/dx);
+yi_start2 = Ny/2-round(enamel_radius/dy);
+yi_end2 = Ny/2+round(enamel_radius/dy);
 
 for iz=1:Nz % for every depth z(iz)
+ 
     
+% enamel and dentin for only cross sectional model     
     %enamel
-    if iz>round((zsurf+enamel_depth)/dz) && iz<=round((zsurf+enamel_depth+enamel_thick)/dz)
-        T(:,:,iz) = 2;
-    end
-    % dentin
-    if iz>round((zsurf+dentin_depth)/dz) && iz<=round((zsurf+dentin_depth+dentin_thick)/dz)
-        T(:,:,iz) = 1;
-    end
-    
-    % Gel
-    %if iz<=round(zsurf/dz)
-       % T(:,:,iz) = 10;
+    %if iz>round((zsurf+enamel_depth)/dz) && iz<=round((zsurf+enamel_depth+enamel_thick)/dz)
+    %   T(:,:,iz) = 2;
     %end
+    % dentin
+    %if iz>round((zsurf+dentin_depth)/dz) && iz<=round((zsurf+dentin_depth+dentin_thick)/dz)
+    %    T(:,:,iz) = 1;
+    %end
+    
 
-%     % epidermis (60 um thick)
-%     if iz>round(zsurf/dz) && iz<=round((zsurf+0.0060)/dz)
-%         T(:,:,iz) = 5; 
-%     end
-% 
-%     % blood vessel @ xc, zc, radius, oriented along y axis
-%     xc      = 0;            % [cm], center of blood vessel
-%     zc      = Nz/2*dz;     	% [cm], center of blood vessel
-%     vesselradius  = 0.0100;      	% blood vessel radius [cm]
-%     for ix=1:Nx
-%             xd = x(ix) - xc;	% vessel, x distance from vessel center
-%             zd = z(iz) - zc;   	% vessel, z distance from vessel center                
-%             r  = sqrt(xd^2 + zd^2);	% r from vessel center
-%             if (r<=vesselradius)     	% if r is within vessel
-%                 T(:,ix,iz) = 3; % blood
-%             end
-% 
-%     end %ix
+    
 %     
-%     % Hair @ xc, yc, radius, oriented along z axis
-%     xc      = 0;            % [cm], center of hair
-%     yc      = 0;     	% [cm], center of hair
-%     zc      = zsurf+hair_depth; % center of hair bulb
-%     zc_papilla = zsurf+hair_depth+sqrt(2)*(1-ratio_papilla)*hair_bulb_radius; %[cm] z-coordinate center of the papilla
-%     if iz>round(zsurf/dz) && iz<=round((zsurf+hair_depth)/dz)
-%         for ix=xi_start:xi_end
+%Enamel @ xc, zc, radius, oriented along y axis
+     yc      = 0;            % [cm], center of blood vessel
+     zc      = Nz/2*dz;     	% [cm], center of blood vessel
+    enamelradius  = 0.300;      	% blood vessel radius [cm]
+     for iy=1:Ny
+             yd = y(iy) - yc;	% vessel, x distance from vessel center
+             zd = z(iz) - zc;   	% vessel, z distance from vessel center                
+             r  = sqrt(yd^2 + zd^2);	% r from vessel center
+             if (r<=enamelradius)     	% if r is within vessel
+                 T(:,iy,iz) = 2; % blood
+             end
+ 
+     end %ix
+
+
+%Dentin @ xc, zc, radius, oriented along y axis
+     yc      = 0;            % [cm], center of blood vessel
+     zc      = Nz/2*dz;     	% [cm], center of blood vessel
+     dentinradius  = 0.200;      	% blood vessel radius [cm]
+     for iy=1:Ny
+             yd = y(iy) - yc;	% vessel, x distance from vessel center
+             zd = z(iz) - zc;   	% vessel, z distance from vessel center                
+             r  = sqrt(yd^2 + zd^2);	% r from vessel center
+             if (r<=dentinradius)     	% if r is within vessel
+                 T(:,iy,iz) = 1; % blood
+             end
+ 
+     end %ix
+     
+%Blood @ xc, zc, radius, oriented along y axis
+     yc      = 0;            % [cm], center of blood vessel
+     zc      = Nz/2*dz;     	% [cm], center of blood vessel
+     vesselradius  = 0.050;      	% blood vessel radius [cm]
+     for iy=1:Ny
+             yd = y(iy) - yc;	% vessel, x distance from vessel center
+             zd = z(iz) - zc;   	% vessel, z distance from vessel center                
+             r  = sqrt(yd^2 + zd^2);	% r from vessel center
+             if (r<=vesselradius)     	% if r is within vessel
+                 T(:,iy,iz) = 5; % blood
+             end
+ 
+     end %ix     
+
+    
+% Hair @ xc, yc, radius, oriented along z axis
+%      xc      = 0.02;            % [cm], center of hair
+%      yc      = 0.02;     	% [cm], center of hair
+%      zc      = zsurf+enamel_depth; % center of hair bulb
+%      %zc_enamel = zsurf+enamel_depth+sqrt(2)*(1-ratio_enamel)*enamel_radius; %[cm] z-coordinate center of the papilla
+%      %if iz>round(zsurf/dz) && iz<=round((zsurf+enamel_depth)/dz)
+%          for ix=xi_start:xi_end
 %             for iy=yi_start:yi_end
-%                 xd = x(ix) - xc;	% vessel, x distance from vessel center
-%                 yd = y(iy) - yc;   	% vessel, z distance from vessel center
-%                 zd = z(iz)-zc;
-%                 r  = sqrt(xd^2 + yd^2);	% radius from vessel center
-%                 if (r<=hair_radius)     	% if r is within hair
-%                     T(iy,ix,iz) = 9; % hair
-%                 end
-%             end % iy
-%             
-%         end %ix
-%     end
+%                  xd = x(ix) - xc;	% vessel, x distance from vessel center
+%                  yd = y(iy) - yc;   	% vessel, z distance from vessel center
+%                  zd = z(iz)-zc;
+%                  r  = sqrt(xd^2 + yd^2);	% radius from vessel center
+%                  if (r<=enamel_radius)     	% if r is within hair
+%                      T(iy,ix,iz) = 2; % enamel 
+%                  end
+%              end % iy
+%              
+%          end %ix
+%      end  
+    
+%blood vessel @ xc, zc, radius, oriented along y axis
+     %xc      = 0;            % [cm], center of blood vessel
+     %zc      = Nz/2*dz;     	% [cm], center of blood vessel
+     %vesselradius  = 0.100;      	% blood vessel radius [cm]
+     %for ix=1:Nx
+        %     xd = x(ix) - xc;	% vessel, x distance from vessel center
+         %    zd = z(iz) - zc;   	% vessel, z distance from vessel center                
+         %    r  = sqrt(xd^2 + zd^2);	% r from vessel center
+          %   if (r<=vesselradius)     	% if r is within vessel
+           %      T(:,ix,iz) = 1; % blood
+           %  end
+ 
+     %end %ix
+%    
+% 
 %
 %     % Hair Bulb
-%     for ix=xi_start2:xi_end2
-%         for iy=yi_start2:yi_end2
-%             xd = x(ix) - xc;	% vessel, x distance from vessel center
-%             yd = y(iy) - yc;   	% vessel, z distance from vessel center
-%             zd = z(iz)-zc;
-%             r2 = sqrt(xd^2 + yd^2 + 1/2*zd^2); % radius from bulb center
-%             if (r2<=hair_bulb_radius)     	% if r2 is within hair bulb
-%                 T(iy,ix,iz) = 9; % hair
-%             end
-%         end % iy
-%         
-%     end %ix
+%    for ix=xi_start2:xi_end2
+%        for iy=yi_start2:yi_end2
+%              xc = 0.02; 
+%              yc = 0.02;
+%              zc = 0.01;
+%              xd = x(ix) - xc;	% vessel, x distance from vessel center
+%              yd = y(iy) - yc;   	% vessel, z distance from vessel center
+%              zd = z(iz)-zc;
+%              r2 = sqrt(xd^2 + yd^2 + 1/2*zd^2); % radius from bulb center
+%              if (r2<=enamel_radius)     	% if r2 is within hair bulb
+%                  T(iy,ix,iz) = 4; % hair
+%              end
+%          end % iy
+%          
+%      end %ix
 %
 %     % Papilla
 %     for ix=xi_start2:xi_end2
@@ -207,8 +248,9 @@ for iz=1:Nz % for every depth z(iz)
 %         end % iy
 %         
 %     end %ix
-
 end % iz
+
+%T= shiftdim(T,1); % shifts dimension to have the light coming from side
 
 %% Write the files
 if SAVEON
