@@ -364,7 +364,7 @@ int main(int argc, const char * argv[]) {
 			uz	= uz0;
 		}
 		else { // use mcflag
-			if (mcflag==0) { // uniform beam
+			if (mcflag==0) { // top hat beam
 				// set launch point and width of beam
 				while ((rnd = RandomGen(1,0,NULL)) <= 0.0); // avoids rnd = 0
 				r		= radius*sqrt(rnd); // radius of beam at launch point
@@ -386,7 +386,7 @@ int main(int argc, const char * argv[]) {
 				uy		= -(y - ytarget)/temp;
 				uz		= sqrt(1 - ux*ux - uy*uy);
 			}
-			else if (mcflag==1) { // Uniform input over entire surface
+			else if (mcflag==1) { // infinite plane wave over entire surface
 				while ((rnd = RandomGen(1,0,NULL)) <= 0.0); // avoids rnd = 0
 				x		= Nx*dx*(rnd-0.5); // Generates a random x coordinate within the box
 				while ((rnd = RandomGen(1,0,NULL)) <= 0.0); // avoids rnd = 0
