@@ -104,7 +104,7 @@ int main(int argc, const char * argv[]) {
 	
 	/* launch parameters */
 	int		mcflag, launchflag, boundaryflag;
-	float	xfocus, yfocus, zfocus;
+	float	xfocus, yfocus, zfocus, xtarget, ytarget, ztarget;
 	float	ux0, uy0, uz0;
 	float	radius;
 	float	waist;
@@ -364,7 +364,7 @@ int main(int argc, const char * argv[]) {
 			uz	= uz0;
 		}
 		else { // use mcflag
-			if (mcflag==0) { // uniform beam
+			if (mcflag==0) { // top hat beam
 				// set launch point and width of beam
 				while ((rnd = RandomGen(1,0,NULL)) <= 0.0); // avoids rnd = 0
 				r		= radius*sqrt(rnd); // radius of beam at launch point
@@ -378,22 +378,23 @@ int main(int argc, const char * argv[]) {
 				r		= waist*sqrt(rnd); // radius of beam at focus
 				while ((rnd = RandomGen(1,0,NULL)) <= 0.0); // avoids rnd = 0
 				phi		= rnd*2.0*PI;
-				xfocus	= r*cos(phi);
-				yfocus	= r*sin(phi);
-				temp	= sqrt((x - xfocus)*(x - xfocus) + (y - yfocus)*(y - yfocus) + zfocus*zfocus);
-				ux		= -(x - xfocus)/temp;
-				uy		= -(y - yfocus)/temp;
-				uz		= sqrt(1 - ux*ux + uy*uy);
+				xtarget	= xfocus + r*cos(phi);
+				ytarget	= yfocus + r*sin(phi);
+				ztarget = zfocus;
+				temp	= sqrt((x - xtarget)*(x - xtarget) + (y - ytarget)*(y - ytarget) + (z - ztarget)*(z - ztarget));
+				ux		= -(x - xtarget)/temp;
+				uy		= -(y - ytarget)/temp;
+				uz		= sqrt(1 - ux*ux - uy*uy);
 			}
-			else if (mcflag==1) { // Uniform input over entire surface
+			else if (mcflag==1) { // infinite plane wave over entire surface
 				while ((rnd = RandomGen(1,0,NULL)) <= 0.0); // avoids rnd = 0
 				x		= Nx*dx*(rnd-0.5); // Generates a random x coordinate within the box
 				while ((rnd = RandomGen(1,0,NULL)) <= 0.0); // avoids rnd = 0
 				y		= Ny*dy*(rnd-0.5); // Generates a random y coordinate within the box
 				z = zs;
 				// set trajectory to be in the z direction
-				ux			= 1;
-				uy			= 1;
+				ux			= 0;
+				uy			= 0;
 				uz			= 1;
 			}
 			else { // isotropic pt source
@@ -446,7 +447,7 @@ int main(int argc, const char * argv[]) {
 			/**** HOP
 			 Take step to new position
 			 s = dimensionless stepsize
-			 x, uy, uz are cosines of current photon trajectory
+			 ux, uy, uz are sines of current photon trajectory
 			 *****/
 			while ((rnd = RandomNum) <= 0.0);   /* yields 0 < rnd <= 1 */
 			sleft	= -log(rnd);				/* dimensionless step */
@@ -472,7 +473,7 @@ int main(int argc, const char * argv[]) {
                     W -= absorb;					/* decrement WEIGHT by amount absorbed */
 					// If photon within volume of heterogeneity, deposit energy in F[]. 
 					// Normalize F[] later, when save output. 
-                    if (bflag) F[i] += absorb;	// only save data if blag==1, i.e., photon inside simulation cube
+                    if (bflag) F[i] += absorb;	// only save data if bflag==1, i.e., photon inside simulation cube
 					
 					/* Update sleft */
 					sleft = 0;		/* dimensionless step remaining */
@@ -509,7 +510,7 @@ int main(int argc, const char * argv[]) {
                     if (boundaryflag==0) { // Infinite medium.
 								// Check if photon has wandered outside volume.
                                 // If so, set tissue type to boundary value, but let photon wander.
-                                // Set blag to zero, so DROP does not deposit energy.
+                                // Set bflag to zero, so DROP does not deposit energy.
 						if (iz>=Nz) {iz=Nz-1; bflag = 0;}
 						if (ix>=Nx) {ix=Nx-1; bflag = 0;}
 						if (iy>=Ny) {iy=Ny-1; bflag = 0;}

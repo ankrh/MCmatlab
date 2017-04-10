@@ -41,7 +41,7 @@ Nbins       = 250;    	% # of bins in each dimension of cube
 binsize     = 25e-4; 	% size of each bin [cm]
 
 % Set Monte Carlo launch flags
-mcflag      = 1;     	% launch: 0 = uniform beam, 1 = uniform over entire surface at height zs, 2 = isotropic pt. 
+mcflag      = 1;     	% launch: 0 = top hat beam, 1 = infinite plane wave over entire surface, 2 = isotropic pt. 
 launchflag  = 0;        % 0 = let mcxyz.c calculate launch trajectory
                         % 1 = manually set launch vector.
 boundaryflag = 2;       % 0 = no boundaries, 1 = escape at boundaries
@@ -51,7 +51,7 @@ boundaryflag = 2;       % 0 = no boundaries, 1 = escape at boundaries
 % Sets position of source
 xs          = 0;      	% x of source [cm]
 ys          = 0;        % y of source [cm]
-zs          = 0;     % z of source [cm]
+zs          = 0;        % z of source [cm]
 
 % Set position of focus, so mcxyz can calculate launch trajectory
 xfocus      = 0;        % set x,position of focus
