@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <time.h>
 
 #define Ntiss		19          /* Number of tissue types. */
@@ -47,7 +48,6 @@
 #define DEAD        0    		/* if photon is to be terminated */
 #define THRESHOLD   0.01		/* used in roulette */
 #define CHANCE      0.1  		/* used in roulette */
-#define Boolean     char
 #define SQR(x)		(x*x) 
 #define SIGN(x)     ((x)>=0 ? 1:-1)
 #define RandomNum   (double) RandomGen(1, 0, NULL) /* Calls for a random number. */
@@ -58,7 +58,7 @@
 /* DECLARE FUNCTIONS */
 double RandomGen(char Type, long Seed, long *Status);  
 /* Random number generator */
-Boolean SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2, double dx,double dy,double dz);
+bool SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2, double dx,double dy,double dz);
 /* Asks,"In the same voxel?" */
 double max2(double a, double b);
 double min2(double a, double b);
@@ -93,8 +93,8 @@ int main(int argc, const char * argv[]) {
 	long	i_photon;       /* current photon */
 	double	W;              /* photon weight */
 	double	absorb;         /* weighted deposited in a step due to absorption */
-	short   photon_status;  /* flag = ALIVE=1 or DEAD=0 */
-	Boolean sv;             /* Are they in the same voxel? */
+	bool    photon_status;  /* flag = ALIVE=1 or DEAD=0 */
+	bool    sv;             /* Are they in the same voxel? */
 	
 	/* other variables */
 	double	mua;            /* absorption coefficient [cm^-1] */
@@ -116,7 +116,7 @@ int main(int argc, const char * argv[]) {
 	double	tempx, tempy, tempz; /* temporary variables, used during photon step. */
 	int 	ix, iy, iz;     /* Added. Used to track photons */
 	double 	temp;           /* dummy variable */
-    int     bflag;          /* boundary flag:  0 = photon inside volume. 1 = outside volume */
+    bool    bflag;          /* boundary flag:  0 = photon inside volume. 1 = outside volume */
 	int		CNT;
 	
 	/* mcxyz bin variables */
@@ -223,8 +223,8 @@ int main(int argc, const char * argv[]) {
     printf("ys = %0.4f [cm]\n",ys);
     printf("zs = %0.4f [cm]\n",zs);
     printf("mcflag = %d [cm]\n",mcflag);
-    if (mcflag==0) printf("launching uniform flat-field beam\n");
-    if (mcflag==1) printf("launching Gaissian beam\n");
+    if (mcflag==0) printf("launching top hat beam\n");
+    if (mcflag==1) printf("launching plane wave beam\n");
     if (mcflag==2) printf("launching isotropic point source\n");
     printf("xfocus = %0.4f [cm]\n",xfocus);
     printf("yfocus = %0.4f [cm]\n",yfocus);
@@ -742,7 +742,7 @@ double RandomGen(char Type, long Seed, long *Status){
  *  Determine if the two position are located in the same voxel
  *	Returns 1 if same voxel, 0 if not same voxel.
  ****/				
-Boolean SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2, double dx,double dy,double dz)
+bool SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2, double dx,double dy,double dz)
 {
     double xmin=min2((floor)(x1/dx),(floor)(x2/dx))*dx;
     double ymin=min2((floor)(y1/dy),(floor)(y2/dy))*dy;
@@ -750,7 +750,7 @@ Boolean SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2
     double xmax = xmin+dx;
     double ymax = ymin+dy;
     double zmax = zmin+dz;
-    Boolean sv=0;
+    bool sv=0;
     
     sv=(x1<=xmax && x2<=xmax && y1<=ymax && y2<=ymax && z1<zmax && z2<=zmax);
     return (sv);
