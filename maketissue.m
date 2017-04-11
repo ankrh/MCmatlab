@@ -339,5 +339,8 @@ end
 
 axis([min(x) max(x) min(z) max(z)])
 
+figure(2);clf;
+plotVolumetric(x,y,z,T,tissueList)
+
 disp('done')
 

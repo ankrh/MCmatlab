@@ -143,7 +143,7 @@ figure(5);clf;
 plotVolumetric(x,y,z,F);
 
 %% calculate Power Absorbtion
-%{
+
 % F, matrix with fluency / input power
 % T, Matrix containing tissue types
 % tissueList, list of tissue properties tissueProps( tissue type, #) # = 1 is mua, # = 2 is mus, # = 3 is g
@@ -152,6 +152,11 @@ Ap = zeros(size(T));
 for tissueNumber=1:length(tissueList)
    Ap(T==tissueNumber) = tissueList(tissueNumber).mua;
 end
+
+figure(6);clf;
+plotVolumetric(x,y,z,Ap.*F);
+
+%{
 Azy = reshape(Ap(:,H_mci.Nx/2,:),H_mci.Ny,H_mci.Nz)';
 Azy = Azy.*Fzy;
 
