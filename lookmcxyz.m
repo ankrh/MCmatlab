@@ -49,23 +49,22 @@ clear data
 
 %%
 x = ((1:H_mci.Nx)-H_mci.Nx/2-1/2)*H_mci.dx;
-y = ((1:H_mci.Ny)-H_mci.Ny/2-1/2)*H_mci.dx;
+y = ((1:H_mci.Ny)-H_mci.Ny/2-1/2)*H_mci.dy;
 z = ((1:H_mci.Nz)-1/2)*H_mci.dz;
-xmin = min(x);
-xmax = max(x);
-
-%% Look at structure, Tzx
-Tzx = squeeze(T(H_mci.Ny/2,:,:))'; % Tyxz -> Txz -> Tzx
 tissueList = makeTissueList(nm);
 
-figure(1); clf
-plotTissue(Tzx,tissueList,x,z)
-hold on
+%% Look at structure, Tzx
+
+% Tzx = squeeze(T(H_mci.Ny/2,:,:))'; % Tyxz -> Txz -> Tzx
+% figure(1); clf
+% plotTissue(Tzx,tissueList,x,z)
+% hold on
 
 %% draw launch
+%{
 N = 10; % # of beam rays drawn
 switch H_mci.mcflag
-    case 0 % uniform
+    case 0 % top hat
         for i=0:N
             for j=-2:2
             plot( [H_mci.xs+H_mci.radius*i/N H_mci.xfocus + H_mci.waist*j/2],[H_mci.zs H_mci.zfocus],'r-')
@@ -73,7 +72,7 @@ switch H_mci.mcflag
             end
         end
 
-    case 1 % uniform over entire surface at height H_mci.zs
+    case 1 % infinite plane wave over entire surface at height H_mci.zs
         for i=0:N
             plot( [xmin + (xmax-xmin)*i/N xmin + (xmax-xmin)*i/N],[H_mci.zs H_mci.zfocus],'r-')
         end
@@ -91,12 +90,18 @@ axis([min(x) max(x) min(z) max(z)])
 
 name = sprintf('%s%s_tissue.jpg',directoryPath,myname);
 print('-djpeg','-r300',name)
+%}
 
+%% Make volumetric tissue plot
+
+figure(2);clf;
+plotVolumetric(x,y,z,T,tissueList);
 
 %% Look at Fluence Fzx @ launch point
+%{
 Fzx = squeeze(F(H_mci.Ny/2,:,:))'; % in z,x plane through source
 
-figure(2);clf
+figure(3);clf
 imagesc(x,z,log10(Fzx))
 hold on
 text(max(x)*0.9,min(z)-0.04*max(z),'log_{10}( \phi )','fontsize',18)
@@ -115,7 +120,7 @@ print('-djpeg','-r300',name)
 %% look Fzy
 Fzy = squeeze(F(:,H_mci.Nx/2,:))'; % in z,y plane through source
 
-figure(3);clf
+figure(4);clf
 imagesc(y,z,log10(Fzy))
 hold on
 text(max(x)*0.9,min(z)-0.04*max(z),'log_{10}( \phi )','fontsize',18)
@@ -131,8 +136,14 @@ name = sprintf('%s%s_Fzy.jpg',directoryPath,myname);
 print('-djpeg','-r300',name)
 
 drawnow
-%% calculate Power Absorbtion
+%}
+%% Make volumetric fluence plot
 
+figure(5);clf;
+plotVolumetric(x,y,z,F);
+
+%% calculate Power Absorbtion
+%{
 % F, matrix with fluency / input power
 % T, Matrix containing tissue types
 % tissueList, list of tissue properties tissueProps( tissue type, #) # = 1 is mua, # = 2 is mus, # = 3 is g
@@ -144,7 +155,7 @@ end
 Azy = reshape(Ap(:,H_mci.Nx/2,:),H_mci.Ny,H_mci.Nz)';
 Azy = Azy.*Fzy;
 
-figure(4);clf
+figure(6);clf
 imagesc(y,z,log10(Azy))
 hold on
 text(max(x)*0.9,min(z)-0.04*max(z),'log_{10}( \phi )','fontsize',18)
@@ -173,7 +184,9 @@ if saveon_HeatSim==1
 end
 
 disp('done')
+%}
 
+return
 %% Ryx
 % NOT READY
 % fname = sprintf('%s_Ryx.bin',myname);
