@@ -34,7 +34,7 @@ SAVEON      = 1;        % 1 = save myname_T.bin, myname_H.mci
                         % 0 = don't save. Just check the program.
                         
 nm          = 850;       % set the range of wavelengths of the monte carlo simulation
-directoryPath = 'C:\Users\Kira Schmidt\Documents\mcxyz\';
+directoryPath = 'Data/';
 myname      = ['dentin_sim_' num2str(nm)];% name for files: myname_T.bin, myname_H.mci  
 time_min    = 600;      	% time duration of the simulation [min]
 Nbins       = 250;    	% # of bins in each dimension of cube 

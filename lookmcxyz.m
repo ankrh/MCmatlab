@@ -16,7 +16,7 @@ function lookmcxyz
 %
 
 %% USER CHOICES <---------- you must specify -----
-directoryPath = 'C:\Users\Kira Schmidt\Documents\mcxyz\exec\';
+directoryPath = 'Data/';
 myname = 'dentin_sim_850';
 nm     = 850;
 saveon_HeatSim = 1;
