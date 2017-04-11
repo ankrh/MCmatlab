@@ -49,7 +49,7 @@ clear data
 
 %%
 x = ((1:H_mci.Nx)-H_mci.Nx/2-1/2)*H_mci.dx;
-y = ((1:H_mci.Ny)-H_mci.Ny/2-1/2)*H_mci.dx;
+y = ((1:H_mci.Ny)-H_mci.Ny/2-1/2)*H_mci.dy;
 z = ((1:H_mci.Nz)-1/2)*H_mci.dz;
 xmin = min(x);
 xmax = max(x);
