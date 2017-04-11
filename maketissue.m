@@ -58,7 +58,7 @@ xfocus      = 0;        % set x,position of focus
 yfocus      = 0;        % set y,position of focus
 zfocus      = inf;    	% set z,position of focus (=inf for collimated beam)
 
-% only used if mcflag == 0 (uniform beam)
+% only used if mcflag == 0 (top hat beam)
 radius      = 0.05;      % 1/e radius of beam at tissue surface
 waist       = 0.010;  	% 1/e radius of beam at focus
 
