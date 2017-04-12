@@ -116,6 +116,7 @@ int main(int argc, const char * argv[]) {
 	double	tempx, tempy, tempz; /* temporary variables, used during photon step. */
 	int 	ix, iy, iz;     /* Added. Used to track photons */
 	double 	temp;           /* dummy variable */
+	int     pctprogress;    /* Simulation progress in percent */
     bool    bflag;          /* boundary flag:  0 = photon inside volume. 1 = outside volume */
 	int		CNT;
 	
@@ -329,13 +330,11 @@ int main(int argc, const char * argv[]) {
 		
 		// Print out message about progress.
 		if ((i_photon>1000) & (fmod(i_photon, (int)(Nphotons/100))  == 0)) {
-            temp = i_photon/Nphotons*100;
+            pctprogress = i_photon/Nphotons*100;
             //printf("%0.1f%% \t\tfmod = %0.3f\n", temp,fmod(temp, 10.0));
-            if ((temp<10) | (temp>90)){
-                printf("%0.0f%% done\n", i_photon/Nphotons*100);
+            if ((pctprogress<10) | (pctprogress>90) | (fmod(pctprogress, 10)==0)){
+                printf("%i%% done\n", pctprogress);
             }
-            else if(fmod(temp, 10.0)>9)
-                printf("%0.0f%% done\n", i_photon/Nphotons*100);
         }
         
 		// At 1000th photon, update Nphotons to achieve desired runtime (time_min)
