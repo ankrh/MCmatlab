@@ -39,6 +39,13 @@ myname      = ['dentin_sim_' num2str(nm)];% name for files: myname_T.bin, myname
 time_min    = 600;      	% time duration of the simulation [min]
 Nbins       = 250;    	% # of bins in each dimension of cube 
 binsize     = 25e-4; 	% size of each bin [cm]
+time_min    = 2;      	% time duration of the simulation [min]
+Nx = 50;               % # of bins in the x direction
+Ny = Nx;                % # of bins in the y direction
+Nz = Nx;                % # of bins in the z direction
+dx = 1/Nx;              % size of x bins [cm]
+dy = dx;                % size of y bins [cm]
+dz = dx;                % size of z bins [cm]
 
 % Set Monte Carlo launch flags
 mcflag      = 1;     	% launch: 0 = top hat beam, 1 = infinite plane wave over entire surface, 2 = isotropic pt. 
@@ -80,12 +87,6 @@ for i=Nt:-1:1
 end
 
 % Specify Monte Carlo parameters    
-Nx = Nbins;
-Ny = Nbins;
-Nz = Nbins;
-dx = binsize;
-dy = binsize;
-dz = binsize;
 x  = ((1:Nx)'-Nx/2)*dx;
 y  = ((1:Ny)'-Ny/2)*dy;
 z  = (1:Nz)'*dz;
@@ -270,30 +271,30 @@ if SAVEON
         fprintf(fid,'%d\n'   ,Nx);
         fprintf(fid,'%d\n'   ,Ny);
         fprintf(fid,'%d\n'   ,Nz);
-        fprintf(fid,'%0.4f\n',dx);
-        fprintf(fid,'%0.4f\n',dy);
-        fprintf(fid,'%0.4f\n',dz);
+        fprintf(fid,'%0.8f\n',dx);
+        fprintf(fid,'%0.8f\n',dy);
+        fprintf(fid,'%0.8f\n',dz);
         % launch parameters
         fprintf(fid,'%d\n'   ,mcflag);
         fprintf(fid,'%d\n'   ,launchflag);
         fprintf(fid,'%d\n'   ,boundaryflag);
-        fprintf(fid,'%0.4f\n',xs);
-        fprintf(fid,'%0.4f\n',ys);
-        fprintf(fid,'%0.4f\n',zs);
-        fprintf(fid,'%0.4f\n',xfocus);
-        fprintf(fid,'%0.4f\n',yfocus);
-        fprintf(fid,'%0.4f\n',zfocus);
-        fprintf(fid,'%0.4f\n',ux0); % if manually setting ux,uy,uz
-        fprintf(fid,'%0.4f\n',uy0);
-        fprintf(fid,'%0.4f\n',uz0);
-        fprintf(fid,'%0.4f\n',radius);
-        fprintf(fid,'%0.4f\n',waist);
+        fprintf(fid,'%0.8f\n',xs);
+        fprintf(fid,'%0.8f\n',ys);
+        fprintf(fid,'%0.8f\n',zs);
+        fprintf(fid,'%0.8f\n',xfocus);
+        fprintf(fid,'%0.8f\n',yfocus);
+        fprintf(fid,'%0.8f\n',zfocus);
+        fprintf(fid,'%0.8f\n',ux0); % if manually setting ux,uy,uz
+        fprintf(fid,'%0.8f\n',uy0);
+        fprintf(fid,'%0.8f\n',uz0);
+        fprintf(fid,'%0.8f\n',radius);
+        fprintf(fid,'%0.8f\n',waist);
         % tissue optical properties
         fprintf(fid,'%d\n',Nt);
         for i=1:Nt
-            fprintf(fid,'%0.4f\n',muav(i));
-            fprintf(fid,'%0.4f\n',musv(i));
-            fprintf(fid,'%0.4f\n',gv(i));
+            fprintf(fid,'%0.8f\n',muav(i));
+            fprintf(fid,'%0.8f\n',musv(i));
+            fprintf(fid,'%0.8f\n',gv(i));
         end
     fclose(fid);
 
@@ -341,6 +342,7 @@ axis([min(x) max(x) min(z) max(z)])
 
 figure(2);clf;
 plotVolumetric(x,y,z,T,tissueList)
+title('Tissue type illustration');
 
 disp('done')
 

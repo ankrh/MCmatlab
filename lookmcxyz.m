@@ -96,6 +96,7 @@ print('-djpeg','-r300',name)
 
 figure(2);clf;
 plotVolumetric(x,y,z,T,tissueList);
+title('Tissue type illustration');
 
 %% Look at Fluence Fzx @ launch point
 %{
@@ -141,6 +142,7 @@ drawnow
 
 figure(5);clf;
 plotVolumetric(x,y,z,F);
+title('Fluence rate (Intensity) [W/cm^2/W.delivered] ')
 
 %% calculate Power Absorbtion
 
@@ -155,6 +157,7 @@ end
 
 figure(6);clf;
 plotVolumetric(x,y,z,Ap.*F);
+title('Absorbed power per unit volume [W/cm^3/W.delivered] ')
 
 %{
 Azy = reshape(Ap(:,H_mci.Nx/2,:),H_mci.Ny,H_mci.Nz)';
