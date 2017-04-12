@@ -421,9 +421,9 @@ int main(int argc, const char * argv[]) {
 		 * the tissue equals properties of outermost voxels.
 		 * Therefore, set outermost voxels to infinite background value.
 		 */
-		ix = (int)(Nx/2 + x/dx);
-		iy = (int)(Ny/2 + y/dy);
-		iz = (int)(z/dz);        
+		ix = floor(Nx/2 + x/dx);
+		iy = floor(Ny/2 + y/dy);
+		iz = floor(z/dz);        
 		if (ix>=Nx) ix=Nx-1;
 		if (iy>=Ny) iy=Ny-1;
 		if (iz>=Nz) iz=Nz-1;
@@ -502,9 +502,9 @@ int main(int argc, const char * argv[]) {
 					z += s*uz;
 					
 					// pointers to voxel containing optical properties
-                    ix = (int)(Nx/2 + x/dx);
-                    iy = (int)(Ny/2 + y/dy);
-                    iz = (int)(z/dz);
+                    ix = floor(Nx/2 + x/dx);
+                    iy = floor(Ny/2 + y/dy);
+                    iz = floor(z/dz);
                     
                     bflag = 1;  // Boundary flag. Initialize as 1 = inside volume, then check.
                     if (boundaryflag==0) { // Infinite medium.
