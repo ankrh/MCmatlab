@@ -36,14 +36,11 @@ SAVEON      = 1;        % 1 = save myname_T.bin, myname_H.mci
 nm          = 850;       % set the range of wavelengths of the monte carlo simulation
 directoryPath = 'Data/';
 myname      = ['dentin_sim_' num2str(nm)];% name for files: myname_T.bin, myname_H.mci  
-time_min    = 600;      	% time duration of the simulation [min]
-Nbins       = 250;    	% # of bins in each dimension of cube 
-binsize     = 25e-4; 	% size of each bin [cm]
-time_min    = 2;      	% time duration of the simulation [min]
-Nx = 50;               % # of bins in the x direction
+time_min    = 5;      	% time duration of the simulation [min]
+Nx = 250;               % # of bins in the x direction
 Ny = Nx;                % # of bins in the y direction
 Nz = Nx;                % # of bins in the z direction
-dx = 1/Nx;              % size of x bins [cm]
+dx = 1.0/Nx;            % size of x bins [cm]
 dy = dx;                % size of y bins [cm]
 dz = dx;                % size of z bins [cm]
 
@@ -51,7 +48,7 @@ dz = dx;                % size of z bins [cm]
 mcflag      = 1;     	% launch: 0 = top hat beam, 1 = infinite plane wave over entire surface, 2 = isotropic pt. 
 launchflag  = 0;        % 0 = let mcxyz.c calculate launch trajectory
                         % 1 = manually set launch vector.
-boundaryflag = 2;       % 0 = no boundaries, 1 = escape at boundaries
+boundaryflag = 1;       % 0 = no boundaries, 1 = escape at boundaries
                         % 2 = escape at surface only. No x, y, bottom z
                         % boundaries
 
