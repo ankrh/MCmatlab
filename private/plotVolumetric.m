@@ -12,11 +12,11 @@ Mpadded(:,:,end+1) = Mpadded(:,:,end);
 
 h_f = gcf;
 h_slider1 = uicontrol('Parent',h_f,'Style','slider','Position',[30,20,200,20],...
-              'value',max(xpadded), 'min',min(xpadded), 'max',max(xpadded));
+              'value',max(xpadded), 'min',min(xpadded), 'max',max(xpadded),'SliderStep',[1/(length(xpadded)-1) 0.1]);
 h_slider2 = uicontrol('Parent',h_f,'Style','slider','Position',[30,40,200,20],...
-              'value',max(ypadded), 'min',min(ypadded), 'max',max(ypadded));
+              'value',max(ypadded), 'min',min(ypadded), 'max',max(ypadded),'SliderStep',[1/(length(ypadded)-1) 0.1]);
 h_slider3 = uicontrol('Parent',h_f,'Style','slider','Position',[30,60,200,20],...
-              'value',max(zpadded), 'min',min(zpadded), 'max',max(zpadded));
+              'value',max(zpadded), 'min',min(zpadded), 'max',max(zpadded),'SliderStep',[1/(length(zpadded)-1) 0.1]);
 uicontrol('style','text','String','x','Position',[10,18,20,20])
 uicontrol('style','text','String','y','Position',[10,38,20,20])
 uicontrol('style','text','String','z','Position',[10,58,20,20])
