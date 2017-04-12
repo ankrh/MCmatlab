@@ -291,7 +291,7 @@ int main(int argc, const char * argv[]) {
     ix = Nx/2;
     printf("central axial profile of tissue types:\n");
     for (iz=0; iz<Nz; iz++) {
-        i = (long)(iz*Ny*Nx + ix*Ny + iy);
+        i = (long)(iz*Ny*Nx + iy*Nx + ix);
         printf("%d",v[i]);
     }
     printf("\n\n");
@@ -430,7 +430,7 @@ int main(int argc, const char * argv[]) {
 		if (iy<0)   iy=0;
 		if (iz<0)   iz=0;		
 		/* Get the tissue type of located voxel */
-		i		= (long)(iz*Ny*Nx + ix*Ny + iy);
+		i		= (long)(iz*Ny*Nx + iy*Nx + ix);
 		type	= v[i];
 		mua 	= muav[type];
 		mus 	= musv[type];
@@ -535,7 +535,7 @@ int main(int argc, const char * argv[]) {
 					}
 					
                     // update pointer to tissue type
-					i    = (long)(iz*Ny*Nx + ix*Ny + iy);
+					i    = (long)(iz*Ny*Nx + iy*Nx + ix);
 					type = v[i];
                     mua  = muav[type];
                     mus  = musv[type];

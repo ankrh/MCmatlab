@@ -47,11 +47,12 @@ zslice = get(vars.h_slider3,'Value');
 xpadded = vars.xpadded;
 ypadded = vars.ypadded;
 zpadded = vars.zpadded;
+
 h_a = gca;
 previoustitle = h_a.Title.String;
 
 if isfield(vars,'tissueList')
-    slice(xpadded,ypadded,zpadded,double(vars.Mpadded),[xslice max(xpadded)],[yslice max(ypadded)],[zslice max(zpadded)],'nearest');
+    slice(xpadded,ypadded,zpadded,permute(double(vars.Mpadded),[2 1 3]),[xslice max(xpadded)],[yslice max(ypadded)],[zslice max(zpadded)],'nearest');
     tissueList = vars.tissueList;
     % cmap = makecmap();
     % colormap(cmap)
@@ -60,11 +61,11 @@ if isfield(vars,'tissueList')
     colorbar('TickLabels',{tissueList.name},'Ticks',(1:length(tissueList))+0.5);
 elseif plotLog
     logcutoff = -1;
-    slice(xpadded,ypadded,zpadded,max(logcutoff,log10(min(saturationcutoff,double(vars.Mpadded)))),[xslice max(xpadded)],[yslice max(ypadded)],[zslice max(zpadded)],'nearest');
+    slice(xpadded,ypadded,zpadded,max(logcutoff,log10(min(saturationcutoff,permute(double(vars.Mpadded),[2 1 3])))),[xslice max(xpadded)],[yslice max(ypadded)],[zslice max(zpadded)],'nearest');
     set(get(gca,'Children'),'LineStyle','none','CDataMapping','scaled')
     colorbar
 else
-    slice(xpadded,ypadded,zpadded,min(saturationcutoff,double(vars.Mpadded)),[xslice max(xpadded)],[yslice max(ypadded)],[zslice max(zpadded)],'nearest');
+    slice(xpadded,ypadded,zpadded,min(saturationcutoff,permute(double(vars.Mpadded),[2 1 3])),[xslice max(xpadded)],[yslice max(ypadded)],[zslice max(zpadded)],'nearest');
     set(get(gca,'Children'),'LineStyle','none','CDataMapping','scaled')
     colorbar
 end

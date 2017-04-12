@@ -1,7 +1,7 @@
 function makeTissue
 
 % maketissue.m
-%   Creates a cube of optical property pointers,T(y,x,z), saved in
+%   Creates a cube of optical property pointers,T(x,y,z), saved in
 %       myname_T.bin = a tissue structure file
 %   which specifies a complex tissue for use by mcxyz.c.
 %
@@ -87,22 +87,25 @@ for i=Nt:-1:1
 end
 
 % Specify Monte Carlo parameters    
-x  = ((0:Nx-1)'-(Nx-1)/2)*dx;
-y  = ((0:Ny-1)'-(Ny-1)/2)*dy;
-z  = ((0:Nz-1)'+1/2)*dz;
+x  = ((0:Nx-1)-(Nx-1)/2)*dx;
+y  = ((0:Ny-1)-(Ny-1)/2)*dy;
+z  = ((0:Nz-1)+1/2)*dz;
 xmin = min(x);
 xmax = max(x);
 
 if isinf(zfocus), zfocus = 1e12; end
 
-%% CREATE TISSUE STRUCTURE T(y,x,z)
-%   Create T(y,x,z) by specifying a tissue type (an integer)
+%% CREATE TISSUE STRUCTURE T(x,y,z)
+%   Create T(x,y,z) by specifying a tissue type (an integer)
 %   for each voxel in T.
 %
 %   Note: one need not use every tissue type in the tissue list.
 %   The tissue list is a library of possible tissue types.
 
-T = uint8(3*ones(Ny,Nx,Nz)); % fill background with air
+T = uint8(3*ones(Nx,Ny,Nz)); % fill background with air
+
+% T = uint8(6*ones(Nx,Ny,Nz)); % fill background with the testabsorber
+% T(:,:,end-5:end) = uint8(7*ones(Nx,Ny,6));
 
 zsurf       = 0.01;  % position of [cm]
 dentin_depth = 0.26;
@@ -139,7 +142,7 @@ for iz=1:Nz % for every depth z(iz)
 
     
 %     
-%Enamel @ xc, zc, radius, oriented along y axis
+%Enamel @ xc, zc, radius, oriented along x axis
      yc      = 0;            % [cm], center of blood vessel
      zc      = Nz/2*dz;     	% [cm], center of blood vessel
     enamelradius  = 0.300;      	% blood vessel radius [cm]
@@ -154,7 +157,7 @@ for iz=1:Nz % for every depth z(iz)
      end %ix
 
 
-%Dentin @ xc, zc, radius, oriented along y axis
+%Dentin @ xc, zc, radius, oriented along x axis
      yc      = 0;            % [cm], center of blood vessel
      zc      = Nz/2*dz;     	% [cm], center of blood vessel
      dentinradius  = 0.200;      	% blood vessel radius [cm]
@@ -168,7 +171,7 @@ for iz=1:Nz % for every depth z(iz)
  
      end %ix
      
-%Blood @ xc, zc, radius, oriented along y axis
+%Blood @ xc, zc, radius, oriented along x axis
      yc      = 0;            % [cm], center of blood vessel
      zc      = Nz/2*dz;     	% [cm], center of blood vessel
      vesselradius  = 0.050;      	% blood vessel radius [cm]
@@ -256,7 +259,7 @@ end % iz
 %% Write the files
 if SAVEON
 
-    v = reshape(T,Ny*Nx*Nz,1);
+    v = reshape(T,Nx*Ny*Nz,1);
 
     %% WRITE FILES
     % Write myname_H.mci file
@@ -308,7 +311,7 @@ if SAVEON
 end % SAVEON
 
 %% Look at structure of Tzx at iy=Ny/2
-Tzx  = squeeze(T(Ny/2,:,:))'; % Tyxz -> Txz -> Tzx
+Tzx  = squeeze(T(:,Ny/2,:))'; % Txyz -> Txz -> Tzx
 
 figure(1); clf
 plotTissue(Tzx,tissueList,x,z)
