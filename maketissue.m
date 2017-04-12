@@ -87,9 +87,9 @@ for i=Nt:-1:1
 end
 
 % Specify Monte Carlo parameters    
-x  = ((0:Nx-1)'-(Nx-1)/2)*dx;
-y  = ((0:Ny-1)'-(Ny-1)/2)*dy;
-z  = ((0:Nz-1)'+1/2)*dz;
+x  = ((0:Nx-1)-(Nx-1)/2)*dx;
+y  = ((0:Ny-1)-(Ny-1)/2)*dy;
+z  = ((0:Nz-1)+1/2)*dz;
 xmin = min(x);
 xmax = max(x);
 
