@@ -16,9 +16,9 @@ function userSettings
 
 %% User setting: Define the interval of wavelengths the input spectrum covers.
 
-dnm = 0*5; %Wavelength step size of the spectrum. Needs to be a multiple of 5. [nm];
-nm_min = 850; %Minimum wavelength of the filter. No lower than 300+dnm [nm];
-nm_max = 850; %Maximum wavelength of the filter. No higher than 1000-dnm [nm];
+dnm = 2*5; %Wavelength step size of the spectrum. Needs to be a multiple of 5. [nm];
+nm_min = 845; %Minimum wavelength of the filter. No lower than 300+dnm [nm];
+nm_max = 855; %Maximum wavelength of the filter. No higher than 1000-dnm [nm];
 
 
 %% User setting: Define the pulse. 
@@ -114,4 +114,4 @@ end
 
 dnm = 2*dnm;
 
-save([directoryPath 'Input_spectrum'])
+save([directoryPath 'Input spectrum'])
