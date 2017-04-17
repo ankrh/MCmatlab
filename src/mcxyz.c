@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <time.h>
 
 #define Ntiss		19          /* Number of tissue types. */
@@ -47,7 +48,6 @@
 #define DEAD        0    		/* if photon is to be terminated */
 #define THRESHOLD   0.01		/* used in roulette */
 #define CHANCE      0.1  		/* used in roulette */
-#define Boolean     char
 #define SQR(x)		(x*x) 
 #define SIGN(x)     ((x)>=0 ? 1:-1)
 #define RandomNum   (double) RandomGen(1, 0, NULL) /* Calls for a random number. */
@@ -58,7 +58,7 @@
 /* DECLARE FUNCTIONS */
 double RandomGen(char Type, long Seed, long *Status);  
 /* Random number generator */
-Boolean SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2, double dx,double dy,double dz);
+bool SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2, double dx,double dy,double dz);
 /* Asks,"In the same voxel?" */
 double max2(double a, double b);
 double min2(double a, double b);
@@ -93,8 +93,8 @@ int main(int argc, const char * argv[]) {
 	long	i_photon;       /* current photon */
 	double	W;              /* photon weight */
 	double	absorb;         /* weighted deposited in a step due to absorption */
-	short   photon_status;  /* flag = ALIVE=1 or DEAD=0 */
-	Boolean sv;             /* Are they in the same voxel? */
+	bool    photon_status;  /* flag = ALIVE=1 or DEAD=0 */
+	bool    sv;             /* Are they in the same voxel? */
 	
 	/* other variables */
 	double	mua;            /* absorption coefficient [cm^-1] */
@@ -116,7 +116,8 @@ int main(int argc, const char * argv[]) {
 	double	tempx, tempy, tempz; /* temporary variables, used during photon step. */
 	int 	ix, iy, iz;     /* Added. Used to track photons */
 	double 	temp;           /* dummy variable */
-    int     bflag;          /* boundary flag:  0 = photon inside volume. 1 = outside volume */
+	int     pctprogress;    /* Simulation progress in percent */
+    bool    bflag;          /* boundary flag:  0 = photon inside volume. 1 = outside volume */
 	int		CNT;
 	
 	/* mcxyz bin variables */
@@ -223,8 +224,8 @@ int main(int argc, const char * argv[]) {
     printf("ys = %0.4f [cm]\n",ys);
     printf("zs = %0.4f [cm]\n",zs);
     printf("mcflag = %d [cm]\n",mcflag);
-    if (mcflag==0) printf("launching uniform flat-field beam\n");
-    if (mcflag==1) printf("launching Gaissian beam\n");
+    if (mcflag==0) printf("launching top hat beam\n");
+    if (mcflag==1) printf("launching plane wave beam\n");
     if (mcflag==2) printf("launching isotropic point source\n");
     printf("xfocus = %0.4f [cm]\n",xfocus);
     printf("yfocus = %0.4f [cm]\n",yfocus);
@@ -290,7 +291,7 @@ int main(int argc, const char * argv[]) {
     ix = Nx/2;
     printf("central axial profile of tissue types:\n");
     for (iz=0; iz<Nz; iz++) {
-        i = (long)(iz*Ny*Nx + ix*Ny + iy);
+        i = (long)(iz*Ny*Nx + iy*Nx + ix);
         printf("%d",v[i]);
     }
     printf("\n\n");
@@ -329,13 +330,11 @@ int main(int argc, const char * argv[]) {
 		
 		// Print out message about progress.
 		if ((i_photon>1000) & (fmod(i_photon, (int)(Nphotons/100))  == 0)) {
-            temp = i_photon/Nphotons*100;
+            pctprogress = i_photon/Nphotons*100;
             //printf("%0.1f%% \t\tfmod = %0.3f\n", temp,fmod(temp, 10.0));
-            if ((temp<10) | (temp>90)){
-                printf("%0.0f%% done\n", i_photon/Nphotons*100);
+            if ((pctprogress<10) | (pctprogress>90) | (fmod(pctprogress, 10)==0)){
+                printf("%i%% done\n", pctprogress);
             }
-            else if(fmod(temp, 10.0)>9)
-                printf("%0.0f%% done\n", i_photon/Nphotons*100);
         }
         
 		// At 1000th photon, update Nphotons to achieve desired runtime (time_min)
@@ -421,9 +420,9 @@ int main(int argc, const char * argv[]) {
 		 * the tissue equals properties of outermost voxels.
 		 * Therefore, set outermost voxels to infinite background value.
 		 */
-		ix = (int)(Nx/2 + x/dx);
-		iy = (int)(Ny/2 + y/dy);
-		iz = (int)(z/dz);        
+		ix = floor(Nx/2 + x/dx);
+		iy = floor(Ny/2 + y/dy);
+		iz = floor(z/dz);        
 		if (ix>=Nx) ix=Nx-1;
 		if (iy>=Ny) iy=Ny-1;
 		if (iz>=Nz) iz=Nz-1;
@@ -431,7 +430,7 @@ int main(int argc, const char * argv[]) {
 		if (iy<0)   iy=0;
 		if (iz<0)   iz=0;		
 		/* Get the tissue type of located voxel */
-		i		= (long)(iz*Ny*Nx + ix*Ny + iy);
+		i		= (long)(iz*Ny*Nx + iy*Nx + ix);
 		type	= v[i];
 		mua 	= muav[type];
 		mus 	= musv[type];
@@ -502,9 +501,9 @@ int main(int argc, const char * argv[]) {
 					z += s*uz;
 					
 					// pointers to voxel containing optical properties
-                    ix = (int)(Nx/2 + x/dx);
-                    iy = (int)(Ny/2 + y/dy);
-                    iz = (int)(z/dz);
+                    ix = floor(Nx/2 + x/dx);
+                    iy = floor(Ny/2 + y/dy);
+                    iz = floor(z/dz);
                     
                     bflag = 1;  // Boundary flag. Initialize as 1 = inside volume, then check.
                     if (boundaryflag==0) { // Infinite medium.
@@ -536,7 +535,7 @@ int main(int argc, const char * argv[]) {
 					}
 					
                     // update pointer to tissue type
-					i    = (long)(iz*Ny*Nx + ix*Ny + iy);
+					i    = (long)(iz*Ny*Nx + iy*Nx + ix);
 					type = v[i];
                     mua  = muav[type];
                     mus  = musv[type];
@@ -742,7 +741,7 @@ double RandomGen(char Type, long Seed, long *Status){
  *  Determine if the two position are located in the same voxel
  *	Returns 1 if same voxel, 0 if not same voxel.
  ****/				
-Boolean SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2, double dx,double dy,double dz)
+bool SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2, double dx,double dy,double dz)
 {
     double xmin=min2((floor)(x1/dx),(floor)(x2/dx))*dx;
     double ymin=min2((floor)(y1/dy),(floor)(y2/dy))*dy;
@@ -750,7 +749,7 @@ Boolean SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2
     double xmax = xmin+dx;
     double ymax = ymin+dy;
     double zmax = zmin+dz;
-    Boolean sv=0;
+    bool sv=0;
     
     sv=(x1<=xmax && x2<=xmax && y1<=ymax && y2<=ymax && z1<zmax && z2<=zmax);
     return (sv);

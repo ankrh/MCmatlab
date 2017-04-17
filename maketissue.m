@@ -1,7 +1,7 @@
 function makeTissue
 
 % maketissue.m
-%   Creates a cube of optical property pointers,T(y,x,z), saved in
+%   Creates a cube of optical property pointers,T(x,y,z), saved in
 %       myname_T.bin = a tissue structure file
 %   which specifies a complex tissue for use by mcxyz.c.
 %
@@ -34,17 +34,21 @@ SAVEON      = 1;        % 1 = save myname_T.bin, myname_H.mci
                         % 0 = don't save. Just check the program.
                         
 nm          = 850;       % set the range of wavelengths of the monte carlo simulation
-directoryPath = 'C:\Users\Kira Schmidt\Documents\mcxyz\';
+directoryPath = 'Data/';
 myname      = ['dentin_sim_' num2str(nm)];% name for files: myname_T.bin, myname_H.mci  
-time_min    = 600;      	% time duration of the simulation [min]
-Nbins       = 250;    	% # of bins in each dimension of cube 
-binsize     = 25e-4; 	% size of each bin [cm]
+time_min    = 5;      	% time duration of the simulation [min]
+Nx = 250;               % # of bins in the x direction
+Ny = Nx;                % # of bins in the y direction
+Nz = Nx;                % # of bins in the z direction
+dx = 1.0/Nx;            % size of x bins [cm]
+dy = dx;                % size of y bins [cm]
+dz = dx;                % size of z bins [cm]
 
 % Set Monte Carlo launch flags
 mcflag      = 1;     	% launch: 0 = top hat beam, 1 = infinite plane wave over entire surface, 2 = isotropic pt. 
 launchflag  = 0;        % 0 = let mcxyz.c calculate launch trajectory
                         % 1 = manually set launch vector.
-boundaryflag = 2;       % 0 = no boundaries, 1 = escape at boundaries
+boundaryflag = 1;       % 0 = no boundaries, 1 = escape at boundaries
                         % 2 = escape at surface only. No x, y, bottom z
                         % boundaries
 
@@ -58,7 +62,7 @@ xfocus      = 0;        % set x,position of focus
 yfocus      = 0;        % set y,position of focus
 zfocus      = inf;    	% set z,position of focus (=inf for collimated beam)
 
-% only used if mcflag == 0 (uniform beam)
+% only used if mcflag == 0 (top hat beam)
 radius      = 0.05;      % 1/e radius of beam at tissue surface
 waist       = 0.010;  	% 1/e radius of beam at focus
 
@@ -80,28 +84,25 @@ for i=Nt:-1:1
 end
 
 % Specify Monte Carlo parameters    
-Nx = Nbins;
-Ny = Nbins;
-Nz = Nbins;
-dx = binsize;
-dy = binsize;
-dz = binsize;
-x  = ((1:Nx)'-Nx/2)*dx;
-y  = ((1:Ny)'-Ny/2)*dy;
-z  = (1:Nz)'*dz;
+x  = ((0:Nx-1)-(Nx-1)/2)*dx;
+y  = ((0:Ny-1)-(Ny-1)/2)*dy;
+z  = ((0:Nz-1)+1/2)*dz;
 xmin = min(x);
 xmax = max(x);
 
 if isinf(zfocus), zfocus = 1e12; end
 
-%% CREATE TISSUE STRUCTURE T(y,x,z)
-%   Create T(y,x,z) by specifying a tissue type (an integer)
+%% CREATE TISSUE STRUCTURE T(x,y,z)
+%   Create T(x,y,z) by specifying a tissue type (an integer)
 %   for each voxel in T.
 %
 %   Note: one need not use every tissue type in the tissue list.
 %   The tissue list is a library of possible tissue types.
 
-T = uint8(3*ones(Ny,Nx,Nz)); % fill background with air
+T = uint8(3*ones(Nx,Ny,Nz)); % fill background with air
+
+% T = uint8(6*ones(Nx,Ny,Nz)); % fill background with the testabsorber
+% T(:,:,end-5:end) = uint8(7*ones(Nx,Ny,6));
 
 zsurf       = 0.01;  % position of [cm]
 dentin_depth = 0.26;
@@ -138,7 +139,7 @@ for iz=1:Nz % for every depth z(iz)
 
     
 %     
-%Enamel @ xc, zc, radius, oriented along y axis
+%Enamel @ xc, zc, radius, oriented along x axis
      yc      = 0;            % [cm], center of blood vessel
      zc      = Nz/2*dz;     	% [cm], center of blood vessel
     enamelradius  = 0.300;      	% blood vessel radius [cm]
@@ -153,7 +154,7 @@ for iz=1:Nz % for every depth z(iz)
      end %ix
 
 
-%Dentin @ xc, zc, radius, oriented along y axis
+%Dentin @ xc, zc, radius, oriented along x axis
      yc      = 0;            % [cm], center of blood vessel
      zc      = Nz/2*dz;     	% [cm], center of blood vessel
      dentinradius  = 0.170;      	% blood vessel radius [cm]
@@ -167,7 +168,7 @@ for iz=1:Nz % for every depth z(iz)
  
      end %ix
      
-%Blood @ xc, zc, radius, oriented along y axis
+%Blood @ xc, zc, radius, oriented along x axis
      yc      = 0;            % [cm], center of blood vessel
      zc      = Nz/2*dz;     	% [cm], center of blood vessel
      vesselradius  = 0.050;      	% blood vessel radius [cm]
@@ -255,7 +256,7 @@ T= shiftdim(T,1); % shifts dimension to have the light coming from side
 %% Write the files
 if SAVEON
 
-    v = reshape(T,Ny*Nx*Nz,1);
+    v = reshape(T,Nx*Ny*Nz,1);
 
     %% WRITE FILES
     % Write myname_H.mci file
@@ -270,30 +271,30 @@ if SAVEON
         fprintf(fid,'%d\n'   ,Nx);
         fprintf(fid,'%d\n'   ,Ny);
         fprintf(fid,'%d\n'   ,Nz);
-        fprintf(fid,'%0.4f\n',dx);
-        fprintf(fid,'%0.4f\n',dy);
-        fprintf(fid,'%0.4f\n',dz);
+        fprintf(fid,'%0.8f\n',dx);
+        fprintf(fid,'%0.8f\n',dy);
+        fprintf(fid,'%0.8f\n',dz);
         % launch parameters
         fprintf(fid,'%d\n'   ,mcflag);
         fprintf(fid,'%d\n'   ,launchflag);
         fprintf(fid,'%d\n'   ,boundaryflag);
-        fprintf(fid,'%0.4f\n',xs);
-        fprintf(fid,'%0.4f\n',ys);
-        fprintf(fid,'%0.4f\n',zs);
-        fprintf(fid,'%0.4f\n',xfocus);
-        fprintf(fid,'%0.4f\n',yfocus);
-        fprintf(fid,'%0.4f\n',zfocus);
-        fprintf(fid,'%0.4f\n',ux0); % if manually setting ux,uy,uz
-        fprintf(fid,'%0.4f\n',uy0);
-        fprintf(fid,'%0.4f\n',uz0);
-        fprintf(fid,'%0.4f\n',radius);
-        fprintf(fid,'%0.4f\n',waist);
+        fprintf(fid,'%0.8f\n',xs);
+        fprintf(fid,'%0.8f\n',ys);
+        fprintf(fid,'%0.8f\n',zs);
+        fprintf(fid,'%0.8f\n',xfocus);
+        fprintf(fid,'%0.8f\n',yfocus);
+        fprintf(fid,'%0.8f\n',zfocus);
+        fprintf(fid,'%0.8f\n',ux0); % if manually setting ux,uy,uz
+        fprintf(fid,'%0.8f\n',uy0);
+        fprintf(fid,'%0.8f\n',uz0);
+        fprintf(fid,'%0.8f\n',radius);
+        fprintf(fid,'%0.8f\n',waist);
         % tissue optical properties
         fprintf(fid,'%d\n',Nt);
         for i=1:Nt
-            fprintf(fid,'%0.4f\n',muav(i));
-            fprintf(fid,'%0.4f\n',musv(i));
-            fprintf(fid,'%0.4f\n',gv(i));
+            fprintf(fid,'%0.8f\n',muav(i));
+            fprintf(fid,'%0.8f\n',musv(i));
+            fprintf(fid,'%0.8f\n',gv(i));
         end
     fclose(fid);
 
@@ -307,7 +308,7 @@ if SAVEON
 end % SAVEON
 
 %% Look at structure of Tzx at iy=Ny/2
-Tzx  = squeeze(T(Ny/2,:,:))'; % Tyxz -> Txz -> Tzx
+Tzx  = squeeze(T(:,Ny/2,:))'; % Txyz -> Txz -> Tzx
 
 figure(1); clf
 plotTissue(Tzx,tissueList,x,z)
@@ -338,6 +339,10 @@ switch mcflag
 end
 
 axis([min(x) max(x) min(z) max(z)])
+
+figure(2);clf;
+plotVolumetric(x,y,z,T,tissueList)
+title('Tissue type illustration');
 
 disp('done')
 

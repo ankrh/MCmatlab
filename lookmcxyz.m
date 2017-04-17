@@ -16,7 +16,7 @@ function lookmcxyz
 %
 
 %% USER CHOICES <---------- you must specify -----
-directoryPath = 'C:\Users\Kira Schmidt\Documents\mcxyz\exec\';
+directoryPath = 'Data/';
 myname = 'dentin_sim_850';
 nm     = 850;
 saveon_HeatSim = 1;
@@ -26,46 +26,45 @@ H_mci = reportHmci(directoryPath,myname);
 
 format compact
 
-%% Load Fluence rate F(y,x,z) 
+%% Load Fluence rate F(x,y,z) 
 filename = sprintf('%s%s_F.bin',directoryPath,myname);
 disp(['loading ' filename])
 tic
     fid = fopen(filename, 'rb');
-    data = fread(fid, H_mci.Ny*H_mci.Nx*H_mci.Nz, 'float');
+    data = fread(fid, H_mci.Nx*H_mci.Ny*H_mci.Nz, 'float');
     fclose(fid);
 toc
-F = reshape(data,H_mci.Ny,H_mci.Nx,H_mci.Nz); % F(y,x,z)
+F = reshape(data,H_mci.Nx,H_mci.Ny,H_mci.Nz); % F(x,y,z)
 
-%% Load tissue structure in voxels, T(y,x,z) 
+%% Load tissue structure in voxels, T(x,y,z) 
 filename = sprintf('%s%s_T.bin',directoryPath,myname);
 disp(['loading ' filename])
 tic
     fid = fopen(filename, 'rb');
-    data = fread(fid, H_mci.Ny*H_mci.Nx*H_mci.Nz, 'uint8=>uint8');
+    data = fread(fid, H_mci.Nx*H_mci.Ny*H_mci.Nz, 'uint8=>uint8');
     fclose(fid);
 toc
-T = reshape(data,H_mci.Ny,H_mci.Nx,H_mci.Nz); % T(y,x,z)
+T = reshape(data,H_mci.Nx,H_mci.Ny,H_mci.Nz); % T(x,y,z)
 clear data
 
 %%
-x = ((1:H_mci.Nx)-H_mci.Nx/2-1/2)*H_mci.dx;
-y = ((1:H_mci.Ny)-H_mci.Ny/2-1/2)*H_mci.dx;
-z = ((1:H_mci.Nz)-1/2)*H_mci.dz;
-xmin = min(x);
-xmax = max(x);
-
-%% Look at structure, Tzx
-Tzx = squeeze(T(H_mci.Ny/2,:,:))'; % Tyxz -> Txz -> Tzx
+x  = ((0:H_mci.Nx-1)-(H_mci.Nx-1)/2)*H_mci.dx;
+y  = ((0:H_mci.Ny-1)-(H_mci.Ny-1)/2)*H_mci.dy;
+z  = ((0:H_mci.Nz-1)+1/2)*H_mci.dz;
 tissueList = makeTissueList(nm);
 
-figure(1); clf
-plotTissue(Tzx,tissueList,x,z)
-hold on
+%% Look at structure, Tzx
+
+% Tzx = squeeze(T(H_mci.Ny/2,:,:))'; % Txyz -> Txz -> Tzx
+% figure(1); clf
+% plotTissue(Tzx,tissueList,x,z)
+% hold on
 
 %% draw launch
+%{
 N = 10; % # of beam rays drawn
 switch H_mci.mcflag
-    case 0 % uniform
+    case 0 % top hat
         for i=0:N
             for j=-2:2
             plot( [H_mci.xs+H_mci.radius*i/N H_mci.xfocus + H_mci.waist*j/2],[H_mci.zs H_mci.zfocus],'r-')
@@ -73,7 +72,7 @@ switch H_mci.mcflag
             end
         end
 
-    case 1 % uniform over entire surface at height H_mci.zs
+    case 1 % infinite plane wave over entire surface at height H_mci.zs
         for i=0:N
             plot( [xmin + (xmax-xmin)*i/N xmin + (xmax-xmin)*i/N],[H_mci.zs H_mci.zfocus],'r-')
         end
@@ -91,12 +90,19 @@ axis([min(x) max(x) min(z) max(z)])
 
 name = sprintf('%s%s_tissue.jpg',directoryPath,myname);
 print('-djpeg','-r300',name)
+%}
 
+%% Make volumetric tissue plot
+
+figure(2);clf;
+plotVolumetric(x,y,z,T,tissueList);
+title('Tissue type illustration');
 
 %% Look at Fluence Fzx @ launch point
+%{
 Fzx = squeeze(F(H_mci.Ny/2,:,:))'; % in z,x plane through source
 
-figure(2);clf
+figure(3);clf
 imagesc(x,z,log10(Fzx))
 hold on
 text(max(x)*0.9,min(z)-0.04*max(z),'log_{10}( \phi )','fontsize',18)
@@ -115,7 +121,7 @@ print('-djpeg','-r300',name)
 %% look Fzy
 Fzy = squeeze(F(:,H_mci.Nx/2,:))'; % in z,y plane through source
 
-figure(3);clf
+figure(4);clf
 imagesc(y,z,log10(Fzy))
 hold on
 text(max(x)*0.9,min(z)-0.04*max(z),'log_{10}( \phi )','fontsize',18)
@@ -131,7 +137,14 @@ name = sprintf('%s%s_Fzy.jpg',directoryPath,myname);
 print('-djpeg','-r300',name)
 
 drawnow
-%% calculate Power Absorbtion
+%}
+%% Make volumetric fluence rate plot
+
+figure(5);clf;
+plotVolumetric(x,y,z,F);
+title('Fluence rate (Intensity) [W/cm^2/W.delivered] ')
+
+%% calculate Power Absorption
 
 % F, matrix with fluency / input power
 % T, Matrix containing tissue types
@@ -141,10 +154,16 @@ Ap = zeros(size(T));
 for tissueNumber=1:length(tissueList)
    Ap(T==tissueNumber) = tissueList(tissueNumber).mua;
 end
+
+figure(6);clf;
+plotVolumetric(x,y,z,Ap.*F);
+title('Absorbed power per unit volume [W/cm^3/W.delivered] ')
+
+%{
 Azy = reshape(Ap(:,H_mci.Nx/2,:),H_mci.Ny,H_mci.Nz)';
 Azy = Azy.*Fzy;
 
-figure(4);clf
+figure(6);clf
 imagesc(y,z,log10(Azy))
 hold on
 text(max(x)*0.9,min(z)-0.04*max(z),'log_{10}( \phi )','fontsize',18)
@@ -173,7 +192,9 @@ if saveon_HeatSim==1
 end
 
 disp('done')
+%}
 
+return
 %% Ryx
 % NOT READY
 % fname = sprintf('%s_Ryx.bin',myname);
