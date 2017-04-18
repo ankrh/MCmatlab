@@ -2,6 +2,9 @@ function plotVolumetric(x,y,z,M,varargin)
 dx = x(2)-x(1);
 dy = y(2)-y(1);
 dz = z(2)-z(1);
+% Voxel corner positions are calculated, since slice draws surfaces based
+% on corner coordinates, not center coordinates. Vectors and matrix are
+% padded accordingly:
 xpadded = round([(x - dx/2) , (max(x) + dx/2)],15);
 ypadded = round([(y - dy/2) , (max(y) + dy/2)],15);
 zpadded = round([(z - dz/2) , (max(z) + dz/2)],15);
@@ -37,7 +40,7 @@ return
 function slider_callback(~,~,vars)
 if isfield(vars,'h_checkbox1')
     plotLog = get(vars.h_checkbox1,'Value');
-    saturationcutoff = prctile(double(vars.Mpadded(:)),99.5);
+    saturationcutoff = prctile(double(vars.Mpadded(:)),99.99);
 else
     plotLog = 0;
 end
