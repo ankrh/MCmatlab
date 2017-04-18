@@ -33,11 +33,11 @@ function makeTissue
 SAVEON      = 1;        % 1 = save myname_T.bin, myname_H.mci 
                         % 0 = don't save. Just check the program.
                         
-nm          = 850;       % set the range of wavelengths of the monte carlo simulation
 directoryPath = 'Data/';
 myname      = ['dentin_sim_' num2str(nm)];% name for files: myname_T.bin, myname_H.mci  
-time_min    = 5;      	% time duration of the simulation [min]
-Nx = 250;               % # of bins in the x direction
+wavelength  = 850;      % [nm] set the range of wavelengths of the monte carlo simulation
+time_min    = 0.5;      	% time duration of the simulation [min]
+Nx = 100;               % # of bins in the x direction
 Ny = Nx;                % # of bins in the y direction
 Nz = Nx;                % # of bins in the z direction
 dx = 1.0/Nx;            % size of x bins [cm]
@@ -45,37 +45,36 @@ dy = dx;                % size of y bins [cm]
 dz = dx;                % size of z bins [cm]
 
 % Set Monte Carlo launch flags
-mcflag      = 1;     	% launch: 0 = top hat beam, 1 = infinite plane wave over entire surface, 2 = isotropic pt. 
-launchflag  = 0;        % 0 = let mcxyz.c calculate launch trajectory
-                        % 1 = manually set launch vector.
+beamtypeflag = 5;     	% beam type: 0 = top-hat focus, top-hat far field beam,
+                        % 1 = Gaussian focus, Gaussian far field beam,
+                        % 2 = isotropically emitting point, 3 = infinite
+                        % plane wave, 4 = pencil beam, 5 = top-hat focus,
+                        % Gaussian far field beam, 6 = Gaussian focus,
+                        % top-hat far field beam
 boundaryflag = 1;       % 0 = no boundaries, 1 = escape at boundaries
                         % 2 = escape at surface only. No x, y, bottom z
                         % boundaries
 
-% Sets position of source
-xs          = 0;      	% x of source [cm]
-ys          = 0;        % y of source [cm]
-zs          = 0;        % z of source [cm]
+% Set position of focus, only used for beamtypeflag ~=3 (if beamtypeflag == 2 this is the source position)
+xfocus      = 0;        % set x position of focus
+yfocus      = 0;        % set y position of focus
+zfocus      = 1;    	% set z position of focus
 
-% Set position of focus, so mcxyz can calculate launch trajectory
-xfocus      = 0;        % set x,position of focus
-yfocus      = 0;        % set y,position of focus
-zfocus      = inf;    	% set z,position of focus (=inf for collimated beam)
+% Set direction of beam center axis, only used if beamtypeflag ~= 2:
+ux0         = 0;        % trajectory projected onto x axis
+uy0         = 0;        % trajectory projected onto y axis
+uz0         = sqrt(1 - ux0^2 - uy0^2); % such that ux^2 + uy^2 + uz^2 = 1, positive direction is assumed
 
-% only used if mcflag == 0 (top hat beam)
-radius      = 0.05;      % 1/e radius of beam at tissue surface
-waist       = 0.010;  	% 1/e radius of beam at focus
-
-% only used if launchflag == 1 (manually set launch trajectory):
-ux0         = 0.7;      % trajectory projected onto x axis
-uy0         = 0.4;      % trajectory projected onto y axis
-uz0         = sqrt(1 - ux0^2 - uy0^2); % such that ux^2 + uy^2 + uz^2 = 1
+% Set focus properties and divergence angles, only used if beamtypeflag == 0 or 1
+waist       = 0.025;     % focus waist 1/e^2 radius in cm
+divergence  = pi/8;    % divergence 1/e^2 half-angle of beam in rad
+% divergence  = wavelength*1e-9/(pi*waist*1e-2); % Diffraction limited divergence angle for Gaussian beam
 
 %% Prepare Monte Carlo 
 format compact
 
 % Create tissue properties
-tissueList = makeTissueList(nm);
+tissueList = makeTissueList(wavelength);
 Nt = length(tissueList);
 for i=Nt:-1:1
     muav(i)  = tissueList(i).mua;
@@ -101,8 +100,6 @@ if isinf(zfocus), zfocus = 1e12; end
 
 T = uint8(3*ones(Nx,Ny,Nz)); % fill background with air
 
-% T = uint8(6*ones(Nx,Ny,Nz)); % fill background with the testabsorber
-% T(:,:,end-5:end) = uint8(7*ones(Nx,Ny,6));
 
 zsurf       = 0.01;  % position of [cm]
 dentin_depth = 0.26;
@@ -253,6 +250,8 @@ end % iz
 
 %T= shiftdim(T,1); % shifts dimension to have the light coming from side
 
+T = uint8(6*ones(Nx,Ny,Nz)); % fill with the testabsorber
+
 %% Write the files
 if SAVEON
 
@@ -275,20 +274,16 @@ if SAVEON
         fprintf(fid,'%0.8f\n',dy);
         fprintf(fid,'%0.8f\n',dz);
         % launch parameters
-        fprintf(fid,'%d\n'   ,mcflag);
-        fprintf(fid,'%d\n'   ,launchflag);
+        fprintf(fid,'%d\n'   ,beamtypeflag);
         fprintf(fid,'%d\n'   ,boundaryflag);
-        fprintf(fid,'%0.8f\n',xs);
-        fprintf(fid,'%0.8f\n',ys);
-        fprintf(fid,'%0.8f\n',zs);
-        fprintf(fid,'%0.8f\n',xfocus);
+        fprintf(fid,'%0.8f\n',xfocus); % position of focus in cm
         fprintf(fid,'%0.8f\n',yfocus);
         fprintf(fid,'%0.8f\n',zfocus);
-        fprintf(fid,'%0.8f\n',ux0); % if manually setting ux,uy,uz
+        fprintf(fid,'%0.8f\n',ux0); % beam center axis direction
         fprintf(fid,'%0.8f\n',uy0);
         fprintf(fid,'%0.8f\n',uz0);
-        fprintf(fid,'%0.8f\n',radius);
-        fprintf(fid,'%0.8f\n',waist);
+        fprintf(fid,'%0.8f\n',waist); % waist radius in cm
+        fprintf(fid,'%0.8f\n',divergence); % divergence half-angle of incoming beam in rad
         % tissue optical properties
         fprintf(fid,'%d\n',Nt);
         for i=1:Nt
@@ -307,40 +302,7 @@ if SAVEON
 
 end % SAVEON
 
-%% Look at structure of Tzx at iy=Ny/2
-Tzx  = squeeze(T(:,Ny/2,:))'; % Txyz -> Txz -> Tzx
-
-figure(1); clf
-plotTissue(Tzx,tissueList,x,z)
-hold on
-
-%% draw launch
-switch mcflag
-    case 0 % uniform
-        for i=0:5
-            for j=-2:2
-                plot( [xs+radius*i/5 xfocus + waist*j/2],[zs zfocus],'r-')
-                plot(-[xs+radius*i/5 xfocus + waist*j/2],[zs zfocus],'r-')
-            end
-        end
-
-    case 1 % uniform over entire surface at height zs
-        for i=0:10
-            plot( [xmin + (xmax-xmin)*i/10 xmin + (xmax-xmin)*i/10],[zs zfocus],'r-')
-        end
-
-    case 2 % iso-point
-        for i=1:20
-            th = (i-1)/19*2*pi;
-            xx = Nx/2*cos(th) + xs;
-            zz = Nx/2*sin(th) + zs;
-            plot([xs xx],[zs zz],'r-')
-        end
-end
-
-axis([min(x) max(x) min(z) max(z)])
-
-figure(2);clf;
+figure(1);clf;
 plotVolumetric(x,y,z,T,tissueList)
 title('Tissue type illustration');
 
