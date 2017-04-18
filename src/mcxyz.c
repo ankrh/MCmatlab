@@ -67,6 +67,8 @@ double FindVoxelFace(double x1,double y1,double z1, double x2, double y2, double
 double FindVoxelFace2(double x1,double y1,double z1, double x2, double y2, double z2,double dx,double dy,double dz, double ux, double uy, double uz);
 /* How much step size will the photon take to get the first voxel crossing in one single long step? */
 double RFresnel(double n1, double n2, double ca1, double *ca2_Ptr);
+/* Rotates a point with coordinates (x,y,z) an angle theta around axis with direction vector (ux,uy,uz) */
+void axisrotate(double* x,double* y,double* z, double ux, double uy, double uz,double theta);
 
 int main(int argc, const char * argv[]) {
     
@@ -103,7 +105,7 @@ int main(int argc, const char * argv[]) {
 	double	Nphotons;       /* number of photons in simulation */
 	
 	/* launch parameters */
-	int		mcflag, launchflag, boundaryflag;
+	int		beamtypeflag, boundaryflag;
 	double	xfocus, yfocus, zfocus, xtarget, ytarget, ztarget;
 	double	ux0, uy0, uz0;	/* beam center axis direction unit vector composants */
 	double	vx0, vy0, vz0;  /* normal vector 1 to photon trajectory */
@@ -169,12 +171,23 @@ int main(int argc, const char * argv[]) {
 		sscanf(buf, "%lf", &dz);	 // size of bins [cm] 
 	
 		// launch parameters
+		/*
+		beam type: 0 = top-hat focus, top-hat far field beam,
+		1 = Gaussian focus, Gaussian far field beam,
+		2 = isotropically emitting point, 3 = infinite
+		plane wave, 4 = pencil beam, 5 = top-hat focus,
+		Gaussian far field beam, 6 = Gaussian focus,
+		top-hat far field beam
+		*/
 		fgets(buf, 32,fid);
-		sscanf(buf, "%d", &mcflag);  // mcflag, 0 = uniform cone, 1 = uniform entire surface, 2 = iso-pt
-		fgets(buf, 32,fid);
-		sscanf(buf, "%d", &launchflag);  // launchflag, 0 = ignore, 1 = manually set
+		sscanf(buf, "%d", &beamtypeflag);
+		/*
+		0 = no boundaries, 1 = escape at boundaries
+        2 = escape at surface only. No x, y, bottom z
+        boundaries
+		*/
         fgets(buf, 32,fid);
-        sscanf(buf, "%d", &boundaryflag);  // 0 = no boundaries, 1 = escape at all boundaries, 2 = escape at surface only
+        sscanf(buf, "%d", &boundaryflag);
 	
 		fgets(buf, 32,fid);
 		sscanf(buf, "%lf", &xfocus);  // xfocus
@@ -210,28 +223,17 @@ int main(int argc, const char * argv[]) {
     fclose(fid);
     
     printf("time_min = %0.2f min\n",time_min);
-    printf("mcflag = %d [cm]\n",mcflag);
-    if (mcflag==0) printf("launching top hat beam\n");
-    if (mcflag==1) printf("launching plane wave beam\n");
-    if (mcflag==2) printf("launching isotropic point source\n");
-    printf("xfocus = %0.4f [cm]\n",xfocus);
-    printf("yfocus = %0.4f [cm]\n",yfocus);
-    printf("zfocus = %0.2e [cm]\n",zfocus);
-	if (launchflag==1) {
-		printf("Launchflag ON, so launch the following:\n");
-		printf("ux0 = %0.4f [cm]\n",ux0);
-		printf("uy0 = %0.4f [cm]\n",uy0);
-		printf("uz0 = %0.4f [cm]\n",uz0);
-	}
-	else {
-		printf("Launchflag OFF, so program calculates launch angles.\n");
-		printf("radius = %0.4f [cm]\n",radius);
-		printf("waist  = %0.4f [cm]\n",waist);
-	}
 
     printf("Nx = %d, dx = %0.8f [cm]\n",Nx,dx);
     printf("Ny = %d, dy = %0.8f [cm]\n",Ny,dy);
     printf("Nz = %d, dz = %0.8f [cm]\n",Nz,dz);
+
+    printf("beamtypeflag = %d\n",beamtypeflag);
+    if (beamtypeflag==0) printf("launching top-hat beam\n");
+    if (beamtypeflag==1) printf("launching Gaussian beam\n");
+    if (beamtypeflag==2) printf("launching isotropic point source\n");
+    if (beamtypeflag==3) printf("launching infinite plane wave\n");
+
     if (boundaryflag==0)
 		printf("boundaryflag = 0, so no boundaries.\n");
     else if (boundaryflag==1)
@@ -246,6 +248,17 @@ int main(int argc, const char * argv[]) {
     printf("xfocus = %0.8f [cm]\n",xfocus);
     printf("yfocus = %0.8f [cm]\n",yfocus);
     printf("zfocus = %0.8f [cm]\n",zfocus);
+
+	if (beamtypeflag!=2) {
+		printf("Beam direction defined by unit vector:\n");
+		printf("ux0 = %0.8f\n",ux0);
+		printf("uy0 = %0.8f\n",uy0);
+		printf("uz0 = %0.8f\n",uz0);
+	}
+	if (beamtypeflag<=1) {
+		printf("beam waist radius = %0.8f [cm]\n",waist);
+		printf("beam divergence half-angle = %0.8f [rad]\n",divergence);
+	}
     printf("# of tissues available, Nt = %d\n",Nt);
     for (i=1; i<=Nt; i++) {
         printf("muav[%ld] = %0.8f [cm^-1]\n",i,muav[i]);
@@ -303,6 +316,21 @@ int main(int argc, const char * argv[]) {
 	RandomGen(0, -(int)time(NULL)%(1<<15), NULL); /* initiate with seed = 1, or any long integer. */
 	for(j=0; j<NN;j++) 	F[j] = 0; // ensure F[] starts empty.	
 	
+	if (uz0==1) {
+		vx0 = 1;
+		vy0 = 0;
+		vz0 = 0;
+	}
+	else {
+		vx0 = -uy0/sqrt(uy0*uy0 + ux0*ux0);
+		vy0 = ux0/sqrt(uy0*uy0 + ux0*ux0);
+		vz0 = 0;
+	}
+
+	//wx0 = uy0*vz0 - vy0*uz0;
+	//wy0 = - ux0*vz0 + vx0*uz0;
+	//wz0 = ux0*vy0 - vx0*uy0;
+
 	/**** RUN
 	 Launch N photons, initializing each one before propagation.
 	 *****/
@@ -342,48 +370,66 @@ int main(int argc, const char * argv[]) {
 			printf("Nphotons = %0.0f for simulation time = %0.2f min\n",Nphotons,time_min);
 		}
 		
-		/**** SET SOURCE 
-		 * Launch collimated beam at x,y center. 
-		 ****/
         
 		/****************************/
-		/* Initial position. */		
-		
-		/* trajectory */
-		if (mcflag==0) { // top hat beam
-			// set launch point and width of beam
-			while ((rnd = RandomNum) <= 0.0); // avoids rnd = 0
-			r		= radius*sqrt(rnd); // radius of beam at launch point
-			while ((rnd = RandomNum) <= 0.0); // avoids rnd = 0
-			phi		= rnd*2.0*PI;
-			x		= xs + r*cos(phi);
-			y		= ys + r*sin(phi);
-			z		= zs;
-			// set trajectory toward focus
-			while ((rnd = RandomNum) <= 0.0); // avoids rnd = 0
-			r		= waist*sqrt(rnd); // radius of beam at focus
-			while ((rnd = RandomNum) <= 0.0); // avoids rnd = 0
-			phi		= rnd*2.0*PI;
-			xtarget	= xfocus + r*cos(phi);
-			ytarget	= yfocus + r*sin(phi);
-			ztarget = zfocus;
-			temp	= sqrt((x - xtarget)*(x - xtarget) + (y - ytarget)*(y - ytarget) + (z - ztarget)*(z - ztarget));
-			ux		= -(x - xtarget)/temp;
-			uy		= -(y - ytarget)/temp;
-			uz		= sqrt(1 - ux*ux - uy*uy);
+		/* Initial position and trajectory */
+		if (beamtypeflag==0) { // top-hat focus, top-hat far field beam
+			r		= waist*sqrt(RandomNum); // for target calculation
+			phi		= RandomNum*2.0*PI;
+			wx0		= vx0;
+			wy0		= vy0;
+			wz0		= vz0;
+			axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
+			
+			xtarget	= xfocus + r*wx0;
+			ytarget	= yfocus + r*wy0;
+			ztarget = zfocus + r*wz0;
+			
+			theta	= divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+			phi		= RandomNum*2.0*PI;
+			wx0		= vx0;
+			wy0		= vy0;
+			wz0		= vz0;
+			axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+			
+			ux		= ux0;
+			uy		= uy0;
+			uz		= uz0;
+			axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
+			
+			x		= xtarget - ztarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+			y		= ytarget - ztarget/uz*uy;
+			z		= 0;
 		}
-		else if (mcflag==1) { // infinite plane wave over entire surface
-			while ((rnd = RandomNum) <= 0.0); // avoids rnd = 0
-			x		= Nx*dx*(rnd-0.5); // Generates a random x coordinate within the box
-			while ((rnd = RandomNum) <= 0.0); // avoids rnd = 0
-			y		= Ny*dy*(rnd-0.5); // Generates a random y coordinate within the box
-			z = zs;
-			// set trajectory to be in the z direction
-			ux			= 0;
-			uy			= 0;
-			uz			= 1;
+		else if (beamtypeflag==1) { // Gaussian focus, Gaussian far field beam
+			r		= waist*sqrt(-0.5*log(RandomNum)); // for target calculation
+			phi		= RandomNum*2.0*PI;
+			wx0		= vx0;
+			wy0		= vy0;
+			wz0		= vz0;
+			axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
+			
+			xtarget	= xfocus + r*wx0;
+			ytarget	= yfocus + r*wy0;
+			ztarget = zfocus + r*wz0;
+			
+			theta	= divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+			phi		= RandomNum*2.0*PI;
+			wx0		= vx0;
+			wy0		= vy0;
+			wz0		= vz0;
+			axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+			
+			ux		= ux0;
+			uy		= uy0;
+			uz		= uz0;
+			axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
+			
+			x		= xtarget - ztarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+			y		= ytarget - ztarget/uz*uy;
+			z		= 0;
 		}
-		else if (mcflag==2) { // isotropic pt source
+		else if (beamtypeflag==2) { // isotropically emitting point source
 			costheta = 1.0 - 2.0*RandomNum;
 			sintheta = sqrt(1.0 - costheta*costheta);
 			psi = 2.0*PI*RandomNum;
@@ -392,24 +438,92 @@ int main(int argc, const char * argv[]) {
 				sinpsi = sqrt(1.0 - cospsi*cospsi); 
 			else
 				sinpsi = -sqrt(1.0 - cospsi*cospsi);
-			x = xs;
-			y = ys;
-			z = zs;
+			x = xfocus;
+			y = yfocus;
+			z = zfocus;
 			ux = sintheta*cospsi;
 			uy = sintheta*sinpsi;
 			uz = costheta;
 		}
-		else if (mcflag==3) { // pencil beam
-			x	= xs; 
-			y	= ys;
-			z	= zs;
+		else if (beamtypeflag==3) { // infinite plane wave
+			if (boundaryflag==1) {
+				x = Nx*dx*(RandomNum-0.5); // Generates a random x coordinate within the box
+				y = Ny*dy*(RandomNum-0.5); // Generates a random y coordinate within the box
+			}
+			else {
+				x = 6.0*Nx*dx*(RandomNum-0.5); // Generates a random x coordinate within an interval 6 times the box' size
+				y = 6.0*Ny*dy*(RandomNum-0.5); // Generates a random y coordinate within an interval 6 times the box' size
+			}
+			z = 0;
+			ux = ux0;
+			uy = uy0;
+			uz = uz0;
+		}
+		else if (beamtypeflag==4) { // pencil beam
+			x	= xfocus - zfocus/uz0*ux0; 
+			y	= yfocus - zfocus/uz0*uy0;
+			z	= 0;
 			ux	= ux0;
 			uy	= uy0;
 			uz	= uz0;
 		}
-		else { // Gaussian beam
+		else if (beamtypeflag==5) { // top-hat focus, Gaussian far field beam
+			r		= waist*sqrt(RandomNum); // for target calculation
+			phi		= RandomNum*2.0*PI;
+			wx0		= vx0;
+			wy0		= vy0;
+			wz0		= vz0;
+			axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
 			
+			xtarget	= xfocus + r*wx0;
+			ytarget	= yfocus + r*wy0;
+			ztarget = zfocus + r*wz0;
+			
+			theta	= divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+			phi		= RandomNum*2.0*PI;
+			wx0		= vx0;
+			wy0		= vy0;
+			wz0		= vz0;
+			axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+			
+			ux		= ux0;
+			uy		= uy0;
+			uz		= uz0;
+			axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
+			
+			x		= xtarget - ztarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+			y		= ytarget - ztarget/uz*uy;
+			z		= 0;
 		}
+		else if (beamtypeflag==6) { // Gaussian focus, top-hat far field beam
+			r		= waist*sqrt(-0.5*log(RandomNum)); // for target calculation
+			phi		= RandomNum*2.0*PI;
+			wx0		= vx0;
+			wy0		= vy0;
+			wz0		= vz0;
+			axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
+			
+			xtarget	= xfocus + r*wx0;
+			ytarget	= yfocus + r*wy0;
+			ztarget = zfocus + r*wz0;
+			
+			theta	= divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+			phi		= RandomNum*2.0*PI;
+			wx0		= vx0;
+			wy0		= vy0;
+			wz0		= vz0;
+			axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+			
+			ux		= ux0;
+			uy		= uy0;
+			uz		= uz0;
+			axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
+			
+			x		= xtarget - ztarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+			y		= ytarget - ztarget/uz*uy;
+			z		= 0;
+		}
+
 		/****************************/
 		
 		/* Get tissue voxel properties of launchpoint.
@@ -443,7 +557,7 @@ int main(int argc, const char * argv[]) {
 			/**** HOP
 			 Take step to new position
 			 s = dimensionless stepsize
-			 ux, uy, uz are sines of current photon trajectory
+			 ux, uy, uz are unit vector components of current photon trajectory
 			 *****/
 			while ((rnd = RandomNum) <= 0.0);   /* yields 0 < rnd <= 1 */
 			sleft	= -log(rnd);				/* dimensionless step */
@@ -1000,3 +1114,22 @@ double FindVoxelFace(double x1,double y1,double z1, double x2, double y2, double
     s = sqrt( SQR((x0-x_1)*dx) + SQR((y0-y_1)*dy) + SQR((z0-z_1)*dz));
     return (s);
 }
+
+/********************
+ * Function for rotating a point at coordinates (x,y,z) an angle theta around an axis with direction unit vector (ux,uy,uz).
+ ****/
+void axisrotate(double* x,double* y,double* z, double ux, double uy, double uz,double theta)
+{	
+    //printf("Before rotation (x,y,z) = (%0.8f,%0.8f,%0.8f)\n",*x,*y,*z);
+    double xin = *x;
+	double yin = *y;
+	double zin = *z;
+	double st = sin(theta);
+	double ct = cos(theta);
+	
+	*x = (ct + ux*ux*(1-ct))*xin		+		(ux*uy*(1-ct) - uz*st)*yin		+		(ux*uz*(1-ct) + uy*st)*zin;
+	*y = (uy*ux*(1-ct) + uz*st)*xin		+		(ct + uy*uy*(1-ct))*yin			+		(uy*uz*(1-ct) - ux*st)*zin;
+	*z = (uz*ux*(1-ct) - uy*st)*xin		+		(uz*uy*(1-ct) + ux*st)*yin		+		(ct + uz*uz*(1-ct))*zin;
+    //printf("After rotation (x,y,z) = (%0.8f,%0.8f,%0.8f)\n",*x,*y,*z);
+}
+
