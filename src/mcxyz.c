@@ -350,6 +350,7 @@ int main(int argc, const char * argv[]) {
 		i_photon += 1;				/* increment photon count */
 		W = 1.0;                    /* set photon weight to one */
 		photon_status = ALIVE;      /* Launch an ALIVE photon */
+		sv = false;					/* Photon is initialized as if it has just entered the voxel it's created in, to ensure proper initialization of voxel index and ray properties */
 		CNT = 0;
 		
 		// Print out message about progress.
@@ -526,29 +527,6 @@ int main(int argc, const char * argv[]) {
 
 		/****************************/
 		
-		/* Get tissue voxel properties of launchpoint.
-		 * If photon beyond outer edge of defined voxels, 
-		 * the tissue equals properties of outermost voxels.
-		 * Therefore, set outermost voxels to infinite background value.
-		 */
-		ix = floor(Nx/2 + x/dx);
-		iy = floor(Ny/2 + y/dy);
-		iz = floor(z/dz);        
-		if (ix>=Nx) ix=Nx-1;
-		if (iy>=Ny) iy=Ny-1;
-		if (iz>=Nz) iz=Nz-1;
-		if (ix<0)   ix=0;
-		if (iy<0)   iy=0;
-		if (iz<0)   iz=0;		
-		/* Get the tissue type of located voxel */
-		i		= (long)(iz*Ny*Nx + iy*Nx + ix);
-		type	= v[i];
-		mua 	= muav[type];
-		mus 	= musv[type];
-		g 		= gv[type];
-		
-        bflag = 1; // initialize as 1 = inside volume, but later check as photon propagates.
-        
 		/* HOP_DROP_SPIN_CHECK
 		 Propagate one photon until it dies as determined by ROULETTE.
 		 *******/
@@ -563,7 +541,56 @@ int main(int argc, const char * argv[]) {
 			sleft	= -log(rnd);				/* dimensionless step */
 			CNT += 1;
 			
-			do{  // while sleft>0   
+			do{  // while sleft>0
+
+				if (!sv) {
+					/* Get tissue voxel properties of current position.
+					 * If photon beyond outer edge of defined voxels, 
+					 * the tissue equals properties of outermost voxels.
+					 * Therefore, set outermost voxels to infinite background value.
+					 */
+					ix = floor(Nx/2.0 + x/dx);
+					iy = floor(Ny/2.0 + y/dy);
+					iz = floor(z/dz);        
+					
+					bflag = 1;  // Boundary flag. Initialize as 1 = inside volume, then check.
+					if (boundaryflag==0) { // Infinite medium.
+								// Check if photon has wandered outside volume.
+								// If so, set tissue type to boundary value, but let photon wander.
+								// Set bflag to zero, so DROP does not deposit energy.
+						if (iz>=Nz) {iz=Nz-1; bflag = 0;}
+						if (ix>=Nx) {ix=Nx-1; bflag = 0;}
+						if (iy>=Ny) {iy=Ny-1; bflag = 0;}
+						if (iz<0)   {iz=0;    bflag = 0;}
+						if (ix<0)   {ix=0;    bflag = 0;}
+						if (iy<0)   {iy=0;    bflag = 0;}
+					}
+					else if (boundaryflag==1) { // Escape at boundaries
+						if (iz>=Nz) {iz=Nz-1; photon_status = DEAD; sleft=0;}
+						if (ix>=Nx) {ix=Nx-1; photon_status = DEAD; sleft=0;}
+						if (iy>=Ny) {iy=Ny-1; photon_status = DEAD; sleft=0;}
+						if (iz<0)   {iz=0;    photon_status = DEAD; sleft=0;}
+						if (ix<0)   {ix=0;    photon_status = DEAD; sleft=0;}
+						if (iy<0)   {iy=0;    photon_status = DEAD; sleft=0;}
+					}
+					else if (boundaryflag==2) { // Escape at top surface, no x,y bottom z boundaries
+						if (iz>=Nz) {iz=Nz-1; bflag = 0;}
+						if (ix>=Nx) {ix=Nx-1; bflag = 0;}
+						if (iy>=Ny) {iy=Ny-1; bflag = 0;}
+						if (iz<0)   {iz=0;    photon_status = DEAD; sleft=0;}
+						if (ix<0)   {ix=0;    bflag = 0;}
+						if (iy<0)   {iy=0;    bflag = 0;}
+					}
+					if (photon_status == DEAD) break;
+					
+					/* Get the tissue type of located voxel */
+					i		= (long)(iz*Ny*Nx + iy*Nx + ix);
+					type	= v[i];
+					mua 	= muav[type];
+					mus 	= musv[type];
+					g 		= gv[type];
+				}
+				
 				s     = sleft/mus;				/* Step size [cm].*/
 				tempx = x + s*ux;				/* Update positions. [cm] */
 				tempy = y + s*uy;	
@@ -610,52 +637,23 @@ int main(int argc, const char * argv[]) {
 					x += s*ux;
 					y += s*uy;
 					z += s*uz;
-					
-					// pointers to voxel containing optical properties
-                    ix = floor(Nx/2 + x/dx);
-                    iy = floor(Ny/2 + y/dy);
-                    iz = floor(z/dz);
-                    
-                    bflag = 1;  // Boundary flag. Initialize as 1 = inside volume, then check.
-                    if (boundaryflag==0) { // Infinite medium.
-								// Check if photon has wandered outside volume.
-                                // If so, set tissue type to boundary value, but let photon wander.
-                                // Set bflag to zero, so DROP does not deposit energy.
-						if (iz>=Nz) {iz=Nz-1; bflag = 0;}
-						if (ix>=Nx) {ix=Nx-1; bflag = 0;}
-						if (iy>=Ny) {iy=Ny-1; bflag = 0;}
-						if (iz<0)   {iz=0;    bflag = 0;}
-						if (ix<0)   {ix=0;    bflag = 0;}
-						if (iy<0)   {iy=0;    bflag = 0;}
-					}
-					else if (boundaryflag==1) { // Escape at boundaries
-						if (iz>=Nz) {iz=Nz-1; photon_status = DEAD; sleft=0;}
-						if (ix>=Nx) {ix=Nx-1; photon_status = DEAD; sleft=0;}
-						if (iy>=Ny) {iy=Ny-1; photon_status = DEAD; sleft=0;}
-						if (iz<0)   {iz=0;    photon_status = DEAD; sleft=0;}
-						if (ix<0)   {ix=0;    photon_status = DEAD; sleft=0;}
-						if (iy<0)   {iy=0;    photon_status = DEAD; sleft=0;}
-					}
-					else if (boundaryflag==2) { // Escape at top surface, no x,y bottom z boundaries
-						if (iz>=Nz) {iz=Nz-1; bflag = 0;}
-						if (ix>=Nx) {ix=Nx-1; bflag = 0;}
-						if (iy>=Ny) {iy=Ny-1; bflag = 0;}
-						if (iz<0)   {iz=0;    photon_status = DEAD; sleft=0;}
-						if (ix<0)   {ix=0;    bflag = 0;}
-						if (iy<0)   {iy=0;    bflag = 0;}
-					}
-					
-                    // update pointer to tissue type
-					i    = (long)(iz*Ny*Nx + iy*Nx + ix);
-					type = v[i];
-                    mua  = muav[type];
-                    mus  = musv[type];
-                    g    = gv[type];
                     
 				} //(sv) /* same voxel */
                 
 			} while(sleft>0); //do...while
 			
+			/**** CHECK ROULETTE 
+			 If photon weight below THRESHOLD, then terminate photon using Roulette technique.
+			 Photon has CHANCE probability of having its weight increased by factor of 1/CHANCE,
+			 and 1-CHANCE probability of terminating.
+			 *****/
+			if (W < THRESHOLD) {
+				if (RandomNum <= CHANCE)
+					W /= CHANCE;
+				else photon_status = DEAD;
+			}
+			
+			if (photon_status == ALIVE) {
 			/**** SPIN 
 			 Scatter photon into new trajectory defined by theta and psi.
 			 Theta is specified by cos(theta), which is determined 
@@ -697,19 +695,10 @@ int main(int argc, const char * argv[]) {
 			ux = uxx;
 			uy = uyy;
 			uz = uzz;
+			}
 			
-			/**** CHECK ROULETTE 
-			 If photon weight below THRESHOLD, then terminate photon using Roulette technique.
-			 Photon has CHANCE probability of having its weight increased by factor of 1/CHANCE,
-			 and 1-CHANCE probability of terminating.
-			 *****/
-			if (W < THRESHOLD) {
-				if (RandomNum <= CHANCE)
-					W /= CHANCE;
-				else photon_status = DEAD;
-			}				
-            
-		} while (photon_status == ALIVE);  /* end STEP_CHECK_HOP_SPIN */
+		} while (photon_status == ALIVE);
+		/* end STEP_CHECK_HOP_SPIN */
         /* if ALIVE, continue propagating */
 		/* If photon DEAD, then launch new photon. */	
         
