@@ -81,7 +81,7 @@ int main(int argc, const char * argv[]) {
 	
 	/* Propagation parameters */
 	double	x, y, z;        /* photon position */
-	double	ux, uy, uz;     /* photon trajectory as cosines */
+	double	ux, uy, uz;     /* photon trajectory as unit vector composants */
 	double  uxx, uyy, uzz;	/* temporary values used during SPIN */
 	double	s;              /* step sizes. s = -log(RND)/mus [cm] */
 	double  sleft;          /* dimensionless */
@@ -104,14 +104,16 @@ int main(int argc, const char * argv[]) {
 	
 	/* launch parameters */
 	int		mcflag, launchflag, boundaryflag;
-	float	xfocus, yfocus, zfocus, xtarget, ytarget, ztarget;
-	float	ux0, uy0, uz0;
-	float	radius;
-	float	waist;
+	double	xfocus, yfocus, zfocus, xtarget, ytarget, ztarget;
+	double	ux0, uy0, uz0;	/* beam center axis direction unit vector composants */
+	double	vx0, vy0, vz0;  /* normal vector 1 to photon trajectory */
+	double	wx0, wy0, wz0;  /* normal vector 2 to photon trajectory. Not necessarily normal to v0. */
+	double	waist;
+	double	divergence;
 	
 	/* dummy variables */
 	double  rnd;            /* assigned random value 0-1 */
-	double	r, phi;			/* dummy values */
+	double	r, theta, phi;	/* dummy values */
 	long	i,j,NN;         /* dummy indices */
 	double	tempx, tempy, tempz; /* temporary variables, used during photon step. */
 	int 	ix, iy, iz;     /* Added. Used to track photons */
@@ -121,20 +123,19 @@ int main(int argc, const char * argv[]) {
 	int		CNT;
 	
 	/* mcxyz bin variables */
-	float	dx, dy, dz;     /* bin size [cm] */
+	double	dx, dy, dz;     /* bin size [cm] */
 	int		Nx, Ny, Nz, Nt; /* # of bins */
-	float	xs, ys, zs;		/* launch position */
     
     /* time */
-	float	time_min;               // Requested time duration of computation.
+	double	time_min;               // Requested time duration of computation.
 	time_t	now;
 	double	start_time, finish_time, temp_time; /* for clock() */
 	
 	/* tissue parameters */
 	char	tissuename[50][32];
-	float 	muav[Ntiss];            // muav[0:Ntiss-1], absorption coefficient of ith tissue type
-	float 	musv[Ntiss];            // scattering coeff. 
-	float 	gv[Ntiss];              // anisotropy of scattering
+	double 	muav[Ntiss];            // muav[0:Ntiss-1], absorption coefficient of ith tissue type
+	double 	musv[Ntiss];            // scattering coeff. 
+	double 	gv[Ntiss];              // anisotropy of scattering
     
 	/* Input/Output */
 	char   	myname[STRLEN];		// Holds the user's choice of myname, used in input and output files. 
@@ -152,7 +153,7 @@ int main(int argc, const char * argv[]) {
 	fid = fopen(filename,"r");
 	fgets(buf, 32, fid);
 		// run parameters
-		sscanf(buf, "%f", &time_min); // desired time duration of run [min]
+		sscanf(buf, "%lf", &time_min); // desired time duration of run [min]
 		fgets(buf, 32, fid);
 		sscanf(buf, "%d", &Nx);  // # of bins  
 		fgets(buf, 32,fid);
@@ -161,11 +162,11 @@ int main(int argc, const char * argv[]) {
 		sscanf(buf, "%d", &Nz);  // # of bins   
 	
 		fgets(buf, 32,fid);
-		sscanf(buf, "%f", &dx);	 // size of bins [cm]
+		sscanf(buf, "%lf", &dx);	 // size of bins [cm]
 		fgets(buf, 32,fid);
-		sscanf(buf, "%f", &dy);	 // size of bins [cm] 
+		sscanf(buf, "%lf", &dy);	 // size of bins [cm] 
 		fgets(buf, 32,fid);
-		sscanf(buf, "%f", &dz);	 // size of bins [cm] 
+		sscanf(buf, "%lf", &dz);	 // size of bins [cm] 
 	
 		// launch parameters
 		fgets(buf, 32,fid);
@@ -176,30 +177,23 @@ int main(int argc, const char * argv[]) {
         sscanf(buf, "%d", &boundaryflag);  // 0 = no boundaries, 1 = escape at all boundaries, 2 = escape at surface only
 	
 		fgets(buf, 32,fid);
-		sscanf(buf, "%f", &xs);  // initial launch point
+		sscanf(buf, "%lf", &xfocus);  // xfocus
 		fgets(buf, 32,fid);
-		sscanf(buf, "%f", &ys);  // initial launch point 
+		sscanf(buf, "%lf", &yfocus);  // yfocus
 		fgets(buf, 32,fid);
-		sscanf(buf, "%f", &zs);  // initial launch point
-	
-		fgets(buf, 32,fid);
-		sscanf(buf, "%f", &xfocus);  // xfocus
-		fgets(buf, 32,fid);
-		sscanf(buf, "%f", &yfocus);  // yfocus
-		fgets(buf, 32,fid);
-		sscanf(buf, "%f", &zfocus);  // zfocus
+		sscanf(buf, "%lf", &zfocus);  // zfocus
 
 		fgets(buf, 32,fid);
-		sscanf(buf, "%f", &ux0);  // ux trajectory
+		sscanf(buf, "%lf", &ux0);  // ux trajectory
 		fgets(buf, 32,fid);
-		sscanf(buf, "%f", &uy0);  // uy trajectory
+		sscanf(buf, "%lf", &uy0);  // uy trajectory
 		fgets(buf, 32,fid);
-		sscanf(buf, "%f", &uz0);  // uz trajectory
+		sscanf(buf, "%lf", &uz0);  // uz trajectory
 
 		fgets(buf, 32,fid);
-		sscanf(buf, "%f", &radius);  // radius
+		sscanf(buf, "%lf", &waist);  // waist 1/e^2 radius
 		fgets(buf, 32,fid);
-		sscanf(buf, "%f", &waist);  // waist
+		sscanf(buf, "%lf", &divergence);  // divergence 1/e^2 half-angle of incoming beam in rad
     
 	
 		// tissue optical properties
@@ -207,22 +201,15 @@ int main(int argc, const char * argv[]) {
 		sscanf(buf, "%d", &Nt);				// # of tissue types in tissue list
 		for (i=1; i<=Nt; i++) {
 			fgets(buf, 32, fid);
-			sscanf(buf, "%f", &muav[i]);	// absorption coeff [cm^-1]
+			sscanf(buf, "%lf", &muav[i]);	// absorption coeff [cm^-1]
 			fgets(buf, 32, fid);
-			sscanf(buf, "%f", &musv[i]);	// scattering coeff [cm^-1]
+			sscanf(buf, "%lf", &musv[i]);	// scattering coeff [cm^-1]
 			fgets(buf, 32, fid);
-			sscanf(buf, "%f", &gv[i]);		// anisotropy of scatter [dimensionless]
+			sscanf(buf, "%lf", &gv[i]);		// anisotropy of scatter [dimensionless]
 		}    
     fclose(fid);
     
     printf("time_min = %0.2f min\n",time_min);
-    printf("Nx = %d, dx = %0.4f [cm]\n",Nx,dx);
-    printf("Ny = %d, dy = %0.4f [cm]\n",Ny,dy);
-    printf("Nz = %d, dz = %0.4f [cm]\n",Nz,dz);
-
-    printf("xs = %0.4f [cm]\n",xs);
-    printf("ys = %0.4f [cm]\n",ys);
-    printf("zs = %0.4f [cm]\n",zs);
     printf("mcflag = %d [cm]\n",mcflag);
     if (mcflag==0) printf("launching top hat beam\n");
     if (mcflag==1) printf("launching plane wave beam\n");
@@ -241,6 +228,10 @@ int main(int argc, const char * argv[]) {
 		printf("radius = %0.4f [cm]\n",radius);
 		printf("waist  = %0.4f [cm]\n",waist);
 	}
+
+    printf("Nx = %d, dx = %0.8f [cm]\n",Nx,dx);
+    printf("Ny = %d, dy = %0.8f [cm]\n",Ny,dy);
+    printf("Nz = %d, dz = %0.8f [cm]\n",Nz,dz);
     if (boundaryflag==0)
 		printf("boundaryflag = 0, so no boundaries.\n");
     else if (boundaryflag==1)
@@ -251,11 +242,15 @@ int main(int argc, const char * argv[]) {
         printf("improper boundaryflag. quit.\n");
         return 0;
     }
+	
+    printf("xfocus = %0.8f [cm]\n",xfocus);
+    printf("yfocus = %0.8f [cm]\n",yfocus);
+    printf("zfocus = %0.8f [cm]\n",zfocus);
     printf("# of tissues available, Nt = %d\n",Nt);
     for (i=1; i<=Nt; i++) {
-        printf("muav[%ld] = %0.4f [cm^-1]\n",i,muav[i]);
-        printf("musv[%ld] = %0.4f [cm^-1]\n",i,musv[i]);
-        printf("  gv[%ld] = %0.4f [--]\n\n",i,gv[i]);
+        printf("muav[%ld] = %0.8f [cm^-1]\n",i,muav[i]);
+        printf("musv[%ld] = %0.8f [cm^-1]\n",i,musv[i]);
+        printf("  gv[%ld] = %0.8f [--]\n\n",i,gv[i]);
     }
 
     // SAVE optical properties, for later use by MATLAB.
@@ -263,9 +258,9 @@ int main(int argc, const char * argv[]) {
 	strcat(filename,"_props.m");
 	fid = fopen(filename,"w");
 	for (i=1; i<=Nt; i++) {
-		fprintf(fid,"muav(%ld) = %0.4f;\n",i,muav[i]);
-		fprintf(fid,"musv(%ld) = %0.4f;\n",i,musv[i]);
-		fprintf(fid,"gv(%ld) = %0.4f;\n\n",i,gv[i]);
+		fprintf(fid,"muav(%ld) = %0.8f;\n",i,muav[i]);
+		fprintf(fid,"musv(%ld) = %0.8f;\n",i,musv[i]);
+		fprintf(fid,"gv(%ld) = %0.8f;\n\n",i,gv[i]);
 	}
 	fclose(fid);
     
