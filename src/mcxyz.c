@@ -354,7 +354,56 @@ int main(int argc, const char * argv[]) {
 		/* Initial position. */		
 		
 		/* trajectory */
-		if (launchflag==1) { // manually set launch
+		if (mcflag==0) { // top hat beam
+			// set launch point and width of beam
+			while ((rnd = RandomNum) <= 0.0); // avoids rnd = 0
+			r		= radius*sqrt(rnd); // radius of beam at launch point
+			while ((rnd = RandomNum) <= 0.0); // avoids rnd = 0
+			phi		= rnd*2.0*PI;
+			x		= xs + r*cos(phi);
+			y		= ys + r*sin(phi);
+			z		= zs;
+			// set trajectory toward focus
+			while ((rnd = RandomNum) <= 0.0); // avoids rnd = 0
+			r		= waist*sqrt(rnd); // radius of beam at focus
+			while ((rnd = RandomNum) <= 0.0); // avoids rnd = 0
+			phi		= rnd*2.0*PI;
+			xtarget	= xfocus + r*cos(phi);
+			ytarget	= yfocus + r*sin(phi);
+			ztarget = zfocus;
+			temp	= sqrt((x - xtarget)*(x - xtarget) + (y - ytarget)*(y - ytarget) + (z - ztarget)*(z - ztarget));
+			ux		= -(x - xtarget)/temp;
+			uy		= -(y - ytarget)/temp;
+			uz		= sqrt(1 - ux*ux - uy*uy);
+		}
+		else if (mcflag==1) { // infinite plane wave over entire surface
+			while ((rnd = RandomNum) <= 0.0); // avoids rnd = 0
+			x		= Nx*dx*(rnd-0.5); // Generates a random x coordinate within the box
+			while ((rnd = RandomNum) <= 0.0); // avoids rnd = 0
+			y		= Ny*dy*(rnd-0.5); // Generates a random y coordinate within the box
+			z = zs;
+			// set trajectory to be in the z direction
+			ux			= 0;
+			uy			= 0;
+			uz			= 1;
+		}
+		else if (mcflag==2) { // isotropic pt source
+			costheta = 1.0 - 2.0*RandomNum;
+			sintheta = sqrt(1.0 - costheta*costheta);
+			psi = 2.0*PI*RandomNum;
+			cospsi = cos(psi);
+			if (psi < PI)
+				sinpsi = sqrt(1.0 - cospsi*cospsi); 
+			else
+				sinpsi = -sqrt(1.0 - cospsi*cospsi);
+			x = xs;
+			y = ys;
+			z = zs;
+			ux = sintheta*cospsi;
+			uy = sintheta*sinpsi;
+			uz = costheta;
+		}
+		else if (mcflag==3) { // pencil beam
 			x	= xs; 
 			y	= ys;
 			z	= zs;
@@ -362,57 +411,9 @@ int main(int argc, const char * argv[]) {
 			uy	= uy0;
 			uz	= uz0;
 		}
-		else { // use mcflag
-			if (mcflag==0) { // top hat beam
-				// set launch point and width of beam
-				while ((rnd = RandomGen(1,0,NULL)) <= 0.0); // avoids rnd = 0
-				r		= radius*sqrt(rnd); // radius of beam at launch point
-				while ((rnd = RandomGen(1,0,NULL)) <= 0.0); // avoids rnd = 0
-				phi		= rnd*2.0*PI;
-				x		= xs + r*cos(phi);
-				y		= ys + r*sin(phi);
-				z		= zs;
-				// set trajectory toward focus
-				while ((rnd = RandomGen(1,0,NULL)) <= 0.0); // avoids rnd = 0
-				r		= waist*sqrt(rnd); // radius of beam at focus
-				while ((rnd = RandomGen(1,0,NULL)) <= 0.0); // avoids rnd = 0
-				phi		= rnd*2.0*PI;
-				xtarget	= xfocus + r*cos(phi);
-				ytarget	= yfocus + r*sin(phi);
-				ztarget = zfocus;
-				temp	= sqrt((x - xtarget)*(x - xtarget) + (y - ytarget)*(y - ytarget) + (z - ztarget)*(z - ztarget));
-				ux		= -(x - xtarget)/temp;
-				uy		= -(y - ytarget)/temp;
-				uz		= sqrt(1 - ux*ux - uy*uy);
-			}
-			else if (mcflag==1) { // infinite plane wave over entire surface
-				while ((rnd = RandomGen(1,0,NULL)) <= 0.0); // avoids rnd = 0
-				x		= Nx*dx*(rnd-0.5); // Generates a random x coordinate within the box
-				while ((rnd = RandomGen(1,0,NULL)) <= 0.0); // avoids rnd = 0
-				y		= Ny*dy*(rnd-0.5); // Generates a random y coordinate within the box
-				z = zs;
-				// set trajectory to be in the z direction
-				ux			= 0;
-				uy			= 0;
-				uz			= 1;
-			}
-			else { // isotropic pt source
-				costheta = 1.0 - 2.0*RandomGen(1,0,NULL);
-				sintheta = sqrt(1.0 - costheta*costheta);
-				psi = 2.0*PI*RandomGen(1,0,NULL);
-				cospsi = cos(psi);
-				if (psi < PI)
-					sinpsi = sqrt(1.0 - cospsi*cospsi); 
-				else
-					sinpsi = -sqrt(1.0 - cospsi*cospsi);
-				x = xs;
-				y = ys;
-				z = zs;
-				ux = sintheta*cospsi;
-				uy = sintheta*sinpsi;
-				uz = costheta;
-			}
-		} // end  use mcflag
+		else { // Gaussian beam
+			
+		}
 		/****************************/
 		
 		/* Get tissue voxel properties of launchpoint.
