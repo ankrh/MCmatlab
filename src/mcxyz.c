@@ -308,10 +308,11 @@ int main(int argc, const char * argv[]) {
 	 *****/
 	printf("------------- Begin Monte Carlo -------------\n");
     printf("%s\n",myname);
-    printf("requesting %0.1f min\n",time_min);
-	Nphotons = 1000; // will be updated to achieve desired run time, time_min.
+    printf("requesting %0.2f min\n",time_min);
+	Nphotons = 100000; // will be updated to achieve desired run time, time_min.
 	i_photon = 0;
 	CNT = 0;
+	
 	do {
 		/**** LAUNCH 
 		 Initialize photon position and trajectory.
@@ -324,20 +325,20 @@ int main(int argc, const char * argv[]) {
 		CNT = 0;
 		
 		// Print out message about progress.
-		if ((i_photon>1000) & (fmod(i_photon, (int)(Nphotons/100))  == 0)) {
+		if ((i_photon>100000) & (fmod(i_photon, (int)(Nphotons/100))  == 0)) {
             pctprogress = i_photon/Nphotons*100;
-            //printf("%0.1f%% \t\tfmod = %0.3f\n", temp,fmod(temp, 10.0));
             if ((pctprogress<10) | (pctprogress>90) | (fmod(pctprogress, 10)==0)){
                 printf("%i%% done\n", pctprogress);
             }
         }
         
-		// At 1000th photon, update Nphotons to achieve desired runtime (time_min)
+		// At 100000th photon, update Nphotons to achieve desired runtime (time_min)
 		if (i_photon==1)
 			temp_time = clock();
-		if (i_photon==1000) {    
+		if (i_photon==100000) {    
 			finish_time = clock();
-			Nphotons = (long)( time_min*60*999*CLOCKS_PER_SEC/(finish_time-temp_time) );
+			printf("temp_time = %0.8f, finish_time = %0.8f\n",temp_time,finish_time);
+			Nphotons = (long)( time_min*60*99999*CLOCKS_PER_SEC/(finish_time-temp_time) );
 			printf("Nphotons = %0.0f for simulation time = %0.2f min\n",Nphotons,time_min);
 		}
 		
