@@ -154,7 +154,7 @@ for iz=1:Nz % for every depth z(iz)
 %Dentin @ xc, zc, radius, oriented along x axis
      yc      = 0;            % [cm], center of blood vessel
      zc      = Nz/2*dz;     	% [cm], center of blood vessel
-     dentinradius  = 0.200;      	% blood vessel radius [cm]
+     dentinradius  = 0.170;      	% blood vessel radius [cm]
      for iy=1:Ny
              yd = y(iy) - yc;	% vessel, x distance from vessel center
              zd = z(iz) - zc;   	% vessel, z distance from vessel center                
@@ -248,7 +248,7 @@ for iz=1:Nz % for every depth z(iz)
 %     end %ix
 end % iz
 
-%T= shiftdim(T,1); % shifts dimension to have the light coming from side
+T= shiftdim(T,1); % shifts dimension to have the light coming from side
 
 T = uint8(6*ones(Nx,Ny,Nz)); % fill with the testabsorber
 

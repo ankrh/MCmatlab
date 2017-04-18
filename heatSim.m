@@ -7,8 +7,8 @@ function heatSim
 % maketissue_example2.m, makeTissueList.m, and lookmcxyz.m by importing
 % HeatSimIn.mat
 
-directoryPath='./Data/';
-
+directoryPath='C:\Users\Kira Schmidt\Documents\mcxyz';
+%./Data/
 load([directoryPath 'Input_spectrum'])
 
 %% Setup of simulation 
@@ -16,11 +16,11 @@ q = 0;
 for fluence = F_min:dF:F_max
     q = q+1;
     num = num2str(q);
-    load([directoryPath 'HeatSimIn_blood4_' num '.mat'])
+    load([directoryPath 'dentin_sim_850' num '.mat'])
 
     %% Simulation Parameters
     %%% Parameters to set %%%
-    save_name           = ['HeatSimOut_blood4_' num '.mat'];
+    save_name           = ['HeatSimOut_dentin_' num '.mat'];
     pulse_energy_area   = fluence; % [J/cm^2] pulse energy per area
     pulse_duration      = pulse; % [s] pulse duration
     duration_after      = 10e-3; % [s] simulation duration after pulse
