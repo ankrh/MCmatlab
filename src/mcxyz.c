@@ -48,7 +48,6 @@
 #define SQR(x)		(x*x) 
 #define SIGN(x)     ((x)>=0 ? 1:-1)
 #define RandomNum   (double) RandomGen(1, 0, NULL) /* Calls for a random number. */
-#define COS90D      1.0E-6          /* If cos(theta) <= COS90D, theta >= PI/2 - 1e-6 rad. */
 #define ONE_MINUS_COSZERO 1.0E-12   /* If 1-cos(theta) <= ONE_MINUS_COSZERO, fabs(theta) <= 1e-6 rad. */
 /* If 1+cos(theta) <= ONE_MINUS_COSZERO, fabs(PI-theta) <= 1e-6 rad. */
 
@@ -57,8 +56,6 @@ double RandomGen(char Type, long Seed, long *Status);
 /* Random number generator */
 bool SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2, double dx,double dy,double dz);
 /* Asks,"In the same voxel?" */
-double max2(double a, double b);
-double min2(double a, double b);
 double min3(double a, double b, double c);
 double FindVoxelFace(double x1,double y1,double z1, double x2, double y2, double z2,double dx,double dy,double dz, double ux, double uy, double uz);
 double FindVoxelFace2(double x1,double y1,double z1, double x2, double y2, double z2,double dx,double dy,double dz, double ux, double uy, double uz);
@@ -839,9 +836,9 @@ double RandomGen(char Type, long Seed, long *Status){
  ****/				
 bool SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2, double dx,double dy,double dz)
 {
-    double xmin=min2((floor)(x1/dx),(floor)(x2/dx))*dx;
-    double ymin=min2((floor)(y1/dy),(floor)(y2/dy))*dy;
-    double zmin=min2((floor)(z1/dz),(floor)(z2/dz))*dz;
+    double xmin=fmin((floor)(x1/dx),(floor)(x2/dx))*dx;
+    double ymin=fmin((floor)(y1/dy),(floor)(y2/dy))*dy;
+    double zmin=fmin((floor)(z1/dz),(floor)(z2/dz))*dz;
     double xmax = xmin+dx;
     double ymax = ymin+dy;
     double zmax = zmin+dz;
@@ -852,36 +849,13 @@ bool SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2, d
 }
 
 /***********************************************************
- * max2
- ****/
-double max2(double a, double b) {
-    double m;
-    if (a > b)
-        m = a;
-    else
-        m = b;
-    return m;
-}
-
-/***********************************************************
- * min2
- ****/
-double min2(double a, double b) {
-    double m;
-    if (a >= b)
-        m = b;
-    else
-        m = a;
-    return m;
-}
-/***********************************************************
  * min3
  ****/
 double min3(double a, double b, double c) {
     double m;
-    if (a <=  min2(b, c))
+    if (a <=  fmin(b, c))
         m = a;
-    else if (b <= min2(a, c))
+    else if (b <= fmin(a, c))
         m = b;
     else
         m = c;
@@ -1008,21 +982,21 @@ double FindVoxelFace(double x1,double y1,double z1, double x2, double y2, double
         fy_2=fy_1+SIGN(fy_2-fy_1);//added
         fz_2=fz_1+SIGN(fz_2-fz_1);//added
         
-        x = (max2(fx_1,fx_2)-x_1)/ux;
-        y = (max2(fy_1,fy_2)-y_1)/uy;
-        z = (max2(fz_1,fz_2)-z_1)/uz;
+        x = (fmax(fx_1,fx_2)-x_1)/ux;
+        y = (fmax(fy_1,fy_2)-y_1)/uy;
+        z = (fmax(fz_1,fz_2)-z_1)/uz;
         if (x == min3(x,y,z)) {
-            x0 = max2(fx_1,fx_2);
+            x0 = fmax(fx_1,fx_2);
             y0 = (x0-x_1)/ux*uy+y_1;
             z0 = (x0-x_1)/ux*uz+z_1;
         }
         else if (y == min3(x,y,z)) {
-            y0 = max2(fy_1,fy_2);
+            y0 = fmax(fy_1,fy_2);
             x0 = (y0-y_1)/uy*ux+x_1;
             z0 = (y0-y_1)/uy*uz+z_1;
         }
         else {
-            z0 = max2(fz_1,fz_2);
+            z0 = fmax(fz_1,fz_2);
             y0 = (z0-z_1)/uz*uy+y_1;
             x0 = (z0-z_1)/uz*ux+x_1;
         }
@@ -1030,15 +1004,15 @@ double FindVoxelFace(double x1,double y1,double z1, double x2, double y2, double
     else if ( (fx_1 != fx_2) && (fy_1 != fy_2) ) { //#2
         fx_2=fx_1+SIGN(fx_2-fx_1);//added
         fy_2=fy_1+SIGN(fy_2-fy_1);//added
-        x = (max2(fx_1,fx_2)-x_1)/ux;
-        y = (max2(fy_1,fy_2)-y_1)/uy;
-        if (x == min2(x,y)) {
-            x0 = max2(fx_1,fx_2);
+        x = (fmax(fx_1,fx_2)-x_1)/ux;
+        y = (fmax(fy_1,fy_2)-y_1)/uy;
+        if (x == fmin(x,y)) {
+            x0 = fmax(fx_1,fx_2);
             y0 = (x0-x_1)/ux*uy+y_1;
             z0 = (x0-x_1)/ux*uz+z_1;
         }
         else {
-            y0 = max2(fy_1, fy_2);
+            y0 = fmax(fy_1, fy_2);
             x0 = (y0-y_1)/uy*ux+x_1;
             z0 = (y0-y_1)/uy*uz+z_1;
         }
@@ -1046,15 +1020,15 @@ double FindVoxelFace(double x1,double y1,double z1, double x2, double y2, double
     else if ( (fy_1 != fy_2) &&(fz_1 != fz_2) ) { //#3
         fy_2=fy_1+SIGN(fy_2-fy_1);//added
         fz_2=fz_1+SIGN(fz_2-fz_1);//added
-        y = (max2(fy_1,fy_2)-y_1)/uy;
-        z = (max2(fz_1,fz_2)-z_1)/uz;
-        if (y == min2(y,z)) {
-            y0 = max2(fy_1,fy_2);
+        y = (fmax(fy_1,fy_2)-y_1)/uy;
+        z = (fmax(fz_1,fz_2)-z_1)/uz;
+        if (y == fmin(y,z)) {
+            y0 = fmax(fy_1,fy_2);
             x0 = (y0-y_1)/uy*ux+x_1;
             z0 = (y0-y_1)/uy*uz+z_1;
         }
         else {
-            z0 = max2(fz_1, fz_2);
+            z0 = fmax(fz_1, fz_2);
             x0 = (z0-z_1)/uz*ux+x_1;
             y0 = (z0-z_1)/uz*uy+y_1;
         }
@@ -1062,33 +1036,33 @@ double FindVoxelFace(double x1,double y1,double z1, double x2, double y2, double
     else if ( (fx_1 != fx_2) && (fz_1 != fz_2) ) { //#4
         fx_2=fx_1+SIGN(fx_2-fx_1);//added
         fz_2=fz_1+SIGN(fz_2-fz_1);//added
-        x = (max2(fx_1,fx_2)-x_1)/ux;
-        z = (max2(fz_1,fz_2)-z_1)/uz;
-        if (x == min2(x,z)) {
-            x0 = max2(fx_1,fx_2);
+        x = (fmax(fx_1,fx_2)-x_1)/ux;
+        z = (fmax(fz_1,fz_2)-z_1)/uz;
+        if (x == fmin(x,z)) {
+            x0 = fmax(fx_1,fx_2);
             y0 = (x0-x_1)/ux*uy+y_1;
             z0 = (x0-x_1)/ux*uz+z_1;
         }
         else {
-            z0 = max2(fz_1, fz_2);
+            z0 = fmax(fz_1, fz_2);
             x0 = (z0-z_1)/uz*ux+x_1;
             y0 = (z0-z_1)/uz*uy+y_1;
         }
     }
     else if (fx_1 != fx_2) { //#5
         fx_2=fx_1+SIGN(fx_2-fx_1);//added
-        x0 = max2(fx_1,fx_2);
+        x0 = fmax(fx_1,fx_2);
         y0 = (x0-x_1)/ux*uy+y_1;
         z0 = (x0-x_1)/ux*uz+z_1;
     }
     else if (fy_1 != fy_2) { //#6
         fy_2=fy_1+SIGN(fy_2-fy_1);//added
-        y0 = max2(fy_1, fy_2);
+        y0 = fmax(fy_1, fy_2);
         x0 = (y0-y_1)/uy*ux+x_1;
         z0 = (y0-y_1)/uy*uz+z_1;
     }
     else { //#7 
-        z0 = max2(fz_1, fz_2);
+        z0 = fmax(fz_1, fz_2);
         fz_2=fz_1+SIGN(fz_2-fz_1);//added
         x0 = (z0-z_1)/uz*ux+x_1;
         y0 = (z0-z_1)/uz*uy+y_1;
