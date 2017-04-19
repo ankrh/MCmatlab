@@ -6,12 +6,12 @@ function makeTissue
 %   which specifies a complex tissue for use by mcxyz.c.
 %
 %   Also prepares a listing of the optical properties at chosen wavelength
-%   for use by mcxyz.c, [mua, mus, g], for each tissue type specified
+%   for use by mcxyz, [mua, mus, g], for each tissue type specified
 %   in myname_T.bin. This listing is saved in
-%       myname_H.mci = the input file for use by mcxyz.c.
+%       myname_H.mci = the input file for use by mcxyz.
 %
 %   Will generate a figure illustrating the tissue with its various
-%   tissue types and the beam being launched.
+%   tissue types.
 %
 %   Uses
 %       makeTissueList.m
@@ -19,14 +19,10 @@ function makeTissue
 %   To use, 
 %       1. Prepare makeTissueList.m so that it contains the tissue
 %   types desired.
-%       2. Specify the USER CHOICES.
+%       2. Specify the USER CHOICES below.
 %       2. Run this program, maketissue.m.
 %
-%   Note: mcxyz.c can use optical properties in cm^-1 or mm^-1 or m^-1,
-%       if the bin size (binsize) is specified in cm or mm or m,
-%       respectively.
-%
-%  Steven L. Jacques. updated Aug 21, 2014.
+%   Note: mcxyz uses optical properties in cm^-1.
 %       
 
 %% USER CHOICES <-------- You must set these parameters ------
@@ -36,29 +32,29 @@ SAVEON      = 1;        % 1 = save myname_T.bin, myname_H.mci
 directoryPath = 'exec/';
 wavelength  = 850;      % [nm] set the range of wavelengths of the monte carlo simulation
 myname      = ['dentin_sim_' num2str(wavelength)];% name for files: myname_T.bin, myname_H.mci  
-time_min    = 0.5;      	% time duration of the simulation [min]
-Nx = 100;               % # of bins in the x direction
-Ny = Nx;                % # of bins in the y direction
-Nz = Nx;                % # of bins in the z direction
-dx = 1.0/Nx;            % size of x bins [cm]
+simulationTimeRequested    = 0.5;      	% time duration of the simulation [min]
+nx = 100;               % # of bins in the x direction
+ny = nx;                % # of bins in the y direction
+nz = nx;                % # of bins in the z direction
+dx = 1.0/nx;            % size of x bins [cm]
 dy = dx;                % size of y bins [cm]
 dz = dx;                % size of z bins [cm]
 
 % Set Monte Carlo launch flags
-beamtypeflag = 5;     	% beam type: 0 = top-hat focus, top-hat far field beam,
+beamtypeFlag = 3;     	% beam type: 0 = top-hat focus, top-hat far field beam,
                         % 1 = Gaussian focus, Gaussian far field beam,
                         % 2 = isotropically emitting point, 3 = infinite
                         % plane wave, 4 = pencil beam, 5 = top-hat focus,
                         % Gaussian far field beam, 6 = Gaussian focus,
                         % top-hat far field beam
-boundaryflag = 1;       % 0 = no boundaries, 1 = escape at boundaries
+boundaryFlag = 1;       % 0 = no boundaries, 1 = escape at boundaries
                         % 2 = escape at surface only. No x, y, bottom z
                         % boundaries
 
 % Set position of focus, only used for beamtypeflag ~=3 (if beamtypeflag == 2 this is the source position)
-xfocus      = 0;        % set x position of focus
-yfocus      = 0;        % set y position of focus
-zfocus      = 1;    	% set z position of focus
+xFocus      = 0;        % set x position of focus
+yFocus      = 0;        % set y position of focus
+zFocus      = 1;    	% set z position of focus
 
 % Set direction of beam center axis, only used if beamtypeflag ~= 2:
 ux0         = 0;        % trajectory projected onto x axis
@@ -83,13 +79,13 @@ for i=Nt:-1:1
 end
 
 % Specify Monte Carlo parameters    
-x  = ((0:Nx-1)-(Nx-1)/2)*dx;
-y  = ((0:Ny-1)-(Ny-1)/2)*dy;
-z  = ((0:Nz-1)+1/2)*dz;
+x  = ((0:nx-1)-(nx-1)/2)*dx;
+y  = ((0:ny-1)-(ny-1)/2)*dy;
+z  = ((0:nz-1)+1/2)*dz;
 xmin = min(x);
 xmax = max(x);
 
-if isinf(zfocus), zfocus = 1e12; end
+if isinf(zFocus), zFocus = 1e12; end
 
 %% CREATE TISSUE STRUCTURE T(x,y,z)
 %   Create T(x,y,z) by specifying a tissue type (an integer)
@@ -98,7 +94,7 @@ if isinf(zfocus), zfocus = 1e12; end
 %   Note: one need not use every tissue type in the tissue list.
 %   The tissue list is a library of possible tissue types.
 
-T = uint8(3*ones(Nx,Ny,Nz)); % fill background with air
+T = uint8(3*ones(nx,ny,nz)); % fill background with air
 
 
 zsurf       = 0.01;  % position of [cm]
@@ -110,17 +106,17 @@ enamel_thick = 0.25; %thickness of enamel [cm]
 enamel_diameter = 0.2; % varies from 17 - 180 micrometers, should decrease with age
 enamel_radius = enamel_diameter/2;      	% hair radius [cm]
 
-xi_start = Nx/2-round(enamel_radius/dx);
-xi_end = Nx/2+round(enamel_radius/dx);
-yi_start = Ny/2-round(enamel_radius/dy);
-yi_end = Ny/2+round(enamel_radius/dy);
+xi_start = nx/2-round(enamel_radius/dx);
+xi_end = nx/2+round(enamel_radius/dx);
+yi_start = ny/2-round(enamel_radius/dy);
+yi_end = ny/2+round(enamel_radius/dy);
 
-xi_start2 = Nx/2-round(enamel_radius/dx);
-xi_end2 = Nx/2+round(enamel_radius/dx);
-yi_start2 = Ny/2-round(enamel_radius/dy);
-yi_end2 = Ny/2+round(enamel_radius/dy);
+xi_start2 = nx/2-round(enamel_radius/dx);
+xi_end2 = nx/2+round(enamel_radius/dx);
+yi_start2 = ny/2-round(enamel_radius/dy);
+yi_end2 = ny/2+round(enamel_radius/dy);
 
-for iz=1:Nz % for every depth z(iz)
+for iz=1:nz % for every depth z(iz)
  
     
 % enamel and dentin for only cross sectional model     
@@ -138,9 +134,9 @@ for iz=1:Nz % for every depth z(iz)
 %     
 %Enamel @ xc, zc, radius, oriented along x axis
      yc      = 0;            % [cm], center of blood vessel
-     zc      = Nz/2*dz;     	% [cm], center of blood vessel
+     zc      = nz/2*dz;     	% [cm], center of blood vessel
     enamelradius  = 0.300;      	% blood vessel radius [cm]
-     for iy=1:Ny
+     for iy=1:ny
              yd = y(iy) - yc;	% vessel, x distance from vessel center
              zd = z(iz) - zc;   	% vessel, z distance from vessel center                
              r  = sqrt(yd^2 + zd^2);	% r from vessel center
@@ -153,9 +149,9 @@ for iz=1:Nz % for every depth z(iz)
 
 %Dentin @ xc, zc, radius, oriented along x axis
      yc      = 0;            % [cm], center of blood vessel
-     zc      = Nz/2*dz;     	% [cm], center of blood vessel
+     zc      = nz/2*dz;     	% [cm], center of blood vessel
      dentinradius  = 0.170;      	% blood vessel radius [cm]
-     for iy=1:Ny
+     for iy=1:ny
              yd = y(iy) - yc;	% vessel, x distance from vessel center
              zd = z(iz) - zc;   	% vessel, z distance from vessel center                
              r  = sqrt(yd^2 + zd^2);	% r from vessel center
@@ -167,9 +163,9 @@ for iz=1:Nz % for every depth z(iz)
      
 %Blood @ xc, zc, radius, oriented along x axis
      yc      = 0;            % [cm], center of blood vessel
-     zc      = Nz/2*dz;     	% [cm], center of blood vessel
+     zc      = nz/2*dz;     	% [cm], center of blood vessel
      vesselradius  = 0.050;      	% blood vessel radius [cm]
-     for iy=1:Ny
+     for iy=1:ny
              yd = y(iy) - yc;	% vessel, x distance from vessel center
              zd = z(iz) - zc;   	% vessel, z distance from vessel center                
              r  = sqrt(yd^2 + zd^2);	% r from vessel center
@@ -251,7 +247,7 @@ end % iz
 %% Write the files
 if SAVEON
 
-    v = reshape(T,Nx*Ny*Nz,1);
+    v = reshape(T,nx*ny*nz,1);
 
     %% WRITE FILES
     % Write myname_H.mci file
@@ -262,19 +258,19 @@ if SAVEON
     filename = sprintf('%s%s_H.mci',directoryPath,myname);
     fid = fopen(filename,'w');
         % run parameters
-        fprintf(fid,'%0.2f\n',time_min);
-        fprintf(fid,'%d\n'   ,Nx);
-        fprintf(fid,'%d\n'   ,Ny);
-        fprintf(fid,'%d\n'   ,Nz);
+        fprintf(fid,'%0.2f\n',simulationTimeRequested);
+        fprintf(fid,'%d\n'   ,nx);
+        fprintf(fid,'%d\n'   ,ny);
+        fprintf(fid,'%d\n'   ,nz);
         fprintf(fid,'%0.8f\n',dx);
         fprintf(fid,'%0.8f\n',dy);
         fprintf(fid,'%0.8f\n',dz);
         % launch parameters
-        fprintf(fid,'%d\n'   ,beamtypeflag);
-        fprintf(fid,'%d\n'   ,boundaryflag);
-        fprintf(fid,'%0.8f\n',xfocus); % position of focus in cm
-        fprintf(fid,'%0.8f\n',yfocus);
-        fprintf(fid,'%0.8f\n',zfocus);
+        fprintf(fid,'%d\n'   ,beamtypeFlag);
+        fprintf(fid,'%d\n'   ,boundaryFlag);
+        fprintf(fid,'%0.8f\n',xFocus); % position of focus in cm
+        fprintf(fid,'%0.8f\n',yFocus);
+        fprintf(fid,'%0.8f\n',zFocus);
         fprintf(fid,'%0.8f\n',ux0); % beam center axis direction
         fprintf(fid,'%0.8f\n',uy0);
         fprintf(fid,'%0.8f\n',uz0);

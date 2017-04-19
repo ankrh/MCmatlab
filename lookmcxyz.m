@@ -9,11 +9,6 @@ function lookmcxyz
 %   Volumetric plot of fluence rate (intensity)
 %   Volumetric plot of absorbed power per unit volume
 %
-% Saves
-%   Fzy_data4.mat = Fzy y z zzs Fdet
-%       Fzy(400,400,8) = 8 z,y images
-%       Fdet(8,1) = signal [1/cm^2] @ detector fiber
-%
 
 %% USER CHOICES <---------- you must specify -----
 directoryPath = 'exec/';
