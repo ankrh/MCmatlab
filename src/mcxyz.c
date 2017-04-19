@@ -43,9 +43,6 @@
 #define STRLEN 		32          /* String length. */
 #define ls          1.0E-7      /* Moving photon a little bit off the voxel face */
 #define	PI          3.1415926
-#define	LIGHTSPEED	2.997925E10 /* in vacuo speed of light [cm/s] */
-#define ALIVE       1   		/* if photon not yet terminated */
-#define DEAD        0    		/* if photon is to be terminated */
 #define THRESHOLD   0.01		/* used in roulette */
 #define CHANCE      0.1  		/* used in roulette */
 #define SQR(x)		(x*x) 
@@ -95,7 +92,7 @@ int main(int argc, const char * argv[]) {
 	long	i_photon;       /* current photon */
 	double	W;              /* photon weight */
 	double	absorb;         /* weighted deposited in a step due to absorption */
-	bool    photon_status;  /* flag = ALIVE=1 or DEAD=0 */
+	bool    photonAlive;    /* flag, true or false */
 	bool    sv;             /* Are they in the same voxel? */
 	
 	/* other variables */
@@ -349,7 +346,7 @@ int main(int argc, const char * argv[]) {
 
 		i_photon += 1;				/* increment photon count */
 		W = 1.0;                    /* set photon weight to one */
-		photon_status = ALIVE;      /* Launch an ALIVE photon */
+		photonAlive = true;      /* Launch an ALIVE photon */
 		sv = false;					/* Photon is initialized as if it has just entered the voxel it's created in, to ensure proper initialization of voxel index and ray properties */
 		CNT = 0;
 		
@@ -566,22 +563,22 @@ int main(int argc, const char * argv[]) {
 						if (iy<0)   {iy=0;    bflag = 0;}
 					}
 					else if (boundaryflag==1) { // Escape at boundaries
-						if (iz>=Nz) {iz=Nz-1; photon_status = DEAD; sleft=0;}
-						if (ix>=Nx) {ix=Nx-1; photon_status = DEAD; sleft=0;}
-						if (iy>=Ny) {iy=Ny-1; photon_status = DEAD; sleft=0;}
-						if (iz<0)   {iz=0;    photon_status = DEAD; sleft=0;}
-						if (ix<0)   {ix=0;    photon_status = DEAD; sleft=0;}
-						if (iy<0)   {iy=0;    photon_status = DEAD; sleft=0;}
+						if (iz>=Nz) {iz=Nz-1; photonAlive = false; sleft=0;}
+						if (ix>=Nx) {ix=Nx-1; photonAlive = false; sleft=0;}
+						if (iy>=Ny) {iy=Ny-1; photonAlive = false; sleft=0;}
+						if (iz<0)   {iz=0;    photonAlive = false; sleft=0;}
+						if (ix<0)   {ix=0;    photonAlive = false; sleft=0;}
+						if (iy<0)   {iy=0;    photonAlive = false; sleft=0;}
 					}
 					else if (boundaryflag==2) { // Escape at top surface, no x,y bottom z boundaries
 						if (iz>=Nz) {iz=Nz-1; bflag = 0;}
 						if (ix>=Nx) {ix=Nx-1; bflag = 0;}
 						if (iy>=Ny) {iy=Ny-1; bflag = 0;}
-						if (iz<0)   {iz=0;    photon_status = DEAD; sleft=0;}
+						if (iz<0)   {iz=0;    photonAlive = false; sleft=0;}
 						if (ix<0)   {ix=0;    bflag = 0;}
 						if (iy<0)   {iy=0;    bflag = 0;}
 					}
-					if (photon_status == DEAD) break;
+					if (!photonAlive) break;
 					
 					/* Get the tissue type of located voxel */
 					i		= (long)(iz*Ny*Nx + iy*Nx + ix);
@@ -650,10 +647,10 @@ int main(int argc, const char * argv[]) {
 			if (W < THRESHOLD) {
 				if (RandomNum <= CHANCE)
 					W /= CHANCE;
-				else photon_status = DEAD;
+				else photonAlive = false;
 			}
 			
-			if (photon_status == ALIVE) {
+			if (photonAlive) {
 			/**** SPIN 
 			 Scatter photon into new trajectory defined by theta and psi.
 			 Theta is specified by cos(theta), which is determined 
@@ -697,7 +694,7 @@ int main(int argc, const char * argv[]) {
 			uz = uzz;
 			}
 			
-		} while (photon_status == ALIVE);
+		} while (photonAlive);
 		/* end STEP_CHECK_HOP_SPIN */
         /* if ALIVE, continue propagating */
 		/* If photon DEAD, then launch new photon. */	
