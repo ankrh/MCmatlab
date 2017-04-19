@@ -93,7 +93,7 @@ int main(int argc, const char * argv[]) {
 	double	W;              /* photon weight */
 	double	absorb;         /* weighted deposited in a step due to absorption */
 	bool    photonAlive;    /* flag, true or false */
-	bool    sv;             /* Are they in the same voxel? */
+	bool    sameVoxel;             /* Are they in the same voxel? */
 	
 	/* other variables */
 	double	mua;            /* absorption coefficient [cm^-1] */
@@ -347,7 +347,7 @@ int main(int argc, const char * argv[]) {
 		i_photon += 1;				/* increment photon count */
 		W = 1.0;                    /* set photon weight to one */
 		photonAlive = true;      /* Launch an ALIVE photon */
-		sv = false;					/* Photon is initialized as if it has just entered the voxel it's created in, to ensure proper initialization of voxel index and ray properties */
+		sameVoxel = false;					/* Photon is initialized as if it has just entered the voxel it's created in, to ensure proper initialization of voxel index and ray properties */
 		CNT = 0;
 		
 		// Print out message about progress.
@@ -540,7 +540,7 @@ int main(int argc, const char * argv[]) {
 			
 			do{  // while sleft>0
 
-				if (!sv) {
+				if (!sameVoxel) {
 					/* Get tissue voxel properties of current position.
 					 * If photon beyond outer edge of defined voxels, 
 					 * the tissue equals properties of outermost voxels.
@@ -593,8 +593,8 @@ int main(int argc, const char * argv[]) {
 				tempy = y + s*uy;	
 				tempz = z + s*uz;
 				
-				sv = SameVoxel(x,y,z, tempx, tempy, tempz, dx,dy,dz);
-				if (sv) /* photon in same voxel */
+				sameVoxel = SameVoxel(x,y,z, tempx, tempy, tempz, dx,dy,dz);
+				if (sameVoxel) /* photon in same voxel */
 				{  
 					x=tempx;					/* Update positions. */
 					y=tempy;
@@ -635,7 +635,7 @@ int main(int argc, const char * argv[]) {
 					y += s*uy;
 					z += s*uz;
                     
-				} //(sv) /* same voxel */
+				} //(sameVoxel) /* same voxel */
                 
 			} while(sleft>0); //do...while
 			
@@ -846,10 +846,10 @@ bool SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2, d
     double xmax = xmin+dx;
     double ymax = ymin+dy;
     double zmax = zmin+dz;
-    bool sv=0;
+    bool sameVoxel = false;
     
-    sv=(x1<=xmax && x2<=xmax && y1<=ymax && y2<=ymax && z1<zmax && z2<=zmax);
-    return (sv);
+    sameVoxel=(x1<=xmax && x2<=xmax && y1<=ymax && y2<=ymax && z1<zmax && z2<=zmax);
+    return (sameVoxel);
 }
 
 /***********************************************************
