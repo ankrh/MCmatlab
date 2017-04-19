@@ -118,7 +118,7 @@ int main(int argc, const char * argv[]) {
 	int 	ix, iy, iz;     /* Added. Used to track photons */
 	double 	temp;           /* dummy variable */
 	int     pctprogress;    /* Simulation progress in percent */
-    bool    bflag;          /* boundary flag:  0 = photon inside volume. 1 = outside volume */
+    bool    photonInsideVolume;  /* flag, true or false */
 	int		CNT;
 	
 	/* mcxyz bin variables */
@@ -550,33 +550,33 @@ int main(int argc, const char * argv[]) {
 					iy = floor(Ny/2.0 + y/dy);
 					iz = floor(z/dz);        
 					
-					bflag = 1;  // Boundary flag. Initialize as 1 = inside volume, then check.
+					photonInsideVolume = true;  // Initialize the photon as inside the volume, then check.
 					if (boundaryflag==0) { // Infinite medium.
 								// Check if photon has wandered outside volume.
 								// If so, set tissue type to boundary value, but let photon wander.
-								// Set bflag to zero, so DROP does not deposit energy.
-						if (iz>=Nz) {iz=Nz-1; bflag = 0;}
-						if (ix>=Nx) {ix=Nx-1; bflag = 0;}
-						if (iy>=Ny) {iy=Ny-1; bflag = 0;}
-						if (iz<0)   {iz=0;    bflag = 0;}
-						if (ix<0)   {ix=0;    bflag = 0;}
-						if (iy<0)   {iy=0;    bflag = 0;}
+								// Set photonInsideVolume to false, so DROP does not deposit energy.
+						if (iz>=Nz) {iz=Nz-1; photonInsideVolume = false;}
+						if (ix>=Nx) {ix=Nx-1; photonInsideVolume = false;}
+						if (iy>=Ny) {iy=Ny-1; photonInsideVolume = false;}
+						if (iz<0)   {iz=0;    photonInsideVolume = false;}
+						if (ix<0)   {ix=0;    photonInsideVolume = false;}
+						if (iy<0)   {iy=0;    photonInsideVolume = false;}
 					}
 					else if (boundaryflag==1) { // Escape at boundaries
-						if (iz>=Nz) {iz=Nz-1; photonAlive = false; sleft=0;}
-						if (ix>=Nx) {ix=Nx-1; photonAlive = false; sleft=0;}
-						if (iy>=Ny) {iy=Ny-1; photonAlive = false; sleft=0;}
-						if (iz<0)   {iz=0;    photonAlive = false; sleft=0;}
-						if (ix<0)   {ix=0;    photonAlive = false; sleft=0;}
-						if (iy<0)   {iy=0;    photonAlive = false; sleft=0;}
+						if (iz>=Nz) {iz=Nz-1; photonAlive = false; sleft = 0;}
+						if (ix>=Nx) {ix=Nx-1; photonAlive = false; sleft = 0;}
+						if (iy>=Ny) {iy=Ny-1; photonAlive = false; sleft = 0;}
+						if (iz<0)   {iz=0;    photonAlive = false; sleft = 0;}
+						if (ix<0)   {ix=0;    photonAlive = false; sleft = 0;}
+						if (iy<0)   {iy=0;    photonAlive = false; sleft = 0;}
 					}
 					else if (boundaryflag==2) { // Escape at top surface, no x,y bottom z boundaries
-						if (iz>=Nz) {iz=Nz-1; bflag = 0;}
-						if (ix>=Nx) {ix=Nx-1; bflag = 0;}
-						if (iy>=Ny) {iy=Ny-1; bflag = 0;}
-						if (iz<0)   {iz=0;    photonAlive = false; sleft=0;}
-						if (ix<0)   {ix=0;    bflag = 0;}
-						if (iy<0)   {iy=0;    bflag = 0;}
+						if (iz>=Nz) {iz=Nz-1; photonInsideVolume = false;}
+						if (ix>=Nx) {ix=Nx-1; photonInsideVolume = false;}
+						if (iy>=Ny) {iy=Ny-1; photonInsideVolume = false;}
+						if (iz<0)   {iz=0;    photonAlive = false; sleft = 0;}
+						if (ix<0)   {ix=0;    photonInsideVolume = false;}
+						if (iy<0)   {iy=0;    photonInsideVolume = false;}
 					}
 					if (!photonAlive) break;
 					
@@ -607,7 +607,7 @@ int main(int argc, const char * argv[]) {
                     W -= absorb;					/* decrement WEIGHT by amount absorbed */
 					// If photon within volume of heterogeneity, deposit energy in F[]. 
 					// Normalize F[] later, when save output. 
-                    if (bflag) F[i] += absorb;	// only save data if bflag==1, i.e., photon inside simulation cube
+                    if (photonInsideVolume) F[i] += absorb;	// only save data if the photon is inside simulation cube
 					
 					/* Update sleft */
 					sleft = 0;		/* dimensionless step remaining */
@@ -624,7 +624,7 @@ int main(int argc, const char * argv[]) {
 					W -= absorb;                  /* decrement WEIGHT by amount absorbed */
 					// If photon within volume of heterogeneity, deposit energy in F[]. 
 					// Normalize F[] later, when save output. 
-                    if (bflag) F[i] += absorb;	
+                    if (photonInsideVolume) F[i] += absorb;	// only save data if the photon is inside simulation cube
 					
 					/* Update sleft */
 					sleft -= s*mus;  /* dimensionless step remaining */
