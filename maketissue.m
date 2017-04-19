@@ -33,9 +33,9 @@ function makeTissue
 SAVEON      = 1;        % 1 = save myname_T.bin, myname_H.mci 
                         % 0 = don't save. Just check the program.
                         
-directoryPath = 'Data/';
-myname      = ['dentin_sim_' num2str(nm)];% name for files: myname_T.bin, myname_H.mci  
+directoryPath = 'exec/';
 wavelength  = 850;      % [nm] set the range of wavelengths of the monte carlo simulation
+myname      = ['dentin_sim_' num2str(wavelength)];% name for files: myname_T.bin, myname_H.mci  
 time_min    = 0.5;      	% time duration of the simulation [min]
 Nx = 100;               % # of bins in the x direction
 Ny = Nx;                % # of bins in the y direction
@@ -247,10 +247,6 @@ for iz=1:Nz % for every depth z(iz)
 %         
 %     end %ix
 end % iz
-
-T= shiftdim(T,1); % shifts dimension to have the light coming from side
-
-T = uint8(6*ones(Nx,Ny,Nz)); % fill with the testabsorber
 
 %% Write the files
 if SAVEON
