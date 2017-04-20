@@ -78,7 +78,23 @@ tissueList(j).HC    = 3617*1050e-6;
 tissueList(j).D     = 1050e-6;
 tissueList(j).TC    = 0.52e-2;
 
+j=6;
+tissueList(j).name  = 'testabsorber';
+tissueList(j).mua   = 1;
+tissueList(j).mus   = 1;
+tissueList(j).g     = 0;
+tissueList(j).HC    = 0;
+tissueList(j).D     = 0;
+tissueList(j).TC    = 0;
 
+j=7;
+tissueList(j).name  = 'testscatterer';
+tissueList(j).mua   = 1e-7;
+tissueList(j).mus   = 1;
+tissueList(j).g     = -0.8;
+tissueList(j).HC    = 0;
+tissueList(j).D     = 0;
+tissueList(j).TC    = 0;
 
 
 
