@@ -58,12 +58,10 @@ double RandomGen(char Type, long Seed, long *Status);
 bool SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2, double dx,double dy,double dz);
 /* Asks,"In the same voxel?" */
 double min3(double a, double b, double c);
-double FindVoxelFace(double x1,double y1,double z1, double x2, double y2, double z2,double dx,double dy,double dz, double ux, double uy, double uz);
 double FindVoxelFace2(double x1,double y1,double z1, double x2, double y2, double z2,double dx,double dy,double dz, double ux, double uy, double uz);
 /* How much step size will the photon take to get the first voxel crossing in one single long step? */
-double RFresnel(double n1, double n2, double ca1, double *ca2_Ptr);
-/* Rotates a point with coordinates (x,y,z) an angle theta around axis with direction vector (ux,uy,uz) */
 void axisrotate(double* x,double* y,double* z, double ux, double uy, double uz,double theta);
+/* Rotates a point with coordinates (x,y,z) an angle theta around axis with direction vector (ux,uy,uz) */
 
 int main(int argc, const char * argv[]) {
     
@@ -79,8 +77,9 @@ int main(int argc, const char * argv[]) {
 	
 
 	/* other variables */
-	long	nPhotons;       /* number of photons in simulation */
+	unsigned long long	nPhotons;       /* number of photons in simulation */
 	int     pctProgress, newPctProgress;    /* Simulation progress in percent */
+	long	i,totalVoxelCount;
 
 	/* launch parameters */
 	int		beamtypeFlag, boundaryFlag;
@@ -89,9 +88,6 @@ int main(int argc, const char * argv[]) {
 	double	vx0, vy0, vz0;  /* normal vector 1 to photon trajectory */
 	double	waist;
 	double	divergence;
-	
-	/* dummy variables */
-	long	i,totalVoxelCount;         /* dummy indices */
 	
 	/* mcxyz bin variables */
 	double	dx, dy, dz;     /* bin size [cm] */
@@ -704,7 +700,7 @@ int main(int argc, const char * argv[]) {
 	printf("------------------------------------------------------\n");
 	clock_gettime(CLOCK_MONOTONIC, &simulationTimeCurrent);
 	simulationTimeSpent = (double)(simulationTimeCurrent.tv_sec  - simulationTimeStart.tv_sec ) + (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1000000000.0;
-	printf("Simulated %0.1e photons at a rate of %0.1e photons per minute\n",(double)nPhotons, nPhotons*60.0/simulationTimeSpent);
+	printf("Simulated %0.1e photons at a rate of %0.1e photons per minute\n",(double)nPhotons, nPhotons*60/simulationTimeSpent);
 	
     /**** SAVE
      Convert data to relative fluence rate [cm^-2] and save.
