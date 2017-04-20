@@ -38,6 +38,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
+#include <omp.h>
 
 #define Ntiss		19          /* Number of tissue types. */
 #define STRLEN 		32          /* String length. */
@@ -75,57 +76,31 @@ int main(int argc, const char * argv[]) {
         return 0;
     }
 	
-	/* Propagation parameters */
-	double	x, y, z;        /* photon position */
-	double	ux, uy, uz;     /* photon trajectory as unit vector composants */
-	double  uxx, uyy, uzz;	/* temporary values used during SPIN */
-	double	s;              /* step sizes. s = -log(RND)/mus [cm] */
-	double  stepLeft;       /* dimensionless step size*/
-	double	costheta;       /* cos(theta) */
-	double  sintheta;       /* sin(theta) */
-	double	cospsi;         /* cos(psi) */
-	double  sinpsi;         /* sin(psi) */
-	double	psi;            /* azimuthal angle */
-	long	iPhoton;        /* current photon */
-	double	photonWeight;   /* photon weight */
-	double	absorb;         /* weighted deposited in a step due to absorption */
-	bool    photonAlive;    /* flag, true or false */
-	bool    sameVoxel;      /* Are they in the same voxel? */
 	
+
 	/* other variables */
-	double	mua;            /* absorption coefficient [cm^-1] */
-	double	mus;            /* scattering coefficient [cm^-1] */
-	double	g;              /* anisotropy [-] */
-	double	nPhotons;       /* number of photons in simulation */
-	
+	long	nPhotons;       /* number of photons in simulation */
+	int     pctProgress, newPctProgress;    /* Simulation progress in percent */
+
 	/* launch parameters */
 	int		beamtypeFlag, boundaryFlag;
-	double	xFocus, yFocus, zFocus, xTarget, yTarget, zTarget;
+	double	xFocus, yFocus, zFocus;
 	double	ux0, uy0, uz0;	/* beam center axis direction unit vector composants */
 	double	vx0, vy0, vz0;  /* normal vector 1 to photon trajectory */
-	double	wx0, wy0, wz0;  /* normal vector 2 to photon trajectory. Not necessarily normal to v0. */
 	double	waist;
 	double	divergence;
 	
 	/* dummy variables */
-	double  rnd;            /* assigned random value 0-1 */
-	double	r, theta, phi;	/* dummy values */
-	long	i,j,totalVoxelCount;         /* dummy indices */
-	double	xTentative, yTentative, zTentative; /* temporary variables, used during photon step. */
-	int 	ix, iy, iz;     /* Added. Used to track photons */
-	double 	temp;           /* dummy variable */
-	int     pctProgress;    /* Simulation progress in percent */
-    bool    photonInsideVolume;  /* flag, true or false */
-	int		photonStepsCounter;
+	long	i,totalVoxelCount;         /* dummy indices */
 	
 	/* mcxyz bin variables */
 	double	dx, dy, dz;     /* bin size [cm] */
 	int		nx, ny, nz, numberOfTissuetypes; /* # of bins */
     
     /* time */
-	double	simulationTimeRequested;               // Requested time duration of computation.
+	double	simulationTimeRequested, simulationTimeSpent;               // Requested and spent time durations of computation.
 	time_t	currentCalendarTime;
-	double	simulationTimeStart, simulationTimeEnd, simulationTimeIntermediate; /* for clock() */
+	struct  timespec simulationTimeStart, simulationTimeCurrent;
 	
 	/* tissue parameters */
 	char	tissuename[50][32];
@@ -216,17 +191,34 @@ int main(int argc, const char * argv[]) {
 		}    
     fclose(fid);
     
-    printf("simulationTimeRequested = %0.2f min\n",simulationTimeRequested);
-
     printf("nx = %d, dx = %0.8f [cm]\n",nx,dx);
     printf("ny = %d, dy = %0.8f [cm]\n",ny,dy);
     printf("nz = %d, dz = %0.8f [cm]\n",nz,dz);
 
-    printf("beamtypeFlag = %d\n",beamtypeFlag);
-    if (beamtypeFlag==0) printf("launching top-hat beam\n");
-    if (beamtypeFlag==1) printf("launching Gaussian beam\n");
-    if (beamtypeFlag==2) printf("launching isotropic point source\n");
-    if (beamtypeFlag==3) printf("launching infinite plane wave\n");
+    printf("beamtypeFlag = %d, ",beamtypeFlag);
+    switch(beamtypeFlag) {
+		case 0:
+			printf("launching top-hat focus, top-hat far field beam\n");
+			break;
+		case 1:
+			printf("launching Gaussian focus, Gaussian far field beam\n");
+			break;
+		case 2:
+			printf("launching isotropic point source\n");
+			break;
+		case 3:
+			printf("launching infinite plane wave\n");
+			break;
+		case 4:
+			printf("launching pencil beam\n");
+			break;
+		case 5:
+			printf("launching top-hat focus, Gaussian far field beam\n");
+			break;
+		case 6:
+			printf("launching Gaussian focus, top-hat far field beam\n");
+			break;
+	}
 
     if (boundaryFlag==0)
 		printf("boundaryFlag = 0, so no boundaries.\n");
@@ -253,29 +245,17 @@ int main(int argc, const char * argv[]) {
 		printf("beam waist radius = %0.8f [cm]\n",waist);
 		printf("beam divergence half-angle = %0.8f [rad]\n",divergence);
 	}
-    printf("# of tissues available, numberOfTissuetypes = %d\n",numberOfTissuetypes);
+    printf("\n%d tissues available:\n\n",numberOfTissuetypes);
     for (i=1; i<=numberOfTissuetypes; i++) {
         printf("muav[%ld] = %0.8f [cm^-1]\n",i,muav[i]);
         printf("musv[%ld] = %0.8f [cm^-1]\n",i,musv[i]);
         printf("  gv[%ld] = %0.8f [--]\n\n",i,gv[i]);
     }
 
-    // SAVE optical properties, for later use by MATLAB.
-	strcpy(filename,myname);
-	strcat(filename,"_props.m");
-	fid = fopen(filename,"w");
-	for (i=1; i<=numberOfTissuetypes; i++) {
-		fprintf(fid,"muav(%ld) = %0.8f;\n",i,muav[i]);
-		fprintf(fid,"musv(%ld) = %0.8f;\n",i,musv[i]);
-		fprintf(fid,"gv(%ld) = %0.8f;\n\n",i,gv[i]);
-	}
-	fclose(fid);
-    
     /* IMPORT BINARY TISSUE FILE */
 	char 	*v=NULL;
 	float 	*F=NULL;
-	float	*R=NULL;
-	int 	type;
+	//float	*R=NULL;
 	totalVoxelCount = nx*ny*nz;
 	v  = ( char *)malloc(totalVoxelCount*sizeof(char));  /* tissue structure */
 	F  = (float *)malloc(totalVoxelCount*sizeof(float));	/* relative fluence rate [W/cm^2/W.delivered] */
@@ -289,26 +269,22 @@ int main(int argc, const char * argv[]) {
     fclose(fid);
     
     // Show tissue on screen, along central z-axis, by listing tissue type #'s.
-    iy = ny/2;
-    ix = nx/2;
-    printf("central axial profile of tissue types:\n");
-    for (iz=0; iz<nz; iz++) {
-        i = (long)(iz*ny*nx + iy*nx + ix);
-        printf("%d",v[i]);
+    printf("Central axial profile of tissue types:\n");
+    for (i=0; i<nz; i++) {
+        printf("%d",v[(long)(i*ny*nx + ny/2*nx + nx/2)]);
     }
     printf("\n\n");
     
 	/**************************
 	 * ============================ MAJOR CYCLE ========================
 	 **********/
-	simulationTimeStart = clock();
+	clock_gettime(CLOCK_MONOTONIC, &simulationTimeStart);
 	currentCalendarTime = time(NULL);
-	printf("%s\n", ctime(&currentCalendarTime));	
+	printf("%s", ctime(&currentCalendarTime));	
 	
 	/**** INITIALIZATIONS 
 	 *****/
-	RandomGen(0, -(int)time(NULL)%(1<<15), NULL); /* initiate with seed = 1, or any long integer. */
-	for(j=0; j<totalVoxelCount;j++) 	F[j] = 0; // ensure F[] starts empty.	
+	for(i=0; i<totalVoxelCount;i++) 	F[i] = 0; // ensure F[] starts empty.	
 	
 	if (uz0==1) {
 		vx0 = 1;
@@ -321,402 +297,427 @@ int main(int argc, const char * argv[]) {
 		vz0 = 0;
 	}
 
-	//wx0 = uy0*vz0 - vy0*uz0;
-	//wy0 = - ux0*vz0 + vx0*uz0;
-	//wz0 = ux0*vy0 - vx0*uy0;
-
+    printf("Simulation time requested = %0.2f min\n\n",simulationTimeRequested);
+	
 	/**** RUN
-	 Launch N photons, initializing each one before propagation.
+	 Launch photons, initializing each one before propagation.
 	 *****/
 	printf("------------- Begin Monte Carlo -------------\n");
-    printf("%s\n",myname);
-    printf("requesting %0.2f min\n",simulationTimeRequested);
-	nPhotons = 100000; // will be updated to achieve desired run time, simulationTimeRequested.
-	iPhoton = 0;
+
+	nPhotons = 0;
 	
-	do {
-		/**** LAUNCH 
-		 Initialize photon position and trajectory.
-		 *****/
-		//if (fmod(iPhoton,10)==0) printf("photon %ld took %d steps\n",iPhoton,photonStepsCounter);
+	#pragma omp parallel num_threads(omp_get_num_procs())
+	{
+		RandomGen(0, (int)(simulationTimeStart.tv_nsec + omp_get_thread_num())%(31999)+1, NULL); // Seed random number generator
 
-		iPhoton += 1;				/* increment photon count */
-		photonWeight = 1.0;                    /* set photon weight to one */
-		photonAlive = true;      /* Launch an ALIVE photon */
-		sameVoxel = false;					/* Photon is initialized as if it has just entered the voxel it's created in, to ensure proper initialization of voxel index and ray properties */
-		photonStepsCounter = 0;
+		double	x, y, z;        /* photon position */
+		double	ux, uy, uz;     /* photon trajectory as unit vector composants */
+		double  uxx, uyy, uzz;	/* temporary values used during SPIN */
+		double	s;              /* step sizes. s = -log(RND)/mus [cm] */
+		double  stepLeft;       /* dimensionless step size*/
+		double	costheta;       /* cos(theta) */
+		double  sintheta;       /* sin(theta) */
+		double	cospsi;         /* cos(psi) */
+		double  sinpsi;         /* sin(psi) */
+		double	psi;            /* azimuthal angle */
+		double	photonWeight;   /* photon weight */
+		double	absorb;         /* weighted deposited in a step due to absorption */
+		bool    photonAlive;    /* flag, true or false */
+		bool    sameVoxel;      /* Are they in the same voxel? */
+		double	mua;            /* absorption coefficient [cm^-1] */
+		double	mus;            /* scattering coefficient [cm^-1] */
+		double	g;              /* anisotropy [-] */
+		double  xTarget, yTarget, zTarget;
+		double	wx0, wy0, wz0;  /* normal vector 2 to photon trajectory. Not necessarily normal to v0. */
+		double  rnd;            /* assigned random value 0-1 */
+		double	r, theta, phi;	/* dummy values */
+		long 	j;
+		double	xTentative, yTentative, zTentative; /* temporary variables, used during photon step. */
+		int 	ix, iy, iz;     /* Added. Used to track photons */
+		bool    photonInsideVolume;  /* flag, true or false */
+		int		photonStepsCounter;
+		int 	type;
 		
-		// Print out message about progress.
-		if ((iPhoton>100000) & (fmod(iPhoton, (int)(nPhotons/100))  == 0)) {
-            pctProgress = iPhoton/nPhotons*100;
-            if ((pctProgress<10) | (pctProgress>90) | (fmod(pctProgress, 10)==0)){
-                printf("%i%% done\n", pctProgress);
-            }
-        }
-        
-		// At 100000th photon, update nPhotons to achieve desired runtime (simulationTimeRequested)
-		if (iPhoton==1)
-			simulationTimeIntermediate = clock();
-		if (iPhoton==100000) {    
-			simulationTimeEnd = clock();
-			printf("simulationTimeIntermediate = %0.8f, simulationTimeEnd = %0.8f\n",simulationTimeIntermediate,simulationTimeEnd);
-			nPhotons = (long)( simulationTimeRequested*60*99999*CLOCKS_PER_SEC/(simulationTimeEnd-simulationTimeIntermediate) );
-			printf("nPhotons = %0.0f for simulation time = %0.2f min\n",nPhotons,simulationTimeRequested);
-		}
-		
-        
-		/****************************/
-		/* Initial position and trajectory */
-		if (beamtypeFlag==0) { // top-hat focus, top-hat far field beam
-			r		= waist*sqrt(RandomNum); // for target calculation
-			phi		= RandomNum*2.0*PI;
-			wx0		= vx0;
-			wy0		= vy0;
-			wz0		= vz0;
-			axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
-			
-			xTarget	= xFocus + r*wx0;
-			yTarget	= yFocus + r*wy0;
-			zTarget = zFocus + r*wz0;
-			
-			theta	= divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-			phi		= RandomNum*2.0*PI;
-			wx0		= vx0;
-			wy0		= vy0;
-			wz0		= vz0;
-			axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-			
-			ux		= ux0;
-			uy		= uy0;
-			uz		= uz0;
-			axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
-			
-			x		= xTarget - zTarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-			y		= yTarget - zTarget/uz*uy;
-			z		= 0;
-		}
-		else if (beamtypeFlag==1) { // Gaussian focus, Gaussian far field beam
-			r		= waist*sqrt(-0.5*log(RandomNum)); // for target calculation
-			phi		= RandomNum*2.0*PI;
-			wx0		= vx0;
-			wy0		= vy0;
-			wz0		= vz0;
-			axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
-			
-			xTarget	= xFocus + r*wx0;
-			yTarget	= yFocus + r*wy0;
-			zTarget = zFocus + r*wz0;
-			
-			theta	= divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-			phi		= RandomNum*2.0*PI;
-			wx0		= vx0;
-			wy0		= vy0;
-			wz0		= vz0;
-			axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-			
-			ux		= ux0;
-			uy		= uy0;
-			uz		= uz0;
-			axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
-			
-			x		= xTarget - zTarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-			y		= yTarget - zTarget/uz*uy;
-			z		= 0;
-		}
-		else if (beamtypeFlag==2) { // isotropically emitting point source
-			costheta = 1.0 - 2.0*RandomNum;
-			sintheta = sqrt(1.0 - costheta*costheta);
-			psi = 2.0*PI*RandomNum;
-			cospsi = cos(psi);
-			if (psi < PI)
-				sinpsi = sqrt(1.0 - cospsi*cospsi); 
-			else
-				sinpsi = -sqrt(1.0 - cospsi*cospsi);
-			x = xFocus;
-			y = yFocus;
-			z = zFocus;
-			ux = sintheta*cospsi;
-			uy = sintheta*sinpsi;
-			uz = costheta;
-		}
-		else if (beamtypeFlag==3) { // infinite plane wave
-			if (boundaryFlag==1) {
-				x = nx*dx*(RandomNum-0.5); // Generates a random x coordinate within the box
-				y = ny*dy*(RandomNum-0.5); // Generates a random y coordinate within the box
-			}
-			else {
-				x = 6.0*nx*dx*(RandomNum-0.5); // Generates a random x coordinate within an interval 6 times the box' size
-				y = 6.0*ny*dy*(RandomNum-0.5); // Generates a random y coordinate within an interval 6 times the box' size
-			}
-			z = 0;
-			ux = ux0;
-			uy = uy0;
-			uz = uz0;
-		}
-		else if (beamtypeFlag==4) { // pencil beam
-			x	= xFocus - zFocus/uz0*ux0; 
-			y	= yFocus - zFocus/uz0*uy0;
-			z	= 0;
-			ux	= ux0;
-			uy	= uy0;
-			uz	= uz0;
-		}
-		else if (beamtypeFlag==5) { // top-hat focus, Gaussian far field beam
-			r		= waist*sqrt(RandomNum); // for target calculation
-			phi		= RandomNum*2.0*PI;
-			wx0		= vx0;
-			wy0		= vy0;
-			wz0		= vz0;
-			axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
-			
-			xTarget	= xFocus + r*wx0;
-			yTarget	= yFocus + r*wy0;
-			zTarget = zFocus + r*wz0;
-			
-			theta	= divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-			phi		= RandomNum*2.0*PI;
-			wx0		= vx0;
-			wy0		= vy0;
-			wz0		= vz0;
-			axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-			
-			ux		= ux0;
-			uy		= uy0;
-			uz		= uz0;
-			axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
-			
-			x		= xTarget - zTarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-			y		= yTarget - zTarget/uz*uy;
-			z		= 0;
-		}
-		else if (beamtypeFlag==6) { // Gaussian focus, top-hat far field beam
-			r		= waist*sqrt(-0.5*log(RandomNum)); // for target calculation
-			phi		= RandomNum*2.0*PI;
-			wx0		= vx0;
-			wy0		= vy0;
-			wz0		= vz0;
-			axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
-			
-			xTarget	= xFocus + r*wx0;
-			yTarget	= yFocus + r*wy0;
-			zTarget = zFocus + r*wz0;
-			
-			theta	= divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-			phi		= RandomNum*2.0*PI;
-			wx0		= vx0;
-			wy0		= vy0;
-			wz0		= vz0;
-			axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-			
-			ux		= ux0;
-			uy		= uy0;
-			uz		= uz0;
-			axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
-			
-			x		= xTarget - zTarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-			y		= yTarget - zTarget/uz*uy;
-			z		= 0;
-		}
-
-		/****************************/
-		
-		/* HOP_DROP_SPIN_CHECK
-		 Propagate one photon until it dies as determined by ROULETTE.
-		 *******/
 		do {
-			
-			/**** HOP
-			 Take step to new position
-			 s = dimensionless stepsize
-			 ux, uy, uz are unit vector components of current photon trajectory
+			/**** LAUNCH 
+			 Initialize photon position and trajectory.
 			 *****/
-			while ((rnd = RandomNum) <= 0.0);   /* yields 0 < rnd <= 1 */
-			stepLeft	= -log(rnd);				/* dimensionless step */
-			photonStepsCounter += 1;
-			
-			do{  // while stepLeft>0
 
-				if (!sameVoxel) {
-					/* Get tissue voxel properties of current position.
-					 * If photon beyond outer edge of defined voxels, 
-					 * the tissue equals properties of outermost voxels.
-					 * Therefore, set outermost voxels to infinite background value.
-					 */
-					ix = floor(nx/2.0 + x/dx);
-					iy = floor(ny/2.0 + y/dy);
-					iz = floor(z/dz);        
+			photonWeight = 1.0;                    /* set photon weight to one */
+			photonAlive = true;      /* Launch an ALIVE photon */
+			sameVoxel = false;					/* Photon is initialized as if it has just entered the voxel it's created in, to ensure proper initialization of voxel index and ray properties */
+			photonStepsCounter = 0;
+			
+			#pragma omp atomic
+				nPhotons += 1;				/* increment photon count */
+			
+			/****************************/
+			/* Initial position and trajectory */
+			if (beamtypeFlag==0) { // top-hat focus, top-hat far field beam
+				r		= waist*sqrt(RandomNum); // for target calculation
+				phi		= RandomNum*2.0*PI;
+				wx0		= vx0;
+				wy0		= vy0;
+				wz0		= vz0;
+				axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
+				
+				xTarget	= xFocus + r*wx0;
+				yTarget	= yFocus + r*wy0;
+				zTarget = zFocus + r*wz0;
+				
+				theta	= divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+				phi		= RandomNum*2.0*PI;
+				wx0		= vx0;
+				wy0		= vy0;
+				wz0		= vz0;
+				axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+				
+				ux		= ux0;
+				uy		= uy0;
+				uz		= uz0;
+				axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
+				
+				x		= xTarget - zTarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+				y		= yTarget - zTarget/uz*uy;
+				z		= 0;
+			}
+			else if (beamtypeFlag==1) { // Gaussian focus, Gaussian far field beam
+				r		= waist*sqrt(-0.5*log(RandomNum)); // for target calculation
+				phi		= RandomNum*2.0*PI;
+				wx0		= vx0;
+				wy0		= vy0;
+				wz0		= vz0;
+				axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
+				
+				xTarget	= xFocus + r*wx0;
+				yTarget	= yFocus + r*wy0;
+				zTarget = zFocus + r*wz0;
+				
+				theta	= divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+				phi		= RandomNum*2.0*PI;
+				wx0		= vx0;
+				wy0		= vy0;
+				wz0		= vz0;
+				axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+				
+				ux		= ux0;
+				uy		= uy0;
+				uz		= uz0;
+				axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
+				
+				x		= xTarget - zTarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+				y		= yTarget - zTarget/uz*uy;
+				z		= 0;
+			}
+			else if (beamtypeFlag==2) { // isotropically emitting point source
+				costheta = 1.0 - 2.0*RandomNum;
+				sintheta = sqrt(1.0 - costheta*costheta);
+				psi = 2.0*PI*RandomNum;
+				cospsi = cos(psi);
+				if (psi < PI)
+					sinpsi = sqrt(1.0 - cospsi*cospsi); 
+				else
+					sinpsi = -sqrt(1.0 - cospsi*cospsi);
+				x = xFocus;
+				y = yFocus;
+				z = zFocus;
+				ux = sintheta*cospsi;
+				uy = sintheta*sinpsi;
+				uz = costheta;
+			}
+			else if (beamtypeFlag==3) { // infinite plane wave
+				if (boundaryFlag==1) {
+					x = nx*dx*(RandomNum-0.5); // Generates a random x coordinate within the box
+					y = ny*dy*(RandomNum-0.5); // Generates a random y coordinate within the box
+				}
+				else {
+					x = 6.0*nx*dx*(RandomNum-0.5); // Generates a random x coordinate within an interval 6 times the box' size
+					y = 6.0*ny*dy*(RandomNum-0.5); // Generates a random y coordinate within an interval 6 times the box' size
+				}
+				z = 0;
+				ux = ux0;
+				uy = uy0;
+				uz = uz0;
+			}
+			else if (beamtypeFlag==4) { // pencil beam
+				x	= xFocus - zFocus/uz0*ux0; 
+				y	= yFocus - zFocus/uz0*uy0;
+				z	= 0;
+				ux	= ux0;
+				uy	= uy0;
+				uz	= uz0;
+			}
+			else if (beamtypeFlag==5) { // top-hat focus, Gaussian far field beam
+				r		= waist*sqrt(RandomNum); // for target calculation
+				phi		= RandomNum*2.0*PI;
+				wx0		= vx0;
+				wy0		= vy0;
+				wz0		= vz0;
+				axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
+				
+				xTarget	= xFocus + r*wx0;
+				yTarget	= yFocus + r*wy0;
+				zTarget = zFocus + r*wz0;
+				
+				theta	= divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+				phi		= RandomNum*2.0*PI;
+				wx0		= vx0;
+				wy0		= vy0;
+				wz0		= vz0;
+				axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+				
+				ux		= ux0;
+				uy		= uy0;
+				uz		= uz0;
+				axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
+				
+				x		= xTarget - zTarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+				y		= yTarget - zTarget/uz*uy;
+				z		= 0;
+			}
+			else if (beamtypeFlag==6) { // Gaussian focus, top-hat far field beam
+				r		= waist*sqrt(-0.5*log(RandomNum)); // for target calculation
+				phi		= RandomNum*2.0*PI;
+				wx0		= vx0;
+				wy0		= vy0;
+				wz0		= vz0;
+				axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
+				
+				xTarget	= xFocus + r*wx0;
+				yTarget	= yFocus + r*wy0;
+				zTarget = zFocus + r*wz0;
+				
+				theta	= divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+				phi		= RandomNum*2.0*PI;
+				wx0		= vx0;
+				wy0		= vy0;
+				wz0		= vz0;
+				axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+				
+				ux		= ux0;
+				uy		= uy0;
+				uz		= uz0;
+				axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
+				
+				x		= xTarget - zTarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+				y		= yTarget - zTarget/uz*uy;
+				z		= 0;
+			}
+
+			/****************************/
+			
+			/* HOP_DROP_SPIN_CHECK
+			 Propagate one photon until it dies as determined by ROULETTE.
+			 *******/
+			do {
+				
+				/**** HOP
+				 Take step to new position
+				 s = dimensionless stepsize
+				 ux, uy, uz are unit vector components of current photon trajectory
+				 *****/
+				while ((rnd = RandomNum) <= 0.0);   /* yields 0 < rnd <= 1 */
+				stepLeft	= -log(rnd);				/* dimensionless step */
+				photonStepsCounter += 1;
+				
+				do{  // while stepLeft>0
+
+					if (!sameVoxel) {
+						/* Get tissue voxel properties of current position.
+						 * If photon beyond outer edge of defined voxels, 
+						 * the tissue equals properties of outermost voxels.
+						 * Therefore, set outermost voxels to infinite background value.
+						 */
+						ix = floor(nx/2.0 + x/dx);
+						iy = floor(ny/2.0 + y/dy);
+						iz = floor(z/dz);        
+						
+						photonInsideVolume = true;  // Initialize the photon as inside the volume, then check.
+						if (boundaryFlag==0) { // Infinite medium.
+									// Check if photon has wandered outside volume.
+									// If so, set tissue type to boundary value, but let photon wander.
+									// Set photonInsideVolume to false, so DROP does not deposit energy.
+							if (iz>=nz) {iz=nz-1; photonInsideVolume = false;}
+							if (ix>=nx) {ix=nx-1; photonInsideVolume = false;}
+							if (iy>=ny) {iy=ny-1; photonInsideVolume = false;}
+							if (iz<0)   {iz=0;    photonInsideVolume = false;}
+							if (ix<0)   {ix=0;    photonInsideVolume = false;}
+							if (iy<0)   {iy=0;    photonInsideVolume = false;}
+						}
+						else if (boundaryFlag==1) { // Escape at boundaries
+							if (iz>=nz) {iz=nz-1; photonAlive = false; stepLeft = 0;}
+							if (ix>=nx) {ix=nx-1; photonAlive = false; stepLeft = 0;}
+							if (iy>=ny) {iy=ny-1; photonAlive = false; stepLeft = 0;}
+							if (iz<0)   {iz=0;    photonAlive = false; stepLeft = 0;}
+							if (ix<0)   {ix=0;    photonAlive = false; stepLeft = 0;}
+							if (iy<0)   {iy=0;    photonAlive = false; stepLeft = 0;}
+						}
+						else if (boundaryFlag==2) { // Escape at top surface, no x,y bottom z boundaries
+							if (iz>=nz) {iz=nz-1; photonInsideVolume = false;}
+							if (ix>=nx) {ix=nx-1; photonInsideVolume = false;}
+							if (iy>=ny) {iy=ny-1; photonInsideVolume = false;}
+							if (iz<0)   {iz=0;    photonAlive = false; stepLeft = 0;}
+							if (ix<0)   {ix=0;    photonInsideVolume = false;}
+							if (iy<0)   {iy=0;    photonInsideVolume = false;}
+						}
+						if (!photonAlive) break;
+						
+						/* Get the tissue type of located voxel */
+						j		= (long)(iz*ny*nx + iy*nx + ix);
+						type	= v[j];
+						mua 	= muav[type];
+						mus 	= musv[type];
+						g 		= gv[type];
+					}
 					
-					photonInsideVolume = true;  // Initialize the photon as inside the volume, then check.
-					if (boundaryFlag==0) { // Infinite medium.
-								// Check if photon has wandered outside volume.
-								// If so, set tissue type to boundary value, but let photon wander.
-								// Set photonInsideVolume to false, so DROP does not deposit energy.
-						if (iz>=nz) {iz=nz-1; photonInsideVolume = false;}
-						if (ix>=nx) {ix=nx-1; photonInsideVolume = false;}
-						if (iy>=ny) {iy=ny-1; photonInsideVolume = false;}
-						if (iz<0)   {iz=0;    photonInsideVolume = false;}
-						if (ix<0)   {ix=0;    photonInsideVolume = false;}
-						if (iy<0)   {iy=0;    photonInsideVolume = false;}
-					}
-					else if (boundaryFlag==1) { // Escape at boundaries
-						if (iz>=nz) {iz=nz-1; photonAlive = false; stepLeft = 0;}
-						if (ix>=nx) {ix=nx-1; photonAlive = false; stepLeft = 0;}
-						if (iy>=ny) {iy=ny-1; photonAlive = false; stepLeft = 0;}
-						if (iz<0)   {iz=0;    photonAlive = false; stepLeft = 0;}
-						if (ix<0)   {ix=0;    photonAlive = false; stepLeft = 0;}
-						if (iy<0)   {iy=0;    photonAlive = false; stepLeft = 0;}
-					}
-					else if (boundaryFlag==2) { // Escape at top surface, no x,y bottom z boundaries
-						if (iz>=nz) {iz=nz-1; photonInsideVolume = false;}
-						if (ix>=nx) {ix=nx-1; photonInsideVolume = false;}
-						if (iy>=ny) {iy=ny-1; photonInsideVolume = false;}
-						if (iz<0)   {iz=0;    photonAlive = false; stepLeft = 0;}
-						if (ix<0)   {ix=0;    photonInsideVolume = false;}
-						if (iy<0)   {iy=0;    photonInsideVolume = false;}
-					}
-					if (!photonAlive) break;
+					s     = stepLeft/mus;				/* Step size [cm].*/
+					xTentative = x + s*ux;				/* Update positions. [cm] */
+					yTentative = y + s*uy;	
+					zTentative = z + s*uz;
 					
-					/* Get the tissue type of located voxel */
-					i		= (long)(iz*ny*nx + iy*nx + ix);
-					type	= v[i];
-					mua 	= muav[type];
-					mus 	= musv[type];
-					g 		= gv[type];
+					sameVoxel = SameVoxel(x,y,z, xTentative, yTentative, zTentative, dx,dy,dz);
+					if (sameVoxel) /* photon in same voxel */
+					{  
+						x=xTentative;					/* Update positions. */
+						y=yTentative;
+						z=zTentative;
+						
+						/**** DROP
+						 Drop photon weight (photonWeight) into local bin.
+						 *****/
+						absorb = photonWeight*(1 - exp(-mua*s));	/* photon weight absorbed at this step */
+						photonWeight -= absorb;					/* decrement WEIGHT by amount absorbed */
+						// If photon within volume of heterogeneity, deposit energy in F[]. 
+						// Normalize F[] later, when save output. 
+						if (photonInsideVolume) {
+							#pragma omp atomic
+								F[j] += absorb;	// only save data if the photon is inside simulation cube
+						}
+						
+						/* Update stepLeft */
+						stepLeft = 0;		/* dimensionless step remaining */
+					}
+					else /* photon has crossed voxel boundary */
+					{
+						/* step to voxel face + "littlest step" so just inside new voxel. */
+						s = ls + FindVoxelFace2(x,y,z, xTentative,yTentative,zTentative, dx,dy,dz, ux,uy,uz);
+						
+						/**** DROP
+						 Drop photon weight (photonWeight) into local bin.
+						 *****/
+						absorb = photonWeight*(1-exp(-mua*s));   /* photon weight absorbed at this step */
+						photonWeight -= absorb;                  /* decrement WEIGHT by amount absorbed */
+						// If photon within volume of heterogeneity, deposit energy in F[]. 
+						// Normalize F[] later, when save output. 
+						if (photonInsideVolume) {
+							#pragma omp atomic
+								F[j] += absorb;	// only save data if the photon is inside simulation cube
+						}
+						
+						/* Update stepLeft */
+						stepLeft -= s*mus;  /* dimensionless step remaining */
+						if (stepLeft<=ls) stepLeft = 0;
+						
+						/* Update positions. */
+						x += s*ux;
+						y += s*uy;
+						z += s*uz;
+						
+					} //(sameVoxel) /* same voxel */
+					
+				} while(stepLeft>0); //do...while
+				
+				/**** CHECK ROULETTE 
+				 If photon weight below THRESHOLD, then terminate photon using Roulette technique.
+				 Photon has CHANCE probability of having its weight increased by factor of 1/CHANCE,
+				 and 1-CHANCE probability of terminating.
+				 *****/
+				if (photonWeight < THRESHOLD) {
+					if (RandomNum <= CHANCE)
+						photonWeight /= CHANCE;
+					else photonAlive = false;
 				}
 				
-				s     = stepLeft/mus;				/* Step size [cm].*/
-				xTentative = x + s*ux;				/* Update positions. [cm] */
-				yTentative = y + s*uy;	
-				zTentative = z + s*uz;
-				
-				sameVoxel = SameVoxel(x,y,z, xTentative, yTentative, zTentative, dx,dy,dz);
-				if (sameVoxel) /* photon in same voxel */
-				{  
-					x=xTentative;					/* Update positions. */
-					y=yTentative;
-					z=zTentative;
-					
-					/**** DROP
-					 Drop photon weight (photonWeight) into local bin.
+				if (photonAlive) {
+					/**** SPIN 
+					 Scatter photon into new trajectory defined by theta and psi.
+					 Theta is specified by cos(theta), which is determined 
+					 based on the Henyey-Greenstein scattering function.
+					 Convert theta and psi into cosines ux, uy, uz. 
 					 *****/
-                    absorb = photonWeight*(1 - exp(-mua*s));	/* photon weight absorbed at this step */
-                    photonWeight -= absorb;					/* decrement WEIGHT by amount absorbed */
-					// If photon within volume of heterogeneity, deposit energy in F[]. 
-					// Normalize F[] later, when save output. 
-                    if (photonInsideVolume) F[i] += absorb;	// only save data if the photon is inside simulation cube
+					/* Sample for costheta */
+					rnd = RandomNum;
+					if (g == 0.0)
+						costheta = 2.0*rnd - 1.0;
+					else {
+						costheta = (1.0 + g*g - SQR((1.0 - g*g)/(1.0 - g + 2*g*rnd)))/(2.0*g);
+					}
+					sintheta = sqrt(1.0 - costheta*costheta); /* sqrt() is faster than sin(). */
 					
-					/* Update stepLeft */
-					stepLeft = 0;		/* dimensionless step remaining */
+					/* Sample psi. */
+					psi = 2.0*PI*RandomNum;
+					cospsi = cos(psi);
+					if (psi < PI)
+						sinpsi = sqrt(1.0 - cospsi*cospsi);     /* sqrt() is faster than sin(). */
+					else
+						sinpsi = -sqrt(1.0 - cospsi*cospsi);
+					
+					/* New trajectory. */
+					if (1 - fabs(uz) <= ONE_MINUS_COSZERO) {      /* close to perpendicular. */
+						uxx = sintheta * cospsi;
+						uyy = sintheta * sinpsi;
+						uzz = costheta * SIGN(uz);   /* SIGN() is faster than division. */
+					} 
+					else {					/* usually use this option */
+						uxx = sintheta * (ux * uz * cospsi - uy * sinpsi) / sqrt(1.0 - uz * uz) + ux * costheta;
+						uyy = sintheta * (uy * uz * cospsi + ux * sinpsi) / sqrt(1.0 - uz * uz) + uy * costheta;
+						uzz = -sintheta * cospsi * sqrt(1.0 - uz * uz) + uz * costheta;
+					}
+					
+					/* Update trajectory */
+					ux = uxx;
+					uy = uyy;
+					uz = uzz;
 				}
-				else /* photon has crossed voxel boundary */
-				{
-					/* step to voxel face + "littlest step" so just inside new voxel. */
-					s = ls + FindVoxelFace2(x,y,z, xTentative,yTentative,zTentative, dx,dy,dz, ux,uy,uz);
-					
-					/**** DROP
-					 Drop photon weight (photonWeight) into local bin.
-					 *****/
-					absorb = photonWeight*(1-exp(-mua*s));   /* photon weight absorbed at this step */
-					photonWeight -= absorb;                  /* decrement WEIGHT by amount absorbed */
-					// If photon within volume of heterogeneity, deposit energy in F[]. 
-					// Normalize F[] later, when save output. 
-                    if (photonInsideVolume) F[i] += absorb;	// only save data if the photon is inside simulation cube
-					
-					/* Update stepLeft */
-					stepLeft -= s*mus;  /* dimensionless step remaining */
-					if (stepLeft<=ls) stepLeft = 0;
-					
-					/* Update positions. */
-					x += s*ux;
-					y += s*uy;
-					z += s*uz;
-                    
-				} //(sameVoxel) /* same voxel */
-                
-			} while(stepLeft>0); //do...while
+				
+			} while (photonAlive);
+			/* end STEP_CHECK_HOP_SPIN */
+			/* if ALIVE, continue propagating */
+			/* If photon DEAD, then launch new photon. */	
 			
-			/**** CHECK ROULETTE 
-			 If photon weight below THRESHOLD, then terminate photon using Roulette technique.
-			 Photon has CHANCE probability of having its weight increased by factor of 1/CHANCE,
-			 and 1-CHANCE probability of terminating.
-			 *****/
-			if (photonWeight < THRESHOLD) {
-				if (RandomNum <= CHANCE)
-					photonWeight /= CHANCE;
-				else photonAlive = false;
+			#pragma omp master
+			{
+				clock_gettime(CLOCK_MONOTONIC, &simulationTimeCurrent);
+
+				// Print out message about progress.
+				newPctProgress = 100*(simulationTimeCurrent.tv_sec - simulationTimeStart.tv_sec + (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1000000000.0) / (simulationTimeRequested*60.0);
+				if (newPctProgress != pctProgress) {
+					pctProgress = newPctProgress;
+					if ((pctProgress<10) | (pctProgress>90) | (fmod(pctProgress, 10)==0)) {
+						printf("%i%% done\n", pctProgress);
+					}
+				}
 			}
-			
-			if (photonAlive) {
-			/**** SPIN 
-			 Scatter photon into new trajectory defined by theta and psi.
-			 Theta is specified by cos(theta), which is determined 
-			 based on the Henyey-Greenstein scattering function.
-			 Convert theta and psi into cosines ux, uy, uz. 
-			 *****/
-			/* Sample for costheta */
-			rnd = RandomNum;
-			if (g == 0.0)
-				costheta = 2.0*rnd - 1.0;
-			else {
-				double temp = (1.0 - g*g)/(1.0 - g + 2*g*rnd);
-				costheta = (1.0 + g*g - temp*temp)/(2.0*g);
-			}
-			sintheta = sqrt(1.0 - costheta*costheta); /* sqrt() is faster than sin(). */
-			
-			/* Sample psi. */
-			psi = 2.0*PI*RandomNum;
-			cospsi = cos(psi);
-			if (psi < PI)
-				sinpsi = sqrt(1.0 - cospsi*cospsi);     /* sqrt() is faster than sin(). */
-			else
-				sinpsi = -sqrt(1.0 - cospsi*cospsi);
-			
-			/* New trajectory. */
-			if (1 - fabs(uz) <= ONE_MINUS_COSZERO) {      /* close to perpendicular. */
-				uxx = sintheta * cospsi;
-				uyy = sintheta * sinpsi;
-				uzz = costheta * SIGN(uz);   /* SIGN() is faster than division. */
-			} 
-			else {					/* usually use this option */
-				temp = sqrt(1.0 - uz * uz);
-				uxx = sintheta * (ux * uz * cospsi - uy * sinpsi) / temp + ux * costheta;
-				uyy = sintheta * (uy * uz * cospsi + ux * sinpsi) / temp + uy * costheta;
-				uzz = -sintheta * cospsi * temp + uz * costheta;
-			}
-			
-			/* Update trajectory */
-			ux = uxx;
-			uy = uyy;
-			uz = uzz;
-			}
-			
-		} while (photonAlive);
-		/* end STEP_CHECK_HOP_SPIN */
-        /* if ALIVE, continue propagating */
-		/* If photon DEAD, then launch new photon. */	
-        
-	} while (iPhoton < nPhotons);  /* end RUN */
-	
+		} while (pctProgress < 100);  /* end RUN */
+	}
     
 	printf("------------------------------------------------------\n");
-	simulationTimeEnd = clock();
-	simulationTimeRequested = (double)(simulationTimeEnd-simulationTimeStart)/CLOCKS_PER_SEC/60;
-	printf("Elapsed Time for %0.3e photons = %5.3f min\n",nPhotons,simulationTimeRequested);
-	printf("%0.2e photons per minute\n", nPhotons/simulationTimeRequested);
+	clock_gettime(CLOCK_MONOTONIC, &simulationTimeCurrent);
+	simulationTimeSpent = (double)(simulationTimeCurrent.tv_sec  - simulationTimeStart.tv_sec ) + (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1000000000.0;
+	printf("Simulated %0.1e photons at a rate of %0.1e photons per minute\n",(double)nPhotons, nPhotons*60.0/simulationTimeSpent);
 	
     /**** SAVE
      Convert data to relative fluence rate [cm^-2] and save.
      *****/
     
     // Normalize deposition (A) to yield fluence rate (F).
-    temp = dx*dy*dz*nPhotons;
     for (i=0; i<totalVoxelCount;i++){
-        F[i] /= (temp*muav[v[i]]);
+        F[i] /= (dx*dy*dz*nPhotons*muav[v[i]]);
     }
     // Save the binary file
     strcpy(filename,myname);
     strcat(filename,"_F.bin");
-    printf("saving %s\n",filename);
+    printf("Saving %s\n",filename);
     fid = fopen(filename, "wb");   /* 3D voxel output */
     fwrite(F, sizeof(float), totalVoxelCount, fid);
     fclose(fid);
@@ -739,7 +740,7 @@ int main(int argc, const char * argv[]) {
     
     free(v);
     free(F);
-    free(R);
+    //free(R);
     return 0;
 } /* end of main */
 
@@ -769,60 +770,64 @@ int main(int argc, const char * argv[]) {
  *      Make sure you initialize the seed before you get random
  *      numbers.
  ****/
+ 
+ 
+ // This is Knuth's subtractive pseudorandom number generator from 1981
 #define MBIG 1000000000
 #define MSEED 161803398
 #define MZ 0
 #define FAC 1.0E-9
 
 double RandomGen(char Type, long Seed, long *Status){
-    static long i1, i2, ma[56];   /* ma[0] is not used. */
-    long        mj, mk;
-    short       i, ii;
-    
-    if (Type == 0) {              /* set seed. */
-        mj = MSEED - (Seed < 0 ? -Seed : Seed);
-        mj %= MBIG;
-        ma[55] = mj;
-        mk = 1;
-        for (i = 1; i <= 54; i++) {
-            ii = (21 * i) % 55;
-            ma[ii] = mk;
-            mk = mj - mk;
-            if (mk < MZ)
-                mk += MBIG;
-            mj = ma[ii];
-        }
-        for (ii = 1; ii <= 4; ii++)
-            for (i = 1; i <= 55; i++) {
-                ma[i] -= ma[1 + (i + 30) % 55];
-                if (ma[i] < MZ)
-                    ma[i] += MBIG;
-            }
-        i1 = 0;
-        i2 = 31;
-    } else if (Type == 1) {       /* get a number. */
-        if (++i1 == 56)
-            i1 = 1;
-        if (++i2 == 56)
-            i2 = 1;
-        mj = ma[i1] - ma[i2];
-        if (mj < MZ)
-            mj += MBIG;
-        ma[i1] = mj;
-        return (mj * FAC);
-    } else if (Type == 2) {       /* get status. */
-        for (i = 0; i < 55; i++)
-            Status[i] = ma[i + 1];
-        Status[55] = i1;
-        Status[56] = i2;
-    } else if (Type == 3) {       /* restore status. */
-        for (i = 0; i < 55; i++)
-            ma[i + 1] = Status[i];
-        i1 = Status[55];
-        i2 = Status[56];
-    } else
-        puts("Wrong parameter to RandomGen().");
-    return (0);
+	static __thread long i1, i2, ma[56];   /* ma[0] is not used. */
+	long        mj, mk;
+	short       i, ii;
+	
+	if (Type == 0) {              /* set seed. */
+		//printf("Thread #%i random number generator seed is %ld\n",omp_get_thread_num()+1,Seed);
+		mj = MSEED - (Seed < 0 ? -Seed : Seed);
+		mj %= MBIG;
+		ma[55] = mj;
+		mk = 1;
+		for (i = 1; i <= 54; i++) {
+			ii = (21 * i) % 55;
+			ma[ii] = mk;
+			mk = mj - mk;
+			if (mk < MZ)
+				mk += MBIG;
+			mj = ma[ii];
+		}
+		for (ii = 1; ii <= 4; ii++)
+			for (i = 1; i <= 55; i++) {
+				ma[i] -= ma[1 + (i + 30) % 55];
+				if (ma[i] < MZ)
+					ma[i] += MBIG;
+			}
+		i1 = 0;
+		i2 = 31;
+	} else if (Type == 1) {       /* get a number. */
+		if (++i1 == 56)
+			i1 = 1;
+		if (++i2 == 56)
+			i2 = 1;
+		mj = ma[i1] - ma[i2];
+		if (mj < MZ)
+			mj += MBIG;
+		ma[i1] = mj;
+		return (mj * FAC);
+	} else if (Type == 2) {       /* get status. */
+		for (i = 0; i < 55; i++)
+			Status[i] = ma[i + 1];
+		Status[55] = i1;
+		Status[56] = i2;
+	} else if (Type == 3) {       /* restore status. */
+		for (i = 0; i < 55; i++)
+			ma[i + 1] = Status[i];
+		i1 = Status[55];
+		i2 = Status[56];
+	} else
+		puts("Wrong parameter to RandomGen().");
+	return (0);
 }
 #undef MBIG
 #undef MSEED
