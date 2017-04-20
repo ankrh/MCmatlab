@@ -9,16 +9,11 @@ function lookmcxyz
 %   Volumetric plot of fluence rate (intensity)
 %   Volumetric plot of absorbed power per unit volume
 %
-% Saves
-%   Fzy_data4.mat = Fzy y z zzs Fdet
-%       Fzy(400,400,8) = 8 z,y images
-%       Fdet(8,1) = signal [1/cm^2] @ detector fiber
-%
 
 %% USER CHOICES <---------- you must specify -----
-directoryPath = 'Data/';
+directoryPath = 'exec/';
 myname = 'dentin_sim_850';
-nm     = 850;
+wavelength = 850;
 saveon_HeatSim = 1;
 
 %% Load header file
@@ -51,7 +46,7 @@ clear data
 x  = ((0:H_mci.Nx-1)-(H_mci.Nx-1)/2)*H_mci.dx;
 y  = ((0:H_mci.Ny-1)-(H_mci.Ny-1)/2)*H_mci.dy;
 z  = ((0:H_mci.Nz-1)+1/2)*H_mci.dz;
-tissueList = makeTissueList(nm);
+tissueList = makeTissueList(wavelength);
 
 %% Make volumetric tissue plot
 
