@@ -30,6 +30,7 @@
  *  Reorganized by Steve. May 8, 2012:
  *      Reads input files, outputs binary files.
  *	Edited to included a uniformly distributed light source over the entire surface by Mathias Christensen 09/01/2014
+ *  Overhauled by Anders Hansen and Dominik Marti in April 2017. Fundamental method remained unchanged.
  **********/
 
 #include <math.h>
@@ -39,6 +40,8 @@
 #include <stdbool.h>
 #include <time.h>
 #include <omp.h>
+#define DSFMT_MEXP 19937 // Mersenne exponent for dSFMT
+#include "dSFMT-src-2.2.3/dSFMT.c" //  double precision SIMD oriented Fast Mersenne Twister(dSFMT)
 
 #define Ntiss		19          /* Number of tissue types. */
 #define STRLEN 		32          /* String length. */
@@ -48,13 +51,11 @@
 #define CHANCE      0.1  		/* used in roulette */
 #define SQR(x)		(x*x) 
 #define SIGN(x)     ((x)>=0 ? 1:-1)
-#define RandomNum   (double) RandomGen(1, 0, NULL) /* Calls for a random number. */
+#define RandomNum   dsfmt_genrand_open_close(&dsfmt) /* Calls for a random number in (0,1] */
 #define ONE_MINUS_COSZERO 1.0E-12   /* If 1-cos(theta) <= ONE_MINUS_COSZERO, fabs(theta) <= 1e-6 rad. */
 /* If 1+cos(theta) <= ONE_MINUS_COSZERO, fabs(PI-theta) <= 1e-6 rad. */
 
 /* DECLARE FUNCTIONS */
-double RandomGen(char Type, long Seed, long *Status);  
-/* Random number generator */
 bool SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2, double dx,double dy,double dz);
 /* Asks,"In the same voxel?" */
 double min3(double a, double b, double c);
@@ -304,8 +305,6 @@ int main(int argc, const char * argv[]) {
 	
 	#pragma omp parallel num_threads(omp_get_num_procs())
 	{
-		RandomGen(0, (int)(simulationTimeStart.tv_nsec + omp_get_thread_num())%(31999)+1, NULL); // Seed random number generator
-
 		double	x, y, z;        /* photon position */
 		double	ux, uy, uz;     /* photon trajectory as unit vector composants */
 		double  uxx, uyy, uzz;	/* temporary values used during SPIN */
@@ -325,15 +324,17 @@ int main(int argc, const char * argv[]) {
 		double	g;              /* anisotropy [-] */
 		double  xTarget, yTarget, zTarget;
 		double	wx0, wy0, wz0;  /* normal vector 2 to photon trajectory. Not necessarily normal to v0. */
-		double  rnd;            /* assigned random value 0-1 */
-		double	r, theta, phi;	/* dummy values */
+		double	r, theta, phi;
 		long 	j;
 		double	xTentative, yTentative, zTentative; /* temporary variables, used during photon step. */
 		int 	ix, iy, iz;     /* Added. Used to track photons */
 		bool    photonInsideVolume;  /* flag, true or false */
-		int		photonStepsCounter;
+		//int		photonStepsCounter;
 		int 	type;
-		
+		dsfmt_t dsfmt;			/* Thread-specific "state" of dSFMT pseudo-random number generator */
+
+		dsfmt_init_gen_rand(&dsfmt,(unsigned long)(simulationTimeStart.tv_nsec + omp_get_thread_num())); // Seed random number generator
+		//printf("Thread #%i seeded with %li\n",omp_get_thread_num()+1,(unsigned long)(simulationTimeStart.tv_nsec + omp_get_thread_num()));
 		do {
 			/**** LAUNCH 
 			 Initialize photon position and trajectory.
@@ -342,7 +343,7 @@ int main(int argc, const char * argv[]) {
 			photonWeight = 1.0;                    /* set photon weight to one */
 			photonAlive = true;      /* Launch an ALIVE photon */
 			sameVoxel = false;					/* Photon is initialized as if it has just entered the voxel it's created in, to ensure proper initialization of voxel index and ray properties */
-			photonStepsCounter = 0;
+			//photonStepsCounter = 0;
 			
 			#pragma omp atomic
 				nPhotons += 1;				/* increment photon count */
@@ -512,9 +513,8 @@ int main(int argc, const char * argv[]) {
 				 s = dimensionless stepsize
 				 ux, uy, uz are unit vector components of current photon trajectory
 				 *****/
-				while ((rnd = RandomNum) <= 0.0);   /* yields 0 < rnd <= 1 */
-				stepLeft	= -log(rnd);				/* dimensionless step */
-				photonStepsCounter += 1;
+				stepLeft	= -log(RandomNum);				/* dimensionless step */
+				//photonStepsCounter += 1;
 				
 				do{  // while stepLeft>0
 
@@ -642,11 +642,10 @@ int main(int argc, const char * argv[]) {
 					 Convert theta and psi into cosines ux, uy, uz. 
 					 *****/
 					/* Sample for costheta */
-					rnd = RandomNum;
 					if (g == 0.0)
-						costheta = 2.0*rnd - 1.0;
+						costheta = 2.0*RandomNum - 1.0;
 					else {
-						costheta = (1.0 + g*g - SQR((1.0 - g*g)/(1.0 - g + 2*g*rnd)))/(2.0*g);
+						costheta = (1.0 + g*g - SQR((1.0 - g*g)/(1.0 - g + 2*g*RandomNum)))/(2.0*g);
 					}
 					sintheta = sqrt(1.0 - costheta*costheta); /* sqrt() is faster than sin(). */
 					
