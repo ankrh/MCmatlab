@@ -8,9 +8,9 @@ B = fscanf(fid,'%f');
 fclose(fid);
 
 H_mci.time_min      = B(1);
-H_mci.Nx            = B(2);
-H_mci.Ny            = B(3);
-H_mci.Nz            = B(4);
+H_mci.nx            = B(2);
+H_mci.ny            = B(3);
+H_mci.nz            = B(4);
 H_mci.dx            = B(5);
 H_mci.dy            = B(6);
 H_mci.dz            = B(7);

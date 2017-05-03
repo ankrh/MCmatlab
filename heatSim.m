@@ -1,203 +1,122 @@
-function heatSim
+function heatSim()
+%% User defined parameters
 
-% Heat sim
-% The purpose of this program is to simulate
-% the heating of illuminated tissue.
-% This program uses the light distribution and tissue structure from 
-% maketissue_example2.m, makeTissueList.m, and lookmcxyz.m by importing
-% HeatSimIn.mat
+directoryPath = 'exec/';
+myname = 'dentin_sim_850';
+Wdel            = 1; % [W] Pulse peak power delivered
+onduration      = 0.1; % [s] pulse on-duration
+offduration     = 0.9; % [s] pulse off-duration
+initialTemp     = 36; % [deg C]
+plotTempLimits  = [36 36.15]; % [deg C], the expected range of temperatures, used only for setting the color scale in the plot
 
-directoryPath='C:\Users\Kira Schmidt\Documents\mcxyz';
-%./Data/
-load([directoryPath 'Input_spectrum'])
+%% Load data
+load([directoryPath myname '_HS.mat']);
 
-%% Setup of simulation 
-q = 0;
-for fluence = F_min:dF:F_max
-    q = q+1;
-    num = num2str(q);
-    load([directoryPath 'dentin_sim_850' num '.mat'])
+%% Parameters that are set automatically
 
-    %% Simulation Parameters
-    %%% Parameters to set %%%
-    save_name           = ['HeatSimOut_dentin_' num '.mat'];
-    pulse_energy_area   = fluence; % [J/cm^2] pulse energy per area
-    pulse_duration      = pulse; % [s] pulse duration
-    duration_after      = 10e-3; % [s] simulation duration after pulse
-    dt                  = 5e-5; % timestep size, should be on the order of or less,
-                                %than the smallest value of H_mci.dx^2*HC/TC (characteristic timescale for heat diffusion in individual voxels
-                                % also the pulse duration should be divisible by dt
-    Temp_initial        = 36; % initial temperature of tissue  
+[nx,ny,nz] = size(T);
+x  = ((0:nx-1)-(nx-1)/2)*dx;
+y  = ((0:ny-1)-(ny-1)/2)*dy;
+z  = ((0:nz-1)+1/2)*dz;
 
-    % switches
-    save_on     = 1; % 1 to save output, 0 otherwise
-    Apcal       = 1; % 1 to simulate the time during illumination, 0 otherwise
-    postcal     = 1; % 1 to simulate the time after illumination, 0 otherwise
-    quick_cal   = 1; % 1 to calculate only on a smaller matrix, 0 otherwise
+VHC = zeros(size(T));
+TC = zeros(size(T));
+for tissueNumber=1:length(tissueList)
+    VHC(T==tissueNumber) = tissueList(tissueNumber).VHC;
+    TC(T==tissueNumber) = tissueList(tissueNumber).TC;
+end
+HC = VHC*dx*dy*dz; % Heat capacity [J/K]
 
-    %% Parameters that is set automatically
-    tissueList  = makeTissueList(nm); %Properties of the tissue types
-    Temp        = Temp_initial*ones(400,400,400); % initial temperature in Celsius
+tissueIndicesInSimulation = unique(T);
+[minVHC, minVHCindex] = min([tissueList(tissueIndicesInSimulation).VHC]);
+[maxTC, maxTCindex] = max([tissueList(tissueIndicesInSimulation).TC]);
+dtmax = min([dx dy dz])^2*minVHC/maxTC/10; % Max time step allowed
+nt_on = ceil(onduration/dtmax); % Number of time steps with illumination
+dt = onduration/nt_on; % Time step size
+nt_off = ceil(offduration/dt); % Number of time steps without illumination
+fprintf('Illumination on for %d steps and off for %d steps. Step size is %0.1e s\n',nt_on,nt_off,dt);
+fprintf('Step size is limited by VHC of %s (%0.1e J/(cm^3 K)) and TC of %s (%0.1e W/(cm K))\n',tissueList(tissueIndicesInSimulation(minVHCindex)).name,minVHC,tissueList(tissueIndicesInSimulation(maxTCindex)).name,maxTC);
 
-    % Matrices contaning the thermal properties of the tissue
-    HC = zeros(size(T));
-    TC = zeros(size(T));
-    for tissueNumber=1:length(tissueList)
-        HC(T==tissueNumber) = tissueList(tissueNumber).HC;
-        TC(T==tissueNumber) = tissueList(tissueNumber).TC;
-    end
+Temp = initialTemp*ones(size(T));
 
-    % miscellaneous constants
-    area            = (H_mci.Nx*H_mci.dx)^2; % surface area of the model
-    pulse_energy    = pulse_energy_area*area; % [J] energy delivered to the volume
-    Wdel            = pulse_energy/pulse_duration; % Watt delivered
-    Nt_light        = round(pulse_duration/dt); % Number of timesteps with illumination
-    Nt_no_light     = round(duration_after/dt); % Numer of timesteps with no illumination 
+%% Plots to visualize tissue properties
 
-    % Due to the way photons leaving the matrix is handled in mcxyz.c, the Ap
-    % values on the borders are much too large, therefore they will be set to
-    % zero
-    Ap(1:H_mci.Nx,1:H_mci.Ny,1)     = 0;
-    Ap(1:H_mci.Nx,1:H_mci.Ny,H_mci.Nz)    = 0;
-    Ap(1:H_mci.Nx,1,1:H_mci.Nz)     = 0;
-    Ap(1:H_mci.Nx,H_mci.Ny,1:H_mci.Nz)    = 0;
-    Ap(1,1:H_mci.Ny,1:H_mci.Nz)     = 0;
-    Ap(H_mci.Nx,1:H_mci.Ny,1:H_mci.Nz)    = 0;
+% figure(1);clf;
+% plotVolumetric(x,y,z,T,tissueList);
+% 
+% figure(2);clf;
+% plotVolumetric(x,y,z,VHC);
+% 
+% figure(3);clf;
+% plotVolumetric(x,y,z,TC);
 
-    %% Quick Calculation Setup
-    if quick_cal==1;
-        Nmax    = H_mci.Nx;
-        H_mci.Nx      = 100;
-        H_mci.Ny      = 100;
-        H_mci.Nz      = 100;
-        Nx_low  = Nmax/2+1-H_mci.Nx/2;
-        Nz_low  = 1;
-        Nx_high = Nmax/2+H_mci.Nx/2;
-        Nz_high = H_mci.Nz;
-        z       = z(Nz_low:Nz_high);
-        y       = y(Nx_low:Nx_high);
-        x       = x(Nx_low:Nx_high);
-        Temp    = Temp(Nx_low:Nx_high,Nx_low:Nx_high,Nz_low:Nz_high);
-        Ap      = Ap(Nx_low:Nx_high,Nx_low:Nx_high,Nz_low:Nz_high);
-        T       = T(Nx_low:Nx_high,Nx_low:Nx_high,Nz_low:Nz_high);
-        HC      = HC(Nx_low:Nx_high,Nx_low:Nx_high,Nz_low:Nz_high);
-        TC      = TC(Nx_low:Nx_high,Nx_low:Nx_high,Nz_low:Nz_high);
-    end
+%% Prepare the temperature plot
+h_f = figure(4);
+plotVolumetric(x,y,z,Temp);
+title('Temperature evolution');
+caxis(plotTempLimits); % User-defined color scale limits
+fprintf('Press (almost) any key to start simulation...\n')
+pause
 
-    %% Prepare the temperature plot
-    figure(6); clf
-    plotTemp(y,z,squeeze(Temp(:,H_mci.Nx/2,:))')
-    title('Temperature [^{\circ}C]')
-    hold on
-    drawnow
+%% Heat Transfer Simulation during illumination
+effectiveTCx = 2*TC(1:end-1,:,:).*TC(2:end,:,:)./(TC(1:end-1,:,:)+TC(2:end,:,:));
+effectiveTCx(isnan(effectiveTCx)) = 0; % Neighboring insulating voxels would return NaN but should just be 0
+effectiveTCy = 2*TC(:,1:end-1,:).*TC(:,2:end,:)./(TC(:,1:end-1,:)+TC(:,2:end,:));
+effectiveTCy(isnan(effectiveTCy)) = 0;
+effectiveTCz = 2*TC(:,:,1:end-1).*TC(:,:,2:end)./(TC(:,:,1:end-1)+TC(:,:,2:end));
+effectiveTCz(isnan(effectiveTCz)) = 0;
+dQperdeltaT_x = dt/dx*dy*dz*effectiveTCx;
+dQperdeltaT_y = dt*dx/dy*dz*effectiveTCy;
+dQperdeltaT_z = dt*dx*dy/dz*effectiveTCz;
+dQ_abs = NVP*dt*dx*dy*dz*Wdel; % Heat from absorption per time step [J]
+dQflowsx = zeros(size(Temp)+[1 0 0]);
+dQflowsy = zeros(size(Temp)+[0 1 0]);
+dQflowsz = zeros(size(Temp)+[0 0 1]);
 
-    %% Heat Transfer Simulation during illumination
-    if Apcal==1;
-        fprintf(1,'Illuminating ...\n|----------------------------------------|');
-
-        fprintf(1,'\b');
-        tic
-        for nt = 1:Nt_light
-            % Calculates heat propagation
-            dQ = zeros(size(Temp));
-
-            heatTransfer = diff(Temp,1,1).*movmean(TC,2,1,'Endpoints','discard');
-            dQ(1:H_mci.Nx-1,:,:) = (dt/H_mci.dx)*H_mci.dy*H_mci.dz*heatTransfer;
-            dQ(2:H_mci.Nx,:,:) = dQ(2:H_mci.Nx,:,:)-(dt/H_mci.dx)*H_mci.dy*H_mci.dz*heatTransfer;
-
-            heatTransfer = diff(Temp,1,2).*movmean(TC,2,2,'Endpoints','discard');
-            dQ(:,1:H_mci.Nx-1,:) = dQ(:,1:H_mci.Nx-1,:)+(dt/H_mci.dy)*H_mci.dx*H_mci.dz*heatTransfer;
-            dQ(:,2:H_mci.Nx,:) = dQ(:,2:H_mci.Nx,:)-(dt/H_mci.dy)*H_mci.dx*H_mci.dz*heatTransfer;
-
-            heatTransfer = diff(Temp,1,3).*movmean(TC,2,3,'Endpoints','discard');
-            dQ(:,:,1:H_mci.Nz-1) = dQ(:,:,1:H_mci.Nz-1)+(dt/H_mci.dz)*H_mci.dx*H_mci.dy*heatTransfer;
-            dQ(:,:,2:H_mci.Nz) = dQ(:,:,2:H_mci.Nz)-(dt/H_mci.dz)*H_mci.dx*H_mci.dy*heatTransfer;
-
-            % sum of heat propagation and heat generated from absorbed light
-            dQ = dQ+Ap*H_mci.dx*H_mci.dy*H_mci.dz*Wdel*dt;
-            % calculate the temperature at the next timestep
-            Temp = Temp + dQ./HC./(H_mci.dx*H_mci.dy*H_mci.dz);
-            % plot the current temperature
-            image(y,z,squeeze(Temp(:,H_mci.Nx/2,:))')
-            drawnow
-
-            if mod(nt/Nt_light*40,1) == 0
-                fprintf(1,'\b');
-            end
-        end
-        fprintf(1,'\b\b Done\n');
-        toc
-    end
-
-    Temp_post_light = Temp;
-    Temp_post_light_zy = squeeze(Temp_post_light(:,H_mci.Nx/2,:))';
-
-    Temp_max = Temp;
+tic
+fprintf(['Illuminating... \n|' repmat('-',1,min(38,nt_on-2)) '|']);
+drawnow;
+for i = 1:(nt_on + nt_off)
+    dQflowsx(2:end-1,:,:) = diff(Temp,1,1).*dQperdeltaT_x;
+    dQflowsy(:,2:end-1,:) = diff(Temp,1,2).*dQperdeltaT_y;
+    dQflowsz(:,:,2:end-1) = diff(Temp,1,3).*dQperdeltaT_z;
     
-    %% Plot the temperature distribution immediately after illumination
+    if i <= nt_on
+        dQ  = diff(dQflowsx,1,1)...
+            + diff(dQflowsy,1,2)...
+            + diff(dQflowsz,1,3)...
+            + dQ_abs;
+    else
+        dQ  = diff(dQflowsx,1,1)...
+            + diff(dQflowsy,1,2)...
+            + diff(dQflowsz,1,3);
+    end    
+    Temp = Temp + dQ./HC;
 
-    figure(5);clf
-    plotTemp(y,z,Temp_post_light_zy)
-    title('Temperature after Illumination [^{\circ}C]')
-    drawnow
-
-    figure(6)
-
-    %% Heat Transfer Simulation after illumination
-    if postcal==1
-        fprintf(1,'Diffusing ...\n|----------------------------------------|');
-
+    if ismember(i,[floor(linspace(1,nt_on,40)) floor(linspace(nt_on + 1,nt_on + nt_off,40))])
         fprintf(1,'\b');
-        tic
-        for nt = 1:Nt_no_light
-            dQ = zeros(size(Temp));
-
-            heatTransfer = diff(Temp,1,1).*movmean(TC,2,1,'Endpoints','discard');
-            dQ(1:H_mci.Nx-1,:,:) = (dt/H_mci.dx)*H_mci.dy*H_mci.dz*heatTransfer;
-            dQ(2:H_mci.Nx,:,:) = dQ(2:H_mci.Nx,:,:)-(dt/H_mci.dx)*H_mci.dy*H_mci.dz*heatTransfer;
-
-            heatTransfer = diff(Temp,1,2).*movmean(TC,2,2,'Endpoints','discard');
-            dQ(:,1:H_mci.Nx-1,:) = dQ(:,1:H_mci.Nx-1,:)+(dt/H_mci.dy)*H_mci.dx*H_mci.dz*heatTransfer;
-            dQ(:,2:H_mci.Nx,:) = dQ(:,2:H_mci.Nx,:)-(dt/H_mci.dy)*H_mci.dx*H_mci.dz*heatTransfer;
-
-            heatTransfer = diff(Temp,1,3).*movmean(TC,2,3,'Endpoints','discard');
-            dQ(:,:,1:H_mci.Nz-1) = dQ(:,:,1:H_mci.Nz-1)+(dt/H_mci.dz)*H_mci.dx*H_mci.dy*heatTransfer;
-            dQ(:,:,2:H_mci.Nz) = dQ(:,:,2:H_mci.Nz)-(dt/H_mci.dz)*H_mci.dx*H_mci.dy*heatTransfer;
-
-            % calculate the temperature at the next timestep
-            Temp = Temp + dQ./HC./(H_mci.dx*H_mci.dy*H_mci.dz);
-            % save the maximum temperature that was ever reached at each point
-            Temp_max = max(cat(4,Temp_max, Temp),[],4);
-            % plot the current temperature
-            image(y,z,squeeze(Temp(:,H_mci.Nx/2,:))')
-            drawnow
-
-            if mod(nt/Nt_no_light*40,1) == 0
-                fprintf(1,'\b');
-            end
-        end
-        fprintf(1,'\b\b Done\n');
-        toc
+        updateVolumetric(h_f,Temp);
     end
-
-    Temp_post_diffuse = Temp;
-    Temp_post_diffuse_zy = squeeze(Temp_post_diffuse(:,H_mci.Nx/2,:))';
-
-    Temp_max_zy = squeeze(Temp_max(:,H_mci.Nx/2,:))';
-
-    %% Plot the temperature after diffusion and the maximum temperature reached
-
-    figure(6);clf
-    plotTemp(y,z,Temp_post_diffuse_zy)
-    title('Temperature after Diffusion [^{\circ}C]')
-
-    figure(7);clf
-    plotTemp(y,z,Temp_max_zy)
-    title('maximum Temperature reached [^{\circ}C]')
-
-    %% Save the data for downstream processing (-> plotDead)
-    if save_on==1
-        save([directoryPath save_name],'Temp_post_light','Temp_post_diffuse','Temp_max','pulse_energy_area','pulse_duration','duration_after','H_mci','T',...
-            'x','y','z','tissueList')
+    if i == nt_on
+        fprintf('\b\b Done\n');
+        Temp_illum = Temp;
+        fprintf(['Diffusing heat... \n|' repmat('-',1,min(38,nt_off-2)) '|']);
     end
+end
+fprintf('\b\b Done\n');
+toc
+title('Temperature after diffusion')
+
+figure(5);
+plotVolumetric(x,y,z,Temp_illum);
+title('Temperature after illumination');
+end
+
+function [xr,yr,zr] = axisrotate(x,y,z,ux,uy,uz,theta)
+st = sin(theta);
+ct = cos(theta);
+
+xr = (ct  +   ux*ux*(1-ct))*x	+	(ux*uy*(1-ct) - uz*st)*y	+	(ux*uz*(1-ct) + uy*st)*z;
+yr = (uy*ux*(1-ct) + uz*st)*x	+	(ct  +   uy*uy*(1-ct))*y	+	(uy*uz*(1-ct) - ux*st)*z;
+zr = (uz*ux*(1-ct) - uy*st)*x	+	(uz*uy*(1-ct) + ux*st)*y	+	(ct  +   uz*uz*(1-ct))*z;
 end
