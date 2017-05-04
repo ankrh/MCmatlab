@@ -31,10 +31,17 @@ tissueIndicesInSimulation = unique(T);
 [minVHC, minVHCindex] = min([tissueList(tissueIndicesInSimulation).VHC]);
 [maxTC, maxTCindex] = max([tissueList(tissueIndicesInSimulation).TC]);
 dtmax = min([dx dy dz])^2*minVHC/maxTC/10; % Max time step allowed
-nt_on = ceil(onduration/dtmax); % Number of time steps with illumination
-dt = onduration/nt_on; % Time step size
-nt_off = ceil(offduration/dt); % Number of time steps without illumination
-fprintf('Illumination on for %d steps and off for %d steps. Step size is %0.1e s\n',nt_on,nt_off,dt);
+if onduration ~= 0
+    nt_on = ceil(onduration/dtmax); % Number of time steps with illumination
+    dt = onduration/nt_on; % Time step size
+    nt_off = ceil(offduration/dt); % Number of time steps without illumination
+else
+    nt_on = 0;
+    nt_off = ceil(offduration/dtmax); % Number of time steps with illumination
+    dt = offduration/nt_off; % Time step size
+end
+
+fprintf('Illumination on for %d steps and off for %d steps. Step size is %0.2e s\n',nt_on,nt_off,dt);
 fprintf('Step size is limited by VHC of %s (%0.1e J/(cm^3 K)) and TC of %s (%0.1e W/(cm K))\n',tissueList(tissueIndicesInSimulation(minVHCindex)).name,minVHC,tissueList(tissueIndicesInSimulation(maxTCindex)).name,maxTC);
 
 Temp = initialTemp*ones(size(T));
@@ -74,9 +81,14 @@ dQflowsy = zeros(size(Temp)+[0 1 0]);
 dQflowsz = zeros(size(Temp)+[0 0 1]);
 
 tic
-fprintf(['Illuminating... \n|' repmat('-',1,min(38,nt_on-2)) '|']);
+if nt_on
+    fprintf(['Illuminating... \n' repmat('-',1,min(40,nt_on))]);
+end
 drawnow;
 for i = 1:(nt_on + nt_off)
+    if i == nt_on+1
+        fprintf(['Diffusing heat... \n' repmat('-',1,min(40,nt_off))]);
+    end
     dQflowsx(2:end-1,:,:) = diff(Temp,1,1).*dQperdeltaT_x;
     dQflowsy(:,2:end-1,:) = diff(Temp,1,2).*dQperdeltaT_y;
     dQflowsz(:,:,2:end-1) = diff(Temp,1,3).*dQperdeltaT_z;
@@ -97,19 +109,26 @@ for i = 1:(nt_on + nt_off)
         fprintf(1,'\b');
         updateVolumetric(h_f,Temp);
     end
+    
     if i == nt_on
-        fprintf('\b\b Done\n');
         Temp_illum = Temp;
-        fprintf(['Diffusing heat... \n|' repmat('-',1,min(38,nt_off-2)) '|']);
+        fprintf('\b\b Done\n');
+    elseif i == nt_on + nt_off
+        fprintf('\b\b Done\n');
     end
 end
-fprintf('\b\b Done\n');
-toc
-title('Temperature after diffusion')
+toc;
 
-figure(5);
-plotVolumetric(x,y,z,Temp_illum);
-title('Temperature after illumination');
+if ~nt_on
+    title('Temperature after diffusion');
+elseif ~nt_off
+    title('Temperature after illumination');
+else
+    title('Temperature after diffusion')
+    figure(5);
+    plotVolumetric(x,y,z,Temp_illum);
+    title('Temperature after illumination');
+end
 end
 
 function [xr,yr,zr] = axisrotate(x,y,z,ux,uy,uz,theta)
