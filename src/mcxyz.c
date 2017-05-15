@@ -89,6 +89,8 @@ int main(int argc, const char * argv[]) {
 	double	vx0, vy0, vz0;  /* normal vector 1 to photon trajectory */
 	double	waist;
 	double	divergence;
+	double  infPlaneWaveScaleFactor;
+	infPlaneWaveScaleFactor = 6.0;
 	
 	/* mcxyz bin variables */
 	double	dx, dy, dz;     /* bin size [cm] */
@@ -428,8 +430,8 @@ int main(int argc, const char * argv[]) {
 					y = ny*dy*(RandomNum-0.5); // Generates a random y coordinate within the box
 				}
 				else {
-					x = 6.0*nx*dx*(RandomNum-0.5); // Generates a random x coordinate within an interval 6 times the box' size
-					y = 6.0*ny*dy*(RandomNum-0.5); // Generates a random y coordinate within an interval 6 times the box' size
+					x = infPlaneWaveScaleFactor*nx*dx*(RandomNum-0.5); // Generates a random x coordinate within an interval infPlaneWaveScaleFactor times the box' size
+					y = infPlaneWaveScaleFactor*ny*dy*(RandomNum-0.5); // Generates a random y coordinate within an interval infPlaneWaveScaleFactor times the box' size
 				}
 				z = 0;
 				ux = ux0;
@@ -705,10 +707,17 @@ int main(int argc, const char * argv[]) {
      Convert data to relative fluence rate [cm^-2] and save.
      *****/
     
-    // Normalize deposition (A) to yield fluence rate (F).
-    for (i=0; i<totalVoxelCount;i++){
-        F[i] /= (dx*dy*dz*nPhotons*muav[v[i]]);
-    }
+    // Normalize deposition to yield fluence rate (F).
+	if (beamtypeFlag == 3 && boundaryFlag != 1) {
+		for (i=0; i<totalVoxelCount;i++){
+			F[i] /= (dx*dy*dz*nPhotons/(infPlaneWaveScaleFactor*infPlaneWaveScaleFactor)*muav[v[i]]);
+		}
+	}
+	else {
+		for (i=0; i<totalVoxelCount;i++){
+			F[i] /= (dx*dy*dz*nPhotons*muav[v[i]]);
+		}
+	}
     // Save the binary file
     strcpy(filename,myname);
     strcat(filename,"_F.bin");

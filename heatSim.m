@@ -3,9 +3,9 @@ function heatSim()
 
 directoryPath = 'exec/';
 myname = 'dentin_sim_850';
-Wdel            = 1; % [W] Pulse peak power delivered
-onduration      = 0.1; % [s] pulse on-duration
-offduration     = 0.9; % [s] pulse off-duration
+Winc            = 1; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the box' top area)
+onduration      = 0.1; % [s] Pulse on-duration
+offduration     = 0.9; % [s] Pulse off-duration
 initialTemp     = 36; % [deg C]
 plotTempLimits  = [36 36.15]; % [deg C], the expected range of temperatures, used only for setting the color scale in the plot
 
@@ -41,8 +41,8 @@ else
     dt = offduration/nt_off; % Time step size
 end
 
-fprintf('Illumination on for %d steps and off for %d steps. Step size is %0.2e s\n',nt_on,nt_off,dt);
-fprintf('Step size is limited by VHC of %s (%0.1e J/(cm^3 K)) and TC of %s (%0.1e W/(cm K))\n',tissueList(tissueIndicesInSimulation(minVHCindex)).name,minVHC,tissueList(tissueIndicesInSimulation(maxTCindex)).name,maxTC);
+fprintf('Illumination on for %d steps and off for %d steps. Step size is %0.2e s.\n',nt_on,nt_off,dt);
+fprintf('Step size is limited by VHC of %s (%0.1e J/(cm^3 K)) and TC of %s (%0.1e W/(cm K)).\n',tissueList(tissueIndicesInSimulation(minVHCindex)).name,minVHC,tissueList(tissueIndicesInSimulation(maxTCindex)).name,maxTC);
 
 Temp = initialTemp*ones(size(T));
 
@@ -75,7 +75,7 @@ effectiveTCz(isnan(effectiveTCz)) = 0;
 dQperdeltaT_x = dt/dx*dy*dz*effectiveTCx;
 dQperdeltaT_y = dt*dx/dy*dz*effectiveTCy;
 dQperdeltaT_z = dt*dx*dy/dz*effectiveTCz;
-dQ_abs = NVP*dt*dx*dy*dz*Wdel; % Heat from absorption per time step [J]
+dQ_abs = NVP*dt*dx*dy*dz*Winc; % Heat from absorption per time step [J]
 dQflowsx = zeros(size(Temp)+[1 0 0]);
 dQflowsy = zeros(size(Temp)+[0 1 0]);
 dQflowsz = zeros(size(Temp)+[0 0 1]);

@@ -57,9 +57,9 @@ title('Tissue type illustration');
 %% Make volumetric fluence rate plot
 figure(2);
 plotVolumetric(x,y,z,F);
-title('Fluence rate (Intensity) [W/cm^2/W.delivered] ')
+title('Fluence rate (Intensity) [W/cm^2/W.incident] ')
 
-%% Calculate normalized volumetric power (Power absorbed per cubic centimeter per watt delivered)
+%% Calculate normalized volumetric power (Power absorbed per cubic centimeter per watt incident)
 NVP = zeros(size(T));
 for tissueNumber=1:length(tissueList)
     NVP(T==tissueNumber) = tissueList(tissueNumber).mua;
@@ -69,7 +69,7 @@ NVP = NVP.*F;
 %% Make volumetric power absorption plot
 figure(3);
 plotVolumetric(x,y,z,NVP);
-title('Normalized absorbed power per unit volume [W/cm^3/W.delivered] ')
+title('Normalized absorbed power per unit volume [W/cm^3/W.incident] ')
 
 %% Save HeatSim input
 if saveon_HeatSim==1
