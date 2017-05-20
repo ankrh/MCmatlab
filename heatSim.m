@@ -1,4 +1,4 @@
-function heatSim()
+function temperatureSensor = heatSim()
 %% User defined parameters
 
 directoryPath = 'exec/';
@@ -49,27 +49,33 @@ Temp = initialTemp*ones(size(T));
 
 %% Plots to visualize tissue properties
 
-tissueFigure = figure(1);clf;
+tissueFigure = figure(1); clf;
 plotVolumetric(x,y,z,T,tissueList);
 datacursormode on;
 dataCursorHandle = datacursormode(tissueFigure);
 
-fprintf('Place a temperature sensor in the tissue, and hit (almost) any key to continue...\n')
+fprintf('Place one or more (shift+click) temperature sensor in the tissue,\n and hit (almost) any key to continue...\n')
 pause
 cursorInfo = getCursorInfo(dataCursorHandle);
-dataCursorPosition = cursorInfo.Position;
-[~, temperatureSensorPosition(3)] = min(abs(z-dataCursorPosition(3)));
-[~, temperatureSensorPosition(2)] = min(abs(y-dataCursorPosition(2)));
-[~, temperatureSensorPosition(1)] = min(abs(x-dataCursorPosition(1)));
-temperatureSensor = NaN(1,nt_on + nt_off+1);
-temperatureSensor(1) = initialTemp;
+numTemperatureSensors = length(cursorInfo);
 
-temperatureSensorFigure = figure(6); clf;
-temperaturePlot = axes('XLim',timeVector([1, end]));
-xlabel('Time [sec]')
-ylabel('Temperature [°C]')
-title('Temperature evolution')
-hold on
+if numTemperatureSensors
+    for temperatureSensorIndex = numTemperatureSensors:-1:1
+        dataCursorPosition = cursorInfo(temperatureSensorIndex).Position;
+        [~, temperatureSensorPosition(temperatureSensorIndex,3)] = min(abs(z-dataCursorPosition(3)));
+        [~, temperatureSensorPosition(temperatureSensorIndex,2)] = min(abs(y-dataCursorPosition(2)));
+        [~, temperatureSensorPosition(temperatureSensorIndex,1)] = min(abs(x-dataCursorPosition(1)));
+    end
+    temperatureSensor = NaN(numTemperatureSensors,nt_on + nt_off+1);
+    temperatureSensor(:,1) = initialTemp;
+
+    temperatureSensorFigure = figure(6); clf;
+    temperaturePlot = axes('XLim',timeVector([1, end]));
+    xlabel('Time [sec]')
+    ylabel('Temperature [°C]')
+    title('Temperature evolution')
+    hold on
+end
 
 % figure(2);clf;
 % plotVolumetric(x,y,z,VHC);
@@ -102,7 +108,7 @@ dQflowsy = zeros(size(Temp)+[0 1 0]);
 dQflowsz = zeros(size(Temp)+[0 0 1]);
 
 figure(heatsimFigure)
-figure(temperatureSensorFigure)
+if numTemperatureSensors; figure(temperatureSensorFigure); end;
 
 tic
 if nt_on
@@ -128,13 +134,20 @@ for i = 1:(nt_on + nt_off)
             + diff(dQflowsz,1,3);
     end    
     Temp = Temp + dQ./HC;
-    temperatureSensor(i+1) = Temp(temperatureSensorPosition(1),temperatureSensorPosition(2),temperatureSensorPosition(3));
+    if numTemperatureSensors
+        for temperatureSensorIndex = numTemperatureSensors:-1:1
+            temperatureSensor(temperatureSensorIndex,i+1) = ...
+                Temp(temperatureSensorPosition(temperatureSensorIndex,1),temperatureSensorPosition(temperatureSensorIndex,2),temperatureSensorPosition(temperatureSensorIndex,3));
+        end
+    end
     
     if ismember(i,[floor(linspace(1,nt_on,40)) floor(linspace(nt_on + 1,nt_on + nt_off,40))])
         fprintf(1,'\b');
         updateVolumetric(heatsimFigure,Temp);
-        cla(temperaturePlot)
-        plot(temperaturePlot,timeVector,temperatureSensor);
+        if numTemperatureSensors
+            cla(temperaturePlot)
+            plot(temperaturePlot,timeVector,temperatureSensor);
+        end;
     end
     
     if i == nt_on
