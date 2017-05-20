@@ -37,9 +37,10 @@ if onduration ~= 0
     nt_off = ceil(offduration/dt); % Number of time steps without illumination
 else
     nt_on = 0;
-    nt_off = ceil(offduration/dtmax); % Number of time steps with illumination
+    nt_off = ceil(offduration/dtmax); % Number of time steps without illumination
     dt = offduration/nt_off; % Time step size
 end
+timeVector = (0:(nt_on + nt_off))*dt;
 
 fprintf('Illumination on for %d steps and off for %d steps. Step size is %0.2e s.\n',nt_on,nt_off,dt);
 fprintf('Step size is limited by VHC of %s (%0.1e J/(cm^3 K)) and TC of %s (%0.1e W/(cm K)).\n',tissueList(tissueIndicesInSimulation(minVHCindex)).name,minVHC,tissueList(tissueIndicesInSimulation(maxTCindex)).name,maxTC);
@@ -48,9 +49,28 @@ Temp = initialTemp*ones(size(T));
 
 %% Plots to visualize tissue properties
 
-% figure(1);clf;
-% plotVolumetric(x,y,z,T,tissueList);
-% 
+tissueFigure = figure(1);clf;
+plotVolumetric(x,y,z,T,tissueList);
+datacursormode on;
+dataCursorHandle = datacursormode(tissueFigure);
+
+fprintf('Place a temperature sensor in the tissue, and hit (almost) any key to continue...\n')
+pause
+cursorInfo = getCursorInfo(dataCursorHandle);
+dataCursorPosition = cursorInfo.Position;
+[~, temperatureSensorPosition(3)] = min(abs(z-dataCursorPosition(3)));
+[~, temperatureSensorPosition(2)] = min(abs(y-dataCursorPosition(2)));
+[~, temperatureSensorPosition(1)] = min(abs(x-dataCursorPosition(1)));
+temperatureSensor = NaN(1,nt_on + nt_off+1);
+temperatureSensor(1) = initialTemp;
+
+temperatureSensorFigure = figure(6); clf;
+temperaturePlot = axes('XLim',timeVector([1, end]));
+xlabel('Time [sec]')
+ylabel('Temperature [°C]')
+title('Temperature evolution')
+hold on
+
 % figure(2);clf;
 % plotVolumetric(x,y,z,VHC);
 % 
@@ -58,11 +78,12 @@ Temp = initialTemp*ones(size(T));
 % plotVolumetric(x,y,z,TC);
 
 %% Prepare the temperature plot
-h_f = figure(4);
+heatsimFigure = figure(4);
 plotVolumetric(x,y,z,Temp);
 title('Temperature evolution');
 caxis(plotTempLimits); % User-defined color scale limits
-fprintf('Press (almost) any key to start simulation...\n')
+
+fprintf('Adjust the visualisation to your needs, and press (almost) any key to start simulation...\n')
 pause
 
 %% Heat Transfer Simulation during illumination
@@ -79,6 +100,9 @@ dQ_abs = NVP*dt*dx*dy*dz*Winc; % Heat from absorption per time step [J]
 dQflowsx = zeros(size(Temp)+[1 0 0]);
 dQflowsy = zeros(size(Temp)+[0 1 0]);
 dQflowsz = zeros(size(Temp)+[0 0 1]);
+
+figure(heatsimFigure)
+figure(temperatureSensorFigure)
 
 tic
 if nt_on
@@ -104,10 +128,13 @@ for i = 1:(nt_on + nt_off)
             + diff(dQflowsz,1,3);
     end    
     Temp = Temp + dQ./HC;
-
+    temperatureSensor(i+1) = Temp(temperatureSensorPosition(1),temperatureSensorPosition(2),temperatureSensorPosition(3));
+    
     if ismember(i,[floor(linspace(1,nt_on,40)) floor(linspace(nt_on + 1,nt_on + nt_off,40))])
         fprintf(1,'\b');
-        updateVolumetric(h_f,Temp);
+        updateVolumetric(heatsimFigure,Temp);
+        cla(temperaturePlot)
+        plot(temperaturePlot,timeVector,temperatureSensor);
     end
     
     if i == nt_on
@@ -119,6 +146,7 @@ for i = 1:(nt_on + nt_off)
 end
 toc;
 
+figure(heatsimFigure)
 if ~nt_on
     title('Temperature after diffusion');
 elseif ~nt_off
