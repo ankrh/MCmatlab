@@ -71,19 +71,11 @@ format compact
 
 % Create tissue properties
 tissueList = makeTissueList(wavelength);
-Nt = length(tissueList);
-for i=Nt:-1:1
-    muav(i)  = tissueList(i).mua;
-    musv(i)  = tissueList(i).mus;
-    gv(i)    = tissueList(i).g;
-end
 
 % Specify Monte Carlo parameters    
 x  = ((0:nx-1)-(nx-1)/2)*dx;
 y  = ((0:ny-1)-(ny-1)/2)*dy;
 z  = ((0:nz-1)+1/2)*dz;
-xmin = min(x);
-xmax = max(x);
 
 if isinf(zFocus), zFocus = 1e12; end
 
@@ -94,158 +86,60 @@ if isinf(zFocus), zFocus = 1e12; end
 %   Note: one need not use every tissue type in the tissue list.
 %   The tissue list is a library of possible tissue types.
 
-T = uint8(3*ones(nx,ny,nz)); % fill background with air
-
-
-zsurf       = 0.01;  % position of [cm]
-dentin_depth = 0.26;
-enamel_depth = 0.001; % Enamel depth [cm]
-dentin_thick = 0.25; %Thickness of the dentin [cm]
-enamel_thick = 0.25; %thickness of enamel [cm]
-
-enamel_diameter = 0.2; % varies from 17 - 180 micrometers, should decrease with age
-enamel_radius = enamel_diameter/2;      	% hair radius [cm]
-
-xi_start = nx/2-round(enamel_radius/dx);
-xi_end = nx/2+round(enamel_radius/dx);
-yi_start = ny/2-round(enamel_radius/dy);
-yi_end = ny/2+round(enamel_radius/dy);
-
-xi_start2 = nx/2-round(enamel_radius/dx);
-xi_end2 = nx/2+round(enamel_radius/dx);
-yi_start2 = ny/2-round(enamel_radius/dy);
-yi_end2 = ny/2+round(enamel_radius/dy);
+T = 3*ones(nx,ny,nz,'uint8'); % fill background with air
 
 for iz=1:nz % for every depth z(iz)
- 
-    
-% enamel and dentin for only cross sectional model     
-    %enamel
-    %if iz>round((zsurf+enamel_depth)/dz) && iz<=round((zsurf+enamel_depth+enamel_thick)/dz)
-    %   T(:,:,iz) = 2;
-    %end
-    % dentin
-    %if iz>round((zsurf+dentin_depth)/dz) && iz<=round((zsurf+dentin_depth+dentin_thick)/dz)
-    %    T(:,:,iz) = 1;
-    %end
-    
 
-    
-%     
-%Enamel @ xc, zc, radius, oriented along x axis
-     yc      = 0;            % [cm], center of blood vessel
-     zc      = nz/2*dz;     	% [cm], center of blood vessel
-    enamelradius  = 0.300;      	% blood vessel radius [cm]
-     for iy=1:ny
-             yd = y(iy) - yc;	% vessel, x distance from vessel center
-             zd = z(iz) - zc;   	% vessel, z distance from vessel center                
-             r  = sqrt(yd^2 + zd^2);	% r from vessel center
-             if (r<=enamelradius)     	% if r is within vessel
-                 T(:,iy,iz) = 2; % blood
-             end
- 
-     end %ix
+    %Enamel @ xc, zc, radius, oriented along x axis
+    yc      = 0;            % [cm], center of enamel cylinder
+    zc      = nz/2*dz;     	% [cm], center of enamel cylinder
+    enamelradius  = 0.300;  % [cm], radius of enamel cylinder
+    for iy=1:ny
+        yd = y(iy) - yc;	% x distance from enamel center
+        zd = z(iz) - zc;   	% z distance from enamel center                
+        r  = sqrt(yd^2 + zd^2);	% r from enamel center
+        if (r<=enamelradius)     	% if r is within enamel
+            T(:,iy,iz) = 2; % enamel
+        end %iy
+    end %ix
 
-
-%Dentin @ xc, zc, radius, oriented along x axis
-     yc      = 0;            % [cm], center of blood vessel
-     zc      = nz/2*dz;     	% [cm], center of blood vessel
-     dentinradius  = 0.170;      	% blood vessel radius [cm]
-     for iy=1:ny
-             yd = y(iy) - yc;	% vessel, x distance from vessel center
-             zd = z(iz) - zc;   	% vessel, z distance from vessel center                
-             r  = sqrt(yd^2 + zd^2);	% r from vessel center
-             if (r<=dentinradius)     	% if r is within vessel
-                 T(:,iy,iz) = 1; % blood
-             end
- 
-     end %ix
+    %Dentin @ xc, zc, radius, oriented along x axis
+    yc      = 0;            % [cm], center of dentin cylinder
+    zc      = nz/2*dz;     	% [cm], center of dentin cylinder
+    dentinradius  = 0.170;  % [cm], radius of dentin cylinder
+    for iy=1:ny
+        yd = y(iy) - yc;	% x distance from dentin center
+        zd = z(iz) - zc;   	% z distance from dentin center                
+        r  = sqrt(yd^2 + zd^2);	% r from dentin center
+        if (r<=dentinradius)     	% if r is within dentin
+            T(:,iy,iz) = 1; % dentin
+        end %iy
+    end %ix
      
-%Blood @ xc, zc, radius, oriented along x axis
-     yc      = 0;            % [cm], center of blood vessel
-     zc      = nz/2*dz;     	% [cm], center of blood vessel
-     vesselradius  = 0.050;      	% blood vessel radius [cm]
-     for iy=1:ny
-             yd = y(iy) - yc;	% vessel, x distance from vessel center
-             zd = z(iz) - zc;   	% vessel, z distance from vessel center                
-             r  = sqrt(yd^2 + zd^2);	% r from vessel center
-             if (r<=vesselradius)     	% if r is within vessel
-                 T(:,iy,iz) = 5; % blood
-             end
- 
-     end %ix     
+    %Root channel filled with blood @ xc, zc, radius, oriented along x axis
+    yc      = 0;            % [cm], center of root channel
+    zc      = nz/2*dz;     	% [cm], center of root channel
+    vesselradius  = 0.050;  % [cm], radius of root channel
+    for iy=1:ny
+        yd = y(iy) - yc;	% x distance from root channel center
+        zd = z(iz) - zc;   	% z distance from root channel center                
+        r  = sqrt(yd^2 + zd^2);	% r from root channel center
+        if (r<=vesselradius)     	% if r is within root channel
+            T(:,iy,iz) = 5; % blood
+        end
+    end %ix     
 
-    
-% Hair @ xc, yc, radius, oriented along z axis
-%      xc      = 0.02;            % [cm], center of hair
-%      yc      = 0.02;     	% [cm], center of hair
-%      zc      = zsurf+enamel_depth; % center of hair bulb
-%      %zc_enamel = zsurf+enamel_depth+sqrt(2)*(1-ratio_enamel)*enamel_radius; %[cm] z-coordinate center of the papilla
-%      %if iz>round(zsurf/dz) && iz<=round((zsurf+enamel_depth)/dz)
-%          for ix=xi_start:xi_end
-%             for iy=yi_start:yi_end
-%                  xd = x(ix) - xc;	% vessel, x distance from vessel center
-%                  yd = y(iy) - yc;   	% vessel, z distance from vessel center
-%                  zd = z(iz)-zc;
-%                  r  = sqrt(xd^2 + yd^2);	% radius from vessel center
-%                  if (r<=enamel_radius)     	% if r is within hair
-%                      T(iy,ix,iz) = 2; % enamel 
-%                  end
-%              end % iy
-%              
-%          end %ix
-%      end  
-    
-%blood vessel @ xc, zc, radius, oriented along y axis
-     %xc      = 0;            % [cm], center of blood vessel
-     %zc      = Nz/2*dz;     	% [cm], center of blood vessel
-     %vesselradius  = 0.100;      	% blood vessel radius [cm]
-     %for ix=1:Nx
-        %     xd = x(ix) - xc;	% vessel, x distance from vessel center
-         %    zd = z(iz) - zc;   	% vessel, z distance from vessel center                
-         %    r  = sqrt(xd^2 + zd^2);	% r from vessel center
-          %   if (r<=vesselradius)     	% if r is within vessel
-           %      T(:,ix,iz) = 1; % blood
-           %  end
- 
-     %end %ix
-%    
-% 
-%
-%     % Hair Bulb
-%    for ix=xi_start2:xi_end2
-%        for iy=yi_start2:yi_end2
-%              xc = 0.02; 
-%              yc = 0.02;
-%              zc = 0.01;
-%              xd = x(ix) - xc;	% vessel, x distance from vessel center
-%              yd = y(iy) - yc;   	% vessel, z distance from vessel center
-%              zd = z(iz)-zc;
-%              r2 = sqrt(xd^2 + yd^2 + 1/2*zd^2); % radius from bulb center
-%              if (r2<=enamel_radius)     	% if r2 is within hair bulb
-%                  T(iy,ix,iz) = 4; % hair
-%              end
-%          end % iy
-%          
-%      end %ix
-%
-%     % Papilla
-%     for ix=xi_start2:xi_end2
-%         for iy=yi_start2:yi_end2
-%             xd = x(ix) - xc;	% vessel, x distance from vessel center
-%             yd = y(iy) - yc;   	% vessel, z distance from vessel center
-%             zd = z(iz)-zc_papilla;
-%             r3 = sqrt(xd^2 + yd^2 + 1/2*zd^2); % radius from papilla center
-%             if (r3<=papilla_radius)     	% if r2 is within hair bulb
-%                 T(iy,ix,iz) = 4; % dermis, standin for papilla tissue
-%             end
-%         end % iy
-%         
-%     end %ix
 end % iz
 
 %% Write the files
 if SAVEON
+
+    Nt = length(tissueList);
+    for i=Nt:-1:1
+        muav(i)  = tissueList(i).mua;
+        musv(i)  = tissueList(i).mus;
+        gv(i)    = tissueList(i).g;
+    end
 
     v = reshape(T,nx*ny*nz,1);
 
