@@ -131,6 +131,23 @@ for iz=1:nz % for every depth z(iz)
 
 end % iz
 
+%% Discard the unused tissue types
+% usedTissues = unique(T);
+% newTissueNumber = 0;
+% for usedTissueNumber = usedTissues'
+%     newTissueNumber = newTissueNumber + 1;
+%     T(T(:)==usedTissueNumber) = newTissueNumber;
+%     tissueList(newTissueNumber) = tissueList(usedTissueNumber);
+% end
+% tissueList = tissueList(1:newTissueNumber);
+
+Nt = length(tissueList);
+for i=Nt:-1:1
+    muav(i)  = tissueList(i).mua;
+    musv(i)  = tissueList(i).mus;
+    gv(i)    = tissueList(i).g;
+end
+
 %% Write the files
 if SAVEON
 
