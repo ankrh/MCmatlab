@@ -62,9 +62,11 @@ numTemperatureSensors = length(cursorInfo);
 if numTemperatureSensors
     for temperatureSensorIndex = numTemperatureSensors:-1:1
         dataCursorPosition = cursorInfo(temperatureSensorIndex).Position;
-        [~, temperatureSensorPosition(temperatureSensorIndex,3)] = min(abs(z-dataCursorPosition(3)));
-        [~, temperatureSensorPosition(temperatureSensorIndex,2)] = min(abs(y-dataCursorPosition(2)));
-        [~, temperatureSensorPosition(temperatureSensorIndex,1)] = min(abs(x-dataCursorPosition(1)));
+        [~, dCPz] = min(abs(z-dataCursorPosition(3)));
+        [~, dCPy] = min(abs(y-dataCursorPosition(2)));
+        [~, dCPx] = min(abs(x-dataCursorPosition(1)));
+        temperatureSensorPosition(temperatureSensorIndex) = ...
+            sub2ind(size(T),dCPx,dCPy,dCPz);
     end
     temperatureSensor = NaN(numTemperatureSensors,nt_on + nt_off+1);
     temperatureSensor(:,1) = initialTemp;
@@ -135,10 +137,7 @@ for i = 1:(nt_on + nt_off)
     end    
     Temp = Temp + dQ./HC;
     if numTemperatureSensors
-        for temperatureSensorIndex = numTemperatureSensors:-1:1
-            temperatureSensor(temperatureSensorIndex,i+1) = ...
-                Temp(temperatureSensorPosition(temperatureSensorIndex,1),temperatureSensorPosition(temperatureSensorIndex,2),temperatureSensorPosition(temperatureSensorIndex,3));
-        end
+        temperatureSensor(:,i+1) = Temp(temperatureSensorPosition);
     end
     
     if ismember(i,[floor(linspace(1,nt_on,40)) floor(linspace(nt_on + 1,nt_on + nt_off,40))])
