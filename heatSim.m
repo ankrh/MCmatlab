@@ -8,6 +8,7 @@ onduration      = 0.1; % [s] Pulse on-duration
 offduration     = 0.9; % [s] Pulse off-duration
 initialTemp     = 36; % [deg C]
 plotTempLimits  = [36 36.15]; % [deg C], the expected range of temperatures, used only for setting the color scale in the plot
+extremeprecision = false; % false: normal time step resolution (dt = dtmax/2), true: high time step resolution (dt = dtmax/100)
 
 %% Load data
 load([directoryPath myname '_HS.mat']);
@@ -27,10 +28,21 @@ for tissueNumber=1:length(tissueList)
 end
 HC = VHC*dx*dy*dz; % Heat capacity [J/K]
 
-tissueIndicesInSimulation = unique(T);
-[minVHC, minVHCindex] = min([tissueList(tissueIndicesInSimulation).VHC]);
-[maxTC, maxTCindex] = max([tissueList(tissueIndicesInSimulation).TC]);
-dtmax = min([dx dy dz])^2*minVHC/maxTC/10; % Max time step allowed
+effectiveTCx = 2*TC(1:end-1,:,:).*TC(2:end,:,:)./(TC(1:end-1,:,:)+TC(2:end,:,:));
+effectiveTCy = 2*TC(:,1:end-1,:).*TC(:,2:end,:)./(TC(:,1:end-1,:)+TC(:,2:end,:));
+effectiveTCz = 2*TC(:,:,1:end-1).*TC(:,:,2:end)./(TC(:,:,1:end-1)+TC(:,:,2:end));
+effectiveTCx(isnan(effectiveTCx)) = 0; % Neighboring insulating voxels would return NaN but should just be 0
+effectiveTCy(isnan(effectiveTCy)) = 0;
+effectiveTCz(isnan(effectiveTCz)) = 0;
+individual_dtmax = VHC./(padarray(effectiveTCx,[1 0 0],0,'pre')./dx^2 + padarray(effectiveTCx,[1 0 0],0,'post')./dx^2 ...
+                       + padarray(effectiveTCy,[0 1 0],0,'pre')./dy^2 + padarray(effectiveTCy,[0 1 0],0,'post')./dy^2 ...
+                       + padarray(effectiveTCz,[0 0 1],0,'pre')./dz^2 + padarray(effectiveTCz,[0 0 1],0,'post')./dz^2);
+if extremeprecision
+    dtmax = min(individual_dtmax(:))/100;
+else
+    dtmax = min(individual_dtmax(:))/2;
+end
+
 if onduration ~= 0
     nt_on = ceil(onduration/dtmax); % Number of time steps with illumination
     dt = onduration/nt_on; % Time step size
@@ -42,10 +54,19 @@ else
 end
 timeVector = (0:(nt_on + nt_off))*dt;
 
-fprintf('Illumination on for %d steps and off for %d steps. Step size is %0.2e s.\n',nt_on,nt_off,dt);
-fprintf('Step size is limited by VHC of %s (%0.1e J/(cm^3 K)) and TC of %s (%0.1e W/(cm K)).\n',tissueList(tissueIndicesInSimulation(minVHCindex)).name,minVHC,tissueList(tissueIndicesInSimulation(maxTCindex)).name,maxTC);
+dQperdeltaT_x = dt/dx*dy*dz*effectiveTCx;
+dQperdeltaT_y = dt*dx/dy*dz*effectiveTCy;
+dQperdeltaT_z = dt*dx*dy/dz*effectiveTCz;
+
+dQ_abs = NVP*dt*dx*dy*dz*Winc; % Heat from absorption per time step [J]
+
+dQflowsx = zeros(size(T)+[1 0 0]);
+dQflowsy = zeros(size(T)+[0 1 0]);
+dQflowsz = zeros(size(T)+[0 0 1]);
 
 Temp = initialTemp*ones(size(T));
+
+fprintf('Illumination on for %d steps and off for %d steps. Step size is %0.2e s.\n',nt_on,nt_off,dt);
 
 %% Plots to visualize tissue properties
 
@@ -84,9 +105,15 @@ end
 % 
 % figure(3);clf;
 % plotVolumetric(x,y,z,TC);
+% 
+% figure(4);
+% plotVolumetric(x,y,z,individual_dtmax); % Optional plot to visualize each individual voxel's required time step limitation
+% title('Maximum time step allowed for each voxel [s]')
+
+clear dQperdeltaT_sum effectiveTCx effectiveTCy effectiveTCz NVP T TC VHC individual_dtmax % Clear some variables to free some memory
 
 %% Prepare the temperature plot
-heatsimFigure = figure(4);
+heatsimFigure = figure(5);
 plotVolumetric(x,y,z,Temp);
 title('Temperature evolution');
 caxis(plotTempLimits); % User-defined color scale limits
@@ -95,20 +122,6 @@ fprintf('Adjust the visualisation to your needs, and press (almost) any key to s
 pause
 
 %% Heat Transfer Simulation during illumination
-effectiveTCx = 2*TC(1:end-1,:,:).*TC(2:end,:,:)./(TC(1:end-1,:,:)+TC(2:end,:,:));
-effectiveTCx(isnan(effectiveTCx)) = 0; % Neighboring insulating voxels would return NaN but should just be 0
-effectiveTCy = 2*TC(:,1:end-1,:).*TC(:,2:end,:)./(TC(:,1:end-1,:)+TC(:,2:end,:));
-effectiveTCy(isnan(effectiveTCy)) = 0;
-effectiveTCz = 2*TC(:,:,1:end-1).*TC(:,:,2:end)./(TC(:,:,1:end-1)+TC(:,:,2:end));
-effectiveTCz(isnan(effectiveTCz)) = 0;
-dQperdeltaT_x = dt/dx*dy*dz*effectiveTCx;
-dQperdeltaT_y = dt*dx/dy*dz*effectiveTCy;
-dQperdeltaT_z = dt*dx*dy/dz*effectiveTCz;
-dQ_abs = NVP*dt*dx*dy*dz*Winc; % Heat from absorption per time step [J]
-dQflowsx = zeros(size(Temp)+[1 0 0]);
-dQflowsy = zeros(size(Temp)+[0 1 0]);
-dQflowsz = zeros(size(Temp)+[0 0 1]);
-
 figure(heatsimFigure)
 if numTemperatureSensors; figure(temperatureSensorFigure); end;
 
