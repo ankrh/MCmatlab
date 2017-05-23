@@ -1,4 +1,4 @@
-function temperatureSensor = heatSim()
+function [temperatureSensor, timeVector] = heatSim()
 %% User defined parameters
 
 directoryPath = 'exec/';
@@ -52,7 +52,8 @@ else
     nt_off = ceil(offduration/dtmax); % Number of time steps without illumination
     dt = offduration/nt_off; % Time step size
 end
-timeVector = (0:(nt_on + nt_off))*dt;
+timeVector = (0:ceil((nt_on + nt_off)/100))*dt*100;
+timeVector(end) = (nt_on + nt_off)*dt;
 
 dQperdeltaT_x = dt/dx*dy*dz*effectiveTCx;
 dQperdeltaT_y = dt*dx/dy*dz*effectiveTCy;
@@ -89,7 +90,7 @@ if numTemperatureSensors
         temperatureSensorPosition(temperatureSensorIndex) = ...
             sub2ind(size(T),dCPx,dCPy,dCPz);
     end
-    temperatureSensor = NaN(numTemperatureSensors,nt_on + nt_off+1);
+    temperatureSensor = NaN(numTemperatureSensors,ceil((nt_on + nt_off)/100)+1);
     temperatureSensor(:,1) = initialTemp;
 
     temperatureSensorFigure = figure(6); clf;
@@ -149,8 +150,8 @@ for i = 1:(nt_on + nt_off)
             + diff(dQflowsz,1,3);
     end    
     Temp = Temp + dQ./HC;
-    if numTemperatureSensors
-        temperatureSensor(:,i+1) = Temp(temperatureSensorPosition);
+    if numTemperatureSensors && ~mod(i,100)
+        temperatureSensor(:,i/100+1) = Temp(temperatureSensorPosition);
     end
     
     if ismember(i,[floor(linspace(1,nt_on,40)) floor(linspace(nt_on + 1,nt_on + nt_off,40))])
@@ -170,6 +171,10 @@ for i = 1:(nt_on + nt_off)
     end
 end
 toc;
+
+if numTemperatureSensors
+    temperatureSensor(:,end) = Temp(temperatureSensorPosition);
+end;
 
 figure(heatsimFigure)
 if ~nt_on
