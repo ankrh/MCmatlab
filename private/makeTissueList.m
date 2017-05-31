@@ -223,6 +223,6 @@ X = 2*[B*S B*(1-S) W M]';
 tissueList(j).mua = MU*X; %Here the hair is set to absorb twice as much as the epidermis
 tissueList(j).mus = musp/(1-gg);
 tissueList(j).g   = gg;
-tissueList(j).VHC = 1.53*1.3e-3; % Thermal data has been approximated using the data for horn, as horn and hair are both composed of keratin
+tissueList(j).VHC = 1530*1.3e-3; % Thermal data has been approximated using the data for horn, as horn and hair are both composed of keratin
 tissueList(j).D   = 1.3e-3;
 tissueList(j).TC  = 6.3e-3;
