@@ -100,12 +100,16 @@ if numTemperatureSensors
     temperatureSensor = NaN(numTemperatureSensors,length(nt_vec));
     temperatureSensor(:,1) = Temp(temperatureSensorPosition);
     
+    temperatureSensorTissues = {tissueList(T(temperatureSensorPosition)).name};
+    
     temperatureSensorFigure = figure(4); clf;
     temperaturePlot = axes('XLim',timeVector([1, end]));
     xlabel('Time [sec]')
     ylabel('Temperature [?C]')
     title('Temperature evolution')
     hold on
+    plot(temperaturePlot,timeVector,temperatureSensor);
+    legend(temperatureSensorTissues);
 end
 
 %% Prepare the temperature plot
