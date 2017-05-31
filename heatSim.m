@@ -36,6 +36,11 @@ if extremeprecision
 else
     dtmax = min(individual_dtmax(:))/2;
 end
+
+% figure(7);
+% plotVolumetric(x,y,z,individual_dtmax); % Optional plot to visualize each individual voxel's required time step limitation
+% title('Maximum time step allowed for each voxel [s]')
+
 clear individual_dtmax
 
 if onduration ~= 0
@@ -70,14 +75,14 @@ Temp = initialTemp*ones(size(T));
 
 %% Plots to visualize tissue properties
 
-% figure(1);clf;
-% plotVolumetric(x,y,z,HC(Tissue)/(dx*dy*dz));
-% title('Volumetric heat capacity [J/cm^3/K]');
 % figure(2);clf;
-% plotVolumetric(x,y,z,TC(Tissue));
+% plotVolumetric(x,y,z,HC(T)/(dx*dy*dz));
+% title('Volumetric heat capacity [J/cm^3/K]');
+% figure(3);clf;
+% plotVolumetric(x,y,z,TC(T));
 % title('Thermal conductivity [W/cm/K]');
 
-tissueFigure = figure(3); clf;
+tissueFigure = figure(1); clf;
 plotVolumetric(x,y,z,T,tissueList);
 
 datacursormode on;

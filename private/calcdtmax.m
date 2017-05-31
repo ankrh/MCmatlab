@@ -14,7 +14,4 @@ HC = HC(Tissue);
 individual_dtmax = HC./(padarray(effectiveTCx,[1 0 0],0,'pre')/dx*dy*dz + padarray(effectiveTCx,[1 0 0],0,'post')/dx*dy*dz ...
                       + padarray(effectiveTCy,[0 1 0],0,'pre')*dx/dy*dz + padarray(effectiveTCy,[0 1 0],0,'post')*dx/dy*dz ...
                       + padarray(effectiveTCz,[0 0 1],0,'pre')*dx*dy/dz + padarray(effectiveTCz,[0 0 1],0,'post')*dx*dy/dz);
-% figure(4);
-% plotVolumetric(x,y,z,individual_dtmax); % Optional plot to visualize each individual voxel's required time step limitation
-% title('Maximum time step allowed for each voxel [s]')
 end
