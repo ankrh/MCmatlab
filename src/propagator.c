@@ -1,8 +1,8 @@
 /*=================================================================
  *
  * C script for heat propagation based on Monte Carlo input
- * arguments: (nt,[[[Temp]]],[[[Tissue]]],[[[dQperdeltaT]]],[[[dQ_abs]]],[HC])
- * 
+ * arguments: (nt,[[[Temp]]],[[[T]]],[[[dQperdeltaT]]],[[[dQ_abs]]],[HC])
+ *
  * Can be compiled using "mex CFLAGS='$CFLAGS -fopenmp' LDFLAGS='$LDFLAGS -fopenmp' COPTIMFLAGS='$COPTIMFLAGS -fopenmp -Ofast' LDOPTIMFLAGS='$LDOPTIMFLAGS -fopenmp -Ofast' DEFINES='$DEFINES -fopenmp' propagator.c"
  *
  * To get the MATLAB C compiler to work, try this:
@@ -24,7 +24,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
     
     if (nrhs != 6) {
         mexErrMsgIdAndTxt( "MATLAB:heatSim:invalidNumInputs",
-                "Six input arguments required (nt,[[[Temp]]],[[[Tissue]]],[[[dQperdeltaT]]],[[[dQ_abs]]],[HC])");
+                "Six input arguments required (nt,[[[Temp]]],[[[T]]],[[[dQperdeltaT]]],[[[dQ_abs]]],[HC])");
     } else if (nlhs > 1) {
         mexErrMsgIdAndTxt( "MATLAB:heatSim:maxlhs",
                 "Too many output arguments.");
@@ -57,30 +57,33 @@ void mexFunction( int nlhs, mxArray *plhs[],
         tgtTemp = &tempTemp;
     }
     
-//#pragma omp parallel num_threads(omp_get_num_procs())
-#pragma omp parallel num_threads(8)
+    #pragma omp parallel num_threads(omp_get_num_procs())
     {
         int ix,iy,iz;
         int n,i;
         double dQ;
         
-        //printf("Thread %u iterating from %u to %u\r\n",omp_get_thread_num(),nx*ny*nz*omp_get_thread_num()/omp_get_num_threads(),nx*ny*nz*(omp_get_thread_num()+1)/omp_get_num_threads()-1);
-        for(n=0;n<nt;n++) {
-            for(i = nx*ny*nz*omp_get_thread_num()/omp_get_num_threads();i<nx*ny*nz*(omp_get_thread_num()+1)/omp_get_num_threads();i++) {
-                ix = i%nx;    // ix = (i/(1    ))%(nx);
-                iy = i/nx%ny; // iy = (i/(nx   ))%(ny);
-                iz = i/nx/ny; // iz = (i/(nx*ny))%(nz);
-                
-                dQ = dQ_abs[i];
-                if(ix != 0   ) {dQ += ((*srcTemp)[i-1]     - (*srcTemp)[i])*dQperdeltaT[T[i] + T[i-1    ]*nT          ];};
-                if(ix != nx-1) {dQ += ((*srcTemp)[i+1]     - (*srcTemp)[i])*dQperdeltaT[T[i] + T[i+1    ]*nT          ];};
-                if(iy != 0   ) {dQ += ((*srcTemp)[i-nx]    - (*srcTemp)[i])*dQperdeltaT[T[i] + T[i-nx   ]*nT + nT*nT  ];};
-                if(iy != ny-1) {dQ += ((*srcTemp)[i+nx]    - (*srcTemp)[i])*dQperdeltaT[T[i] + T[i+nx   ]*nT + nT*nT  ];};
-                if(iz != 0   ) {dQ += ((*srcTemp)[i-nx*ny] - (*srcTemp)[i])*dQperdeltaT[T[i] + T[i-nx*ny]*nT + 2*nT*nT];};
-                if(iz != nz-1) {dQ += ((*srcTemp)[i+nx*ny] - (*srcTemp)[i])*dQperdeltaT[T[i] + T[i+nx*ny]*nT + 2*nT*nT];};
-                (*tgtTemp)[i] = dQ/HC[T[i]] + (*srcTemp)[i];
+        for(n=0; n<nt; n++) {
+            #pragma omp for schedule(auto)
+            for(iz=0; iz<nz; iz++) {
+                for(iy=0; iy<ny; iy++) {
+                    for(ix=0; ix<nx; ix++) {
+//                         ix = i%nx;    // ix = (i/(1    ))%(nx);
+//                         iy = i/nx%ny; // iy = (i/(nx   ))%(ny);
+//                         iz = i/nx/ny; // iz = (i/(nx*ny))%(nz);
+                        i = ix + iy*nx + iz*nx*ny;
+                        
+                        dQ = dQ_abs[i];
+                        if(ix != 0   ) {dQ += ((*srcTemp)[i-1]     - (*srcTemp)[i])*dQperdeltaT[T[i] + T[i-1    ]*nT          ];};
+                        if(ix != nx-1) {dQ += ((*srcTemp)[i+1]     - (*srcTemp)[i])*dQperdeltaT[T[i] + T[i+1    ]*nT          ];};
+                        if(iy != 0   ) {dQ += ((*srcTemp)[i-nx]    - (*srcTemp)[i])*dQperdeltaT[T[i] + T[i-nx   ]*nT +   nT*nT];};
+                        if(iy != ny-1) {dQ += ((*srcTemp)[i+nx]    - (*srcTemp)[i])*dQperdeltaT[T[i] + T[i+nx   ]*nT +   nT*nT];};
+                        if(iz != 0   ) {dQ += ((*srcTemp)[i-nx*ny] - (*srcTemp)[i])*dQperdeltaT[T[i] + T[i-nx*ny]*nT + 2*nT*nT];};
+                        if(iz != nz-1) {dQ += ((*srcTemp)[i+nx*ny] - (*srcTemp)[i])*dQperdeltaT[T[i] + T[i+nx*ny]*nT + 2*nT*nT];};
+                        (*tgtTemp)[i] = dQ/HC[T[i]] + (*srcTemp)[i];
+                    }
+                }
             }
-            #pragma omp barrier
             #pragma omp master
             {
                 if(tgtTemp == &outputTemp) {
