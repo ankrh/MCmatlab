@@ -1,7 +1,7 @@
 /*=================================================================
  *
  * C script for heat propagation based on Monte Carlo input
- * arguments: (nt,[[[Temp]]],[[[T]]],[[[dQperdeltaT]]],[[[dQ_abs]]],[HC])
+ * arguments: (nt,[[[Temp]]],[[[T]]],[[[dTperdeltaT]]],[[[dT_abs]]])
  *
  * Can be compiled using "mex CFLAGS='$CFLAGS -fopenmp' LDFLAGS='$LDFLAGS -fopenmp' COPTIMFLAGS='$COPTIMFLAGS -fopenmp -Ofast' LDOPTIMFLAGS='$LDOPTIMFLAGS -fopenmp -Ofast' DEFINES='$DEFINES -fopenmp' propagator.c"
  *
@@ -22,9 +22,9 @@ void mexFunction( int nlhs, mxArray *plhs[],
     int nx,ny,nz,nT;
     /* Check for proper number of arguments */
     
-    if (nrhs != 6) {
+    if (nrhs != 5) {
         mexErrMsgIdAndTxt( "MATLAB:heatSim:invalidNumInputs",
-                "Six input arguments required (nt,[[[Temp]]],[[[T]]],[[[dQperdeltaT]]],[[[dQ_abs]]],[HC])");
+                "Five input arguments required (nt,[[[Temp]]],[[[T]]],[[[dTperdeltaT]]],[[[dT_abs]]]");
     } else if (nlhs > 1) {
         mexErrMsgIdAndTxt( "MATLAB:heatSim:maxlhs",
                 "Too many output arguments.");
@@ -34,18 +34,17 @@ void mexFunction( int nlhs, mxArray *plhs[],
     nx = dimPtr[0];
     ny = dimPtr[1];
     nz = dimPtr[2];
-    nT = mxGetN(prhs[5]); // Number of tissues in simulation
+    nT = mxGetM(prhs[3]); // Number of tissues in simulation
     
     plhs[0] = mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL);
     
-    double *outputTemp    = mxGetPr(plhs[0]); // newTemp is an nx*ny*nz array of doubles
+    double *outputTemp    = mxGetPr(plhs[0]); // outputTemp is an nx*ny*nz array of doubles
     int nt                = (int)*mxGetPr(prhs[0]); // nt is an integer (number of time steps to perform)
     double *Temp          = mxGetPr(prhs[1]); // Temp is an nx*ny*nz array of doubles
     unsigned char *T      = (unsigned char *)mxGetData(prhs[2]); // T is a nx*ny*nz array of uint8 (unsigned char) containing values from 0..nT-1
-    double *dQperdeltaT   = mxGetPr(prhs[3]); // dQperdeltaT is an nT*nT*3 array of doubles
-    double *dQ_abs        = mxGetPr(prhs[4]); // dQ_abs is an nx*ny*nz array of doubles
-    double *HC            = mxGetPr(prhs[5]); // HC is an nT array of doubles
-    
+    double *dTperdeltaT   = mxGetPr(prhs[3]); // dTperdeltaT is an nT*nT*3 array of doubles
+    double *dT_abs        = mxGetPr(prhs[4]); // dT_abs is an nx*ny*nz array of doubles
+     
     double *tempTemp = (double *)malloc(nx*ny*nz*sizeof(double)); // Temporary temperature matrix
     
     double **srcTemp = &Temp; // Pointer to the pointer to whichever temperature matrix is to be read from
@@ -61,7 +60,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
     {
         int ix,iy,iz;
         int n,i;
-        double dQ;
+        double dT;
         
         for(n=0; n<nt; n++) {
             #pragma omp for schedule(auto)
@@ -73,14 +72,14 @@ void mexFunction( int nlhs, mxArray *plhs[],
 //                         iz = i/nx/ny; // iz = (i/(nx*ny))%(nz);
                         i = ix + iy*nx + iz*nx*ny;
                         
-                        dQ = dQ_abs[i];
-                        if(ix != 0   ) {dQ += ((*srcTemp)[i-1]     - (*srcTemp)[i])*dQperdeltaT[T[i] + T[i-1    ]*nT          ];};
-                        if(ix != nx-1) {dQ += ((*srcTemp)[i+1]     - (*srcTemp)[i])*dQperdeltaT[T[i] + T[i+1    ]*nT          ];};
-                        if(iy != 0   ) {dQ += ((*srcTemp)[i-nx]    - (*srcTemp)[i])*dQperdeltaT[T[i] + T[i-nx   ]*nT +   nT*nT];};
-                        if(iy != ny-1) {dQ += ((*srcTemp)[i+nx]    - (*srcTemp)[i])*dQperdeltaT[T[i] + T[i+nx   ]*nT +   nT*nT];};
-                        if(iz != 0   ) {dQ += ((*srcTemp)[i-nx*ny] - (*srcTemp)[i])*dQperdeltaT[T[i] + T[i-nx*ny]*nT + 2*nT*nT];};
-                        if(iz != nz-1) {dQ += ((*srcTemp)[i+nx*ny] - (*srcTemp)[i])*dQperdeltaT[T[i] + T[i+nx*ny]*nT + 2*nT*nT];};
-                        (*tgtTemp)[i] = dQ/HC[T[i]] + (*srcTemp)[i];
+                        dT = dT_abs[i];
+                        if(ix != 0   ) {dT += ((*srcTemp)[i-1]     - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i-1    ]*nT          ];};
+                        if(ix != nx-1) {dT += ((*srcTemp)[i+1]     - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i+1    ]*nT          ];};
+                        if(iy != 0   ) {dT += ((*srcTemp)[i-nx]    - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i-nx   ]*nT +   nT*nT];};
+                        if(iy != ny-1) {dT += ((*srcTemp)[i+nx]    - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i+nx   ]*nT +   nT*nT];};
+                        if(iz != 0   ) {dT += ((*srcTemp)[i-nx*ny] - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i-nx*ny]*nT + 2*nT*nT];};
+                        if(iz != nz-1) {dT += ((*srcTemp)[i+nx*ny] - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i+nx*ny]*nT + 2*nT*nT];};
+                        (*tgtTemp)[i] = (*srcTemp)[i] + dT;
                     }
                 }
             }

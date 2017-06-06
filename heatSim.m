@@ -16,6 +16,7 @@ load([directoryPath myname '_HS.mat']);
 
 %% Parameters that are set automatically
 [nx,ny,nz] = size(T);
+nT = length(unique(T)); % Number of different tissues in simulation
 
 x  = ((0:nx-1)-(nx-1)/2)*dx;
 y  = ((0:ny-1)-(ny-1)/2)*dy;
@@ -23,7 +24,7 @@ z  = ((0:nz-1)+1/2)*dz;
 
 %% Define reduced matrices and vectors
 tissueMap = zeros(1,length(tissueList),'uint8');
-tissueMap(unique(T)) = 1:length(unique(T));
+tissueMap(unique(T)) = 1:nT;
 tissueList = tissueList(unique(T));
 T = tissueMap(T); % Reduced tissue matrix, using only numbers from 1 up to the number of tissues actually used
 HC = dx*dy*dz*[tissueList.VHC]; % Reduced heat capacity vector. Element i is the HC of tissue i in the reduced tissue list.
@@ -60,14 +61,14 @@ end
 nt_vec = unique(floor([linspace(0,nt_on,n_updates+1) linspace(nt_on + nt_off/n_updates,nt_on + nt_off,n_updates)])); % Vector of nt's on which the plots should be updated
 timeVector = nt_vec*dt; % For temperature sensor plotting
 
-%% Calculate proportionality between temperature difference DeltaT and diffused heat per time step dQ
+%% Calculate proportionality between voxel-to-voxel temperature difference DeltaT and time step temperature change dT
 TC_eff = 2*(TC'*TC)./(ones(length(TC))*diag(TC)+diag(TC)*ones(length(TC))); % Same as TC_eff(i,j) = 2*TC_red(i)*TC_red(j)/(TC_red(i)+TC_red(j)) but without for loops
 TC_eff(isnan(TC_eff)) = 0; % Neighboring insulating voxels return NaN but should just be 0
-dQperdeltaT = cat(3,dt/dx*dy*dz*TC_eff,dt*dx/dy*dz*TC_eff,dt*dx*dy/dz*TC_eff); % Third dimension corresponds to the different directions of heat diffusion
+dTperdeltaT = cat(3,dt/dx*dy*dz*TC_eff./(diag(HC)*ones(nT)),dt*dx/dy*dz*TC_eff./(diag(HC)*ones(nT)),dt*dx*dy/dz*TC_eff./(diag(HC)*ones(nT))); % Third dimension corresponds to the different directions of heat diffusion
 clear TC_eff
 
-%% Calculate absorbed heat per time step
-dQ_abs = NVP*dt*dx*dy*dz*Winc; % Heat from absorption per time step [J]
+%% Calculate temperature change due to absorbed heat per time step
+dT_abs = NVP*dt*dx*dy*dz*Winc./HC(T); % Temperature change from absorption per time step [deg C]
 clear NVP
 
 %% Initialize temperature
@@ -140,7 +141,7 @@ else
 end
 drawnow;
 for i = 2:length(nt_vec)
-    Temp = propagator(nt_vec(i)-nt_vec(i-1),Temp,T-1,dQperdeltaT,(nt_vec(i) <= nt_on)*dQ_abs,HC); % Arguments (nt,[[[Temp]]],[[[T]]],[[[dQperdeltaT]]],[[[dQ_abs]]],[HC]). Contents of T has to be converted from Matlab's 1-based indexing to C's 0-bsed indexing.
+    Temp = propagator(nt_vec(i)-nt_vec(i-1),Temp,T-1,dTperdeltaT,(nt_vec(i) <= nt_on)*dT_abs); % Arguments (nt,[[[Temp]]],[[[T]]],[[[dTperdeltaT]]],[[[dT_abs]]]). Contents of T have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
     
     if numTemperatureSensors
         temperatureSensor(:,i) = Temp(temperatureSensorPosition);
