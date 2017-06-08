@@ -45,10 +45,10 @@ tissueList(j).TC    = 9e-3;
 
 j=3;
 tissueList(j).name  = 'air';
-tissueList(j).mua   = 0.001;
-tissueList(j).mus   = 10;
-tissueList(j).g     = 1.0;
-tissueList(j).VHC   = 1e8; % Real value is 1.2e-3, but this value would limit dt and is unimportant for the simulation anyway
+tissueList(j).mua   = 1e-8;
+tissueList(j).mus   = 1e-8;
+tissueList(j).g     = 0;
+tissueList(j).VHC   = 1.2e-3;
 tissueList(j).D     = 1.2e-6;
 tissueList(j).TC    = 0; % Real value is 2.6e-4, but we set it to zero to neglect the heat transport to air
 

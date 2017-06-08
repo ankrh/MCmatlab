@@ -1,34 +1,28 @@
-function [temperatureSensor, timeVector] = heatSim()
-%% User defined parameters
+function [temperatureSensor, timeVector] = heatSim(name)
+%% Load data from makeTissue.m and MonteCarlo.m
+load(['.\Data\' name '.mat']);
+load(['.\Data\' name '_MCoutput.mat']);
 
-directoryPath = 'exec/';
-myname = 'dentin_sim_850';
-Winc            = 1; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the box' top area)
-onduration      = 1; % [s] Pulse on-duration
-offduration     = 1; % [s] Pulse off-duration
-initialTemp     = 0; % [deg C]
-plotTempLimits  = [0 1e-3]; % [deg C], the expected range of temperatures, used only for setting the color scale in the plot
+%% Define parameters (user-specified)
+Winc             = 1; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the box' top area)
+onduration       = 0.05; % [s] Pulse on-duration
+offduration      = 0.05; % [s] Pulse off-duration
+Temp             = zeros(size(T)); % [deg C] Initial temperature distrubution
+
+plotTempLimits   = [0 16]; % [deg C], the expected range of temperatures, used only for setting the color scale in the plot
 extremeprecision = false; % false: normal time step resolution (dt = dtmax/2), true: high time step resolution (dt = dtmax/100)
-n_updates       = 100; % Number of times data is extracted for plots during illumination phase and diffusion phase. Must be at least 1.
+n_updates        = 100; % Number of times data is extracted for plots during illumination phase and diffusion phase. Must be at least 1.
 
-%% Load data
-load([directoryPath myname '_HS.mat']);
-
-%% Parameters that are set automatically
+%% Determine remaining parameters
 [nx,ny,nz] = size(T);
-nT = length(unique(T)); % Number of different tissues in simulation
+nT = length(tissueList); % Number of different tissues in simulation
 
-x  = ((0:nx-1)-(nx-1)/2)*dx;
-y  = ((0:ny-1)-(ny-1)/2)*dy;
-z  = ((0:nz-1)+1/2)*dz;
+dx = x(2) - x(1);
+dy = y(2) - y(1);
+dz = z(2) - z(1);
 
-%% Define reduced matrices and vectors
-tissueMap = zeros(1,length(tissueList),'uint8');
-tissueMap(unique(T)) = 1:nT;
-tissueList = tissueList(unique(T));
-T = tissueMap(T); % Reduced tissue matrix, using only numbers from 1 up to the number of tissues actually used
-HC = dx*dy*dz*[tissueList.VHC]; % Reduced heat capacity vector. Element i is the HC of tissue i in the reduced tissue list.
-TC = [tissueList.TC]; % Reduced thermal conductivity vector. Element i is the TC of tissue i in the reduced tissue list.
+HC = dx*dy*dz*[tissueList.VHC]; % Heat capacity array. Element i is the HC of tissue i in the reduced tissue list.
+TC = [tissueList.TC]; % Thermal conductivity array. Element i is the TC of tissue i in the reduced tissue list.
 
 %% Calculate time step
 individual_dtmax = calcdtmax(T,TC,HC,dx,dy,dz);
@@ -59,7 +53,6 @@ else
 end
 
 nt_vec = unique(floor([linspace(0,nt_on,n_updates+1) linspace(nt_on + nt_off/n_updates,nt_on + nt_off,n_updates)])); % Vector of nt's on which the plots should be updated
-timeVector = nt_vec*dt; % For temperature sensor plotting
 
 %% Calculate proportionality between voxel-to-voxel temperature difference DeltaT and time step temperature change dT
 TC_eff = 2*(TC'*TC)./(ones(length(TC))*diag(TC)+diag(TC)*ones(length(TC))); % Same as TC_eff(i,j) = 2*TC_red(i)*TC_red(j)/(TC_red(i)+TC_red(j)) but without for loops
@@ -71,10 +64,7 @@ clear TC_eff
 dT_abs = NVP*dt*dx*dy*dz*Winc./HC(T); % Temperature change from absorption per time step [deg C]
 clear NVP
 
-%% Initialize temperature
-Temp = initialTemp*ones(size(T));
-
-%% Plots to visualize tissue properties
+%% Make plots to visualize tissue properties
 
 % figure(2);clf;
 % plotVolumetric(x,y,z,HC(T)/(dx*dy*dz));
@@ -85,6 +75,7 @@ Temp = initialTemp*ones(size(T));
 
 tissueFigure = figure(1); clf;
 plotVolumetric(x,y,z,T,tissueList);
+title('Tissue type illustration');
 
 datacursormode on;
 dataCursorHandle = datacursormode(tissueFigure);
@@ -95,6 +86,7 @@ cursorInfo = getCursorInfo(dataCursorHandle);
 numTemperatureSensors = length(cursorInfo);
 
 if numTemperatureSensors
+    timeVector = nt_vec*dt; % For temperature sensor plotting
     for temperatureSensorIndex = numTemperatureSensors:-1:1
         dataCursorPosition = cursorInfo(temperatureSensorIndex).Position;
         [~, dCPz] = min(abs(z-dataCursorPosition(3)));
@@ -116,6 +108,9 @@ if numTemperatureSensors
     hold on
     plot(temperaturePlot,timeVector,temperatureSensor);
     legend(temperatureSensorTissues);
+else
+    temperatureSensor = [];
+    timeVector = [];
 end
 
 %% Prepare the temperature plot
@@ -127,7 +122,7 @@ caxis(plotTempLimits); % User-defined color scale limits
 fprintf('Adjust the visualisation to your needs, and press (almost) any key to start simulation...\n')
 pause
 
-%% Heat Transfer Simulation during illumination
+%% Simulate heat transfer
 figure(heatsimFigure)
 if numTemperatureSensors; figure(temperatureSensorFigure); end
 
@@ -166,7 +161,9 @@ for i = 2:length(nt_vec)
 end
 toc;
 
+%% Plot and save results
 figure(heatsimFigure)
+save(['.\Data\' name '_heatSimoutput.mat'],'temperatureSensor','timeVector','Winc','onduration','offduration','Temp');
 if ~nt_on
     title('Temperature after diffusion');
 elseif ~nt_off
@@ -176,7 +173,7 @@ else
     figure(6);
     plotVolumetric(x,y,z,Temp_illum);
     title('Temperature after illumination');
+    save(['.\Data\' name '_heatSimoutput.mat'],'Temp_illum','-append');
 end
+fprintf('.\\Data\\%s_heatSimoutput.mat saved\n',name);
 end
-
-
