@@ -1,7 +1,7 @@
 function [temperatureSensor, timeVector] = heatSim(name)
 %% Load data from makeTissue.m and MonteCarlo.m
-load(['.\Data\' name '.mat']);
-load(['.\Data\' name '_MCoutput.mat']);
+load(['./Data/' name '.mat']);
+load(['./Data/' name '_MCoutput.mat']);
 
 %% Define parameters (user-specified)
 Winc             = 1; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the box' top area)
@@ -173,7 +173,7 @@ else
     figure(6);
     plotVolumetric(x,y,z,Temp_illum);
     title('Temperature after illumination');
-    save(['.\Data\' name '_heatSimoutput.mat'],'Temp_illum','-append');
+    save(['./Data/' name '_heatSimoutput.mat'],'Temp_illum','-append');
 end
-fprintf('.\\Data\\%s_heatSimoutput.mat saved\n',name);
+fprintf('./Data/%s_heatSimoutput.mat saved\n',name);
 end

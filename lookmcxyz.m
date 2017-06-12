@@ -1,7 +1,7 @@
 function lookmcxyz(name)
 %% Load data from makeTissue.m and MonteCarlo.m
-load(['.\Data\' name '.mat']);
-load(['.\Data\' name '_MCoutput.mat']);
+load(['./Data/' name '.mat']);
+load(['./Data/' name '_MCoutput.mat']);
 
 %% Make tissue plot
 figure(1);

@@ -61,6 +61,6 @@ plotTissueProperties(tissueList);
 drawnow;
 
 %% Save output
-save(['.\Data\' name '.mat'],'x','y','z','tissueList','T','wavelength')
-fprintf('.\\Data\\%s.mat saved\n',name)
+save(['./Data/' name '.mat'],'x','y','z','tissueList','T','wavelength')
+fprintf('./Data/%s.mat saved\n',name)
 

@@ -1,6 +1,6 @@
 function MonteCarlo(name)
 %% Load data from makeTissue.m
-load(['.\Data\' name '.mat']);
+load(['./Data/' name '.mat']);
 
 %% Define parameters (user-specified)
 % Simulation duration
@@ -45,8 +45,8 @@ mua_vec = [tissueList.mua];
 NVP = mua_vec(T).*F;
 
 %% Save output
-save(['.\Data\' name '_MCoutput.mat'],'F','NVP','MCinput');
-fprintf('.\\Data\\%s_MCoutput.mat saved\n',name);
+save(['./Data/' name '_MCoutput.mat'],'F','NVP','MCinput');
+fprintf('./Data/%s_MCoutput.mat saved\n',name);
 
 %% Call lookmcxyz
 lookmcxyz(name);
