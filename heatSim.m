@@ -163,7 +163,7 @@ toc;
 
 %% Plot and save results
 figure(heatsimFigure)
-save(['.\Data\' name '_heatSimoutput.mat'],'temperatureSensor','timeVector','Winc','onduration','offduration','Temp');
+save(['./Data/' name '_heatSimoutput.mat'],'temperatureSensor','timeVector','Winc','onduration','offduration','Temp');
 if ~nt_on
     title('Temperature after diffusion');
 elseif ~nt_off
