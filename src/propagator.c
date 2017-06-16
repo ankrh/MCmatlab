@@ -3,7 +3,7 @@
  * C script for heat propagation based on Monte Carlo input
  * arguments: (nt,[[[Temp]]],[[[T]]],[[[dTperdeltaT]]],[[[dT_abs]]])
  *
- * Can be compiled using "mex CFLAGS='$CFLAGS -fopenmp' LDFLAGS='$LDFLAGS -fopenmp' COPTIMFLAGS='$COPTIMFLAGS -fopenmp -Ofast' LDOPTIMFLAGS='$LDOPTIMFLAGS -fopenmp -Ofast' DEFINES='$DEFINES -fopenmp' propagator.c"
+ * Can be compiled using "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp' .\src\propagator.c ".\src\libut.lib""
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Go to MATLAB's addon manager and tell it to install the "Support for MinGW-w64 compiler"
@@ -16,8 +16,12 @@
 #include "matrix.h"
 #include "omp.h"
 
+extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing the mex function
+
 void mexFunction( int nlhs, mxArray *plhs[],
         int nrhs, mxArray const *prhs[] ) {
+    
+    bool ctrlc_caught = false;           // Has a ctrl+c been passed from MATLAB?
     
     int nx,ny,nz,nT;
     /* Check for proper number of arguments */
@@ -44,7 +48,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
     unsigned char *T      = (unsigned char *)mxGetData(prhs[2]); // T is a nx*ny*nz array of uint8 (unsigned char) containing values from 0..nT-1
     double *dTperdeltaT   = mxGetPr(prhs[3]); // dTperdeltaT is an nT*nT*3 array of doubles
     double *dT_abs        = mxGetPr(prhs[4]); // dT_abs is an nx*ny*nz array of doubles
-     
+    
     double *tempTemp = (double *)malloc(nx*ny*nz*sizeof(double)); // Temporary temperature matrix
     
     double **srcTemp = &Temp; // Pointer to the pointer to whichever temperature matrix is to be read from
@@ -63,6 +67,9 @@ void mexFunction( int nlhs, mxArray *plhs[],
         double dT;
         
         for(n=0; n<nt; n++) {
+            if(ctrlc_caught) {
+                break;
+            }
             #pragma omp for schedule(auto)
             for(iz=0; iz<nz; iz++) {
                 for(iy=0; iy<ny; iy++) {
@@ -71,7 +78,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
 //                         iy = i/nx%ny; // iy = (i/(nx   ))%(ny);
 //                         iz = i/nx/ny; // iz = (i/(nx*ny))%(nz);
                         i = ix + iy*nx + iz*nx*ny;
-                        
+
                         dT = dT_abs[i];
                         if(ix != 0   ) {dT += ((*srcTemp)[i-1]     - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i-1    ]*nT          ];};
                         if(ix != nx-1) {dT += ((*srcTemp)[i+1]     - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i+1    ]*nT          ];};
@@ -85,6 +92,11 @@ void mexFunction( int nlhs, mxArray *plhs[],
             }
             #pragma omp master
             {
+                if(utIsInterruptPending()) {
+                    ctrlc_caught = true;
+                    printf("\nCtrl+C detected, stopping.\n");
+                }
+
                 if(tgtTemp == &outputTemp) {
                     tgtTemp = &tempTemp;
                     srcTemp = &outputTemp;

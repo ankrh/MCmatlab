@@ -18,7 +18,7 @@
  *  Overhauled by Anders Hansen and Dominik Marti in April 2017. Fundamental method remained unchanged.
  *
  *  Adapted to MATLAB mex file generation 2017-06-07 by Anders Hansen
- *  Can be compiled in MATLAB with "mex CFLAGS='$CFLAGS -fopenmp' LDFLAGS='$LDFLAGS -fopenmp' COPTIMFLAGS='$COPTIMFLAGS -fopenmp -Ofast' LDOPTIMFLAGS='$LDOPTIMFLAGS -fopenmp -Ofast' DEFINES='$DEFINES -fopenmp' .\src\mcxyz_mex.c"
+ *  Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp' .\src\mcxyz_mex.c ".\src\libut.lib""
  *
  *  To get the MATLAB C compiler to work, try this:
  *  1. Go to MATLAB's addon manager and tell it to install the "Support for MinGW-w64 compiler"
@@ -58,6 +58,7 @@ double FindVoxelFace2(double x1,double y1,double z1, double x2, double y2, doubl
 /* How much step size will the photon take to get the first voxel crossing in one single long step? */
 void axisrotate(double* x,double* y,double* z, double ux, double uy, double uz,double theta);
 /* Rotates a point with coordinates (x,y,z) an angle theta around axis with direction vector (ux,uy,uz) */
+extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing the mex function
 
 void mexFunction( int nlhs, mxArray *plhs[],
         int nrhs, mxArray const *prhs[] ) {
@@ -108,7 +109,8 @@ void mexFunction( int nlhs, mxArray *plhs[],
 	/* other variables */
 	unsigned long long	nPhotons;           /* number of photons in simulation */
 	int     pctProgress, newPctProgress;    /* Simulation progress in percent */
-
+    bool    ctrlc_caught = false;           // Has a ctrl+c been passed from MATLAB?
+    
 	/* launch parameters */
 	double	vx0, vy0, vz0;                  /* normal vector to photon trajectory */
 	double  infPlaneWaveScaleFactor;
@@ -598,11 +600,16 @@ void mexFunction( int nlhs, mxArray *plhs[],
 			
 			#pragma omp master
 			{
-				clock_gettime(CLOCK_MONOTONIC, &simulationTimeCurrent);
+				// Check whether ctrl+c has been pressed
+                if(utIsInterruptPending()) {
+                    ctrlc_caught = true;
+                    printf("Ctrl+C detected, stopping.\n");
+                }
+                clock_gettime(CLOCK_MONOTONIC, &simulationTimeCurrent);
 
 				// Print out message about progress.
-				newPctProgress = 100*(simulationTimeCurrent.tv_sec - simulationTimeStart.tv_sec + (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1000000000.0) / (simulationTimeRequested*60.0);
-				if (newPctProgress != pctProgress) {
+                newPctProgress = 100*(simulationTimeCurrent.tv_sec - simulationTimeStart.tv_sec + (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1000000000.0) / (simulationTimeRequested*60.0);
+				if (newPctProgress != pctProgress & !ctrlc_caught) {
 					pctProgress = newPctProgress;
 					if ((pctProgress<10) | (pctProgress>90) | (fmod(pctProgress, 10)==0)) {
 						printf("%i%% done\n", pctProgress);
@@ -610,7 +617,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
 					}
 				}
 			}
-		} while (pctProgress < 100);  /* end RUN */
+		} while (pctProgress < 100 & !ctrlc_caught);  /* end RUN */
 	}
     
 	printf("------------------------------------------------------\n");
@@ -637,7 +644,6 @@ void mexFunction( int nlhs, mxArray *plhs[],
     printf("------------------------------------------------------\n");
     currentCalendarTime = time(NULL);
     printf("%s\n", ctime(&currentCalendarTime));
-    mexEvalString("drawnow;");
 
     return;
 } /* end of main */
