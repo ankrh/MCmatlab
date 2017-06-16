@@ -6,10 +6,6 @@ if ~isprop(h_f,'M')
     addprop(h_f,'M');
 end
 
-if ~isprop(h_f,'Mlog')
-addprop(h_f,'Mlog');
-end
-
 axes
 
 dx = xraw(2)-xraw(1);
@@ -22,8 +18,9 @@ x = round([(xraw - dx/2) , (max(xraw) + dx/2)],15);
 y = round([(yraw - dy/2) , (max(yraw) + dy/2)],15);
 z = round([(zraw - dz/2) , (max(zraw) + dz/2)],15);
 
-h_f.M = padarray(double(Mraw),[1 1 1],'replicate','post');
-h_f.Mlog = log10(h_f.M);
+h_f.M = padarray(single(Mraw),[1 1 1],'replicate','post'); % The single data type is used to conserve memory
+clear Mraw;
+[nx,ny,nz] = size(h_f.M);
 
 xl = x(1); % x low
 xh = x(end); % x high
@@ -32,15 +29,13 @@ yh = y(end); % y high
 zl = z(1); % z low
 zh = z(end); % z high
 
-[X,Y,Z] = ndgrid(x,y,z);
-
 warning('off','MATLAB:hg:UIControlSliderStepValueDifference');
 h_slider1 = uicontrol('Parent',h_f,'Style','slider','Position',[30,20,200,20],...
-              'value',length(x), 'min',1, 'max',length(x),'SliderStep',[1/(length(x)-1) 0.1]);
+              'value',nx, 'min',1, 'max',nx,'SliderStep',[1/(nx-1) 0.1]);
 h_slider2 = uicontrol('Parent',h_f,'Style','slider','Position',[30,40,200,20],...
-              'value',length(y), 'min',1, 'max',length(y),'SliderStep',[1/(length(y)-1) 0.1]);
+              'value',ny, 'min',1, 'max',ny,'SliderStep',[1/(ny-1) 0.1]);
 h_slider3 = uicontrol('Parent',h_f,'Style','slider','Position',[30,60,200,20],...
-              'value',length(z), 'min',1, 'max',length(z),'SliderStep',[1/(length(z)-1) 0.1]);
+              'value',nz, 'min',1, 'max',nz,'SliderStep',[1/(nz-1) 0.1]);
 warning('on','MATLAB:hg:UIControlSliderStepValueDifference');
 uicontrol('style','text','String','x','Position',[10,18,20,20])
 uicontrol('style','text','String','y','Position',[10,38,20,20])
@@ -48,12 +43,12 @@ uicontrol('style','text','String','z','Position',[10,58,20,20])
 h_checkbox1 = uicontrol('Parent',h_f,'Style','checkbox','Position',[70,90,20,20]);
 h_checkbox1text = uicontrol('style','text','String','log10 plot','Position',[16,87,50,20]);
 
-h_surfxmax   = surface(squeeze(X(end,:,:)),squeeze(Y(end,:,:)),squeeze(Z(end,:,:)),squeeze(h_f.M(end,:,:)),'LineStyle','none');
-h_surfymax   = surface(squeeze(X(:,end,:)),squeeze(Y(:,end,:)),squeeze(Z(:,end,:)),squeeze(h_f.M(:,end,:)),'LineStyle','none');
-h_surfzmax   = surface(squeeze(X(:,:,end)),squeeze(Y(:,:,end)),squeeze(Z(:,:,end)),squeeze(h_f.M(:,:,end)),'LineStyle','none');
-h_surfxslice = surface(squeeze(X(end,:,:)),squeeze(Y(end,:,:)),squeeze(Z(end,:,:)),squeeze(h_f.M(end,:,:)),'LineStyle','none');
-h_surfyslice = surface(squeeze(X(:,end,:)),squeeze(Y(:,end,:)),squeeze(Z(:,end,:)),squeeze(h_f.M(:,end,:)),'LineStyle','none');
-h_surfzslice = surface(squeeze(X(:,:,end)),squeeze(Y(:,:,end)),squeeze(Z(:,:,end)),squeeze(h_f.M(:,:,end)),'LineStyle','none');
+h_surfxmax   = surface(repmat(xh,ny,nz),repmat(y', 1,nz),repmat(z ,ny, 1),squeeze(h_f.M(end,:,:)),'LineStyle','none');
+h_surfymax   = surface(repmat(x', 1,nz),repmat(yh,nx,nz),repmat(z ,nx, 1),squeeze(h_f.M(:,end,:)),'LineStyle','none');
+h_surfzmax   = surface(repmat(x', 1,ny),repmat(y ,nx, 1),repmat(zh,nx,ny),squeeze(h_f.M(:,:,end)),'LineStyle','none');
+h_surfxslice = surface(repmat(xh,ny,nz),repmat(y', 1,nz),repmat(z ,ny, 1),squeeze(h_f.M(end,:,:)),'LineStyle','none');
+h_surfyslice = surface(repmat(x', 1,nz),repmat(yh,nx,nz),repmat(z ,nx, 1),squeeze(h_f.M(:,end,:)),'LineStyle','none');
+h_surfzslice = surface(repmat(x', 1,ny),repmat(y ,nx, 1),repmat(zh,nx,ny),squeeze(h_f.M(:,:,end)),'LineStyle','none');
 
 line([xh xh xh xh xh],[yl yh yh yl yl],[zh zh zl zl zh],'Color','k');
 line([xl xh xh xl xl],[yh yh yh yh yh],[zh zh zl zl zh],'Color','k');
@@ -124,14 +119,19 @@ h_f = get(vars.h_checkbox1,'Parent');
 switch src
     case vars.h_checkbox1
         if plotLog
-            set(vars.h_surfxmax  ,'CData',squeeze(h_f.Mlog(end,:,:)));
-            set(vars.h_surfymax  ,'CData',squeeze(h_f.Mlog(:,end,:)));
-            set(vars.h_surfzmax  ,'CData',squeeze(h_f.Mlog(:,:,end)));
-            set(vars.h_surfxslice,'CData',squeeze(h_f.Mlog(xsi,:,:)));
-            set(vars.h_surfyslice,'CData',squeeze(h_f.Mlog(:,ysi,:)));
-            set(vars.h_surfzslice,'CData',squeeze(h_f.Mlog(:,:,zsi)));
+            set(vars.h_surfxmax  ,'CData',squeeze(log10(h_f.M(end,:,:))));
+            set(vars.h_surfymax  ,'CData',squeeze(log10(h_f.M(:,end,:))));
+            set(vars.h_surfzmax  ,'CData',squeeze(log10(h_f.M(:,:,end))));
+            set(vars.h_surfxslice,'CData',squeeze(log10(h_f.M(xsi,:,:))));
+            set(vars.h_surfyslice,'CData',squeeze(log10(h_f.M(:,ysi,:))));
+            set(vars.h_surfzslice,'CData',squeeze(log10(h_f.M(:,:,zsi))));
             if ~isempty(event) % event is empty if callback was made because M was changed. In that case we don't want to renormalize the color scale.
-                caxis([max(h_f.Mlog(:))-4 max(h_f.Mlog(:))]);
+                maxelement = log10(max(h_f.M(:)));
+                if(isfinite(maxelement))
+                    caxis([maxelement-4 maxelement]);
+                else
+                    caxis([-3 1]);
+                end
             end
         else
             set(vars.h_surfxmax  ,'CData',squeeze(h_f.M(end,:,:)));
@@ -147,7 +147,7 @@ switch src
     case vars.h_slider1
         set(vars.h_surfxslice,'XData',xs*ones(length(vars.y),length(vars.z)));
         if plotLog
-            set(vars.h_surfxslice,'CData',squeeze(h_f.Mlog(xsi,:,:)));
+            set(vars.h_surfxslice,'CData',squeeze(log10(h_f.M(xsi,:,:))));
         else
             set(vars.h_surfxslice,'CData',squeeze(h_f.M(xsi,:,:)));
         end
@@ -156,7 +156,7 @@ switch src
     case vars.h_slider2
         set(vars.h_surfyslice,'YData',ys*ones(length(vars.x),length(vars.z)));
         if plotLog
-            set(vars.h_surfyslice,'CData',squeeze(h_f.Mlog(:,ysi,:)));
+            set(vars.h_surfyslice,'CData',squeeze(log10(h_f.M(:,ysi,:))));
         else
             set(vars.h_surfyslice,'CData',squeeze(h_f.M(:,ysi,:)));
         end
@@ -165,7 +165,7 @@ switch src
     case vars.h_slider3
         set(vars.h_surfzslice,'ZData',zs*ones(length(vars.x),length(vars.y)));
         if plotLog
-            set(vars.h_surfzslice,'CData',squeeze(h_f.Mlog(:,:,zsi)));
+            set(vars.h_surfzslice,'CData',squeeze(log10(h_f.M(:,:,zsi))));
         else
             set(vars.h_surfzslice,'CData',squeeze(h_f.M(:,:,zsi)));
         end

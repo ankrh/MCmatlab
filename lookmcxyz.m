@@ -1,7 +1,7 @@
 function lookmcxyz(name)
 %% Load data from makeTissue.m and MonteCarlo.m
 load(['./Data/' name '.mat']);
-load(['./Data/' name '_MCoutput.mat']);
+load(['./Data/' name '_MCoutput.mat'],'F');
 
 %% Make tissue plot
 figure(1);
@@ -21,8 +21,9 @@ title('Fluence rate (Intensity) [W/cm^2/W.incident] ')
 drawnow;
 
 %% Make power absorption plot
+mua_vec = [tissueList.mua];
 figure(3);
-plotVolumetric(x,y,z,NVP);
+plotVolumetric(x,y,z,mua_vec(T).*F);
 title('Normalized absorbed power per unit volume [W/cm^3/W.incident] ')
 drawnow;
 return

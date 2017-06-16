@@ -1,7 +1,7 @@
 function [temperatureSensor, timeVector] = heatSim(name)
 %% Load data from makeTissue.m and MonteCarlo.m
 load(['./Data/' name '.mat']);
-load(['./Data/' name '_MCoutput.mat']);
+load(['./Data/' name '_MCoutput.mat'],'F');
 
 %% Define parameters (user-specified)
 Winc             = 1; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the box' top area)
@@ -25,11 +25,10 @@ HC = dx*dy*dz*[tissueList.VHC]; % Heat capacity array. Element i is the HC of ti
 TC = [tissueList.TC]; % Thermal conductivity array. Element i is the TC of tissue i in the reduced tissue list.
 
 %% Calculate time step
-individual_dtmax = calcdtmax(T,TC,HC,dx,dy,dz);
 if extremeprecision
-    dtmax = min(individual_dtmax(:))/100;
+    dtmax = calcdtmax(T,TC,HC,dx,dy,dz)/100;
 else
-    dtmax = min(individual_dtmax(:))/2;
+    dtmax = calcdtmax(T,TC,HC,dx,dy,dz)/2;
 end
 
 % figure(7);
@@ -61,8 +60,9 @@ dTperdeltaT = cat(3,dt/dx*dy*dz*TC_eff./(diag(HC)*ones(nT)),dt*dx/dy*dz*TC_eff./
 clear TC_eff
 
 %% Calculate temperature change due to absorbed heat per time step
-dT_abs = NVP*dt*dx*dy*dz*Winc./HC(T); % Temperature change from absorption per time step [deg C]
-clear NVP
+mua_vec = [tissueList.mua];
+dT_abs = mua_vec(T).*F*dt*dx*dy*dz*Winc./HC(T); % Temperature change from absorption per time step [deg C] (mua_vec(T).*F is a 3D matrix of normalized volumetric powers)
+clear F
 
 %% Make plots to visualize tissue properties
 
