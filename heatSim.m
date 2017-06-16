@@ -5,13 +5,13 @@ load(['./Data/' name '_MCoutput.mat']);
 
 %% Define parameters (user-specified)
 Winc             = 1; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the box' top area)
-onduration       = 0.05; % [s] Pulse on-duration
-offduration      = 0.05; % [s] Pulse off-duration
+onduration       = 0.5; % [s] Pulse on-duration
+offduration      = 0.5; % [s] Pulse off-duration
 Temp             = zeros(size(T)); % [deg C] Initial temperature distrubution
 
 plotTempLimits   = [0 16]; % [deg C], the expected range of temperatures, used only for setting the color scale in the plot
 extremeprecision = false; % false: normal time step resolution (dt = dtmax/2), true: high time step resolution (dt = dtmax/100)
-n_updates        = 100; % Number of times data is extracted for plots during illumination phase and diffusion phase. Must be at least 1.
+n_updates        = 20; % Number of times data is extracted for plots during illumination phase and diffusion phase. Must be at least 1.
 
 %% Determine remaining parameters
 [nx,ny,nz] = size(T);

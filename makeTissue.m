@@ -1,13 +1,13 @@
 function makeTissue
 %% Define parameters (user-specified)
-wavelength  = 850;      % [nm] set the range of wavelengths of the Monte Carlo simulation
-name = 'hair';          % name of the simulation
+wavelength  = 1000;      % [nm] set the range of wavelengths of the Monte Carlo simulation
+name = 'dentin';          % name of the simulation
 nx = 100;               % number of bins in the x direction
 ny = 100;                % number of bins in the y direction
-nz = 50;                % number of bins in the z direction
-Lx = 0.05;               % [cm] x size of simulation area
-Ly = 0.05;               % [cm] y size of simulation area
-Lz = 0.15;               % [cm] z size of simulation area
+nz = 100;                % number of bins in the z direction
+Lx = 1;               % [cm] x size of simulation area
+Ly = 1;               % [cm] y size of simulation area
+Lz = 1;               % [cm] z size of simulation area
 
 %% Calculate x,y,z vectors and grids
 dx = Lx/nx;             % [cm] size of x bins
@@ -20,27 +20,41 @@ z  = ((0:nz-1)+1/2)*dz;
 
 %% Define tissue T(x,y,z) (user-specified)
 % Dentin example:
+T = 3*ones(nx,ny,nz,'uint8'); % fill background with air
+T(Y.^2 + (Z-nz*dz/2).^2 < 0.300^2) = 2; % enamel
+T(Y.^2 + (Z-nz*dz/2).^2 < 0.170^2) = 1; % dentin
+T(Y.^2 + (Z-nz*dz/2).^2 < 0.050^2) = 5; % blood
+
+% % Solderpatch example:
+% patch_radius        = 0.218;   	% [cm], cylinder radius
+% patch_zi_start      = 1;
+% patch_zi_end        = 5;
+% vessel_radius       = 0.19;   	% [cm], cylinder radius
+% water_radius        = 0.15;   	% [cm], cylinder radius
+% fibre_radius        = 0.04;   	% [cm], cylinder radius
+% 
 % T = 3*ones(nx,ny,nz,'uint8'); % fill background with air
-% T(Y.^2 + (Z-nz*dz/2).^2 < 0.300^2) = 2; % enamel
-% T(Y.^2 + (Z-nz*dz/2).^2 < 0.170^2) = 1; % dentin
-% T(Y.^2 + (Z-nz*dz/2).^2 < 0.050^2) = 5; % blood
+% T(X.^2 + Y.^2 < patch_radius^2 & Z >= patch_zi_start & Z <= patch_zi_end) = 8; % patch
+% T(X.^2 + Y.^2 < vessel_radius^2) = 7; % vessel
+% T(X.^2 + Y.^2 < water_radius^2) = 4; % water
+% T(X.^2 + Y.^2 < fibre_radius^2) = 6; % fibre
 
 % Hair example:
-zsurf = 0.02;  % position of gel/skin surface[cm]
-epd_thick = 0.01; % thickness of the epidermis [cm]
-hair_radius = 0.0075/2; % diameter varies from 17 - 180 micrometers, should increase with colouring and age
-hair_bulb_semiminor = 1.7*hair_radius; % [cm]
-hair_bulb_semimajor = sqrt(2)*hair_bulb_semiminor;
-hair_depth = 0.1; % varies from 0.06-0.3cm
-papilla_semiminor = hair_bulb_semiminor*5/12;
-papilla_semimajor = sqrt(2)*papilla_semiminor;
-
-T = 4*ones(nx,ny,nz,'uint8'); % water (gel)
-T(Z > zsurf) = 10; % epidermis
-T(Z > zsurf+epd_thick) = 9; % dermis
-T(X.^2 + Y.^2 < hair_radius^2 & Z < zsurf+hair_depth) = 15; % hair
-T((X/hair_bulb_semiminor).^2 + (Y/hair_bulb_semiminor).^2 + ((Z-(zsurf+hair_depth))/hair_bulb_semimajor).^2 < 1) = 15; % hair
-T((X/papilla_semiminor).^2 + (Y/papilla_semiminor).^2 + ((Z-(zsurf+hair_depth+hair_bulb_semimajor-papilla_semimajor))/papilla_semimajor).^2 < 1) = 9; % dermis (papilla)
+% zsurf = 0.02;  % position of gel/skin surface[cm]
+% epd_thick = 0.01; % thickness of the epidermis [cm]
+% hair_radius = 0.0075/2; % diameter varies from 17 - 180 micrometers, should increase with colouring and age
+% hair_bulb_semiminor = 1.7*hair_radius; % [cm]
+% hair_bulb_semimajor = sqrt(2)*hair_bulb_semiminor;
+% hair_depth = 0.1; % varies from 0.06-0.3cm
+% papilla_semiminor = hair_bulb_semiminor*5/12;
+% papilla_semimajor = sqrt(2)*papilla_semiminor;
+% 
+% T = 4*ones(nx,ny,nz,'uint8'); % water (gel)
+% T(Z > zsurf) = 10; % epidermis
+% T(Z > zsurf+epd_thick) = 9; % dermis
+% T(X.^2 + Y.^2 < hair_radius^2 & Z < zsurf+hair_depth) = 15; % hair
+% T((X/hair_bulb_semiminor).^2 + (Y/hair_bulb_semiminor).^2 + ((Z-(zsurf+hair_depth))/hair_bulb_semimajor).^2 < 1) = 15; % hair
+% T((X/papilla_semiminor).^2 + (Y/papilla_semiminor).^2 + ((Z-(zsurf+hair_depth+hair_bulb_semimajor-papilla_semimajor))/papilla_semimajor).^2 < 1) = 9; % dermis (papilla)
 
 %% Discard the unused tissue types
 tissueList = makeTissueList(wavelength);
