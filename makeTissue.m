@@ -56,6 +56,18 @@ T(Y.^2 + (Z-nz*dz/2).^2 < 0.050^2) = 5; % blood
 % T((X/hair_bulb_semiminor).^2 + (Y/hair_bulb_semiminor).^2 + ((Z-(zsurf+hair_depth))/hair_bulb_semimajor).^2 < 1) = 15; % hair
 % T((X/papilla_semiminor).^2 + (Y/papilla_semiminor).^2 + ((Z-(zsurf+hair_depth+hair_bulb_semimajor-papilla_semimajor))/papilla_semimajor).^2 < 1) = 9; % dermis (papilla)
 
+% Blood vessel example:
+% zsurf = 0.01;
+% epd_thick = 0.006;
+% vesselradius  = 0.0100;
+% T = 3*ones(nx,ny,nz,'uint8'); % fill background with air
+% T(Z > zsurf) = 10; % epidermis
+% T(Z > zsurf + epd_thick) = 9; % dermis
+% T(Y.^2 + (Z - (zsurf + 2*epd_thick + vesselradius)).^2 < vesselradius^2) = 5; % blood
+
+% Standard tissue test:
+% T = 14*ones(nx,ny,nz,'uint8'); % "standard" tissue
+
 %% Discard the unused tissue types
 tissueList = makeTissueList(wavelength);
 nT = length(unique(T)); % Number of different tissues in simulation
