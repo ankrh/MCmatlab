@@ -131,6 +131,7 @@ if numTemperatureSensors
         temperatureSensorPosition(temperatureSensorIndex) = ...
             sub2ind(size(T),dCPx,dCPy,dCPz);
     end
+    temperatureSensorPosition = fliplr(temperatureSensorPosition); % Reverse array so the order of the sensors is the same as the order they were defined in.
     temperatureSensor = NaN(numTemperatureSensors,length(nt_vec));
     temperatureSensor(:,1) = Temp(temperatureSensorPosition);
     
@@ -142,8 +143,11 @@ if numTemperatureSensors
     ylabel('Temperature [deg C]')
     title('Temperature evolution')
     hold on
-    plot(temperaturePlot,timeVector,temperatureSensor);
-    legend(temperatureSensorTissues,'AutoUpdate','off');
+    temperatureSensorLinePlots = plot(temperaturePlot,timeVector,temperatureSensor);
+    for i=1:numTemperatureSensors
+        temperatureSensorLinePlots(i).YDataSource = sprintf('temperatureSensor(%d,:)',i);
+    end
+    legend(temperatureSensorTissues);
 else
     temperatureSensor = [];
     timeVector = [];
@@ -172,14 +176,11 @@ for i = 2:length(nt_vec)
     
     if numTemperatureSensors
         temperatureSensor(:,i) = Temp(temperatureSensorPosition);
+        refreshdata(temperatureSensorLinePlots,'caller');
     end
     
     fprintf(1,'\b');
     updateVolumetric(heatsimFigure,Temp);
-    if numTemperatureSensors
-        cla(temperaturePlot)
-        plot(temperaturePlot,timeVector,temperatureSensor);
-    end
     
     if nt_vec(i) == nt_on
         Temp_illum = Temp;
