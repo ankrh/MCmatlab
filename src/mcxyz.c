@@ -54,7 +54,7 @@
 bool SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2, double dx,double dy,double dz);
 /* Asks,"In the same voxel?" */
 double min3(double a, double b, double c);
-double FindVoxelFace2(double x1,double y1,double z1, double x2, double y2, double z2,double dx,double dy,double dz, double ux, double uy, double uz);
+double FindVoxelFace(double x1,double y1,double z1, double x2, double y2, double z2,double dx,double dy,double dz, double ux, double uy, double uz);
 /* How much step size will the photon take to get the first voxel crossing in one single long step? */
 void axisrotate(double* x,double* y,double* z, double ux, double uy, double uz,double theta);
 /* Rotates a point with coordinates (x,y,z) an angle theta around axis with direction vector (ux,uy,uz) */
@@ -514,7 +514,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
 					else /* photon has crossed voxel boundary */
 					{
 						/* step to voxel face + "littlest step" so just inside new voxel. */
-						s = ls + FindVoxelFace2(x,y,z, xTentative,yTentative,zTentative, dx,dy,dz, ux,uy,uz);
+						s = ls + FindVoxelFace(x,y,z, xTentative,yTentative,zTentative, dx,dy,dz, ux,uy,uz);
 						
 						/**** DROP
 						 Drop photon weight (photonWeight) into local bin.
@@ -652,93 +652,6 @@ void mexFunction( int nlhs, mxArray *plhs[],
 
 /* SUBROUTINES */
 
-/**************************************************************************
- *	RandomGen
- *      A random number generator that generates uniformly
- *      distributed random numbers between 0 and 1 inclusive.
- *      The algorithm is based on:
- *      W.H. Press, S.A. Teukolsky, W.T. Vetterling, and B.P.
- *      Flannery, "Numerical Recipes in C," Cambridge University
- *      Press, 2nd edition, (1992).
- *      and
- *      D.E. Knuth, "Seminumerical Algorithms," 2nd edition, vol. 2
- *      of "The Art of Computer Programming", Addison-Wesley, (1981).
- *
- *      When Type is 0, sets Seed as the seed. Make sure 0<Seed<32000.
- *      When Type is 1, returns a random number.
- *      When Type is 2, gets the status of the generator.
- *      When Type is 3, restores the status of the generator.
- *
- *      The status of the generator is represented by Status[0..56].
- *
- *      Make sure you initialize the seed before you get random
- *      numbers.
- ****/
- 
- 
- // This is Knuth's subtractive pseudorandom number generator from 1981
-#define MBIG 1000000000
-#define MSEED 161803398
-#define MZ 0
-#define FAC 1.0E-9
-
-double RandomGen(char Type, long Seed, long *Status){
-	static __thread long i1, i2, ma[56];   /* ma[0] is not used. */
-	long        mj, mk;
-	short       i, ii;
-	
-	if (Type == 0) {              /* set seed. */
-		//printf("Thread #%i random number generator seed is %ld\n",omp_get_thread_num()+1,Seed);
-		mj = MSEED - (Seed < 0 ? -Seed : Seed);
-		mj %= MBIG;
-		ma[55] = mj;
-		mk = 1;
-		for (i = 1; i <= 54; i++) {
-			ii = (21 * i) % 55;
-			ma[ii] = mk;
-			mk = mj - mk;
-			if (mk < MZ)
-				mk += MBIG;
-			mj = ma[ii];
-		}
-		for (ii = 1; ii <= 4; ii++)
-			for (i = 1; i <= 55; i++) {
-				ma[i] -= ma[1 + (i + 30) % 55];
-				if (ma[i] < MZ)
-					ma[i] += MBIG;
-			}
-		i1 = 0;
-		i2 = 31;
-	} else if (Type == 1) {       /* get a number. */
-		if (++i1 == 56)
-			i1 = 1;
-		if (++i2 == 56)
-			i2 = 1;
-		mj = ma[i1] - ma[i2];
-		if (mj < MZ)
-			mj += MBIG;
-		ma[i1] = mj;
-		return (mj * FAC);
-	} else if (Type == 2) {       /* get status. */
-		for (i = 0; i < 55; i++)
-			Status[i] = ma[i + 1];
-		Status[55] = i1;
-		Status[56] = i2;
-	} else if (Type == 3) {       /* restore status. */
-		for (i = 0; i < 55; i++)
-			ma[i + 1] = Status[i];
-		i1 = Status[55];
-		i2 = Status[56];
-	} else
-		puts("Wrong parameter to RandomGen().");
-	return (0);
-}
-#undef MBIG
-#undef MSEED
-#undef MZ
-#undef FAC
-
-
 /***********************************************************
  *  Determine if the two position are located in the same voxel
  *	Returns 1 if same voxel, 0 if not same voxel.
@@ -772,10 +685,10 @@ double min3(double a, double b, double c) {
 }
 
 /********************
- * my version of FindVoxelFace for no scattering.
- * s = ls + FindVoxelFace2(x,y,z, xTentative, yTentative, zTentative, dx, dy, dz, ux, uy, uz);
+ * Steve's version of FindVoxelFace for no scattering.
+ * s = ls + FindVoxelFace(x,y,z, xTentative, yTentative, zTentative, dx, dy, dz, ux, uy, uz);
  ****/
-double FindVoxelFace2(double x1,double y1,double z1, double x2, double y2, double z2,double dx,double dy,double dz, double ux, double uy, double uz)
+double FindVoxelFace(double x1,double y1,double z1, double x2, double y2, double z2,double dx,double dy,double dz, double ux, double uy, double uz)
 {	
     int ix1 = floor(x1/dx);
     int iy1 = floor(y1/dy);
@@ -806,183 +719,6 @@ double FindVoxelFace2(double x1,double y1,double z1, double x2, double y2, doubl
     return (s);
 }
 
-
-/***********************************************************
- *	FRESNEL REFLECTANCE
- * Computes reflectance as photon passes from medium 1 to 
- * medium 2 with refractive indices n1,n2. Incident
- * angle a1 is specified by cosine value ca1 = cos(a1).
- * Program returns value of transmitted angle a1 as
- * value in *ca2_Ptr = cos(a2).
- ****/
-double RFresnel(double n1,		/* incident refractive index.*/
-                double n2,		/* transmit refractive index.*/
-                double ca1,		/* cosine of the incident */
-                /* angle a1, 0<a1<90 degrees. */
-                double *ca2_Ptr) 	/* pointer to the cosine */
-/* of the transmission */
-/* angle a2, a2>0. */
-{
-    double r;
-    
-    if(n1==n2) { /** matched boundary. **/
-        *ca2_Ptr = ca1;
-        r = 0.0;
-	}
-    else if(ca1>(1.0 - 1.0e-12)) { /** normal incidence. **/
-        *ca2_Ptr = ca1;
-        r = (n2-n1)/(n2+n1);
-        r *= r;
-	}
-    else if(ca1< 1.0e-6)  {	/** very slanted. **/
-        *ca2_Ptr = 0.0;
-        r = 1.0;
-	}
-    else  {			  		/** general. **/
-        double sa1, sa2; /* sine of incident and transmission angles. */
-        double ca2;      /* cosine of transmission angle. */
-        sa1 = sqrt(1-ca1*ca1);
-        sa2 = n1*sa1/n2;
-        if(sa2>=1.0) {	
-            /* double check for total internal reflection. */
-            *ca2_Ptr = 0.0;
-            r = 1.0;
-		}
-        else {
-            double cap, cam;	/* cosines of sum ap or diff am of the two */
-            /* angles: ap = a1 + a2, am = a1 - a2. */
-            double sap, sam;	/* sines. */
-            *ca2_Ptr = ca2 = sqrt(1-sa2*sa2);
-            cap = ca1*ca2 - sa1*sa2; /* c+ = cc - ss. */
-            cam = ca1*ca2 + sa1*sa2; /* c- = cc + ss. */
-            sap = sa1*ca2 + ca1*sa2; /* s+ = sc + cs. */
-            sam = sa1*ca2 - ca1*sa2; /* s- = sc - cs. */
-            r = 0.5*sam*sam*(cam*cam+cap*cap)/(sap*sap*cam*cam); 
-            /* rearranged for speed. */
-		}
-	}
-    return(r);
-} /******** END SUBROUTINE **********/
-
-
-
-/***********************************************************
- * the boundary is the face of some voxel
- * find the the photon's hitting position on the nearest face of the voxel and update the step size.
- ****/
-double FindVoxelFace(double x1,double y1,double z1, double x2, double y2, double z2,double dx,double dy,double dz, double ux, double uy, double uz)
-{
-    double x_1 = x1/dx;
-    double y_1 = y1/dy;
-    double z_1 = z1/dz;
-    double x_2 = x2/dx;
-    double y_2 = y2/dy;
-    double z_2 = z2/dz;
-    double fx_1 = floor(x_1) ;
-    double fy_1 = floor(y_1) ;
-    double fz_1 = floor(z_1) ;
-    double fx_2 = floor(x_2) ;
-    double fy_2 = floor(y_2) ;
-    double fz_2 = floor(z_2) ;
-    double x=0, y=0, z=0, x0=0, y0=0, z0=0, s=0;
-    
-    if ((fx_1 != fx_2) && (fy_1 != fy_2) && (fz_1 != fz_2) ) { //#10
-        fx_2=fx_1+SIGN(fx_2-fx_1);//added
-        fy_2=fy_1+SIGN(fy_2-fy_1);//added
-        fz_2=fz_1+SIGN(fz_2-fz_1);//added
-        
-        x = (fmax(fx_1,fx_2)-x_1)/ux;
-        y = (fmax(fy_1,fy_2)-y_1)/uy;
-        z = (fmax(fz_1,fz_2)-z_1)/uz;
-        if (x == min3(x,y,z)) {
-            x0 = fmax(fx_1,fx_2);
-            y0 = (x0-x_1)/ux*uy+y_1;
-            z0 = (x0-x_1)/ux*uz+z_1;
-        }
-        else if (y == min3(x,y,z)) {
-            y0 = fmax(fy_1,fy_2);
-            x0 = (y0-y_1)/uy*ux+x_1;
-            z0 = (y0-y_1)/uy*uz+z_1;
-        }
-        else {
-            z0 = fmax(fz_1,fz_2);
-            y0 = (z0-z_1)/uz*uy+y_1;
-            x0 = (z0-z_1)/uz*ux+x_1;
-        }
-    }
-    else if ( (fx_1 != fx_2) && (fy_1 != fy_2) ) { //#2
-        fx_2=fx_1+SIGN(fx_2-fx_1);//added
-        fy_2=fy_1+SIGN(fy_2-fy_1);//added
-        x = (fmax(fx_1,fx_2)-x_1)/ux;
-        y = (fmax(fy_1,fy_2)-y_1)/uy;
-        if (x == fmin(x,y)) {
-            x0 = fmax(fx_1,fx_2);
-            y0 = (x0-x_1)/ux*uy+y_1;
-            z0 = (x0-x_1)/ux*uz+z_1;
-        }
-        else {
-            y0 = fmax(fy_1, fy_2);
-            x0 = (y0-y_1)/uy*ux+x_1;
-            z0 = (y0-y_1)/uy*uz+z_1;
-        }
-    }
-    else if ( (fy_1 != fy_2) &&(fz_1 != fz_2) ) { //#3
-        fy_2=fy_1+SIGN(fy_2-fy_1);//added
-        fz_2=fz_1+SIGN(fz_2-fz_1);//added
-        y = (fmax(fy_1,fy_2)-y_1)/uy;
-        z = (fmax(fz_1,fz_2)-z_1)/uz;
-        if (y == fmin(y,z)) {
-            y0 = fmax(fy_1,fy_2);
-            x0 = (y0-y_1)/uy*ux+x_1;
-            z0 = (y0-y_1)/uy*uz+z_1;
-        }
-        else {
-            z0 = fmax(fz_1, fz_2);
-            x0 = (z0-z_1)/uz*ux+x_1;
-            y0 = (z0-z_1)/uz*uy+y_1;
-        }
-    }
-    else if ( (fx_1 != fx_2) && (fz_1 != fz_2) ) { //#4
-        fx_2=fx_1+SIGN(fx_2-fx_1);//added
-        fz_2=fz_1+SIGN(fz_2-fz_1);//added
-        x = (fmax(fx_1,fx_2)-x_1)/ux;
-        z = (fmax(fz_1,fz_2)-z_1)/uz;
-        if (x == fmin(x,z)) {
-            x0 = fmax(fx_1,fx_2);
-            y0 = (x0-x_1)/ux*uy+y_1;
-            z0 = (x0-x_1)/ux*uz+z_1;
-        }
-        else {
-            z0 = fmax(fz_1, fz_2);
-            x0 = (z0-z_1)/uz*ux+x_1;
-            y0 = (z0-z_1)/uz*uy+y_1;
-        }
-    }
-    else if (fx_1 != fx_2) { //#5
-        fx_2=fx_1+SIGN(fx_2-fx_1);//added
-        x0 = fmax(fx_1,fx_2);
-        y0 = (x0-x_1)/ux*uy+y_1;
-        z0 = (x0-x_1)/ux*uz+z_1;
-    }
-    else if (fy_1 != fy_2) { //#6
-        fy_2=fy_1+SIGN(fy_2-fy_1);//added
-        y0 = fmax(fy_1, fy_2);
-        x0 = (y0-y_1)/uy*ux+x_1;
-        z0 = (y0-y_1)/uy*uz+z_1;
-    }
-    else { //#7 
-        z0 = fmax(fz_1, fz_2);
-        fz_2=fz_1+SIGN(fz_2-fz_1);//added
-        x0 = (z0-z_1)/uz*ux+x_1;
-        y0 = (z0-z_1)/uz*uy+y_1;
-    }
-    //s = ( (x0-fx_1)*dx + (y0-fy_1)*dy + (z0-fz_1)*dz )/3;
-    //s = sqrt( SQR((x0-x_1)*dx) + SQR((y0-y_1)*dy) + SQR((z0-z_1)*dz) );
-    //s = sqrt(SQR(x0-x_1)*SQR(dx) + SQR(y0-y_1)*SQR(dy) + SQR(z0-z_1)*SQR(dz));
-    s = sqrt( SQR((x0-x_1)*dx) + SQR((y0-y_1)*dy) + SQR((z0-z_1)*dz));
-    return (s);
-}
-
 /********************
  * Function for rotating a point at coordinates (x,y,z) an angle theta around an axis with direction unit vector (ux,uy,uz).
  ****/
@@ -1000,4 +736,3 @@ void axisrotate(double* x,double* y,double* z, double ux, double uy, double uz,d
 	*z = (uz*ux*(1-ct) - uy*st)*xin		+		(uz*uy*(1-ct) + ux*st)*yin		+		(ct + uz*uz*(1-ct))*zin;
     //printf("After rotation (x,y,z) = (%0.8f,%0.8f,%0.8f)\n",*x,*y,*z);
 }
-
