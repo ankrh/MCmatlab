@@ -3,8 +3,16 @@ function runMonteCarlo(name)
 %   Prepares the illumination beam and runs the Monte Carlo simulation.
 %   After finishing, calls lookmcxyz for the display of the result.
 %
-%   Define the time requested for simulating photons and define the beam
-%   parameters. The following beam types can be requested:
+%   Define the time requested for simulating photons.
+%   Define the behaviour of photons that stray outside the tissue cube:
+%       0 = no boundaries: photons wander freely also outside the tissue
+%       cube and get killed only if the wander too far (6 times the cube
+%       size).
+%       1 = escape at boundaries: photons that stray outside the tissue
+%       cube get killed immediately.
+%       2 = escape at surface only: photons that hit the top surface get
+%       killed immediately, photons hitting other surfaces can wander.
+%   Define the beam parameters. The following beam types can be requested:
 %       0 = top-hat focus, top-hat far field beam
 %       1 = Gaussian focus, Gaussian far field beam
 %       2 = isotropically emitting point
@@ -39,11 +47,11 @@ load(['./Data/' name '.mat']);
 % Simulation duration
 MCinput.simulationTime = 0.5;      % [min] time duration of the simulation
 
-% Beam type
-MCinput.beamtypeFlag = 3;          % beam type: 0 = top-hat focus, top-hat far field beam, 1 = Gaussian focus, Gaussian far field beam, 2 = isotropically emitting point, 3 = infinite plane wave, 4 = pencil beam, 5 = top-hat focus, Gaussian far field beam, 6 = Gaussian focus, top-hat far field beam
-
 % Boundary type
 MCinput.boundaryFlag = 1;          % boundary type: 0 = no boundaries, 1 = escape at boundaries, 2 = escape at surface only. No x, y, bottom z boundaries
+
+% Beam type
+MCinput.beamtypeFlag = 3;          % beam type: 0 = top-hat focus, top-hat far field beam, 1 = Gaussian focus, Gaussian far field beam, 2 = isotropically emitting point, 3 = infinite plane wave, 4 = pencil beam, 5 = top-hat focus, Gaussian far field beam, 6 = Gaussian focus, top-hat far field beam
 
 % Position of focus, only used for beamtypeflag ~=3 (if beamtypeflag == 2 this is the source position)
 MCinput.xFocus = 0;                % [cm] x position of focus
