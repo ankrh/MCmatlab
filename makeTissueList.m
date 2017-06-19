@@ -3,7 +3,8 @@ function tissueList = makeTissueList(nm)
 %   Note that the data for skull and brainmatter are not correct, they are simply placeholders
 %
 %   tissueList contains [mua; mus; g; VHC; D; TC] for each tissue type;
-%       VHC is volumetric heat capacity [J/cm^3/K], D is density kg/cm^3, TC is thermal conductivity W/cm/K
+%       VHC is volumetric heat capacity [J/(cm^3*K)], D is density [kg/cm^3],
+%       TC is thermal conductivity [W/(cm*K)]
 %
 %   Requires
 %       SpectralLIB.mat

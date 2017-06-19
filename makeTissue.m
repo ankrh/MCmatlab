@@ -1,7 +1,7 @@
 function makeTissue
 %
 %   Builds and saves a tissue in a voxel-space. The tissue properties are
-%   loaded from makeTissueList.
+%   loaded from makeTissueList.m.
 %
 %   First, define the wavelength in nm, and the tissue cube built of voxels.
 %   Then, fill the voxel space with indeces pointing to the required tissue
@@ -16,7 +16,7 @@ function makeTissue
 %
 %   Output
 %       ./Data/[name].mat
-%           file containing the tissue cube definition (voxels)
+%           file containing the 3D tissue cube definition (voxels)
 %
 %   Requires
 %       makeTissueList.m
@@ -29,14 +29,14 @@ function makeTissue
 %   Steven L. Jacques, August 2014
 
 %% Define parameters (user-specified)
-wavelength  = 1000;      % [nm] set the range of wavelengths of the Monte Carlo simulation
-name = 'dentin';          % name of the simulation
+wavelength  = 1000;     % [nm] set the wavelength of the Monte Carlo simulation
+name = 'dentin';        % name of the simulation
 nx = 100;               % number of bins in the x direction
-ny = 100;                % number of bins in the y direction
-nz = 100;                % number of bins in the z direction
-Lx = 1;               % [cm] x size of simulation area
-Ly = 1;               % [cm] y size of simulation area
-Lz = 1;               % [cm] z size of simulation area
+ny = 100;               % number of bins in the y direction
+nz = 100;               % number of bins in the z direction
+Lx = 1;                 % [cm] x size of simulation area
+Ly = 1;                 % [cm] y size of simulation area
+Lz = 1;                 % [cm] z size of simulation area
 
 %% Calculate x,y,z vectors and grids
 dx = Lx/nx;             % [cm] size of x bins
