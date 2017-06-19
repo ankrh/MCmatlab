@@ -139,11 +139,11 @@ if numTemperatureSensors
     temperatureSensorFigure = figure(4); clf;
     temperaturePlot = axes('XLim',timeVector([1, end]));
     xlabel('Time [sec]')
-    ylabel('Temperature [?C]')
+    ylabel('Temperature [deg C]')
     title('Temperature evolution')
     hold on
     plot(temperaturePlot,timeVector,temperatureSensor);
-    legend(temperatureSensorTissues);
+    legend(temperatureSensorTissues,'AutoUpdate','off');
 else
     temperatureSensor = [];
     timeVector = [];
