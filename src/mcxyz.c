@@ -1,31 +1,30 @@
 /********************************************
- *  mcxyz.c,	in ANSI Standard C programing language
- *      Usage:  mcxyz myname and myname_T.bin
- *      which loads myname_H.mci, and saves myname_F.bin. 
  *
- *	created 2010, 2012 by
+ *  mcxyz.c,	in ANSI Standard C programing language
+ *
+ * created 2010, 2012 by
  *	Steven L. JACQUES
  *  Ting LI
  *	Oregon Health & Science University
  *
- *  Log:
+ * Log:
  *  Written by Ting based on Steve's mcsub.c., 2010.
- *      Use Ting's FindVoxelFace().
- *	Use Steve's FindVoxelFace(), Dec. 30, 2010.
+ *  Use Steve's FindVoxelFace(), Dec. 30, 2010.
  *  Reorganized by Steve. May 8, 2012:
- *      Reads input files, outputs binary files.
- *	Edited to included a uniformly distributed light source over the entire surface by Mathias Christensen 09/01/2014
+ *  Edited to included a uniformly distributed light source over the entire surface by Mathias Christensen 09/01/2014
  *  Overhauled by Anders Hansen and Dominik Marti in April 2017. Fundamental method remained unchanged.
- *
+ *      Uses the Mersenne Twister for random number generation.
  *  Adapted to MATLAB mex file generation 2017-06-07 by Anders Hansen
- *  Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp' .\src\mcxyz_mex.c ".\src\libut.lib""
  *
- *  To get the MATLAB C compiler to work, try this:
- *  1. Go to MATLAB's addon manager and tell it to install the "Support for MinGW-w64 compiler"
- *  2. Type "mex -setup" in the MATLAB command line and ensure that MATLAB has set the C compiler to MinGW64
- *  3. Copy the files "libgomp.a" and "libgomp.spec" to the folder with a path similar to "C:\ProgramData\MATLAB\SupportPackages\R2017a\MW_MinGW_4_9\lib\gcc\x86_64-w64-mingw32\4.9.2"
- *  4. mex should now be able to compile the code using the above command but in order to run, it needs to have the file "libgomp_64-1.dll" copied to the same folder as the mex file.
- **********/
+ * Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp' .\src\mcxyz.c ".\src\libut.lib""
+ *
+ * To get the MATLAB C compiler to work, try this:
+ * 1. Go to MATLAB's addon manager and tell it to install the "Support for MinGW-w64 compiler"
+ * 2. Type "mex -setup" in the MATLAB command line and ensure that MATLAB has set the C compiler to MinGW64
+ * 3. Copy the files "libgomp.a" and "libgomp.spec" to the folder with a path similar to "C:\ProgramData\MATLAB\SupportPackages\R2017a\MW_MinGW_4_9\lib\gcc\x86_64-w64-mingw32\4.9.2"
+ * 4. mex should now be able to compile the code using the above command but in order to run, it needs to have the file "libgomp_64-1.dll" copied to the same folder as the mex file.
+ *
+ ********************************************/
 
 #include "mex.h"
 #include <math.h>

@@ -1,4 +1,33 @@
 function makeTissue
+%
+%   Builds and saves a tissue in a voxel-space. The tissue properties are
+%   loaded from makeTissueList.
+%
+%   First, define the wavelength in nm, and the tissue cube built of voxels.
+%   Then, fill the voxel space with indeces pointing to the required tissue
+%   types as listed in makeTissueList.m.
+%   This file produces the .mat file required as an input to
+%   runMonteCarlo.m, and it displays both the tissue cube as well as an
+%   overview over the optical and thermal properties of the tissue types.
+%
+%   Displays
+%       Tissue cube
+%       Tissue optical and thermal properties
+%
+%   Output
+%       ./Data/[name].mat
+%           file containing the tissue cube definition (voxels)
+%
+%   Requires
+%       makeTissueList.m
+%       plotVolumetric.m
+%       plotTissueProperties.m
+%
+
+%% Updates
+%   Anders K. Hansen & Dominik Marti, June 2017
+%   Steven L. Jacques, August 2014
+
 %% Define parameters (user-specified)
 wavelength  = 1000;      % [nm] set the range of wavelengths of the Monte Carlo simulation
 name = 'dentin';          % name of the simulation
@@ -90,3 +119,4 @@ drawnow;
 save(['./Data/' name '.mat'],'x','y','z','tissueList','T','wavelength')
 fprintf('./Data/%s.mat saved\n',name)
 
+return

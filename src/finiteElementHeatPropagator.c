@@ -1,7 +1,12 @@
-/*=================================================================
+/********************************************
  *
  * C script for heat propagation based on Monte Carlo input
  * arguments: (nt,[[[Temp]]],[[[T]]],[[[dTperdeltaT]]],[[[dT_abs]]])
+ *
+ * Log:
+ *  Written by Rasmus L. Pedersen & Mathias Christensen in January 2014
+ *  Overhauled by Anders Hansen in April 2017. Fundamental method remained unchanged.
+ *  Adapted to MATLAB mex file generation 2017-06-07 by Anders Hansen
  *
  * Can be compiled using "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp' .\src\finiteElementHeatPropagator.c ".\src\libut.lib""
  *
@@ -10,7 +15,9 @@
  * 2. Type "mex -setup" in the MATLAB command line and ensure that MATLAB has set the C compiler to MinGW64
  * 3. Copy the files "libgomp.a" and "libgomp.spec" to the folder with a path similar to "C:\ProgramData\MATLAB\SupportPackages\R2017a\MW_MinGW_4_9\lib\gcc\x86_64-w64-mingw32\4.9.2"
  * 4. mex should now be able to compile the code using the above command but in order to run, it needs to have the file "libgomp_64-1.dll" copied to the same folder as the mex file.
- *=================================================================*/
+ *
+ ********************************************/
+
 #include <math.h>
 #include "mex.h"
 #include "matrix.h"
