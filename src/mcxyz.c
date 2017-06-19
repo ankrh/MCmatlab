@@ -109,11 +109,17 @@ void mexFunction( int nlhs, mxArray *plhs[],
 	unsigned long long	nPhotons;           /* number of photons in simulation */
 	int     pctProgress, newPctProgress;    /* Simulation progress in percent */
     bool    ctrlc_caught = false;           // Has a ctrl+c been passed from MATLAB?
+	double  extendedBoxScaleFactor;
+	extendedBoxScaleFactor = 6.0;
+    /* The extendedBoxScaleFactor determines the size of the region that 
+     * photons are launched in for the infinite plane wave without 
+     * boundaries but also the region that photons are allowed to stay 
+     * alive in (if outside, the probability of returning to the region
+     * of interest is judged as too low)
+     */
     
 	/* launch parameters */
 	double	vx0, vy0, vz0;                  /* normal vector to photon trajectory */
-	double  infPlaneWaveScaleFactor;
-	infPlaneWaveScaleFactor = 6.0;
 	
     /* time */
 	double	simulationTimeSpent;               // Requested and spent time durations of computation.
@@ -345,8 +351,8 @@ void mexFunction( int nlhs, mxArray *plhs[],
 					y = ny*dy*(RandomNum-0.5); // Generates a random y coordinate within the box
 				}
 				else {
-					x = infPlaneWaveScaleFactor*nx*dx*(RandomNum-0.5); // Generates a random x coordinate within an interval infPlaneWaveScaleFactor times the box' size
-					y = infPlaneWaveScaleFactor*ny*dy*(RandomNum-0.5); // Generates a random y coordinate within an interval infPlaneWaveScaleFactor times the box' size
+					x = extendedBoxScaleFactor*nx*dx*(RandomNum-0.5); // Generates a random x coordinate within an interval extendedBoxScaleFactor times the box' size
+					y = extendedBoxScaleFactor*ny*dy*(RandomNum-0.5); // Generates a random y coordinate within an interval extendedBoxScaleFactor times the box' size
 				}
 				z = 0;
 				ux = ux0;
@@ -458,21 +464,24 @@ void mexFunction( int nlhs, mxArray *plhs[],
 							if (iy<0)   {iy=0;    photonInsideVolume = false;}
 						}
 						else if (boundaryFlag==1) { // Escape at boundaries
-							if (iz>=nz) {iz=nz-1; photonAlive = false; stepLeft = 0;}
-							if (ix>=nx) {ix=nx-1; photonAlive = false; stepLeft = 0;}
-							if (iy>=ny) {iy=ny-1; photonAlive = false; stepLeft = 0;}
-							if (iz<0)   {iz=0;    photonAlive = false; stepLeft = 0;}
-							if (ix<0)   {ix=0;    photonAlive = false; stepLeft = 0;}
-							if (iy<0)   {iy=0;    photonAlive = false; stepLeft = 0;}
+							if (iz>=nz) {iz=nz-1; photonAlive = false;}
+							if (ix>=nx) {ix=nx-1; photonAlive = false;}
+							if (iy>=ny) {iy=ny-1; photonAlive = false;}
+							if (iz<0)   {iz=0;    photonAlive = false;}
+							if (ix<0)   {ix=0;    photonAlive = false;}
+							if (iy<0)   {iy=0;    photonAlive = false;}
 						}
 						else if (boundaryFlag==2) { // Escape at top surface, no x,y bottom z boundaries
 							if (iz>=nz) {iz=nz-1; photonInsideVolume = false;}
 							if (ix>=nx) {ix=nx-1; photonInsideVolume = false;}
 							if (iy>=ny) {iy=ny-1; photonInsideVolume = false;}
-							if (iz<0)   {iz=0;    photonAlive = false; stepLeft = 0;}
+							if (iz<0)   {iz=0;    photonAlive = false;}
 							if (ix<0)   {ix=0;    photonInsideVolume = false;}
 							if (iy<0)   {iy=0;    photonInsideVolume = false;}
 						}
+                        if (!photonInsideVolume) {
+                            if (fabs(x) > extendedBoxScaleFactor*nx*dx/2.0 | fabs(y) > extendedBoxScaleFactor*ny*dy/2.0 | fabs(z-nz*dz/2.0) > extendedBoxScaleFactor*nz*dz/2.0) {photonAlive = false;};
+                        }
 						if (!photonAlive) break;
 						
 						/* Get the tissue type of located voxel */
@@ -631,7 +640,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
     // Normalize deposition to yield fluence rate (F).
 	if (beamtypeFlag == 3 && boundaryFlag != 1) {
 		for (i=0; i<nx*ny*nz;i++){
-			F[i] /= (dx*dy*dz*nPhotons/(infPlaneWaveScaleFactor*infPlaneWaveScaleFactor)*muav[v[i]]);
+			F[i] /= (dx*dy*dz*nPhotons/(extendedBoxScaleFactor*extendedBoxScaleFactor)*muav[v[i]]);
 		}
 	}
 	else {
