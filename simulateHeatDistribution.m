@@ -113,11 +113,7 @@ plotVolumetric(x,y,z,Temp);
 title('Temperature evolution');
 caxis(plotTempLimits); % User-defined color scale limits
 
-fprintf('Adjust the visualisation to your needs, and press (almost) any key to start simulation...\n')
-pause
-
 %% Simulate heat transfer
-figure(heatsimFigure)
 if numTemperatureSensors; figure(temperatureSensorFigure); end
 
 fprintf('[nx,ny,nz]=[%d,%d,%d]\nIllumination on for %d steps and off for %d steps. Step size is %0.2e s.\n',nx,ny,nz,nt_on,nt_off,dt);

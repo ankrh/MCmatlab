@@ -1,32 +1,33 @@
 Readme.txt
-A quick description of how to run mcxyz.c, 
-using UNIX and MATLAB.
+A quick description of how to run mcxyz, using MATLAB R2016A or later.
 
 PROGRAMS:
-makeTissueList.m
 makeTissue.m
+runMonteCarlo.m
 lookmcxyz.m
-	
-mcxyz.c
+simulateHeatDistribution.m
 
+HELPERFILE:
+makeTissueList.m
+	
 INSTRUCTIONS:
-1. Compile mcxyz.c for UNIX
-	cc -fopenmp -o mcxyz -Ofast mcxyz.c
-This yields the executable mcxyz (you can use any name).
-	
-2. Create .mci file
-- Modify makeTissueList.m, to include the definitions of the tissue types you're interested in.
-- Modify makeTissue.m, to build up your tissue structure in the voxel space. makeTissue.m also includes the definition of the beam you want to launch into that tissue voxel space.
-- Run makeTissue.m in MATLAB. This, as an example, yields the following two files:
-	skinvessel_H.mci = monte carlo input file, a text file that mcxyz will read,
-	skinvessel_T.bin = binary file holding T(x,y,z), which identifies the tissue type within each voxel by an integer.
+1. Compilation
+The folders include all the executables necessary, so you don't need to compile anything. If, however, you want to change the routine in either the mcxyz.c source code (in the folder "src") or the finiteElementHeatPropagator.c source code (in the folder "src"), you will need to recompile the respective mex-files. Check out those two source-files on how to do so.
 
-3. Make sure the two files generated in step 2 are in the same directory as mcxyz, and run the main program on a command line with the base name of your files as the first and only input:
-	mcxyz skinvessel
-This command will cause mcxyz to read the skinvessel_H.mci and skinvessel_T.bin files, and run. The output is 
-	skinvessel_F.bin = a binary file holding fluence rate F(x,y,z).
+2. Make Tissue
+- Modify makeTissueList.m to include the definitions of the tissue types you're interested in.
+- Modify makeTissue.m, to build up your tissue structure from the tissues defined in makeTissueList in the voxel space.
+- Run makeTissue.m in MATLAB. This yields a .mat file named as defined in makeTissue.m (in the folder "Data"), containing the tissue definition.
+
+3. Run Monte Carlo
+- Modify runMonteCarlo.m to include the beam type you're interested in, as well as the time you want to simulate photons. 1 minute should be sufficient for testing purposes. Find more instructions on how to define the beam in the file directly.
+- Type "runMonteCarlo('[name]')" in the command prompt, with [name] being the name defined in makeTissue.m in step 2. This command will simulate photons for the requested time. The output is "name_MCoutput.mat" in the folder "Data", holding the fluence rate F(x,y,z).
 
 4. Look at results using MATLAB:
-Run the MATLAB file
-	lookmcxyz.m
-which produces volumetric views of the fluence rate and absorption. This also produces a drawing of the tissue structure.
+- lookmcxyz('[name]') will be automatically called after runMonteCarlo, but can also be called independently to inspect the outcome of earlier Monte Carlo runs.
+
+5. Simulate Heat Distribution
+- Modify simulateHeatDistribution.m to specify the amount of illumination time (where energy is deposited as well as diffused) and dark time (where the lights are off, and the heat is just diffused). You can also specify how often you want a visual update of the simulation. The fewer visual updates you request, the faster the simulation will run.
+- Type "[temperatureSensor, timeVector] = simulateHeatDistribution('[name]');" in the command prompt. A figure will appear, giving you the possibility to put one or more (shift-click) temperature sensors into the tissue, where the temperature throughout the simulation will be recorded and stored in the array temperatureSensor. After placing all required sensors, press any key. The simulation will then start running, updating the temperature distribution visualisation as often as you requested.
+
+6. Look at all the results and start playing around.
