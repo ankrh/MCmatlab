@@ -3,7 +3,7 @@
  * C script for heat propagation based on Monte Carlo input
  * arguments: (nt,[[[Temp]]],[[[T]]],[[[dTperdeltaT]]],[[[dT_abs]]])
  *
- * Can be compiled using "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp' .\src\propagator.c ".\src\libut.lib""
+ * Can be compiled using "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp' .\src\finiteElementHeatPropagator.c ".\src\libut.lib""
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Go to MATLAB's addon manager and tell it to install the "Support for MinGW-w64 compiler"

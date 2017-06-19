@@ -1,4 +1,4 @@
-function MonteCarlo(name)
+function runMonteCarlo(name)
 %% Load data from makeTissue.m
 load(['./Data/' name '.mat']);
 
@@ -39,7 +39,7 @@ MCinput.T = T-1; % The tissue matrix has to be converted from MATLAB's 1-based i
 clear T
 
 %% Call Monte Carlo C script (mex file) to get fluence rate (intensity) distribution
-F = mcxyz_mex(MCinput);
+F = mcxyz(MCinput);
 
 %% Save output and clear memory
 save(['./Data/' name '_MCoutput.mat'],'F','MCinput');
