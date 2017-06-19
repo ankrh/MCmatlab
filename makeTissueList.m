@@ -9,7 +9,8 @@ function tissueList = makeTissueList(nm)
 %       SpectralLIB.mat
 
 %% Updates
-%   Anders K. Hansen & Dominik Marti, June 2017
+%   Anders K. Hansen, Dominik Marti & Kira Schmidt, June 2017
+%   Rasmus L. Pedersen, Mathias Christensen & Josefine Nielsen, January 2014
 %   Steven L. Jacques, August 2014
 
 %% Load spectral library
