@@ -31,12 +31,6 @@ else
     dtmax = calcdtmax(T,TC,HC,dx,dy,dz)/2;
 end
 
-% figure(7);
-% plotVolumetric(x,y,z,individual_dtmax); % Optional plot to visualize each individual voxel's required time step limitation
-% title('Maximum time step allowed for each voxel [s]')
-
-clear individual_dtmax
-
 if onduration ~= 0
     nt_on = max(n_updates,ceil(onduration/dtmax)); % Number of time steps with illumination
     dt = onduration/nt_on; % Time step size
