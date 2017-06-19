@@ -1,5 +1,5 @@
 Readme.txt
-A quick description of how to run mcxyz, using MATLAB R2016A or later.
+A quick description of how to run mcxyz, using MATLAB R2014B or later.
 
 PROGRAMS:
 makeTissue.m
