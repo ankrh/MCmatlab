@@ -8,6 +8,7 @@
  *  Overhauled by Anders K. Hansen in April 2017. Fundamental method remained unchanged.
  *  Adapted to MATLAB mex file generation 2017-06-07 by Anders K. Hansen
  *
+ ** COMPILING ON WINDOWS
  * Can be compiled using "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp' .\src\finiteElementHeatPropagator.c ".\src\libut.lib""
  *
  * To get the MATLAB C compiler to work, try this:
@@ -16,14 +17,23 @@
  * 3. Copy the files "libgomp.a" and "libgomp.spec" to the folder with a path similar to "C:\ProgramData\MATLAB\SupportPackages\R2017a\MW_MinGW_4_9\lib\gcc\x86_64-w64-mingw32\4.9.2"
  * 4. mex should now be able to compile the code using the above command but in order to run, it needs to have the file "libgomp_64-1.dll" copied to the same folder as the mex file.
  *
+ ** COMPILING ON MAC
+ * As of June 2017, the macOS compiler doesn't support libut. You will 
+ * thus need to comment out the lines referring to it. Those are marked
+ * with "comment out on macOS".
+ * This file can then be compiled with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast' ./src/finiteElementHeatPropagator.c"
+ *
+ * To get the MATLAB C compiler to work, try this:
+ * 1. Install XCode from the App Store
+ * 2. Type "mex -setup" in the MATLAB command window
  ********************************************/
 
 #include <math.h>
 #include "mex.h"
 #include "matrix.h"
-#include "omp.h"
+#include "omp.h"  // comment out on macOS
 
-extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing the mex function
+extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing the mex function  // comment out on macOS
 
 void mexFunction( int nlhs, mxArray *plhs[],
         int nrhs, mxArray const *prhs[] ) {
@@ -99,7 +109,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
             }
             #pragma omp master
             {
-                if(utIsInterruptPending()) {
+                if(utIsInterruptPending()) {  // comment out on macOS (whole if-block)
                     ctrlc_caught = true;
                     printf("\nCtrl+C detected, stopping.\n");
                 }

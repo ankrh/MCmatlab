@@ -16,6 +16,7 @@
  *      Uses the Mersenne Twister for random number generation.
  *  Adapted to MATLAB mex file generation 2017-06-07 by Anders K. Hansen
  *
+ ** COMPILING ON WINDOWS
  * Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp' .\src\mcxyz.c ".\src\libut.lib""
  *
  * To get the MATLAB C compiler to work, try this:
@@ -24,6 +25,15 @@
  * 3. Copy the files "libgomp.a" and "libgomp.spec" to the folder with a path similar to "C:\ProgramData\MATLAB\SupportPackages\R2017a\MW_MinGW_4_9\lib\gcc\x86_64-w64-mingw32\4.9.2"
  * 4. mex should now be able to compile the code using the above command but in order to run, it needs to have the file "libgomp_64-1.dll" copied to the same folder as the mex file.
  *
+ ** COMPILING ON MAC
+ * As of June 2017, the macOS compiler doesn't support openmp or libut. You will 
+ * thus need to comment out the lines referring to eat. Those are marked
+ * with "comment out on macOS".
+ * This file can then be compiled with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast' ./src/mcxyz.c"
+ *
+ * To get the MATLAB C compiler to work, try this:
+ * 1. Install XCode from the App Store
+ * 2. Type "mex -setup" in the MATLAB command window
  ********************************************/
 
 #include "mex.h"
@@ -33,7 +43,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
-#include <omp.h>
+#include <omp.h> // comment out on macOS
 #define DSFMT_MEXP 19937 // Mersenne exponent for dSFMT
 #include "dSFMT-src-2.2.3/dSFMT.c" //  double precision SIMD oriented Fast Mersenne Twister(dSFMT)
 
@@ -57,7 +67,7 @@ double FindVoxelFace(double x1,double y1,double z1, double x2, double y2, double
 /* How much step size will the photon take to get the first voxel crossing in one single long step? */
 void axisrotate(double* x,double* y,double* z, double ux, double uy, double uz,double theta);
 /* Rotates a point with coordinates (x,y,z) an angle theta around axis with direction vector (ux,uy,uz) */
-extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing the mex function
+extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing the mex function  // comment out on macOS
 
 void mexFunction( int nlhs, mxArray *plhs[],
         int nrhs, mxArray const *prhs[] ) {
@@ -256,8 +266,9 @@ void mexFunction( int nlhs, mxArray *plhs[],
 		int 	type;
 		dsfmt_t dsfmt;			/* Thread-specific "state" of dSFMT pseudo-random number generator */
 
-		dsfmt_init_gen_rand(&dsfmt,(unsigned long)(simulationTimeStart.tv_nsec + omp_get_thread_num())); // Seed random number generator
-		//printf("Thread #%i seeded with %li\n",omp_get_thread_num()+1,(unsigned long)(simulationTimeStart.tv_nsec + omp_get_thread_num()));
+		dsfmt_init_gen_rand(&dsfmt,(unsigned long)(simulationTimeStart.tv_nsec + omp_get_thread_num())); // Seed random number generator   // comment out on macOS and comment in the following line 
+		//dsfmt_init_gen_rand(&dsfmt,(unsigned long)(simulationTimeStart.tv_nsec));
+        //printf("Thread #%i seeded with %li\n",omp_get_thread_num()+1,(unsigned long)(simulationTimeStart.tv_nsec + omp_get_thread_num()));
 		do {
 			/**** LAUNCH 
 			 Initialize photon position and trajectory.
@@ -609,7 +620,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
 			#pragma omp master
 			{
 				// Check whether ctrl+c has been pressed
-                if(utIsInterruptPending()) {
+                if(utIsInterruptPending()) {  // comment out on macOS (whole if-block)
                     ctrlc_caught = true;
                     printf("Ctrl+C detected, stopping.\n");
                 }
