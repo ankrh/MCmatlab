@@ -4,9 +4,9 @@
  * arguments: (nt,[[[Temp]]],[[[T]]],[[[dTperdeltaT]]],[[[dT_abs]]])
  *
  * Log:
- *  Written by Rasmus L. Pedersen & Mathias Christensen in January 2014
- *  Overhauled by Anders K. Hansen in April 2017. Fundamental method remained unchanged.
- *  Adapted to MATLAB mex file generation 2017-06-07 by Anders K. Hansen
+ *  2014-01-30: Written by Rasmus L. Pedersen & Mathias Christensen, DTU Fotonik
+ *  2017-04-10: Overhauled by Anders K. Hansen, DTU Fotonik. Fundamental method remained unchanged.
+ *  2017-06-07: Adapted to MATLAB mex file generation by Anders K. Hansen, DTU Fotonik
  *
  ** COMPILING ON WINDOWS
  * Can be compiled using "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp' .\src\finiteElementHeatPropagator.c ".\src\libut.lib""

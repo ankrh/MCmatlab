@@ -25,8 +25,8 @@ function makeTissue
 %
 
 %% Updates
-%   Anders K. Hansen & Dominik Marti, June 2017
-%   Steven L. Jacques, August 2014
+%   2014-08: Steven L. Jacques
+%   2017-06: Anders K. Hansen & Dominik Marti, DTU Fotonik
 
 %% Define parameters (user-specified)
 wavelength  = 1000;     % [nm] set the wavelength of the Monte Carlo simulation

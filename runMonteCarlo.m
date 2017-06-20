@@ -39,8 +39,8 @@ function runMonteCarlo(name)
 %
 
 %% Updates
-%   Anders K. Hansen & Dominik Marti, June 2017
-%   Mathias Christensen & Rasmus L. Pedersen, January 2014
+%   2014-01: Mathias Christensen & Rasmus L. Pedersen, DTU Fotonik
+%   2017-06: Anders K. Hansen & Dominik Marti, DTU Fotonik
 
 %% Load data from makeTissue.m
 load(['./Data/' name '.mat']);

@@ -8,13 +8,13 @@
  *	Oregon Health & Science University
  *
  * Log:
- *  Written by Ting based on Steve's mcsub.c., 2010.
- *  Use Steve's FindVoxelFace(), Dec. 30, 2010.
- *  Reorganized by Steve. May 8, 2012:
- *  Edited to included a uniformly distributed light source over the entire surface by Mathias Christensen 09/01/2014
- *  Overhauled by Anders K. Hansen and Dominik Marti in April 2017. Fundamental method remained unchanged.
+ *  2010: Written by Ting Li based on Steve's mcsub.c.
+ *  2010-12-30: Use Steve Jacques' FindVoxelFace().
+ *  2012-05-08: Reorganized by Steve Jacques.
+ *  2014-01-09: Edited to included a uniformly distributed light source over the entire surface by Mathias Christensen, DTU Fotonik.
+ *  2017-04-20: Overhauled by Anders K. Hansen and Dominik Marti, DTU Fotonik. Fundamental method remained unchanged.
  *      Uses the Mersenne Twister for random number generation.
- *  Adapted to MATLAB mex file generation 2017-06-07 by Anders K. Hansen
+ *  2017-06-07: Adapted to MATLAB mex file generation by Anders K. Hansen, DTU Fotonik
  *
  ** COMPILING ON WINDOWS
  * Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp' .\src\mcxyz.c ".\src\libut.lib""

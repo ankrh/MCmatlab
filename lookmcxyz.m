@@ -20,9 +20,9 @@ function lookmcxyz(name)
 %
 
 %% Updates
-%   Anders K. Hansen & Dominik Marti, June 2017
-%   Steven L. Jacques, February 2017
-%   Steven L. Jacques, August 2014
+%   2014-08: Steven L. Jacques
+%   2017-02: Steven L. Jacques
+%   2017-06: Anders K. Hansen & Dominik Marti, DTU Fotonik, June 2017
 
 %% Load data from makeTissue.m and MonteCarlo.m
 load(['./Data/' name '.mat']);

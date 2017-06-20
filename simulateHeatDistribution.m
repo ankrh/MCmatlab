@@ -39,8 +39,8 @@ function [temperatureSensor, timeVector] = simulateHeatDistribution(name)
 %
 
 %% Updates
-%   Anders K. Hansen & Dominik Marti, June 2017
-%   Rasmus L. Pedersen & Mathias Christensen, January 2014
+%   2014-01: Rasmus L. Pedersen & Mathias Christensen, DTU Fotonik
+%   2017-06: Anders K. Hansen & Dominik Marti, DTU Fotonik
 
 
 %% Load data from makeTissue.m and MonteCarlo.m
