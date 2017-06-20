@@ -1,10 +1,18 @@
 function tissueList = makeTissueList(nm)
-%   Returns the tissue optical properties at the wavelength nm: and the thermal properties.
+%   Returns the tissue optical properties at the wavelength nm and, if 
+%   defined, the thermal properties. Defining the thermal properties is
+%   only necessary for the heat simulations and can be omitted.
+%   
 %   Note that the data for skull and brainmatter are not correct, they are simply placeholders
 %
-%   tissueList contains [mua; mus; g; VHC; D; TC] for each tissue type;
-%       VHC is volumetric heat capacity [J/(cm^3*K)], D is density [kg/cm^3],
-%       TC is thermal conductivity [W/(cm*K)]
+%   tissueList contains mua, mus and g for each tissue type;
+%       mua is the absorption coefficient [cm^-1] and must be positive (not zero)
+%       mus is the scattering coefficient [cm^-1] and must be positive (not zero)
+%       g is the anisotropy factor and must satisfy -1 <= g <= 1
+%   tissueList may further contain VHC, D and TC for each tissue type;
+%       VHC is volumetric heat capacity [J/(cm^3*K)] and must be positive
+%       D is density [kg/cm^3] and must be positive (this value is only illustrative and not used in the simulations)
+%       TC is thermal conductivity [W/(cm*K)] and must be non-negative
 %
 %   Requires
 %       SpectralLIB.mat

@@ -8,6 +8,7 @@ function [temperatureSensor, timeVector] = simulateHeatDistribution(name)
 %   Define the number of times the temperatures should be extracted from
 %   the simulation and plotted/recorded. Each update takes about 50-500 ms
 %   to render depending on the number of voxels.
+%   Note that the 3D matrices are defined in xyz-coordinates (and not yxz).
 %
 %   Input
 %       name

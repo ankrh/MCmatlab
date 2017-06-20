@@ -9,6 +9,7 @@ function makeTissue
 %   This file produces the .mat file required as an input to
 %   runMonteCarlo.m, and it displays both the tissue cube as well as an
 %   overview over the optical and thermal properties of the tissue types.
+%   Note that the tissue cube is defined in xyz-coordinates (and not yxz).
 %
 %   Displays
 %       Tissue cube

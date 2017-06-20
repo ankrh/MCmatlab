@@ -18,9 +18,10 @@
  * 4. mex should now be able to compile the code using the above command but in order to run, it needs to have the file "libgomp_64-1.dll" copied to the same folder as the mex file.
  *
  ** COMPILING ON MAC
- * As of June 2017, the macOS compiler doesn't support libut. You will 
- * thus need to comment out the lines referring to it. Those are marked
- * with "comment out on macOS".
+ * As of June 2017, the macOS compiler doesn't support libut (for ctrl+c 
+ * breaking) or openmp (for multithreading). To compile, you need to 
+ * comment out the lines referring to those libraries. They are marked with
+ * "comment out on macOS".
  * This file can then be compiled with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast' ./src/finiteElementHeatPropagator.c"
  *
  * To get the MATLAB C compiler to work, try this:
