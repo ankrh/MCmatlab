@@ -30,7 +30,7 @@ function makeTissue
 %   2017-06: Anders K. Hansen & Dominik Marti, DTU Fotonik
 
 %% Define parameters (user-specified)
-wavelength  = 1000;     % [nm] set the wavelength of the Monte Carlo simulation
+wavelength  = 850;     % [nm] set the wavelength of the Monte Carlo simulation
 name = 'dentin';        % name of the simulation
 nx = 100;               % number of bins in the x direction
 ny = 100;               % number of bins in the y direction
