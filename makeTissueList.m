@@ -42,17 +42,17 @@ tissueList(j).name  = 'dentin';
 tissueList(j).mua   = 0.04; %in cm ^ -1
 tissueList(j).mus   = 270; %range between 260-280
 tissueList(j).g     = 0.93;
-tissueList(j).VHC   = 1260*2.2e-3; % Volumetric Heat Capacity [J/(cm^3*K)]
-tissueList(j).D     = 2.200e-3; % Density, [kg/cm^3]
+tissueList(j).VHC   = 1260*2.14e-3; % Volumetric Heat Capacity [J/(cm^3*K)]
+tissueList(j).D     = 2.140e-3; % Density, [kg/cm^3]
 tissueList(j).TC    = 6e-3; % Thermal Conductivity [W/(cm*K)]
 
 j=2;
 tissueList(j).name = 'enamel';
 tissueList(j).mua   = 0.01;
-tissueList(j).mus   = 40;
+tissueList(j).mus   = 30;
 tissueList(j).g     = 0.96;
-tissueList(j).VHC   = 750*2.9e-3;
-tissueList(j).D     = 2.900e-3;
+tissueList(j).VHC   = 750*2.97e-3;
+tissueList(j).D     = 2.970e-3;
 tissueList(j).TC    = 9e-3;
 
 j=3;
