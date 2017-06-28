@@ -1,4 +1,10 @@
-Readme.txt
+# LICENSE
+Attribution 4.0 International (CC BY 4.0)
+
+You are welcome to use this code in whatever way you want. When doing so, please cite this code's doi: 10.13140/RG.2.2.15616.23048
+
+
+# Readme.txt
 A quick description of how to run mcxyz, using MATLAB R2014B or later.
 
 PROGRAMS:
