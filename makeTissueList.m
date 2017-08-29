@@ -39,7 +39,7 @@ MU(:,4) = interp1(nmLIB,muamel,nm);
 
 j=1;
 tissueList(j).name  = 'dentin';
-tissueList(j).mua   = 0.04; %in cm ^ -1
+tissueList(j).mua   = 4; %in cm ^ -1, doi:10.1364/AO.34.001278
 tissueList(j).mus   = 270; %range between 260-280
 tissueList(j).g     = 0.93;
 tissueList(j).VHC   = 1260*2.14e-3; % Volumetric Heat Capacity [J/(cm^3*K)]
@@ -48,7 +48,7 @@ tissueList(j).TC    = 6e-3; % Thermal Conductivity [W/(cm*K)]
 
 j=2;
 tissueList(j).name = 'enamel';
-tissueList(j).mua   = 0.01;
+tissueList(j).mua   = 0.1;
 tissueList(j).mus   = 30;
 tissueList(j).g     = 0.96;
 tissueList(j).VHC   = 750*2.97e-3;
