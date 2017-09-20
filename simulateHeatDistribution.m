@@ -53,12 +53,18 @@ Winc             = 1; % [W] Incident pulse peak power (in case of infinite plane
 onduration       = 0.5; % [s] Pulse on-duration
 offduration      = 0.5; % [s] Pulse off-duration
 Temp             = zeros(size(T)); % [deg C] Initial temperature distribution
+n_pulses         = 1; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
 
 plotTempLimits   = [0 16]; % [deg C], the expected range of temperatures, used only for setting the color scale in the plot
 extremeprecision = false; % false: normal time step resolution (dt = dtmax/2), true: high time step resolution (dt = dtmax/100)
-n_updates        = 20; % Number of times data is extracted for plots during illumination phase and diffusion phase. Must be at least 1.
+n_updates        = 20; % Number of times data is extracted for plots during each illumination phase and diffusion phase. Must be at least 1.
 
 %% Determine remaining parameters
+if n_pulses ~= 1 && (onduration == 0 || offduration == 0)
+    n_pulses = 1; % If either pulse on-duration or off-duration is 0, it doesn't make sense to talk of multiple pulses
+    fprintf('\nWarning: Number of pulses changed to 1 since either on-duration or off-duration is 0.\n\n');
+end
+
 [nx,ny,nz] = size(T);
 nT = length(tissueList); % Number of different tissues in simulation
 
@@ -125,7 +131,7 @@ cursorInfo = getCursorInfo(dataCursorHandle);
 numTemperatureSensors = length(cursorInfo);
 
 if numTemperatureSensors
-    timeVector = nt_vec*dt; % For temperature sensor plotting
+    timeVector = [0 , repmat(nt_vec(2:end),1,n_pulses)+repelem(0:n_pulses-1,length(nt_vec)-1)*nt_vec(end)]*dt; % For temperature sensor plotting
     for temperatureSensorIndex = numTemperatureSensors:-1:1
         dataCursorPosition = cursorInfo(temperatureSensorIndex).Position;
         [~, dCPz] = min(abs(z-dataCursorPosition(3)));
@@ -135,7 +141,7 @@ if numTemperatureSensors
             sub2ind(size(T),dCPx,dCPy,dCPz);
     end
     temperatureSensorPosition = fliplr(temperatureSensorPosition); % Reverse array so the order of the sensors is the same as the order they were defined in.
-    temperatureSensor = NaN(numTemperatureSensors,length(nt_vec));
+    temperatureSensor = NaN(numTemperatureSensors,length(timeVector));
     temperatureSensor(:,1) = Temp(temperatureSensorPosition);
     
     temperatureSensorTissues = {tissueList(T(temperatureSensorPosition)).name};
@@ -165,51 +171,57 @@ caxis(plotTempLimits); % User-defined color scale limits
 %% Simulate heat transfer
 if numTemperatureSensors; figure(temperatureSensorFigure); end
 
-fprintf('[nx,ny,nz]=[%d,%d,%d]\nIllumination on for %d steps and off for %d steps. Step size is %0.2e s.\n',nx,ny,nz,nt_on,nt_off,dt);
+fprintf('[nx,ny,nz]=[%d,%d,%d]. Number of pulses is %d.\nIllumination on for %d steps and off for %d steps in each pulse. Step size is %0.2e s.\n',nx,ny,nz,n_pulses,nt_on,nt_off,dt);
 
 tic
-if nt_on
-    fprintf(['Illuminating... \n' repmat('-',1,n_updates)]);
-else
-    fprintf(['Diffusing heat... \n' repmat('-',1,n_updates)]);
-end
-drawnow;
-for i = 2:length(nt_vec)
-    Temp = finiteElementHeatPropagator(nt_vec(i)-nt_vec(i-1),Temp,T-1,dTperdeltaT,(nt_vec(i) <= nt_on)*dT_abs); % Arguments (nt,[[[Temp]]],[[[T]]],[[[dTperdeltaT]]],[[[dT_abs]]]). Contents of T have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
-    
-    if numTemperatureSensors
-        temperatureSensor(:,i) = Temp(temperatureSensorPosition);
-        refreshdata(temperatureSensorLinePlots,'caller');
+for j=1:n_pulses
+    if nt_on
+        fprintf(['Illuminating pulse #' num2str(j) '... \n' repmat('-',1,n_updates)]);
+    else
+        fprintf(['Diffusing heat... \n' repmat('-',1,n_updates)]);
     end
-    
-    fprintf(1,'\b');
-    updateVolumetric(heatsimFigure,Temp);
-    
-    if nt_vec(i) == nt_on
-        Temp_illum = Temp;
-        fprintf('\b\b Done\n');
-        if nt_off
-            fprintf(['Diffusing heat... \n' repmat('-',1,n_updates)]);
+    drawnow;
+    for i = 2:length(nt_vec)
+        Temp = finiteElementHeatPropagator(nt_vec(i)-nt_vec(i-1),Temp,T-1,dTperdeltaT,(nt_vec(i) <= nt_on)*dT_abs); % Arguments (nt,[[[Temp]]],[[[T]]],[[[dTperdeltaT]]],[[[dT_abs]]]). Contents of T have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
+        
+        if numTemperatureSensors
+            temperatureSensor(:,i+(j-1)*(length(nt_vec)-1)) = Temp(temperatureSensorPosition);
+            refreshdata(temperatureSensorLinePlots,'caller');
         end
-    elseif nt_vec(i) == nt_on + nt_off
-        fprintf('\b\b Done\n');
+        
+        fprintf(1,'\b');
+        updateVolumetric(heatsimFigure,Temp);
+        
+        if nt_vec(i) == nt_on
+            if n_pulses == 1
+                Temp_illum = Temp;
+            end
+            fprintf('\b\b Done\n');
+            if nt_off
+                fprintf(['Diffusing heat... \n' repmat('-',1,n_updates)]);
+            end
+        elseif nt_vec(i) == nt_on + nt_off
+            fprintf('\b\b Done\n');
+        end
     end
 end
 toc;
 
 %% Plot and save results
 figure(heatsimFigure)
-save(['./Data/' name '_heatSimoutput.mat'],'temperatureSensor','timeVector','Winc','onduration','offduration','Temp');
+save(['./Data/' name '_heatSimoutput.mat'],'temperatureSensor','timeVector','Winc','onduration','offduration','Temp','n_pulses');
 if ~nt_on
     title('Temperature after diffusion');
 elseif ~nt_off
     title('Temperature after illumination');
-else
+elseif n_pulses == 1
     title('Temperature after diffusion')
     figure(6);
     plotVolumetric(x,y,z,Temp_illum);
     title('Temperature after illumination');
     save(['./Data/' name '_heatSimoutput.mat'],'Temp_illum','-append');
+else
+    title(['Temperature after ' num2str(n_pulses) ' pulses'])
 end
 fprintf('./Data/%s_heatSimoutput.mat saved\n',name);
 
