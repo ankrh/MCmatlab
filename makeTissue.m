@@ -61,26 +61,6 @@ T(Z > zsurf) = 4; % epidermis
 T(Z > zsurf + epd_thick) = 5; % dermis
 T(Y.^2 + (Z - (zsurf + 2*epd_thick + vesselradius)).^2 < vesselradius^2) = 6; % blood
 
-%% Dentin example:
-%T = ones(nx,ny,nz,'uint8'); % fill background with air
-%T(Y.^2 + (Z-nz*dz/2).^2 < 0.300^2) = 8; % enamel
-%T(Y.^2 + (Z-nz*dz/2).^2 < 0.170^2) = 9; % dentin
-%T(Y.^2 + (Z-nz*dz/2).^2 < 0.050^2) = 6; % blood
-
-%% Solderpatch example:
-% patch_radius        = 0.218;   	% [cm], cylinder radius
-% patch_zi_start      = 1;
-% patch_zi_end        = 5;
-% vessel_radius       = 0.19;   	% [cm], cylinder radius
-% water_radius        = 0.15;   	% [cm], cylinder radius
-% fibre_radius        = 0.04;   	% [cm], cylinder radius
-% 
-% T = ones(nx,ny,nz,'uint8'); % fill background with air
-% T(X.^2 + Y.^2 < patch_radius^2 & Z >= patch_zi_start & Z <= patch_zi_end) = 12; % patch
-% T(X.^2 + Y.^2 < vessel_radius^2) = 7; % vessel
-% T(X.^2 + Y.^2 < water_radius^2) = 2; % water
-% T(X.^2 + Y.^2 < fibre_radius^2) = 11; % fibre
-
 %% Hair example:
 % zsurf = 0.02;  % position of gel/skin surface[cm]
 % epd_thick = 0.01; % thickness of the epidermis [cm]
@@ -97,6 +77,20 @@ T(Y.^2 + (Z - (zsurf + 2*epd_thick + vesselradius)).^2 < vesselradius^2) = 6; % 
 % T(X.^2 + Y.^2 < hair_radius^2 & Z < zsurf+hair_depth) = 10; % hair
 % T((X/hair_bulb_semiminor).^2 + (Y/hair_bulb_semiminor).^2 + ((Z-(zsurf+hair_depth))/hair_bulb_semimajor).^2 < 1) = 10; % hair
 % T((X/papilla_semiminor).^2 + (Y/papilla_semiminor).^2 + ((Z-(zsurf+hair_depth+hair_bulb_semimajor-papilla_semimajor))/papilla_semimajor).^2 < 1) = 5; % dermis (papilla)
+
+%% Solderpatch example:
+% patch_radius        = 0.218;   	% [cm], cylinder radius
+% patch_zi_start      = 1;
+% patch_zi_end        = 5;
+% vessel_radius       = 0.19;   	% [cm], cylinder radius
+% water_radius        = 0.15;   	% [cm], cylinder radius
+% fibre_radius        = 0.04;   	% [cm], cylinder radius
+% 
+% T = ones(nx,ny,nz,'uint8'); % fill background with air
+% T(X.^2 + Y.^2 < patch_radius^2 & Z >= patch_zi_start & Z <= patch_zi_end) = 12; % patch
+% T(X.^2 + Y.^2 < vessel_radius^2) = 7; % vessel
+% T(X.^2 + Y.^2 < water_radius^2) = 2; % water
+% T(X.^2 + Y.^2 < fibre_radius^2) = 11; % fibre
 
 %% Discard the unused tissue types
 tissueList = makeTissueList(wavelength);
