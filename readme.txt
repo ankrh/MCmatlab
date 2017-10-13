@@ -1,10 +1,16 @@
-# LICENSE
-Attribution 4.0 International (CC BY 4.0)
+# README #
 
+### What is this repository for? ###
+
+A Monte Carlo simulation in 3D voxel space, extended with a finite element simulation for temperature increase and heat diffusion in the voxel space. Primarily targeted for tissue optics, but can be used in any environment.
+
+### LICENSE ###
+
+Attribution 4.0 International (CC BY 4.0)
 You are welcome to use this code in whatever way you want. When doing so, please cite this code's doi: 10.13140/RG.2.2.32610.43205
 
+### How do I get set up? ###
 
-# Readme.txt
 A quick description of how to run mcxyz, using MATLAB R2014B or later.
 
 PROGRAMS:
@@ -37,3 +43,12 @@ The folders include all the executables necessary, so you don't need to compile 
 - Type "[temperatureSensor, timeVector] = simulateHeatDistribution('[name]');" in the command prompt. A figure will appear, giving you the possibility to put one or more (shift-click) temperature sensors into the tissue, where the temperature throughout the simulation will be recorded and stored in the array temperatureSensor. After placing all required sensors, press any key. The simulation will then start running, updating the temperature distribution visualisation as often as you requested.
 
 6. Look at all the results and start playing around.
+
+### Contribution guidelines ###
+
+This software is in productive use. When coding, make sure you don't brake the existing code (or, even better, fix the wreck), comment in the files what you changed, and commit.
+
+### Who do I talk to? ###
+
+This repository is part of the DTU Fotonik "biophotonics" team.
+The main responsible is Anders Kragh Hansen: ankrh@fotonik.dtu.dk
