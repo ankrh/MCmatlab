@@ -48,34 +48,51 @@
 #define DSFMT_MEXP 19937 // Mersenne exponent for dSFMT
 #include "dSFMT-src-2.2.3/dSFMT.c" //  double precision SIMD oriented Fast Mersenne Twister(dSFMT)
 
-#define Ntiss		19          /* Number of tissue types. */
-#define STRLEN 		32          /* String length. */
 #define ls          1.0E-7      /* Moving photon a little bit off the voxel face */
 #define	PI          3.1415926
 #define THRESHOLD   0.01		/* used in roulette */
 #define CHANCE      0.1  		/* used in roulette */
-#define SQR(x)		(x*x) 
 #define SIGN(x)     ((x)>=0 ? 1:-1)
 #define RandomNum   dsfmt_genrand_open_close(&dsfmt) /* Calls for a random number in (0,1] */
 #define ONE_MINUS_COSZERO 1.0E-12   /* If 1-cos(theta) <= ONE_MINUS_COSZERO, fabs(theta) <= 1e-6 rad. */
 /* If 1+cos(theta) <= ONE_MINUS_COSZERO, fabs(PI-theta) <= 1e-6 rad. */
 
-/* DECLARE FUNCTIONS */
-bool SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2, double dx,double dy,double dz);
-/* Asks,"In the same voxel?" */
-double min3(double a, double b, double c);
-double FindVoxelFace(double x1,double y1,double z1, double x2, double y2, double z2,double dx,double dy,double dz, double ux, double uy, double uz);
-/* How much step size will the photon take to get the first voxel crossing in one single long step? */
-void axisrotate(double* x,double* y,double* z, double ux, double uy, double uz,double theta);
-/* Rotates a point with coordinates (x,y,z) an angle theta around axis with direction vector (ux,uy,uz) */
+// Determine if the two position are located in the same voxel.
+bool SameVoxel(double x1, double y1, double z1, double x2, double y2, double z2, double dx, double dy, double dz) {
+    return floor(x1/dx) == floor(x2/dx) && floor(y1/dy) == floor(y2/dy) && floor(z1/dz) == floor(z2/dz);
+}
 
-void mexFunction( int nlhs, mxArray *plhs[],
-        int nrhs, mxArray const *prhs[] ) {
+// Function for rotating a point at coordinates (x,y,z) an angle theta around an axis with direction unit vector (ux,uy,uz).
+void axisrotate(double *x, double *y, double *z, double ux, double uy, double uz, double theta) {	
+    double xin = *x;
+	double yin = *y;
+	double zin = *z;
+	double st = sin(theta);
+	double ct = cos(theta);
+	
+	*x = (ct + ux*ux*(1-ct))   *xin	 +  (ux*uy*(1-ct) - uz*st)*yin  +  (ux*uz*(1-ct) + uy*st)*zin;
+	*y = (uy*ux*(1-ct) + uz*st)*xin	 +  (ct + uy*uy*(1-ct))   *yin  +  (uy*uz*(1-ct) - ux*st)*zin;
+	*z = (uz*ux*(1-ct) - uy*st)*xin	 +  (uz*uy*(1-ct) + ux*st)*yin  +  (ct + uz*uz*(1-ct))   *zin;
+}
+
+// Distance to next voxel face along current trajectory
+double FindVoxelFace(double x1, double y1, double z1, double x2, double y2, double z2, double dx, double dy, double dz, double ux, double uy, double uz) {	
+    int ix = floor(x1/dx) + (ux>=0);
+    int iy = floor(y1/dy) + (uy>=0);
+    int iz = floor(z1/dz) + (uz>=0);
+
+    double xs = fabs((ix*dx - x1)/ux);
+    double ys = fabs((iy*dy - y1)/uy);
+    double zs = fabs((iz*dz - z1)/uz);
     
+    return fmin(xs,fmin(ys,zs));
+}
+
 #ifdef _WIN32
 extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing the mex function
 #endif
 
+void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     // Extracting quantities from MCinput struct
     double	simulationTimeRequested     =      *mxGetPr(mxGetField(prhs[0],0,"simulationTime"));
     int		beamtypeFlag                = (int)*mxGetPr(mxGetField(prhs[0],0,"beamtypeFlag"));
@@ -216,8 +233,7 @@ extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing th
 	currentCalendarTime = time(NULL);
 	printf("%s", ctime(&currentCalendarTime));	
 	
-	/**** INITIALIZATIONS 
-	 *****/
+	// INITIALIZATIONS
 	
 	if (uz0==1) {
 		vx0 = 1;
@@ -266,7 +282,7 @@ extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing th
 		double	r, theta, phi;
 		long 	j;
 		double	xTentative, yTentative, zTentative; /* temporary variables, used during photon step. */
-		int 	ix, iy, iz;     /* Added. Used to track photons */
+		int 	ix, iy, iz;     /* Used to track photons */
 		bool    photonInsideVolume;  /* flag, true or false */
 		//int		photonStepsCounter;
 		int 	type;
@@ -446,13 +462,10 @@ extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing th
 				z		= 0;
 			}
 
-			/****************************/
-			
 			/* HOP_DROP_SPIN_CHECK
 			 Propagate one photon until it dies as determined by ROULETTE.
 			 *******/
 			do {
-				
 				/**** HOP
 				 Take step to new position
 				 s = dimensionless stepsize
@@ -462,7 +475,6 @@ extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing th
 				//photonStepsCounter += 1;
 				
 				do{  // while stepLeft>0
-
 					if (!sameVoxel) {
 						/* Get tissue voxel properties of current position.
 						 * If photon beyond outer edge of defined voxels, 
@@ -581,8 +593,7 @@ extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing th
 				 and 1-CHANCE probability of terminating.
 				 *****/
 				if (photonWeight < THRESHOLD) {
-					if (RandomNum <= CHANCE)
-						photonWeight /= CHANCE;
+					if (RandomNum <= CHANCE) photonWeight /= CHANCE;
 					else photonAlive = false;
 				}
 				
@@ -594,20 +605,16 @@ extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing th
 					 Convert theta and psi into cosines ux, uy, uz. 
 					 *****/
 					/* Sample for costheta */
-					if (g == 0.0)
-						costheta = 2.0*RandomNum - 1.0;
-					else {
-						costheta = (1.0 + g*g - SQR((1.0 - g*g)/(1.0 - g + 2*g*RandomNum)))/(2.0*g);
-					}
+					if (g == 0.0) costheta = 2.0*RandomNum - 1.0;
+					else          costheta = (1.0 + g*g - pow((1.0 - g*g)/(1.0 - g + 2*g*RandomNum),2))/(2.0*g);
+                    
 					sintheta = sqrt(1.0 - costheta*costheta); /* sqrt() is faster than sin(). */
 					
 					/* Sample psi. */
 					psi = 2.0*PI*RandomNum;
 					cospsi = cos(psi);
-					if (psi < PI)
-						sinpsi = sqrt(1.0 - cospsi*cospsi);     /* sqrt() is faster than sin(). */
-					else
-						sinpsi = -sqrt(1.0 - cospsi*cospsi);
+					if (psi < PI) sinpsi = sqrt(1.0 - cospsi*cospsi);     /* sqrt() is faster than sin(). */
+					else          sinpsi = -sqrt(1.0 - cospsi*cospsi);
 					
 					/* New trajectory. */
 					if (1 - fabs(uz) <= ONE_MINUS_COSZERO) {      /* close to perpendicular. */
@@ -685,92 +692,3 @@ extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing th
 
     return;
 } /* end of main */
-
-
-
-/* SUBROUTINES */
-
-/***********************************************************
- *  Determine if the two position are located in the same voxel
- *	Returns 1 if same voxel, 0 if not same voxel.
- ****/				
-bool SameVoxel(double x1,double y1,double z1, double x2, double y2, double z2, double dx,double dy,double dz)
-{
-    double xmin=fmin((floor)(x1/dx),(floor)(x2/dx))*dx;
-    double ymin=fmin((floor)(y1/dy),(floor)(y2/dy))*dy;
-    double zmin=fmin((floor)(z1/dz),(floor)(z2/dz))*dz;
-    double xmax = xmin+dx;
-    double ymax = ymin+dy;
-    double zmax = zmin+dz;
-    bool sameVoxel = false;
-    
-    sameVoxel=(x1<=xmax && x2<=xmax && y1<=ymax && y2<=ymax && z1<zmax && z2<=zmax);
-    return (sameVoxel);
-}
-
-/***********************************************************
- * min3
- ****/
-double min3(double a, double b, double c) {
-    double m;
-    if (a <=  fmin(b, c))
-        m = a;
-    else if (b <= fmin(a, c))
-        m = b;
-    else
-        m = c;
-    return m;
-}
-
-/********************
- * Steve's version of FindVoxelFace for no scattering.
- * s = ls + FindVoxelFace(x,y,z, xTentative, yTentative, zTentative, dx, dy, dz, ux, uy, uz);
- ****/
-double FindVoxelFace(double x1,double y1,double z1, double x2, double y2, double z2,double dx,double dy,double dz, double ux, double uy, double uz)
-{	
-    int ix1 = floor(x1/dx);
-    int iy1 = floor(y1/dy);
-    int iz1 = floor(z1/dz);
-    
-    int ix2,iy2,iz2;
-    if (ux>=0)
-        ix2=ix1+1;
-    else
-        ix2 = ix1;
-    
-    if (uy>=0)
-        iy2=iy1+1;
-    else
-        iy2 = iy1;
-    
-    if (uz>=0)
-        iz2=iz1+1;
-    else
-        iz2 = iz1;
-    
-    double xs = fabs( (ix2*dx - x1)/ux);
-    double ys = fabs( (iy2*dy - y1)/uy);
-    double zs = fabs( (iz2*dz - z1)/uz);
-    
-    double s = min3(xs,ys,zs);
-    
-    return (s);
-}
-
-/********************
- * Function for rotating a point at coordinates (x,y,z) an angle theta around an axis with direction unit vector (ux,uy,uz).
- ****/
-void axisrotate(double* x,double* y,double* z, double ux, double uy, double uz,double theta)
-{	
-    //printf("Before rotation (x,y,z) = (%0.8f,%0.8f,%0.8f)\n",*x,*y,*z);
-    double xin = *x;
-	double yin = *y;
-	double zin = *z;
-	double st = sin(theta);
-	double ct = cos(theta);
-	
-	*x = (ct + ux*ux*(1-ct))*xin		+		(ux*uy*(1-ct) - uz*st)*yin		+		(ux*uz*(1-ct) + uy*st)*zin;
-	*y = (uy*ux*(1-ct) + uz*st)*xin		+		(ct + uy*uy*(1-ct))*yin			+		(uy*uz*(1-ct) - ux*st)*zin;
-	*z = (uz*ux*(1-ct) - uy*st)*xin		+		(uz*uy*(1-ct) + ux*st)*yin		+		(ct + uz*uz*(1-ct))*zin;
-    //printf("After rotation (x,y,z) = (%0.8f,%0.8f,%0.8f)\n",*x,*y,*z);
-}
