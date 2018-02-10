@@ -64,7 +64,6 @@ MCinput.boundaryFlag = 1;
 % 5 = top-hat focus, Gaussian far field beam
 % 6 = Gaussian focus, top-hat far field beam
 MCinput.beamtypeFlag = 1;
-numberofspots = 250;                % [#] In case of scanning: Number of spots along one axis
 
 % Position of focus, only used for beamtypeflag ~=3 (if beamtypeflag == 2 this is the source position)
 MCinput.xFocus = 0;                % [cm] x position of focus
@@ -77,11 +76,9 @@ MCinput.uy0 = 0;                   % trajectory unit vector y composant
 MCinput.uz0 = sqrt(1-MCinput.ux0^2-MCinput.uy0^2); % % trajectory unit vector z composant. Make sure that ux0^2 + uy0^2 + uz0^2 = 1.
 
 % Focus properties and divergence angles, only used if beamtypeflag == 0, 1, 5 or 6
-MCinput.waistspot = 5e-5;           % [cm] Single Spot illumination size (used to calculate divergence)
-MCinput.waist = MCinput.waistspot*numberofspots;                    % [cm] focus waist 1/e^2 radius
-MCinput.divergence = wavelength*1e-9/(pi*MCinput.waistspot*1e-2);   % [rad] single spot Diffraction limited divergence angle for Gaussian beam
-%MCinput.divergence = 70/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
-MCinput.divergence = atan(numberofspots*tan(MCinput.divergence));   % [rad] unrealistic divergence angle for scanned Gaussian beam
+MCinput.waist = 0.15;             % [cm] focus waist 1/e^2 radius
+MCinput.divergence = wavelength*1e-9/(pi*MCinput.waist*1e-2); % [rad] Diffraction limited divergence angle for Gaussian beam
+% MCinput.divergence = 5/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
 
 %% Determine remaining parameters
 % Voxel sizes
