@@ -27,10 +27,8 @@
  *
  ** COMPILING ON MAC
  * As of June 2017, the macOS compiler doesn't support libut (for ctrl+c 
- * breaking) or openmp (for multithreading). To compile, you need to 
- * comment out the lines referring to those libraries. They are marked with
- * "comment out on macOS".
- * This file can then be compiled with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast' ./src/mcxyz.c"
+ * breaking) or openmp (for multithreading).
+ * Compile in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast' ./src/mcxyz.c"
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Install XCode from the App Store
@@ -44,7 +42,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
-#include <omp.h> // comment out on macOS
+#ifdef _WIN32 // This is defined on both win32 and win64 systems, we use this preprocessor condition to avoid loading openmp or libut on, e.g., Mac
+#include <omp.h>
+#endif
 #define DSFMT_MEXP 19937 // Mersenne exponent for dSFMT
 #include "dSFMT-src-2.2.3/dSFMT.c" //  double precision SIMD oriented Fast Mersenne Twister(dSFMT)
 
@@ -68,11 +68,14 @@ double FindVoxelFace(double x1,double y1,double z1, double x2, double y2, double
 /* How much step size will the photon take to get the first voxel crossing in one single long step? */
 void axisrotate(double* x,double* y,double* z, double ux, double uy, double uz,double theta);
 /* Rotates a point with coordinates (x,y,z) an angle theta around axis with direction vector (ux,uy,uz) */
-extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing the mex function  // comment out on macOS
 
 void mexFunction( int nlhs, mxArray *plhs[],
         int nrhs, mxArray const *prhs[] ) {
     
+#ifdef _WIN32
+extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing the mex function
+#endif
+
     // Extracting quantities from MCinput struct
     double	simulationTimeRequested     =      *mxGetPr(mxGetField(prhs[0],0,"simulationTime"));
     int		beamtypeFlag                = (int)*mxGetPr(mxGetField(prhs[0],0,"beamtypeFlag"));
@@ -237,7 +240,9 @@ void mexFunction( int nlhs, mxArray *plhs[],
 	
     nPhotons = 0;
 	
-	#pragma omp parallel num_threads(omp_get_num_procs())
+    #ifdef _WIN32
+    #pragma omp parallel num_threads(omp_get_num_procs())
+    #endif
 	{
 		double	x, y, z;        /* photon position */
 		double	ux, uy, uz;     /* photon trajectory as unit vector composants */
@@ -267,9 +272,12 @@ void mexFunction( int nlhs, mxArray *plhs[],
 		int 	type;
 		dsfmt_t dsfmt;			/* Thread-specific "state" of dSFMT pseudo-random number generator */
 
-		dsfmt_init_gen_rand(&dsfmt,(unsigned long)(simulationTimeStart.tv_nsec + omp_get_thread_num())); // Seed random number generator   // comment out on macOS and comment in the following line 
-		//dsfmt_init_gen_rand(&dsfmt,(unsigned long)(simulationTimeStart.tv_nsec));
+        #ifdef _WIN32
+		dsfmt_init_gen_rand(&dsfmt,(unsigned long)(simulationTimeStart.tv_nsec + omp_get_thread_num())); // Seed random number generator
         //printf("Thread #%i seeded with %li\n",omp_get_thread_num()+1,(unsigned long)(simulationTimeStart.tv_nsec + omp_get_thread_num()));
+        #else
+		dsfmt_init_gen_rand(&dsfmt,(unsigned long)(simulationTimeStart.tv_nsec)); // Seed random number generator
+        #endif
 		do {
 			/**** LAUNCH 
 			 Initialize photon position and trajectory.
@@ -280,7 +288,9 @@ void mexFunction( int nlhs, mxArray *plhs[],
 			sameVoxel = false;					/* Photon is initialized as if it has just entered the voxel it's created in, to ensure proper initialization of voxel index and ray properties */
 			//photonStepsCounter = 0;
 			
+            #ifdef _WIN32
 			#pragma omp atomic
+            #endif
 				nPhotons += 1;				/* increment photon count */
 			
 			/****************************/
@@ -524,7 +534,9 @@ void mexFunction( int nlhs, mxArray *plhs[],
 						// If photon within volume of heterogeneity, deposit energy in F[]. 
 						// Normalize F[] later, when save output. 
 						if (photonInsideVolume) {
+                            #ifdef _WIN32
 							#pragma omp atomic
+                            #endif
 								F[j] += absorb;	// only save data if the photon is inside simulation cube
 						}
 						
@@ -544,7 +556,9 @@ void mexFunction( int nlhs, mxArray *plhs[],
 						// If photon within volume of heterogeneity, deposit energy in F[]. 
 						// Normalize F[] later, when save output. 
 						if (photonInsideVolume) {
+                            #ifdef _WIN32
 							#pragma omp atomic
+                            #endif
 								F[j] += absorb;	// only save data if the photon is inside simulation cube
 						}
 						
@@ -618,15 +632,19 @@ void mexFunction( int nlhs, mxArray *plhs[],
 			/* if ALIVE, continue propagating */
 			/* If photon DEAD, then launch new photon. */	
 			
+            #ifdef _WIN32
 			#pragma omp master
+            #endif
 			{
 				// Check whether ctrl+c has been pressed
-                if(utIsInterruptPending()) {  // comment out on macOS (whole if-block)
+                #ifdef _WIN32
+                if(utIsInterruptPending()) {
                     ctrlc_caught = true;
                     printf("Ctrl+C detected, stopping.\n");
                 }
+                #endif
                 clock_gettime(CLOCK_MONOTONIC, &simulationTimeCurrent);
-
+ 
 				// Print out message about progress.
                 newPctProgress = 100*(simulationTimeCurrent.tv_sec - simulationTimeStart.tv_sec + (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1000000000.0) / (simulationTimeRequested*60.0);
 				if (newPctProgress != pctProgress & !ctrlc_caught) {
