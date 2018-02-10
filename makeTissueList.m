@@ -239,3 +239,17 @@ tissueList(j).VHC = 3391*1.109e-3;
 tissueList(j).D  = 1.109e-3;
 tissueList(j).TC = 0.37e-2;
 
+%% Throw an error if a variable doesn't conform to its required interval
+for j=1:length(tissueList)
+    if(tissueList(j).mua <= 0)
+        error('tissueList(%d).mua <= 0',j);
+    elseif(tissueList(j).mus <= 0)
+        error('tissueList(%d).mus <= 0',j);
+    elseif(abs(tissueList(j).g) > 1)
+        error('abs(tissueList(%d).g) > 1',j);
+    elseif(tissueList(j).VHC <= 0)
+        error('tissueList(%d).VHC <= 0',j);
+    elseif(tissueList(j).TC < 0)
+        error('tissueList(%d).TC < 0',j);
+    end
+end
