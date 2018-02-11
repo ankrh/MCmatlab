@@ -17,7 +17,7 @@
  *  2017-06-07: Adapted to MATLAB mex file generation by Anders K. Hansen, DTU Fotonik
  *
  ** COMPILING ON WINDOWS
- * Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp' .\src\mcxyz.c ".\src\libut.lib""
+ * Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' .\src\mcxyz.c ".\src\libut.lib""
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Go to MATLAB's addon manager and tell it to install the "Support for MinGW-w64 compiler"
@@ -37,14 +37,11 @@
 
 #include "mex.h"
 #include <math.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdbool.h>
 #include <time.h>
 #ifdef _WIN32 // This is defined on both win32 and win64 systems. We use this preprocessor condition to avoid loading openmp or libut on, e.g., Mac
 #include <omp.h>
 #endif
+
 #define DSFMT_MEXP 19937 // Mersenne exponent for dSFMT
 #include "dSFMT-src-2.2.3/dSFMT.c" // Double precision SIMD oriented Fast Mersenne Twister(dSFMT)
 
@@ -89,20 +86,20 @@ extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing th
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     // Extracting quantities from MCinput struct
-    double	simulationTimeRequested     =      *mxGetPr(mxGetField(prhs[0],0,"simulationTime"));
-    int		beamtypeFlag                = (int)*mxGetPr(mxGetField(prhs[0],0,"beamtypeFlag"));
-    int		boundaryFlag                = (int)*mxGetPr(mxGetField(prhs[0],0,"boundaryFlag"));
-    double	xFocus                      =      *mxGetPr(mxGetField(prhs[0],0,"xFocus"));
-    double	yFocus                      =      *mxGetPr(mxGetField(prhs[0],0,"yFocus"));
-    double	zFocus                      =      *mxGetPr(mxGetField(prhs[0],0,"zFocus"));
-    double	ux0                         =      *mxGetPr(mxGetField(prhs[0],0,"ux0"));
-    double	uy0                         =      *mxGetPr(mxGetField(prhs[0],0,"uy0"));
-    double	uz0                         =      *mxGetPr(mxGetField(prhs[0],0,"uz0"));
-    double	waist                       =      *mxGetPr(mxGetField(prhs[0],0,"waist"));
-    double	divergence                  =      *mxGetPr(mxGetField(prhs[0],0,"divergence"));
-    double	dx                          =      *mxGetPr(mxGetField(prhs[0],0,"dx"));
-    double	dy                          =      *mxGetPr(mxGetField(prhs[0],0,"dy"));
-    double	dz                          =      *mxGetPr(mxGetField(prhs[0],0,"dz"));
+    double  simulationTimeRequested     = *mxGetPr(mxGetField(prhs[0],0,"simulationTime"));
+    int     beamtypeFlag                = *mxGetPr(mxGetField(prhs[0],0,"beamtypeFlag"));
+    int     boundaryFlag                = *mxGetPr(mxGetField(prhs[0],0,"boundaryFlag"));
+    double  xFocus                      = *mxGetPr(mxGetField(prhs[0],0,"xFocus"));
+    double  yFocus                      = *mxGetPr(mxGetField(prhs[0],0,"yFocus"));
+    double  zFocus                      = *mxGetPr(mxGetField(prhs[0],0,"zFocus"));
+    double  ux0                         = *mxGetPr(mxGetField(prhs[0],0,"ux0"));
+    double  uy0                         = *mxGetPr(mxGetField(prhs[0],0,"uy0"));
+    double  uz0                         = *mxGetPr(mxGetField(prhs[0],0,"uz0"));
+    double  waist                       = *mxGetPr(mxGetField(prhs[0],0,"waist"));
+    double  divergence                  = *mxGetPr(mxGetField(prhs[0],0,"divergence"));
+    double  dx                          = *mxGetPr(mxGetField(prhs[0],0,"dx"));
+    double  dy                          = *mxGetPr(mxGetField(prhs[0],0,"dy"));
+    double  dz                          = *mxGetPr(mxGetField(prhs[0],0,"dz"));
     
     mxArray *tissueList = mxGetField(prhs[0],0,"tissueList");
     mxArray *T          = mxGetField(prhs[0],0,"T");
@@ -112,9 +109,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     int     ny = dimPtr[1];
     int     nz = dimPtr[2];
     int     nT = mxGetN(tissueList);
-    char    *v = (char *)mxGetData(T);
+    unsigned char *v = mxGetData(T);
     
-    long	i;
+    unsigned long i;
     double 	muav[nT];            // muav[0:nT-1], absorption coefficient of ith tissue type
 	double 	musv[nT];            // scattering coeff. 
 	double 	gv[nT];              // anisotropy of scattering
@@ -256,6 +253,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     #endif
 	{
 		double	x, y, z;        /* photon position */
+        x = y = z = 0;
 		double	ux, uy, uz;     /* photon trajectory as unit vector composants */
 		double  uxx, uyy, uzz;	/* temporary values used during SPIN */
 		double	s;              /* step sizes. s = -log(RND)/mus [cm] */
@@ -306,156 +304,158 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 			
 			/****************************/
 			/* Initial position and trajectory */
-			if (beamtypeFlag==0) { // top-hat focus, top-hat far field beam
-				r		= waist*sqrt(RandomNum); // for target calculation
-				phi		= RandomNum*2.0*PI;
-				wx0		= vx0;
-				wy0		= vy0;
-				wz0		= vz0;
-				axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
-				
-				xTarget	= xFocus + r*wx0;
-				yTarget	= yFocus + r*wy0;
-				zTarget = zFocus + r*wz0;
-				
-				theta	= divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-				phi		= RandomNum*2.0*PI;
-				wx0		= vx0;
-				wy0		= vy0;
-				wz0		= vz0;
-				axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-				
-				ux		= ux0;
-				uy		= uy0;
-				uz		= uz0;
-				axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
-				
-				x		= xTarget - zTarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-				y		= yTarget - zTarget/uz*uy;
-				z		= 0;
-			}
-			else if (beamtypeFlag==1) { // Gaussian focus, Gaussian far field beam
-				r		= waist*sqrt(-0.5*log(RandomNum)); // for target calculation
-				phi		= RandomNum*2.0*PI;
-				wx0		= vx0;
-				wy0		= vy0;
-				wz0		= vz0;
-				axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
-				
-				xTarget	= xFocus + r*wx0;
-				yTarget	= yFocus + r*wy0;
-				zTarget = zFocus + r*wz0;
-				
-				theta	= divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-				phi		= RandomNum*2.0*PI;
-				wx0		= vx0;
-				wy0		= vy0;
-				wz0		= vz0;
-				axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-				
-				ux		= ux0;
-				uy		= uy0;
-				uz		= uz0;
-				axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
-				
-				x		= xTarget - zTarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-				y		= yTarget - zTarget/uz*uy;
-				z		= 0;
-			}
-			else if (beamtypeFlag==2) { // isotropically emitting point source
-				costheta = 1.0 - 2.0*RandomNum;
-				sintheta = sqrt(1.0 - costheta*costheta);
-				psi = 2.0*PI*RandomNum;
-				cospsi = cos(psi);
-				if (psi < PI)
-					sinpsi = sqrt(1.0 - cospsi*cospsi); 
-				else
-					sinpsi = -sqrt(1.0 - cospsi*cospsi);
-				x = xFocus;
-				y = yFocus;
-				z = zFocus;
-				ux = sintheta*cospsi;
-				uy = sintheta*sinpsi;
-				uz = costheta;
-			}
-			else if (beamtypeFlag==3) { // infinite plane wave
-				if (boundaryFlag==1) {
-					x = nx*dx*(RandomNum-0.5); // Generates a random x coordinate within the box
-					y = ny*dy*(RandomNum-0.5); // Generates a random y coordinate within the box
-				}
-				else {
-					x = extendedBoxScaleFactor*nx*dx*(RandomNum-0.5); // Generates a random x coordinate within an interval extendedBoxScaleFactor times the box' size
-					y = extendedBoxScaleFactor*ny*dy*(RandomNum-0.5); // Generates a random y coordinate within an interval extendedBoxScaleFactor times the box' size
-				}
-				z = 0;
-				ux = ux0;
-				uy = uy0;
-				uz = uz0;
-			}
-			else if (beamtypeFlag==4) { // pencil beam
-				x	= xFocus - zFocus/uz0*ux0; 
-				y	= yFocus - zFocus/uz0*uy0;
-				z	= 0;
-				ux	= ux0;
-				uy	= uy0;
-				uz	= uz0;
-			}
-			else if (beamtypeFlag==5) { // top-hat focus, Gaussian far field beam
-				r		= waist*sqrt(RandomNum); // for target calculation
-				phi		= RandomNum*2.0*PI;
-				wx0		= vx0;
-				wy0		= vy0;
-				wz0		= vz0;
-				axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
-				
-				xTarget	= xFocus + r*wx0;
-				yTarget	= yFocus + r*wy0;
-				zTarget = zFocus + r*wz0;
-				
-				theta	= divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-				phi		= RandomNum*2.0*PI;
-				wx0		= vx0;
-				wy0		= vy0;
-				wz0		= vz0;
-				axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-				
-				ux		= ux0;
-				uy		= uy0;
-				uz		= uz0;
-				axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
-				
-				x		= xTarget - zTarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-				y		= yTarget - zTarget/uz*uy;
-				z		= 0;
-			}
-			else if (beamtypeFlag==6) { // Gaussian focus, top-hat far field beam
-				r		= waist*sqrt(-0.5*log(RandomNum)); // for target calculation
-				phi		= RandomNum*2.0*PI;
-				wx0		= vx0;
-				wy0		= vy0;
-				wz0		= vz0;
-				axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
-				
-				xTarget	= xFocus + r*wx0;
-				yTarget	= yFocus + r*wy0;
-				zTarget = zFocus + r*wz0;
-				
-				theta	= divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-				phi		= RandomNum*2.0*PI;
-				wx0		= vx0;
-				wy0		= vy0;
-				wz0		= vz0;
-				axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-				
-				ux		= ux0;
-				uy		= uy0;
-				uz		= uz0;
-				axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
-				
-				x		= xTarget - zTarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-				y		= yTarget - zTarget/uz*uy;
-				z		= 0;
-			}
+			switch (beamtypeFlag) {
+                case 0: // top-hat focus, top-hat far field beam
+                    r		= waist*sqrt(RandomNum); // for target calculation
+                    phi		= RandomNum*2.0*PI;
+                    wx0		= vx0;
+                    wy0		= vy0;
+                    wz0		= vz0;
+                    axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
+
+                    xTarget	= xFocus + r*wx0;
+                    yTarget	= yFocus + r*wy0;
+                    zTarget = zFocus + r*wz0;
+
+                    theta	= divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+                    phi		= RandomNum*2.0*PI;
+                    wx0		= vx0;
+                    wy0		= vy0;
+                    wz0		= vz0;
+                    axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+
+                    ux		= ux0;
+                    uy		= uy0;
+                    uz		= uz0;
+                    axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
+
+                    x		= xTarget - zTarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+                    y		= yTarget - zTarget/uz*uy;
+                    z		= 0;
+                break;
+                case 1: // Gaussian focus, Gaussian far field beam
+                    r		= waist*sqrt(-0.5*log(RandomNum)); // for target calculation
+                    phi		= RandomNum*2.0*PI;
+                    wx0		= vx0;
+                    wy0		= vy0;
+                    wz0		= vz0;
+                    axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
+
+                    xTarget	= xFocus + r*wx0;
+                    yTarget	= yFocus + r*wy0;
+                    zTarget = zFocus + r*wz0;
+
+                    theta	= divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+                    phi		= RandomNum*2.0*PI;
+                    wx0		= vx0;
+                    wy0		= vy0;
+                    wz0		= vz0;
+                    axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+
+                    ux		= ux0;
+                    uy		= uy0;
+                    uz		= uz0;
+                    axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
+
+                    x		= xTarget - zTarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+                    y		= yTarget - zTarget/uz*uy;
+                    z		= 0;
+                break;
+                case 2: // isotropically emitting point source
+                    costheta = 1.0 - 2.0*RandomNum;
+                    sintheta = sqrt(1.0 - costheta*costheta);
+                    psi = 2.0*PI*RandomNum;
+                    cospsi = cos(psi);
+                    if (psi < PI)
+                        sinpsi = sqrt(1.0 - cospsi*cospsi); 
+                    else
+                        sinpsi = -sqrt(1.0 - cospsi*cospsi);
+                    x = xFocus;
+                    y = yFocus;
+                    z = zFocus;
+                    ux = sintheta*cospsi;
+                    uy = sintheta*sinpsi;
+                    uz = costheta;
+                break;
+                case 3: // infinite plane wave
+                    if (boundaryFlag==1) {
+                        x = nx*dx*(RandomNum-0.5); // Generates a random x coordinate within the box
+                        y = ny*dy*(RandomNum-0.5); // Generates a random y coordinate within the box
+                    }
+                    else {
+                        x = extendedBoxScaleFactor*nx*dx*(RandomNum-0.5); // Generates a random x coordinate within an interval extendedBoxScaleFactor times the box' size
+                        y = extendedBoxScaleFactor*ny*dy*(RandomNum-0.5); // Generates a random y coordinate within an interval extendedBoxScaleFactor times the box' size
+                    }
+                    z = 0;
+                    ux = ux0;
+                    uy = uy0;
+                    uz = uz0;
+                break;
+                case 4: // pencil beam
+                    x	= xFocus - zFocus/uz0*ux0; 
+                    y	= yFocus - zFocus/uz0*uy0;
+                    z	= 0;
+                    ux	= ux0;
+                    uy	= uy0;
+                    uz	= uz0;
+                break;
+                case 5: // top-hat focus, Gaussian far field beam
+                    r		= waist*sqrt(RandomNum); // for target calculation
+                    phi		= RandomNum*2.0*PI;
+                    wx0		= vx0;
+                    wy0		= vy0;
+                    wz0		= vz0;
+                    axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
+
+                    xTarget	= xFocus + r*wx0;
+                    yTarget	= yFocus + r*wy0;
+                    zTarget = zFocus + r*wz0;
+
+                    theta	= divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+                    phi		= RandomNum*2.0*PI;
+                    wx0		= vx0;
+                    wy0		= vy0;
+                    wz0		= vz0;
+                    axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+
+                    ux		= ux0;
+                    uy		= uy0;
+                    uz		= uz0;
+                    axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
+
+                    x		= xTarget - zTarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+                    y		= yTarget - zTarget/uz*uy;
+                    z		= 0;
+                break;
+                case 6: // Gaussian focus, top-hat far field beam
+                    r		= waist*sqrt(-0.5*log(RandomNum)); // for target calculation
+                    phi		= RandomNum*2.0*PI;
+                    wx0		= vx0;
+                    wy0		= vy0;
+                    wz0		= vz0;
+                    axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
+
+                    xTarget	= xFocus + r*wx0;
+                    yTarget	= yFocus + r*wy0;
+                    zTarget = zFocus + r*wz0;
+
+                    theta	= divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+                    phi		= RandomNum*2.0*PI;
+                    wx0		= vx0;
+                    wy0		= vy0;
+                    wz0		= vz0;
+                    axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+
+                    ux		= ux0;
+                    uy		= uy0;
+                    uz		= uz0;
+                    axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
+
+                    x		= xTarget - zTarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+                    y		= yTarget - zTarget/uz*uy;
+                    z		= 0;
+                break;
+            }
 
 			/* HOP_DROP_SPIN_CHECK
 			 Propagate one photon until it dies as determined by ROULETTE.
@@ -509,7 +509,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 							if (iy<0)   {iy=0;    photonInsideVolume = false;}
 						}
                         if (!photonInsideVolume) {
-                            if (fabs(x) > extendedBoxScaleFactor*nx*dx/2.0 | fabs(y) > extendedBoxScaleFactor*ny*dy/2.0 | fabs(z-nz*dz/2.0) > extendedBoxScaleFactor*nz*dz/2.0) {photonAlive = false;};
+                            if ((fabs(x) > extendedBoxScaleFactor*nx*dx/2.0) || (fabs(y) > extendedBoxScaleFactor*ny*dy/2.0) || (fabs(z-nz*dz/2.0) > extendedBoxScaleFactor*nz*dz/2.0)) {photonAlive = false;};
                         }
 						if (!photonAlive) break;
 						
@@ -651,15 +651,15 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
  
 				// Print out message about progress.
                 newPctProgress = 100*(simulationTimeCurrent.tv_sec - simulationTimeStart.tv_sec + (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1000000000.0) / (simulationTimeRequested*60.0);
-				if (newPctProgress != pctProgress & !ctrlc_caught) {
+				if ((newPctProgress != pctProgress) && !ctrlc_caught) {
 					pctProgress = newPctProgress;
-					if ((pctProgress<10) | (pctProgress>90) | (fmod(pctProgress, 10)==0)) {
+					if ((pctProgress<10) || (pctProgress>90) || (fmod(pctProgress, 10)==0)) {
 						printf("%i%% done\n", pctProgress);
                         mexEvalString("drawnow;");
 					}
 				}
 			}
-		} while (pctProgress < 100 & !ctrlc_caught);  /* end RUN */
+		} while ((pctProgress < 100) && !ctrlc_caught);  /* end RUN */
 	}
     
 	printf("------------------------------------------------------\n");
