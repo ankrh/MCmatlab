@@ -56,11 +56,8 @@
 
 // Function for rotating a point at coordinates (x,y,z) an angle theta around an axis with direction unit vector (ux,uy,uz).
 void axisrotate(double *x, double *y, double *z, double ux, double uy, double uz, double theta) {	
-    double xin = *x;
-	double yin = *y;
-	double zin = *z;
-	double st = sin(theta);
-	double ct = cos(theta);
+    double xin = *x, yin = *y, zin = *z;
+	double st = sin(theta), ct = cos(theta);
 	
 	*x = (ct + ux*ux*(1-ct))   *xin	 +  (ux*uy*(1-ct) - uz*st)*yin  +  (ux*uz*(1-ct) + uy*st)*zin;
 	*y = (uy*ux*(1-ct) + uz*st)*xin	 +  (ct + uy*uy*(1-ct))   *yin  +  (uy*uz*(1-ct) - ux*st)*zin;
@@ -68,14 +65,14 @@ void axisrotate(double *x, double *y, double *z, double ux, double uy, double uz
 }
 
 // Distance to next voxel face along current trajectory
-double FindVoxelFace(double x1, double y1, double z1, double x2, double y2, double z2, double dx, double dy, double dz, double ux, double uy, double uz) {	
-    int ix = floor(x1/dx) + (ux>=0);
-    int iy = floor(y1/dy) + (uy>=0);
-    int iz = floor(z1/dz) + (uz>=0);
+double FindVoxelFace(double x1, double y1, double z1, double dx, double dy, double dz, int nx, int ny, double ux, double uy, double uz) {	
+    int ix = floor(nx/2.0 + x1/dx) + (ux>=0);
+    int iy = floor(ny/2.0 + y1/dy) + (uy>=0);
+    int iz = floor(         z1/dz) + (uz>=0);
 
-    double xs = fabs((ix*dx - x1)/ux);
-    double ys = fabs((iy*dy - y1)/uy);
-    double zs = fabs((iz*dz - z1)/uz);
+    double xs = ((ix - nx/2.0)*dx - x1)/ux;
+    double ys = ((iy - ny/2.0)*dy - y1)/uy;
+    double zs = ((iz         )*dz - z1)/uz;
     
     return fmin(xs,fmin(ys,zs));
 }
@@ -526,8 +523,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 					yTentative = y + s*uy;	
 					zTentative = z + s*uz;
 					
-                    // Determine if the tentative position is in the same voxel:
-                    sameVoxel = floor(x/dx) == floor(xTentative/dx) && floor(y/dy) == floor(yTentative/dy) && floor(z/dz) == floor(zTentative/dz);
+                    // Now determine if the tentative position is in the same voxel.
+                    // The nx/2.0 and ny/2.0 terms are necessary to take into account the offset of voxel surfaces in the case of odd nx or ny.
+                    sameVoxel = floor(nx/2.0 + x/dx) == floor(nx/2.0 + xTentative/dx) &&
+                                floor(ny/2.0 + y/dy) == floor(ny/2.0 + yTentative/dy) &&
+                                floor(         z/dz) == floor(         zTentative/dz);
                     
 					if (sameVoxel) /* photon in same voxel */
 					{  
@@ -555,7 +555,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 					else /* photon has crossed voxel boundary */
 					{
 						/* step to voxel face + "littlest step" so just inside new voxel. */
-						s = ls + FindVoxelFace(x,y,z, xTentative,yTentative,zTentative, dx,dy,dz, ux,uy,uz);
+						s = ls + FindVoxelFace(x,y,z,dx,dy,dz,nx,ny,ux,uy,uz);
 						
 						/**** DROP
 						 Drop photon weight (photonWeight) into local bin.
