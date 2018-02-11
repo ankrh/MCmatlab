@@ -42,11 +42,11 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
-#ifdef _WIN32 // This is defined on both win32 and win64 systems, we use this preprocessor condition to avoid loading openmp or libut on, e.g., Mac
+#ifdef _WIN32 // This is defined on both win32 and win64 systems. We use this preprocessor condition to avoid loading openmp or libut on, e.g., Mac
 #include <omp.h>
 #endif
 #define DSFMT_MEXP 19937 // Mersenne exponent for dSFMT
-#include "dSFMT-src-2.2.3/dSFMT.c" //  double precision SIMD oriented Fast Mersenne Twister(dSFMT)
+#include "dSFMT-src-2.2.3/dSFMT.c" // Double precision SIMD oriented Fast Mersenne Twister(dSFMT)
 
 #define ls          1.0E-7      /* Moving photon a little bit off the voxel face */
 #define	PI          3.1415926
@@ -56,11 +56,6 @@
 #define RandomNum   dsfmt_genrand_open_close(&dsfmt) /* Calls for a random number in (0,1] */
 #define ONE_MINUS_COSZERO 1.0E-12   /* If 1-cos(theta) <= ONE_MINUS_COSZERO, fabs(theta) <= 1e-6 rad. */
 /* If 1+cos(theta) <= ONE_MINUS_COSZERO, fabs(PI-theta) <= 1e-6 rad. */
-
-// Determine if the two position are located in the same voxel.
-bool SameVoxel(double x1, double y1, double z1, double x2, double y2, double z2, double dx, double dy, double dz) {
-    return floor(x1/dx) == floor(x2/dx) && floor(y1/dy) == floor(y2/dy) && floor(z1/dz) == floor(z2/dz);
-}
 
 // Function for rotating a point at coordinates (x,y,z) an angle theta around an axis with direction unit vector (ux,uy,uz).
 void axisrotate(double *x, double *y, double *z, double ux, double uy, double uz, double theta) {	
@@ -531,7 +526,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 					yTentative = y + s*uy;	
 					zTentative = z + s*uz;
 					
-					sameVoxel = SameVoxel(x,y,z, xTentative, yTentative, zTentative, dx,dy,dz);
+                    // Determine if the tentative position is in the same voxel:
+                    sameVoxel = floor(x/dx) == floor(xTentative/dx) && floor(y/dy) == floor(yTentative/dy) && floor(z/dz) == floor(zTentative/dz);
+                    
 					if (sameVoxel) /* photon in same voxel */
 					{  
 						x=xTentative;					/* Update positions. */
