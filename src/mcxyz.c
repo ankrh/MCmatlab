@@ -17,7 +17,7 @@
  *  2017-06-07: Adapted to MATLAB mex file generation by Anders K. Hansen, DTU Fotonik
  *
  ** COMPILING ON WINDOWS
- * Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' .\src\mcxyz.c ".\src\libut.lib""
+ * Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' -outdir private .\src\mcxyz.c ".\src\libut.lib""
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Go to MATLAB's addon manager and tell it to install the "Support for MinGW-w64 compiler"
@@ -44,6 +44,8 @@
 
 #define DSFMT_MEXP 19937 // Mersenne exponent for dSFMT
 #include "dSFMT-src-2.2.3/dSFMT.c" // Double precision SIMD oriented Fast Mersenne Twister(dSFMT)
+
+#include "lambert.c" // For calculating the Lambert W function, originally part of the GNU Scientific Library, modified by Anders for easier mcxyz integration
 
 #define ls          1.0E-7      /* Moving photon a little bit off the voxel face */
 #define	PI          3.1415926
@@ -173,6 +175,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 			break;
 		case 6:
 			printf("launching Gaussian focus, top-hat far field beam\n");
+			break;
+		case 7:
+			printf("launching Laguerre-Gaussian LG01 focus, LG01 far field beam\n");
 			break;
 	}
 
@@ -443,6 +448,28 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                     wz0		= vz0;
                     axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
 
+                    ux		= ux0;
+                    uy		= uy0;
+                    uz		= uz0;
+                    axisrotate(&ux,&uy,&uz,wx0,wy0,wz0,theta); // ray propagation direction is found by rotating beam center axis an angle theta around w0
+
+                    x		= xTarget - zTarget/uz*ux; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+                    y		= yTarget - zTarget/uz*uy;
+                    z		= 0;
+                break;
+                case 7: // Laguerre-Gaussian LG01 focus, LG01 far field beam
+                    r		= waist*sqrt((gsl_sf_lambert_Wm1(-RandomNum*exp(-1))+1)/(-2))/1.50087; // for target calculation
+                    phi		= RandomNum*2.0*PI;
+                    wx0		= vx0;
+                    wy0		= vy0;
+                    wz0		= vz0;
+                    axisrotate(&wx0,&wy0,&wz0,ux0,uy0,uz0,phi); // w0 unit vector now points in the direction from focus center point to ray target point
+
+                    xTarget	= xFocus + r*wx0;
+                    yTarget	= yFocus + r*wy0;
+                    zTarget = zFocus + r*wz0;
+
+                    theta	= divergence*sqrt((gsl_sf_lambert_Wm1(-RandomNum*exp(-1))+1)/(-2))/1.50087; // for trajectory calculation
                     ux		= ux0;
                     uy		= uy0;
                     uz		= uz0;
