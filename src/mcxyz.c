@@ -72,9 +72,9 @@ double FindVoxelFace(double x1, double y1, double z1, double dx, double dy, doub
     int iy = floor(ny/2.0 + y1/dy) + (uy>=0);
     int iz = floor(         z1/dz) + (uz>=0);
 
-    double xs = ((ix - nx/2.0)*dx - x1)/ux;
-    double ys = ((iy - ny/2.0)*dy - y1)/uy;
-    double zs = ((iz         )*dz - z1)/uz;
+    double xs = ux? ((ix - nx/2.0)*dx - x1)/ux : INFINITY;
+    double ys = uy? ((iy - ny/2.0)*dy - y1)/uy : INFINITY;
+    double zs = uz? ((iz         )*dz - z1)/uz : INFINITY;
     
     return fmin(xs,fmin(ys,zs));
 }
