@@ -28,9 +28,10 @@ function makeTissue
 %% Updates
 %   2014-08: Steven L. Jacques
 %   2017-06: Anders K. Hansen & Dominik Marti, DTU Fotonik
+%   2018-04: Anders K. Hansen
 
 %% Define parameters (user-specified)
-wavelength  = 850;     % [nm] set the wavelength of the Monte Carlo simulation
+wavelength  = 450;     % [nm] set the wavelength of the Monte Carlo simulation
 name = 'tissue';        % name of the simulation
 nx = 100;               % number of bins in the x direction
 ny = 100;               % number of bins in the y direction
@@ -38,6 +39,8 @@ nz = 100;               % number of bins in the z direction
 Lx = .1;                 % [cm] x size of simulation area
 Ly = .1;                 % [cm] y size of simulation area
 Lz = .1;                 % [cm] z size of simulation area
+
+wavelength_fluorescence = 600; % [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
 
 %% Calculate x,y,z vectors and grids
 dx = Lx/nx;             % [cm] size of x bins
@@ -53,13 +56,18 @@ z  = ((0:nz-1)+1/2)*dz;
 % T = 3*ones(nx,ny,nz,'uint8'); % "standard" tissue
 
 %% Blood vessel example:
-zsurf = 0.01;
-epd_thick = 0.006;
-vesselradius  = 0.0100;
-T = ones(nx,ny,nz,'uint8'); % fill background with air
-T(Z > zsurf) = 4; % epidermis
-T(Z > zsurf + epd_thick) = 5; % dermis
-T(Y.^2 + (Z - (zsurf + 2*epd_thick + vesselradius)).^2 < vesselradius^2) = 6; % blood
+% zsurf = 0.01;
+% epd_thick = 0.006;
+% vesselradius  = 0.0100;
+% T = ones(nx,ny,nz,'uint8'); % fill background with air
+% T(Z > zsurf) = 4; % epidermis
+% T(Z > zsurf + epd_thick) = 5; % dermis
+% T(Y.^2 + (Z - (zsurf + 2*epd_thick + vesselradius)).^2 < vesselradius^2) = 6; % blood
+
+%% Fluorescing cylinder example:
+cylinderradius  = 0.0100;
+T = 17*ones(nx,ny,nz,'uint8'); % fill background with fluorescent tissue
+T(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 16; % fluorescence absorber
 
 %% Hair example:
 % zsurf = 0.02;  % position of gel/skin surface[cm]
@@ -92,26 +100,47 @@ T(Y.^2 + (Z - (zsurf + 2*epd_thick + vesselradius)).^2 < vesselradius^2) = 6; % 
 % T(X.^2 + Y.^2 < water_radius^2) = 2; % water
 % T(X.^2 + Y.^2 < fibre_radius^2) = 11; % fibre
 
-%% Discard the unused tissue types
-tissueList = makeTissueList(wavelength);
-nT = length(unique(T)); % Number of different tissues in simulation
-tissueMap = zeros(1,length(tissueList),'uint8');
-tissueMap(unique(T)) = 1:nT;
-tissueList = tissueList(unique(T));
-T = tissueMap(T); % Reduced tissue matrix, using only numbers from 1 up to the number of tissues actually used
+%% Get the tissueList and reduce T
+if(~isnan(wavelength_fluorescence))
+    [~,tissueList_fluorescence] = makeTissueList(T,wavelength_fluorescence);
+    [T, tissueList] = makeTissueList(T,wavelength);
+    if(~any([tissueList.Y]>0))
+        error('Fluorescence wavelength isn''t NaN, but none of the tissues have Y > 0');
+    end
+else
+    [T, tissueList] = makeTissueList(T,wavelength);
+end
 
-%% Make plots
-figure(1);clf;
-plotVolumetric(x,y,z,T,tissueList)
-title('Tissue type illustration');
-drawnow;
-
-figure(7);clf;
-plotTissueProperties(tissueList);
-drawnow;
+%% Check for preexisting files
+if(exist(['./Data/' name '.mat'],'file') || exist(['./Data/' name '_MCoutput.mat'],'file') || exist(['./Data/' name '_MCoutput_fluorescence.mat'],'file') || exist(['./Data/' name '_heatSimoutput.mat'],'file') || exist(['./Data/' name '_heatSimoutput.mp4'],'file'))
+    if(strcmp(questdlg('Tissue definition and/or computation results by this name already exist. Delete existing files?','Overwrite prompt','Yes','No, abort','Yes'),'No, abort'))
+        fprintf('Aborted without saving data.\n');
+        return;
+    end
+    
+    if(exist(['./Data/' name '_MCoutput.mat'],'file'))
+        delete(['./Data/' name '_MCoutput.mat']);
+    end
+    if(exist(['./Data/' name '_MCoutput_fluorescence.mat'],'file'))
+        delete(['./Data/' name '_MCoutput_fluorescence.mat']);
+    end
+    if(exist(['./Data/' name '_heatSimoutput.mat'],'file'))
+        delete(['./Data/' name '_heatSimoutput.mat']);
+    end
+    if(exist(['./Data/' name '_heatSimoutput.mp4'],'file'))
+        delete(['./Data/' name '_heatSimoutput.mp4']);
+    end
+end
 
 %% Save output
-save(['./Data/' name '.mat'],'x','y','z','tissueList','T','wavelength')
+if(~isnan(wavelength_fluorescence))
+    save(['./Data/' name '.mat'],'x','y','z','tissueList','tissueList_fluorescence','T','wavelength','wavelength_fluorescence')
+else
+    save(['./Data/' name '.mat'],'x','y','z','tissueList','T','wavelength')
+end
 fprintf('./Data/%s.mat saved\n',name)
+
+%% Make plots
+lookmcxyz(name);
 
 return

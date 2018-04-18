@@ -2,7 +2,7 @@ function lookmcxyz(name)
 %
 %   Displays the tissue cube, an overview over the optical and thermal
 %   properties of the tissue types, and the output of the Monte Carlo
-%   simulation. This file is called automatically by runMonteCarlo.m.
+%   simulation.
 %
 %   Input
 %       name
@@ -11,8 +11,13 @@ function lookmcxyz(name)
 %   Displays
 %       Tissue cube
 %       Tissue optical and thermal properties
+%   If Monte Carlo output data exists, displays
 %       Fluence rate
 %       Absorbed power
+%   And, if fluorescence Monte Carlo output data exists, displays
+%       Tissue optical and thermal properties for the fluorescence light
+%       Fluorescence fluence rate
+%       Absorbed fluorescence power
 %
 %   Requires
 %       plotVolumetric.m
@@ -22,34 +27,71 @@ function lookmcxyz(name)
 %% Updates
 %   2014-08: Steven L. Jacques
 %   2017-02: Steven L. Jacques
-%   2017-06: Anders K. Hansen & Dominik Marti, DTU Fotonik, June 2017
+%   2017-06: Anders K. Hansen & Dominik Marti, DTU Fotonik
 
-%% Load data from makeTissue.m and MonteCarlo.m
 load(['./Data/' name '.mat']);
-load(['./Data/' name '_MCoutput.mat'],'F');
 
 %% Make tissue plot
-figure(1);
+figure(1);clf;
+set(gcf,'Name','Tissue type illustration');
 plotVolumetric(x,y,z,T,tissueList);
 title('Tissue type illustration');
-drawnow;
 
 %% Make tissue properties plot
-figure(7);clf;
+figure(2);clf;
+set(gcf,'Name','Tissue properties');
 plotTissueProperties(tissueList);
-drawnow;
 
-%% Make fluence rate plot
-figure(2);
-plotVolumetric(x,y,z,F);
-title('Fluence rate (Intensity) [W/cm^2/W.incident] ')
-drawnow;
+if(exist('tissueList_fluorescence','var'))
+    %% Make fluorescence tissue properties plot
+    figure(3);clf;
+    set(gcf,'Name','Fluorescence tissue properties');
+    plotTissueProperties(tissueList_fluorescence);
+end
 
-%% Make power absorption plot
-mua_vec = [tissueList.mua];
-figure(3);
-plotVolumetric(x,y,z,mua_vec(T).*F);
-title('Normalized absorbed power per unit volume [W/cm^3/W.incident] ')
-drawnow;
+if(exist(['./Data/' name '_MCoutput.mat'],'file'))
+    load(['./Data/' name '_MCoutput.mat'],'F');
+    
+    %% Make fluence rate plot
+    figure(4);clf;
+    set(gcf,'Name','Normalized fluence rate');
+    plotVolumetric(x,y,z,F);
+    title('Normalized fluence rate (Intensity) [W/cm^2/W.incident] ')
+    
+    %% Make power absorption plot
+    figure(5);clf;
+    set(gcf,'Name','Normalized power absorption');
+    mua_vec = [tissueList.mua];
+    plotVolumetric(x,y,z,mua_vec(T).*F);
+    title('Normalized absorbed power per unit volume [W/cm^3/W.incident] ')
+    
+    if(exist(['./Data/' name '_MCoutput_fluorescence.mat'],'file'))
+        load(['./Data/' name '_MCoutput_fluorescence.mat']);
+        
+        %% Remind the user what the input power was and plot emitter distribution
+        fprintf('\nFluorescence was simulated for %.2g W of input excitation power\n\n',P);
+        
+        figure(6);clf;
+        set(gcf,'Name','Fluorescence emitters');
+        Y_vec = [tissueList.Y]; % The tissues' fluorescence power efficiencies
+        sat_vec = [tissueList.sat]; % The tissues' fluorescence saturation fluence rates (intensity)
+        FluorescenceEmitters = Y_vec(T).*mua_vec(T)*P.*F./(1 + P*F./sat_vec(T)); % [W/cm^3]
+        plotVolumetric(x,y,z,FluorescenceEmitters);
+        title('Fluorescence emitter distribution [W/cm^3] ')
+        
+        %% Make fluence rate plot
+        figure(7);clf;
+        set(gcf,'Name','Fluorescence fluence rate');
+        plotVolumetric(x,y,z,I_fluorescence);
+        title('Fluorescence fluence rate (Intensity) [W/cm^2] ')
+        
+        %% Make power absorption plot
+        figure(8);clf;
+        set(gcf,'Name','Fluorescence power absorption');
+        mua_vec = [tissueList_fluorescence.mua];
+        plotVolumetric(x,y,z,mua_vec(T).*I_fluorescence);
+        title('Absorbed fluorescence power per unit volume [W/cm^3] ')
+    end
+end
 
 return

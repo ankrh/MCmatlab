@@ -218,6 +218,18 @@ for j=1:n_pulses
 end
 toc;
 
+%% Check for preexisting files
+if(exist(['./Data/' name '_heatSimoutput.mat'],'file') || exist(['./Data/' name '_heatSimoutput.mp4'],'file'))
+    if(strcmp(questdlg('Computation results by this name already exist. Delete existing files?','Overwrite prompt','Yes','No, abort','Yes'),'No, abort'))
+        fprintf('Aborted without saving data.\n');
+        return;
+    end
+    
+    if(exist(['./Data/' name '_heatSimoutput.mp4'],'file'))
+        delete(['./Data/' name '_heatSimoutput.mp4']);
+    end
+end
+
 %% Plot and save results
 figure(heatsimFigure)
 save(['./Data/' name '_heatSimoutput.mat'],'temperatureSensor','timeVector','Winc','onduration','offduration','Temp','n_pulses');

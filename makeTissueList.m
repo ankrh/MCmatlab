@@ -1,10 +1,8 @@
-function tissueList = makeTissueList(nm)
+function [T, tissueList] = makeTissueList(T,wavelength)
 %   Returns the tissue optical properties at the wavelength nm and, if 
 %   defined, the thermal properties. Defining the thermal properties is
 %   only necessary for the heat simulations and can be omitted.
 %   
-%   Note that the data for skull and brainmatter are not correct, they are simply placeholders
-%
 %   tissueList contains mua, mus and g for each tissue type;
 %       mua is the absorption coefficient [cm^-1] and must be positive (not zero)
 %       mus is the scattering coefficient [cm^-1] and must be positive (not zero)
@@ -13,7 +11,10 @@ function tissueList = makeTissueList(nm)
 %       VHC is volumetric heat capacity [J/(cm^3*K)] and must be positive
 %       D is density [kg/cm^3] and must be positive (this value is only illustrative and not used in the simulations)
 %       TC is thermal conductivity [W/(cm*K)] and must be non-negative
-%
+%   and it may further contain data for fluorescence properties for some tissues:
+%       Y is fluorescence power yield (watts of emitted fluorescence light per watt of absorbed pump light) [-]
+%       sat is saturation excitation intensity [W/cm^2]
+
 %   Requires
 %       SpectralLIB.mat
 
@@ -21,6 +22,7 @@ function tissueList = makeTissueList(nm)
 %   2014-01: Rasmus L. Pedersen, Mathias Christensen & Josefine Nielsen, DTU Fotonik
 %   2014-08: Steven L. Jacques
 %   2017-06: Anders K. Hansen, Dominik Marti & Kira Schmidt, DTU Fotonik
+%   2018-04: Anders K. Hansen
 
 %% Load spectral library
 load spectralLIB.mat
@@ -30,10 +32,10 @@ load spectralLIB.mat
 %   muawater      701x1              5608  double
 %   musp          701x1              5608  double
 %   nmLIB         701x1              5608  double
-MU(:,1) = interp1(nmLIB,muaoxy,nm);
-MU(:,2) = interp1(nmLIB,muadeoxy,nm);
-MU(:,3) = interp1(nmLIB,muawater,nm);
-MU(:,4) = interp1(nmLIB,muamel,nm);
+MU(:,1) = interp1(nmLIB,muaoxy,wavelength);
+MU(:,2) = interp1(nmLIB,muadeoxy,wavelength);
+MU(:,3) = interp1(nmLIB,muawater,wavelength);
+MU(:,4) = interp1(nmLIB,muamel,wavelength);
 
 %% Create tissueList
 
@@ -74,7 +76,7 @@ musp500 = 40;
 fray    = 0.0;
 bmie    = 1.0;
 gg      = 0.90;
-musp = musp500*(fray*(nm/500).^-4 + (1-fray)*(nm/500).^-bmie);
+musp = musp500*(fray*(wavelength/500).^-4 + (1-fray)*(wavelength/500).^-bmie);
 X = [B*S B*(1-S) W M]';
 tissueList(j).mua = MU*X;
 tissueList(j).mus = musp/(1-gg);
@@ -93,7 +95,7 @@ musp500 = 42.4;
 fray    = 0.62;
 bmie    = 1.0;
 gg      = 0.90;
-musp = musp500*(fray*(nm/500).^-4 + (1-fray)*(nm/500).^-bmie);
+musp = musp500*(fray*(wavelength/500).^-4 + (1-fray)*(wavelength/500).^-bmie);
 X = [B*S B*(1-S) W M]';
 tissueList(j).mua = MU*X;
 tissueList(j).mus = musp/(1-gg);
@@ -112,7 +114,7 @@ musp500 = 10;
 fray    = 0.0;
 bmie    = 1.0;
 gg      = 0.90;
-musp = musp500*(fray*(nm/500).^-4 + (1-fray)*(nm/500).^-bmie);
+musp = musp500*(fray*(wavelength/500).^-4 + (1-fray)*(wavelength/500).^-bmie);
 X = [B*S B*(1-S) W M]';
 tissueList(j).mua = MU*X;
 tissueList(j).mus = musp/(1-gg);
@@ -155,7 +157,7 @@ S = 0.75;
 W = 0.75;
 M = 0.03;
 gg = 0.9;
-musp = 9.6e10./nm.^3; % from Bashkatov 2002, for a dark hair
+musp = 9.6e10./wavelength.^3; % from Bashkatov 2002, for a dark hair
 X = 2*[B*S B*(1-S) W M]';
 tissueList(j).mua = MU*X; %Here the hair is set to absorb twice as much as the epidermis
 tissueList(j).mus = musp/(1-gg);
@@ -184,6 +186,7 @@ tissueList(j).TC    = 4.6e-3;
 
 j=13;
 tissueList(j).name  = 'skull';
+% ONLY PLACEHOLDER DATA!
 B = 0.0005;
 S = 0.75;
 W = 0.35;
@@ -192,7 +195,7 @@ musp500 = 30;
 fray    = 0.0;
 bmie    = 1.0;
 gg      = 0.90;
-musp = musp500*(fray*(nm/500).^-4 + (1-fray)*(nm/500).^-bmie);
+musp = musp500*(fray*(wavelength/500).^-4 + (1-fray)*(wavelength/500).^-bmie);
 X = [B*S B*(1-S) W M]';
 tissueList(j).mua = MU*X;
 tissueList(j).mus = musp/(1-gg);
@@ -203,6 +206,7 @@ tissueList(j).TC = 0.37e-2;
 
 j=14;
 tissueList(j).name = 'gray matter';
+% ONLY PLACEHOLDER DATA!
 B = 0.01;
 S = 0.75;
 W = 0.75;
@@ -211,7 +215,7 @@ musp500 = 20;
 fray    = 0.2;
 bmie    = 1.0;
 gg      = 0.90;
-musp = musp500*(fray*(nm/500).^-4 + (1-fray)*(nm/500).^-bmie);
+musp = musp500*(fray*(wavelength/500).^-4 + (1-fray)*(wavelength/500).^-bmie);
 X = [B*S B*(1-S) W M]';
 tissueList(j).mua = MU*X;
 tissueList(j).mus = musp/(1-gg);
@@ -222,6 +226,7 @@ tissueList(j).TC = 0.37e-2;
 
 j=15;
 tissueList(j).name  = 'white matter';
+% ONLY PLACEHOLDER DATA!
 B = 0.01;
 S = 0.75;
 W = 0.75;
@@ -230,7 +235,7 @@ musp500 = 20;
 fray    = 0.2;
 bmie    = 1.0;
 gg      = 0.90;
-musp = musp500*(fray*(nm/500).^-4 + (1-fray)*(nm/500).^-bmie);
+musp = musp500*(fray*(wavelength/500).^-4 + (1-fray)*(wavelength/500).^-bmie);
 X = [B*S B*(1-S) W M]';
 tissueList(j).mua = MU*X;
 tissueList(j).mus = musp/(1-gg);
@@ -239,17 +244,70 @@ tissueList(j).VHC = 3391*1.109e-3;
 tissueList(j).D  = 1.109e-3;
 tissueList(j).TC = 0.37e-2;
 
+j=16;
+tissueList(j).name  = 'test fluorescing tissue';
+if(wavelength<500)
+    tissueList(j).mua = 100;
+    tissueList(j).mus = 100;
+    tissueList(j).g   = 0.9;
+
+    tissueList(j).Y   = 0.5;
+    tissueList(j).sat = 500;
+else
+    tissueList(j).mua = 1;
+    tissueList(j).mus = 100;
+    tissueList(j).g   = 0.9;
+end
+
+j=17;
+tissueList(j).name  = 'test fluorescence absorber';
+if(wavelength<500)
+    tissueList(j).mua = 1;
+    tissueList(j).mus = 100;
+    tissueList(j).g   = 0.9;
+else
+    tissueList(j).mua = 100;
+    tissueList(j).mus = 100;
+    tissueList(j).g   = 0.9;
+end
+
+%% Trim tissueList down to use only the tissues included in the input matrix T, and reduce T accordingly
+nT = length(unique(T)); % Number of different tissues in simulation
+tissueMap = zeros(1,length(tissueList),'uint8');
+tissueMap(unique(T)) = 1:nT;
+tissueList = tissueList(unique(T)); % Reduced tissue list, containing only the used tissues
+T = tissueMap(T); % Reduced tissue matrix, using only numbers from 1 up to the number of used tissues
+
+%% Fill in fluorescence assumptions
+% For all tissues for which the fluorescence power yield Y was
+% not specified, assume it is zero. Also, if the fluorescence saturation
+% was not specified, assume it is infinite.
+for j=1:length(tissueList)
+    if(~isfield(tissueList,'Y') || isempty(tissueList(j).Y))
+        tissueList(j).Y = 0;
+    end
+    if(~isfield(tissueList,'sat') || isempty(tissueList(j).sat))
+        tissueList(j).sat = Inf;
+    end
+end
+
 %% Throw an error if a variable doesn't conform to its required interval
 for j=1:length(tissueList)
     if(tissueList(j).mua <= 0)
-        error('tissueList(%d).mua <= 0',j);
+        error('tissue %s has mua <= 0',tissueList(j).name,j);
     elseif(tissueList(j).mus <= 0)
-        error('tissueList(%d).mus <= 0',j);
+        error('tissue %s has mus <= 0',tissueList(j).name,j);
     elseif(abs(tissueList(j).g) > 1)
-        error('abs(tissueList(%d).g) > 1',j);
+        error('tissue %s has abs(g) > 1',tissueList(j).name,j);
     elseif(tissueList(j).VHC <= 0)
-        error('tissueList(%d).VHC <= 0',j);
+        error('tissue %s has VHC <= 0',tissueList(j).name,j);
     elseif(tissueList(j).TC < 0)
-        error('tissueList(%d).TC < 0',j);
+        error('tissue %s has TC < 0',tissueList(j).name,j);
+    elseif(tissueList(j).Y < 0)
+        error('tissue %s has Y < 0',tissueList(j).name,j);
+    elseif(tissueList(j).sat <= 0)
+        error('tissue %s has sat <= 0',tissueList(j).name,j);
     end
 end
+
+return
