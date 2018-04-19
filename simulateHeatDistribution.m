@@ -50,14 +50,15 @@ load(['./Data/' name '_MCoutput.mat'],'F');
 
 %% Define parameters (user-specified)
 Winc             = 1; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the box' top area)
-onduration       = 0.5; % [s] Pulse on-duration
-offduration      = 0.5; % [s] Pulse off-duration
+onduration       = 0.1; % [s] Pulse on-duration
+offduration      = 0.1; % [s] Pulse off-duration
 Temp             = zeros(size(T)); % [deg C] Initial temperature distribution
 n_pulses         = 1; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
 
-plotTempLimits   = [0 16]; % [deg C], the expected range of temperatures, used only for setting the color scale in the plot
+plotTempLimits   = [0 65]; % [deg C], the expected range of temperatures, used only for setting the color scale in the plot
 extremeprecision = false; % false: normal time step resolution (dt = dtmax/2), true: high time step resolution (dt = dtmax/100)
-n_updates        = 20; % Number of times data is extracted for plots during each illumination phase and diffusion phase. Must be at least 1.
+n_updates        = 100; % Number of times data is extracted for plots during each illumination phase and diffusion phase. Must be at least 1.
+makemovie        = true; % flag to specify whether a movie of the temperature evolution should be output. Remember to set plotTempLimits appropriately.
 
 %% Determine remaining parameters
 if n_pulses ~= 1 && (onduration == 0 || offduration == 0)
@@ -98,6 +99,8 @@ end
 
 nt_vec = unique(floor([linspace(0,nt_on,n_updates+1) linspace(nt_on + nt_off/n_updates,nt_on + nt_off,n_updates)])); % Vector of nt's on which the plots should be updated
 
+timeVector = [0 , repmat(nt_vec(2:end),1,n_pulses)+repelem(0:n_pulses-1,length(nt_vec)-1)*nt_vec(end)]*dt;
+
 %% Calculate proportionality between voxel-to-voxel temperature difference DeltaT and time step temperature change dT
 TC_eff = 2*(TC'*TC)./(ones(length(TC))*diag(TC)+diag(TC)*ones(length(TC))); % Same as TC_eff(i,j) = 2*TC_red(i)*TC_red(j)/(TC_red(i)+TC_red(j)) but without for loops
 TC_eff(isnan(TC_eff)) = 0; % Neighboring insulating voxels return NaN but should just be 0
@@ -108,6 +111,12 @@ clear TC_eff
 mua_vec = [tissueList.mua];
 dT_abs = mua_vec(T).*F*dt*dx*dy*dz*Winc./HC(T); % Temperature change from absorption per time step [deg C] (mua_vec(T).*F is a 3D matrix of normalized volumetric powers)
 clear F
+
+%% Prepare the temperature plot
+heatsimFigure = figure(5);
+plotVolumetric(x,y,z,Temp);
+h_title = title(['Temperature evolution, t = ' num2str(timeVector(1),'%#.2g') ' s']);
+caxis(plotTempLimits); % User-defined color scale limits
 
 %% Make plots to visualize tissue properties
 
@@ -125,13 +134,12 @@ title('Tissue type illustration');
 datacursormode on;
 dataCursorHandle = datacursormode(tissueFigure);
 
-fprintf('Place one or more (shift+click) temperature sensor in the tissue,\n and hit (almost) any key to continue...\n')
+fprintf('Place one or more (shift+click) temperature sensor in the tissue,\n and hit (almost) any key to continue.\nYou can also resize the temperature figure now and position the slices,\n which is useful for movie generation.');
 pause
 cursorInfo = getCursorInfo(dataCursorHandle);
 numTemperatureSensors = length(cursorInfo);
 
 if numTemperatureSensors
-    timeVector = [0 , repmat(nt_vec(2:end),1,n_pulses)+repelem(0:n_pulses-1,length(nt_vec)-1)*nt_vec(end)]*dt; % For temperature sensor plotting
     for temperatureSensorIndex = numTemperatureSensors:-1:1
         dataCursorPosition = cursorInfo(temperatureSensorIndex).Position;
         [~, dCPz] = min(abs(z-dataCursorPosition(3)));
@@ -159,19 +167,16 @@ if numTemperatureSensors
     legend(temperatureSensorTissues);
 else
     temperatureSensor = [];
-    timeVector = [];
 end
-
-%% Prepare the temperature plot
-heatsimFigure = figure(5);
-plotVolumetric(x,y,z,Temp);
-title('Temperature evolution');
-caxis(plotTempLimits); % User-defined color scale limits
 
 %% Simulate heat transfer
 if numTemperatureSensors; figure(temperatureSensorFigure); end
 
 fprintf('[nx,ny,nz]=[%d,%d,%d]. Number of pulses is %d.\nIllumination on for %d steps and off for %d steps in each pulse. Step size is %0.2e s.\n',nx,ny,nz,n_pulses,nt_on,nt_off,dt);
+
+if(makemovie)
+    movieframes(1) = getframe(heatsimFigure);
+end
 
 tic
 for j=1:n_pulses
@@ -182,15 +187,21 @@ for j=1:n_pulses
     end
     drawnow;
     for i = 2:length(nt_vec)
+        frameidx = i+(j-1)*(length(nt_vec)-1);
         Temp = finiteElementHeatPropagator(nt_vec(i)-nt_vec(i-1),Temp,T-1,dTperdeltaT,(nt_vec(i) <= nt_on)*dT_abs); % Arguments (nt,[[[Temp]]],[[[T]]],[[[dTperdeltaT]]],[[[dT_abs]]]). Contents of T have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
         
         if numTemperatureSensors
-            temperatureSensor(:,i+(j-1)*(length(nt_vec)-1)) = Temp(temperatureSensorPosition);
+            temperatureSensor(:,frameidx) = Temp(temperatureSensorPosition);
             refreshdata(temperatureSensorLinePlots,'caller');
         end
         
         fprintf(1,'\b');
         updateVolumetric(heatsimFigure,Temp);
+        h_title.String = ['Temperature evolution, t = ' num2str(timeVector(frameidx),'%#.2g') ' s'];
+        
+        if(makemovie)
+            movieframes(frameidx) = getframe(heatsimFigure);
+        end
         
         if nt_vec(i) == nt_on
             if n_pulses == 1
@@ -206,6 +217,18 @@ for j=1:n_pulses
     end
 end
 toc;
+
+%% Check for preexisting files
+if(exist(['./Data/' name '_heatSimoutput.mat'],'file') || exist(['./Data/' name '_heatSimoutput.mp4'],'file'))
+    if(strcmp(questdlg('Computation results by this name already exist. Delete existing files?','Overwrite prompt','Yes','No, abort','Yes'),'No, abort'))
+        fprintf('Aborted without saving data.\n');
+        return;
+    end
+    
+    if(exist(['./Data/' name '_heatSimoutput.mp4'],'file'))
+        delete(['./Data/' name '_heatSimoutput.mp4']);
+    end
+end
 
 %% Plot and save results
 figure(heatsimFigure)
@@ -224,5 +247,14 @@ else
     title(['Temperature after ' num2str(n_pulses) ' pulses'])
 end
 fprintf('./Data/%s_heatSimoutput.mat saved\n',name);
+
+if(makemovie)
+    movieframes = [movieframes(1:end) repmat(movieframes(end),1,round(length(movieframes)/10))];
+    writerObj = VideoWriter(['./Data/' name '_heatSimoutput.mp4'],'MPEG-4');
+    open(writerObj);
+    writeVideo(writerObj,movieframes);
+    close(writerObj);
+    fprintf('./Data/%s_heatSimoutput.mp4 saved\n',name);
+end
 
 return

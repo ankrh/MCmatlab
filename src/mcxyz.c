@@ -15,6 +15,7 @@
  *  2017-04-20: Overhauled by Anders K. Hansen and Dominik Marti, DTU Fotonik. Fundamental method remained unchanged.
  *      Uses the Mersenne Twister for random number generation.
  *  2017-06-07: Adapted to MATLAB mex file generation by Anders K. Hansen, DTU Fotonik
+ *  2018-04-19: Added support for illuminating with an isotropically emitting 3D distribution of sources, such as a collection of fluorescing emitters
  *
  ** COMPILING ON WINDOWS
  * Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' -outdir private .\src\mcxyz.c ".\src\libut.lib""
@@ -100,9 +101,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     double  dy                          = *mxGetPr(mxGetField(prhs[0],0,"dy"));
     double  dz                          = *mxGetPr(mxGetField(prhs[0],0,"dz"));
     
+    mxArray *sourceDist = mxGetField(prhs[0],0,"sourceDistribution");
+    double *S           = mxGetData(sourceDist);
+    double sourcesum    = 0;
+    double *S_CDF       = 0;
+    
     mxArray *tissueList = mxGetField(prhs[0],0,"tissueList");
     mxArray *T          = mxGetField(prhs[0],0,"T");
-    
     mwSize const *dimPtr = mxGetDimensions(T);
     int     nx = dimPtr[0];
     int     ny = dimPtr[1];
@@ -110,7 +115,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     int     nT = mxGetN(tissueList);
     unsigned char *v = mxGetData(T);
     
-    unsigned long i;
+    unsigned long i;        /* General-purpose non-thread-specific index variable */
     double 	muav[nT];            // muav[0:nT-1], absorption coefficient of ith tissue type
 	double 	musv[nT];            // scattering coeff. 
 	double 	gv[nT];              // anisotropy of scattering
@@ -129,7 +134,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     
 	/* other variables */
 	unsigned long long	nPhotons;           /* number of photons in simulation */
-	int     pctProgress, newPctProgress;    /* Simulation progress in percent */
+	int     pctProgress = 0;                /* Simulation progress in percent */
+    int     newPctProgress;    
     bool    ctrlc_caught = false;           // Has a ctrl+c been passed from MATLAB?
 	double  extendedBoxScaleFactor;
 	extendedBoxScaleFactor = 6.0;
@@ -141,72 +147,73 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
      */
     
 	/* launch parameters */
-	double	vx0, vy0, vz0;                  /* normal vector to photon trajectory */
-	
+	double vx0 = 1, vy0 = 0, vz0 = 0;  /* normal vector to photon trajectory */
+
     /* time */
-	double	simulationTimeSpent;               // Requested and spent time durations of computation.
+	double	simulationTimeSpent;               // Spent time durations of computation.
 	time_t	currentCalendarTime;
 	struct  timespec simulationTimeStart, simulationTimeCurrent;
 	
     // Display parameters
     printf("nx = %d, dx = %0.8f [cm]\n",nx,dx);
     printf("ny = %d, dy = %0.8f [cm]\n",ny,dy);
-    printf("nz = %d, dz = %0.8f [cm]\n",nz,dz);
+    printf("nz = %d, dz = %0.8f [cm]\n\n",nz,dz);
 
-    printf("beamtypeFlag = %d, ",beamtypeFlag);
-    switch(beamtypeFlag) {
-		case 0:
-			printf("launching top-hat focus, top-hat far field beam\n");
-			break;
-		case 1:
-			printf("launching Gaussian focus, Gaussian far field beam\n");
-			break;
-		case 2:
-			printf("launching isotropic point source\n");
-			break;
-		case 3:
-			printf("launching infinite plane wave\n");
-			break;
-		case 4:
-			printf("launching pencil beam\n");
-			break;
-		case 5:
-			printf("launching top-hat focus, Gaussian far field beam\n");
-			break;
-		case 6:
-			printf("launching Gaussian focus, top-hat far field beam\n");
-			break;
-		case 7:
-			printf("launching Laguerre-Gaussian LG01 focus, LG01 far field beam\n");
-			break;
-	}
+    if (sourceDist) printf("Using isotropically emitting 3D distribution as light source\n\n");
+    else {
+        printf("beamtypeFlag = %d\n",beamtypeFlag);
+        switch(beamtypeFlag) {
+            case 0:
+                printf("Using top-hat focus, top-hat far field beam\n\n");
+                break;
+            case 1:
+                printf("Using Gaussian focus, Gaussian far field beam\n\n");
+                break;
+            case 2:
+                printf("Using isotropic point source\n\n");
+                break;
+            case 3:
+                printf("Using infinite plane wave\n\n");
+                break;
+            case 4:
+                printf("Using pencil beam\n\n");
+                break;
+            case 5:
+                printf("Using top-hat focus, Gaussian far field beam\n\n");
+                break;
+            case 6:
+                printf("Using Gaussian focus, top-hat far field beam\n\n");
+                break;
+            case 7:
+                printf("Using Laguerre-Gaussian LG01 focus, LG01 far field beam\n\n");
+                break;
+        }
 
-    if (boundaryFlag==0)
-		printf("boundaryFlag = 0, so no boundaries.\n");
-    else if (boundaryFlag==1)
-		printf("boundaryFlag = 1, so escape at all boundaries.\n");    
-	else if (boundaryFlag==2)
-		printf("boundaryFlag = 2, so escape at surface only.\n");    
-	else{
-        printf("improper boundaryFlag. quit.\n");
+        printf("xFocus = %0.8f [cm]\n",xFocus);
+        printf("yFocus = %0.8f [cm]\n",yFocus);
+        printf("zFocus = %0.8f [cm]\n",zFocus);
+
+        if (beamtypeFlag!=2) {
+            printf("Beam direction defined by unit vector:\n");
+            printf("ux0 = %0.8f\n",ux0);
+            printf("uy0 = %0.8f\n",uy0);
+            printf("uz0 = %0.8f\n",uz0);
+        }
+        if (beamtypeFlag<=1) {
+            printf("Beam waist radius = %0.8f [cm]\n",waist);
+            printf("Beam divergence half-angle = %0.8f [rad]\n",divergence);
+        }
+    }
+    
+    if (boundaryFlag==0) printf("boundaryFlag = 0, so no boundaries.\n");
+    else if (boundaryFlag==1) printf("boundaryFlag = 1, so escape at all boundaries.\n");    
+	else if (boundaryFlag==2) printf("boundaryFlag = 2, so escape at surface only.\n");    
+	else {
+        printf("Error: Invalid boundaryFlag\n");
         return;
     }
 	
-    printf("xFocus = %0.8f [cm]\n",xFocus);
-    printf("yFocus = %0.8f [cm]\n",yFocus);
-    printf("zFocus = %0.8f [cm]\n",zFocus);
-
-	if (beamtypeFlag!=2) {
-		printf("Beam direction defined by unit vector:\n");
-		printf("ux0 = %0.8f\n",ux0);
-		printf("uy0 = %0.8f\n",uy0);
-		printf("uz0 = %0.8f\n",uz0);
-	}
-	if (beamtypeFlag<=1) {
-		printf("beam waist radius = %0.8f [cm]\n",waist);
-		printf("beam divergence half-angle = %0.8f [rad]\n",divergence);
-	}
-    printf("\n%d tissues available:\n\n",nT);
+    printf("\n%d tissues used:\n\n",nT);
     for (i=0; i<nT; i++) {
         printf("muav[%ld] = %0.8f [cm^-1]\n",i+1,muav[i]); // +1 because we convert from C's 0-based indexing to MATLAB's 1-based indexing
         printf("musv[%ld] = %0.8f [cm^-1]\n",i+1,musv[i]); // +1 because we convert from C's 0-based indexing to MATLAB's 1-based indexing
@@ -228,13 +235,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 	printf("%s", ctime(&currentCalendarTime));	
 	
 	// INITIALIZATIONS
-	
-	if (uz0==1) {
-		vx0 = 1;
-		vy0 = 0;
-		vz0 = 0;
-	}
-	else {
+	if (sourceDist) {
+        S_CDF = malloc((nx*ny*nz + 1)*sizeof(double));
+        S_CDF[0] = 0;
+        for(i=1;i<(nx*ny*nz+1);i++) S_CDF[i] = S_CDF[i-1] + S[i-1];
+        sourcesum = S_CDF[nx*ny*nz];
+        for(i=1;i<(nx*ny*nz+1);i++) S_CDF[i] /= sourcesum;
+    } else if (uz0!=1) {
 		vx0 = -uy0/sqrt(uy0*uy0 + ux0*ux0);
 		vy0 = ux0/sqrt(uy0*uy0 + ux0*ux0);
 		vz0 = 0;
@@ -254,9 +261,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     #pragma omp parallel num_threads(omp_get_num_procs())
     #endif
 	{
-		double	x, y, z;        /* photon position */
-        x = y = z = 0;
+		double	x = 0, y = 0, z = 0;        /* photon position */
 		double	ux, uy, uz;     /* photon trajectory as unit vector composants */
+        double  rand;           /* Random number used for lookup into CDF of 3D source */
+        unsigned long d;        /* Used in CDF lookup */
 		double  uxx, uyy, uzz;	/* temporary values used during SPIN */
 		double	s;              /* step sizes. s = -log(RND)/mus [cm] */
 		double  stepLeft;       /* dimensionless step size*/
@@ -275,12 +283,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 		double  xTarget, yTarget, zTarget;
 		double	wx0, wy0, wz0;  /* normal vector 2 to photon trajectory. Not necessarily normal to v0. */
 		double	r, theta, phi;
-		long 	j;
+		unsigned long j;        /* General-purpose thread-specific index variable */
 		double	xTentative, yTentative, zTentative; /* temporary variables, used during photon step. */
 		int 	ix, iy, iz;     /* Used to track photons */
 		bool    photonInsideVolume;  /* flag, true or false */
 		//int		photonStepsCounter;
-		int 	type;
 		dsfmt_t dsfmt;			/* Thread-specific "state" of dSFMT pseudo-random number generator */
 
         #ifdef _WIN32
@@ -302,11 +309,44 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
             #ifdef _WIN32
 			#pragma omp atomic
             #endif
-				nPhotons += 1;				/* increment photon count */
+            nPhotons += 1;				/* increment photon count */
 			
 			/****************************/
 			/* Initial position and trajectory */
-			switch (beamtypeFlag) {
+            if (sourceDist) {
+                // Search the cumulative distribution function via binary tree method to find the voxel to start the photon in
+                rand = RandomNum;
+                d = nx*ny*nz-1; // Number of elements in the current section to be searched, minus one
+                j = d/2; // Index of the middle element of the current section
+                while (!(S_CDF[j] < rand && S_CDF[j+1] >= rand)) { // Binary tree search
+                    if (S_CDF[j] >= rand) {
+                        j += (d-2)/4 - d/2;
+                        d = d/2 - 1;
+                    } else {
+                        d -= d/2+1;
+                        j += 1 + d/2;
+                    }
+                }
+                
+                ix = j%nx;    // ix = (i/(1    ))%(nx);
+                iy = j/nx%ny; // iy = (i/(nx   ))%(ny);
+                iz = j/nx/ny; // iz = (i/(nx*ny))%(nz);
+                
+                x = (ix - nx/2.0 + 1 - RandomNum)*dx;
+                y = (iy - ny/2.0 + 1 - RandomNum)*dy;
+                z = (iz          + 1 - RandomNum)*dz;
+                
+                costheta = 1.0 - 2.0*RandomNum;
+                sintheta = sqrt(1.0 - costheta*costheta);
+                psi = 2.0*PI*RandomNum;
+                cospsi = cos(psi);
+                if (psi < PI) sinpsi =  sqrt(1.0 - cospsi*cospsi); 
+                else          sinpsi = -sqrt(1.0 - cospsi*cospsi);
+                
+                ux = sintheta*cospsi;
+                uy = sintheta*sinpsi;
+                uz = costheta;
+            } else switch (beamtypeFlag) {
                 case 0: // top-hat focus, top-hat far field beam
                     r		= waist*sqrt(RandomNum); // for target calculation
                     phi		= RandomNum*2.0*PI;
@@ -539,10 +579,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 						
 						/* Get the tissue type of located voxel */
 						j		= (long)(iz*ny*nx + iy*nx + ix);
-						type	= v[j];
-						mua 	= muav[type];
-						mus 	= musv[type];
-						g 		= gv[type];
+						mua 	= muav[v[j]];
+						mus 	= musv[v[j]];
+						g 		= gv[v[j]];
 					}
 					
 					s     = stepLeft/mus;				/* Step size [cm].*/
@@ -694,19 +733,24 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 	simulationTimeSpent = (double)(simulationTimeCurrent.tv_sec  - simulationTimeStart.tv_sec ) + (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1000000000.0;
 	printf("Simulated %0.1e photons at a rate of %0.1e photons per minute\n",(double)nPhotons, nPhotons*60/simulationTimeSpent);
 	
+    if (sourceDist) free(S_CDF);
+    
     /**** SAVE
      Convert data to relative fluence rate [cm^-2] and return.
      *****/
     
     // Normalize deposition to yield fluence rate (F).
-	if (beamtypeFlag == 3 && boundaryFlag != 1) {
+    if (sourceDist) {
 		for (i=0; i<nx*ny*nz;i++){
-			F[i] /= (dx*dy*dz*nPhotons/(extendedBoxScaleFactor*extendedBoxScaleFactor)*muav[v[i]]);
+			F[i] /= nPhotons*muav[v[i]]/sourcesum; // Absolute fluence rate [W/cm^2]
 		}
-	}
-	else {
+    } else if (beamtypeFlag == 3 && boundaryFlag != 1) {
 		for (i=0; i<nx*ny*nz;i++){
-			F[i] /= (dx*dy*dz*nPhotons*muav[v[i]]);
+			F[i] /= dx*dy*dz*nPhotons/(extendedBoxScaleFactor*extendedBoxScaleFactor)*muav[v[i]]; // Normalized fluence rate [W/cm^2/W.incident]
+		}
+	} else {
+		for (i=0; i<nx*ny*nz;i++){
+			F[i] /= dx*dy*dz*nPhotons*muav[v[i]]; // Normalized fluence rate [W/cm^2/W.incident]
 		}
 	}
 	

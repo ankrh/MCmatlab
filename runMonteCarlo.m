@@ -42,13 +42,14 @@ function runMonteCarlo(name)
 %% Updates
 %   2014-01: Mathias Christensen & Rasmus L. Pedersen, DTU Fotonik
 %   2017-06: Anders K. Hansen & Dominik Marti, DTU Fotonik
+%   2018-04: Anders K. Hansen
 
 %% Load data from makeTissue.m
 load(['./Data/' name '.mat']);
 
 %% Define parameters (user-specified)
 % Simulation duration
-MCinput.simulationTime = 0.5;      % [min] time duration of the simulation
+MCinput.simulationTime = 0.1;      % [min] time duration of the simulation
 
 % Boundary type
 % 0 = no boundaries
@@ -67,7 +68,7 @@ MCinput.boundaryFlag = 1;
 % 7 = Laguerre-Gaussian LG01 focus, LG01 far field beam
 MCinput.beamtypeFlag = 7;
 
-% Position of focus, only used for beamtypeflag ~=3 (if beamtypeflag == 2 this is the source position)
+% Position of focus, only used for beamtypeFlag ~=3 (if beamtypeFlag == 2 this is the source position)
 MCinput.xFocus = 0;                % [cm] x position of focus
 MCinput.yFocus = 0;                % [cm] y position of focus
 MCinput.zFocus = (z(end)+z(1))/2;  % [cm] z position of focus
@@ -96,12 +97,30 @@ clear T
 %% Call Monte Carlo C script (mex file) to get fluence rate (intensity) distribution
 F = mcxyz(MCinput);
 
+%% Check for preexisting files
+if(exist(['./Data/' name '_MCoutput.mat'],'file') || exist(['./Data/' name '_MCoutput_fluorescence.mat'],'file') || exist(['./Data/' name '_heatSimoutput.mat'],'file') || exist(['./Data/' name '_heatSimoutput.mp4'],'file'))
+    if(strcmp(questdlg('Computation results by this name already exist. Delete existing files?','Overwrite prompt','Yes','No, abort','Yes'),'No, abort'))
+        fprintf('Aborted without saving data.\n');
+        return;
+    end
+    
+    if(exist(['./Data/' name '_MCoutput_fluorescence.mat'],'file'))
+        delete(['./Data/' name '_MCoutput_fluorescence.mat']);
+    end
+    if(exist(['./Data/' name '_heatSimoutput.mat'],'file'))
+        delete(['./Data/' name '_heatSimoutput.mat']);
+    end
+    if(exist(['./Data/' name '_heatSimoutput.mp4'],'file'))
+        delete(['./Data/' name '_heatSimoutput.mp4']);
+    end
+end
+
 %% Save output and clear memory
 save(['./Data/' name '_MCoutput.mat'],'F','MCinput');
 fprintf('./Data/%s_MCoutput.mat saved\n',name);
 clear F MCinput
 
-%% Call lookmcxyz
+%% Make plots
 lookmcxyz(name);
 
 return
