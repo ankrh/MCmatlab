@@ -2,7 +2,7 @@ function runMonteCarloFluorescence(name)
 % Script for simulating distribution and magnitude of fluorescence
 % based on runMonteCarlo.m
 
-% Created 2018-04-19 by Anders K. Hansen, DTU Fotonik, 
+% Created 2018-04-19 by Anders K. Hansen, DTU Fotonik
 
 %% Load data from makeTissue.m and runMonteCarlo.m
 load(['./Data/' name '.mat']);

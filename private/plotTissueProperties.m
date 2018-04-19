@@ -1,5 +1,7 @@
 function plotTissueProperties(tissueList)
 
+clf;
+
 nT = length(tissueList);
 cmap = colormap(hsv(nT));
 

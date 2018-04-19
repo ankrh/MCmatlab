@@ -113,7 +113,7 @@ dT_abs = mua_vec(T).*F*dt*dx*dy*dz*Winc./HC(T); % Temperature change from absorp
 clear F
 
 %% Prepare the temperature plot
-heatsimFigure = figure(5);
+heatsimFigure = figure(9);
 plotVolumetric(x,y,z,Temp);
 h_title = title(['Temperature evolution, t = ' num2str(timeVector(1),'%#.2g') ' s']);
 caxis(plotTempLimits); % User-defined color scale limits
@@ -127,7 +127,7 @@ caxis(plotTempLimits); % User-defined color scale limits
 % plotVolumetric(x,y,z,TC(T));
 % title('Thermal conductivity [W/(cm*K)]');
 
-tissueFigure = figure(1); clf;
+tissueFigure = figure(1);
 plotVolumetric(x,y,z,T,tissueList);
 title('Tissue type illustration');
 
@@ -239,7 +239,7 @@ elseif ~nt_off
     title('Temperature after illumination');
 elseif n_pulses == 1
     title('Temperature after diffusion')
-    figure(6);
+    figure(10);
     plotVolumetric(x,y,z,Temp_illum);
     title('Temperature after illumination');
     save(['./Data/' name '_heatSimoutput.mat'],'Temp_illum','-append');

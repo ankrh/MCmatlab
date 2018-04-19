@@ -1,5 +1,5 @@
 function updateVolumetric(h_f,M)
-h_f.M = padarray(M,[1 1 1],'replicate','post');
+h_f.UserData = padarray(M,[1 1 1],'replicate','post');
 i = 1;
 while i<length(h_f.Children) % Find out which graphics element is the handle for the checkbox
     if strcmp(h_f.Children(i).Style,'checkbox')

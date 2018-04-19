@@ -28,23 +28,24 @@ function lookmcxyz(name)
 %   2014-08: Steven L. Jacques
 %   2017-02: Steven L. Jacques
 %   2017-06: Anders K. Hansen & Dominik Marti, DTU Fotonik
+%   2018-04: Anders K. Hansen
 
 load(['./Data/' name '.mat']);
 
 %% Make tissue plot
-figure(1);clf;
+figure(1);
 set(gcf,'Name','Tissue type illustration');
 plotVolumetric(x,y,z,T,tissueList);
 title('Tissue type illustration');
 
 %% Make tissue properties plot
-figure(2);clf;
+figure(2);
 set(gcf,'Name','Tissue properties');
 plotTissueProperties(tissueList);
 
 if(exist('tissueList_fluorescence','var'))
     %% Make fluorescence tissue properties plot
-    figure(3);clf;
+    figure(3);
     set(gcf,'Name','Fluorescence tissue properties');
     plotTissueProperties(tissueList_fluorescence);
 end
@@ -53,44 +54,51 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
     load(['./Data/' name '_MCoutput.mat'],'F');
     
     %% Make fluence rate plot
-    figure(4);clf;
+    figure(4);
     set(gcf,'Name','Normalized fluence rate');
     plotVolumetric(x,y,z,F);
     title('Normalized fluence rate (Intensity) [W/cm^2/W.incident] ')
     
     %% Make power absorption plot
-    figure(5);clf;
+    figure(5);
     set(gcf,'Name','Normalized power absorption');
     mua_vec = [tissueList.mua];
     plotVolumetric(x,y,z,mua_vec(T).*F);
     title('Normalized absorbed power per unit volume [W/cm^3/W.incident] ')
     
     if(exist(['./Data/' name '_MCoutput_fluorescence.mat'],'file'))
-        load(['./Data/' name '_MCoutput_fluorescence.mat']);
+        load(['./Data/' name '_MCoutput_fluorescence.mat'],'P','I_fluorescence');
         
         %% Remind the user what the input power was and plot emitter distribution
-        fprintf('\nFluorescence was simulated for %.2g W of input excitation power\n\n',P);
+        fprintf('\nFluorescence was simulated for %.2g W of input excitation power.\n',P);
         
-        figure(6);clf;
+        dx = x(2)-x(1); dy = y(2)-y(1); dz = z(2)-z(1);
+        fprintf('Out of this, %.2g W was absorbed within the box.\n',dx*dy*dz*sum(mua_vec(T(:)).*P.*F(:).'));
+        
+        figure(6);
         set(gcf,'Name','Fluorescence emitters');
         Y_vec = [tissueList.Y]; % The tissues' fluorescence power efficiencies
         sat_vec = [tissueList.sat]; % The tissues' fluorescence saturation fluence rates (intensity)
         FluorescenceEmitters = Y_vec(T).*mua_vec(T)*P.*F./(1 + P*F./sat_vec(T)); % [W/cm^3]
         plotVolumetric(x,y,z,FluorescenceEmitters);
         title('Fluorescence emitter distribution [W/cm^3] ')
+
+        fprintf('Out of this, %.2g W was re-emitted as fluorescence.\n',dx*dy*dz*sum(FluorescenceEmitters(:)));
         
         %% Make fluence rate plot
-        figure(7);clf;
+        figure(7);
         set(gcf,'Name','Fluorescence fluence rate');
         plotVolumetric(x,y,z,I_fluorescence);
         title('Fluorescence fluence rate (Intensity) [W/cm^2] ')
         
         %% Make power absorption plot
-        figure(8);clf;
+        figure(8);
         set(gcf,'Name','Fluorescence power absorption');
         mua_vec = [tissueList_fluorescence.mua];
         plotVolumetric(x,y,z,mua_vec(T).*I_fluorescence);
         title('Absorbed fluorescence power per unit volume [W/cm^3] ')
+
+        fprintf('Out of this, %.2g W was re-absorbed within the box.\n\n',dx*dy*dz*sum(mua_vec(T(:)).*I_fluorescence(:).'));
     end
 end
 

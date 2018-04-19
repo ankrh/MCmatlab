@@ -2,9 +2,6 @@ function plotVolumetric(xraw,yraw,zraw,Mraw,varargin)
 
 clf;
 h_f = gcf;
-if ~isprop(h_f,'M')
-    addprop(h_f,'M');
-end
 
 axes
 
@@ -18,9 +15,9 @@ x = round([(xraw - dx/2) , (max(xraw) + dx/2)],15);
 y = round([(yraw - dy/2) , (max(yraw) + dy/2)],15);
 z = round([(zraw - dz/2) , (max(zraw) + dz/2)],15);
 
-h_f.M = padarray(single(Mraw),[1 1 1],'replicate','post'); % The single data type is used to conserve memory
+h_f.UserData = padarray(single(Mraw),[1 1 1],'replicate','post'); % The single data type is used to conserve memory
 clear Mraw;
-[nx,ny,nz] = size(h_f.M);
+[nx,ny,nz] = size(h_f.UserData);
 
 xl = x(1); % x low
 xh = x(end); % x high
@@ -43,12 +40,12 @@ uicontrol('style','text','String','z','Position',[10,58,20,20])
 h_checkbox1 = uicontrol('Parent',h_f,'Style','checkbox','Position',[70,90,20,20]);
 h_checkbox1text = uicontrol('style','text','String','log10 plot','Position',[16,87,50,20]);
 
-h_surfxmax   = surface(repmat(xh,ny,nz),repmat(y', 1,nz),repmat(z ,ny, 1),squeeze(h_f.M(end,:,:)),'LineStyle','none');
-h_surfymax   = surface(repmat(x', 1,nz),repmat(yh,nx,nz),repmat(z ,nx, 1),squeeze(h_f.M(:,end,:)),'LineStyle','none');
-h_surfzmax   = surface(repmat(x', 1,ny),repmat(y ,nx, 1),repmat(zh,nx,ny),squeeze(h_f.M(:,:,end)),'LineStyle','none');
-h_surfxslice = surface(repmat(xh,ny,nz),repmat(y', 1,nz),repmat(z ,ny, 1),squeeze(h_f.M(end,:,:)),'LineStyle','none');
-h_surfyslice = surface(repmat(x', 1,nz),repmat(yh,nx,nz),repmat(z ,nx, 1),squeeze(h_f.M(:,end,:)),'LineStyle','none');
-h_surfzslice = surface(repmat(x', 1,ny),repmat(y ,nx, 1),repmat(zh,nx,ny),squeeze(h_f.M(:,:,end)),'LineStyle','none');
+h_surfxmax   = surface(repmat(xh,ny,nz),repmat(y', 1,nz),repmat(z ,ny, 1),squeeze(h_f.UserData(end,:,:)),'LineStyle','none');
+h_surfymax   = surface(repmat(x', 1,nz),repmat(yh,nx,nz),repmat(z ,nx, 1),squeeze(h_f.UserData(:,end,:)),'LineStyle','none');
+h_surfzmax   = surface(repmat(x', 1,ny),repmat(y ,nx, 1),repmat(zh,nx,ny),squeeze(h_f.UserData(:,:,end)),'LineStyle','none');
+h_surfxslice = surface(repmat(xh,ny,nz),repmat(y', 1,nz),repmat(z ,ny, 1),squeeze(h_f.UserData(end,:,:)),'LineStyle','none');
+h_surfyslice = surface(repmat(x', 1,nz),repmat(yh,nx,nz),repmat(z ,nx, 1),squeeze(h_f.UserData(:,end,:)),'LineStyle','none');
+h_surfzslice = surface(repmat(x', 1,ny),repmat(y ,nx, 1),repmat(zh,nx,ny),squeeze(h_f.UserData(:,:,end)),'LineStyle','none');
 
 line([xh xh xh xh xh],[yl yh yh yl yl],[zh zh zl zl zh],'Color','k');
 line([xl xh xh xl xl],[yh yh yh yh yh],[zh zh zl zl zh],'Color','k');
@@ -67,10 +64,10 @@ if ~isempty(varargin)
 else
     colormap(parula(1024));
     colorbar
-    if min(h_f.M(:)) ~= max(h_f.M(:))
-        caxis([min(h_f.M(:)) max(h_f.M(:))]);
+    if min(h_f.UserData(:)) ~= max(h_f.UserData(:))
+        caxis([min(h_f.UserData(:)) max(h_f.UserData(:))]);
     else
-        caxis([min(h_f.M(:)) min(h_f.M(:))+1]);
+        caxis([min(h_f.UserData(:)) min(h_f.UserData(:))+1]);
     end
 end
 axis tight
@@ -81,7 +78,10 @@ zlabel('z [cm]')
 set(gca,'fontsize',18)
 set(gca,'ZDir','reverse')
 view(3)
-setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera')
+
+if ~verLessThan('matlab','9.0')
+    setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera');
+end
 
 vars = struct('h_checkbox1',h_checkbox1,...
     'h_slider1',h_slider1,'h_slider2',h_slider2,'h_slider3',h_slider3,...
@@ -119,14 +119,14 @@ h_f = get(vars.h_checkbox1,'Parent');
 switch src
     case vars.h_checkbox1
         if plotLog
-            set(vars.h_surfxmax  ,'CData',squeeze(log10(h_f.M(end,:,:))));
-            set(vars.h_surfymax  ,'CData',squeeze(log10(h_f.M(:,end,:))));
-            set(vars.h_surfzmax  ,'CData',squeeze(log10(h_f.M(:,:,end))));
-            set(vars.h_surfxslice,'CData',squeeze(log10(h_f.M(xsi,:,:))));
-            set(vars.h_surfyslice,'CData',squeeze(log10(h_f.M(:,ysi,:))));
-            set(vars.h_surfzslice,'CData',squeeze(log10(h_f.M(:,:,zsi))));
-            if ~isempty(event) % event is empty if callback was made because M was changed. In that case we don't want to renormalize the color scale.
-                maxelement = log10(max(h_f.M(:)));
+            set(vars.h_surfxmax  ,'CData',squeeze(log10(h_f.UserData(end,:,:))));
+            set(vars.h_surfymax  ,'CData',squeeze(log10(h_f.UserData(:,end,:))));
+            set(vars.h_surfzmax  ,'CData',squeeze(log10(h_f.UserData(:,:,end))));
+            set(vars.h_surfxslice,'CData',squeeze(log10(h_f.UserData(xsi,:,:))));
+            set(vars.h_surfyslice,'CData',squeeze(log10(h_f.UserData(:,ysi,:))));
+            set(vars.h_surfzslice,'CData',squeeze(log10(h_f.UserData(:,:,zsi))));
+            if ~isempty(event) % event is empty if callback was made because UserData was changed. In that case we don't want to renormalize the color scale.
+                maxelement = log10(max(h_f.UserData(:)));
                 if(isfinite(maxelement))
                     caxis([maxelement-4 maxelement]);
                 else
@@ -134,40 +134,40 @@ switch src
                 end
             end
         else
-            set(vars.h_surfxmax  ,'CData',squeeze(h_f.M(end,:,:)));
-            set(vars.h_surfymax  ,'CData',squeeze(h_f.M(:,end,:)));
-            set(vars.h_surfzmax  ,'CData',squeeze(h_f.M(:,:,end)));
-            set(vars.h_surfxslice,'CData',squeeze(h_f.M(xsi,:,:)));
-            set(vars.h_surfyslice,'CData',squeeze(h_f.M(:,ysi,:)));
-            set(vars.h_surfzslice,'CData',squeeze(h_f.M(:,:,zsi)));
-            if ~isempty(event) % event is empty if callback was made because M was changed. In that case we don't want to renormalize the color scale.
-                caxis([min(h_f.M(:)) max(h_f.M(:))]);
+            set(vars.h_surfxmax  ,'CData',squeeze(h_f.UserData(end,:,:)));
+            set(vars.h_surfymax  ,'CData',squeeze(h_f.UserData(:,end,:)));
+            set(vars.h_surfzmax  ,'CData',squeeze(h_f.UserData(:,:,end)));
+            set(vars.h_surfxslice,'CData',squeeze(h_f.UserData(xsi,:,:)));
+            set(vars.h_surfyslice,'CData',squeeze(h_f.UserData(:,ysi,:)));
+            set(vars.h_surfzslice,'CData',squeeze(h_f.UserData(:,:,zsi)));
+            if ~isempty(event) % event is empty if callback was made because UserData was changed. In that case we don't want to renormalize the color scale.
+                caxis([min(h_f.UserData(:)) max(h_f.UserData(:))]);
             end
         end
     case vars.h_slider1
         set(vars.h_surfxslice,'XData',xs*ones(length(vars.y),length(vars.z)));
         if plotLog
-            set(vars.h_surfxslice,'CData',squeeze(log10(h_f.M(xsi,:,:))));
+            set(vars.h_surfxslice,'CData',squeeze(log10(h_f.UserData(xsi,:,:))));
         else
-            set(vars.h_surfxslice,'CData',squeeze(h_f.M(xsi,:,:)));
+            set(vars.h_surfxslice,'CData',squeeze(h_f.UserData(xsi,:,:)));
         end
         set(vars.h_xline,'XData',xs*ones(1,7));
         set(vars.h_zline,'XData',[xs xh xh xl xl xs xs]);
     case vars.h_slider2
         set(vars.h_surfyslice,'YData',ys*ones(length(vars.x),length(vars.z)));
         if plotLog
-            set(vars.h_surfyslice,'CData',squeeze(log10(h_f.M(:,ysi,:))));
+            set(vars.h_surfyslice,'CData',squeeze(log10(h_f.UserData(:,ysi,:))));
         else
-            set(vars.h_surfyslice,'CData',squeeze(h_f.M(:,ysi,:)));
+            set(vars.h_surfyslice,'CData',squeeze(h_f.UserData(:,ysi,:)));
         end
         set(vars.h_yline,'YData',ys*ones(1,7));
         set(vars.h_xline,'YData',[ys yh yh yl yl ys ys]);
     case vars.h_slider3
         set(vars.h_surfzslice,'ZData',zs*ones(length(vars.x),length(vars.y)));
         if plotLog
-            set(vars.h_surfzslice,'CData',squeeze(log10(h_f.M(:,:,zsi))));
+            set(vars.h_surfzslice,'CData',squeeze(log10(h_f.UserData(:,:,zsi))));
         else
-            set(vars.h_surfzslice,'CData',squeeze(h_f.M(:,:,zsi)));
+            set(vars.h_surfzslice,'CData',squeeze(h_f.UserData(:,:,zsi)));
         end
         set(vars.h_zline,'ZData',zs*ones(1,7));
         set(vars.h_yline,'ZData',[zs zh zh zl zl zs zs]);
