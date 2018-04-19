@@ -70,14 +70,14 @@ MCinput.beamtypeFlag = 7;
 % Position of focus, only used for beamtypeflag ~=3 (if beamtypeflag == 2 this is the source position)
 MCinput.xFocus = 0;                % [cm] x position of focus
 MCinput.yFocus = 0;                % [cm] y position of focus
-MCinput.zFocus = z(end)/2;          % [cm] z position of focus
+MCinput.zFocus = (z(end)+z(1))/2;  % [cm] z position of focus
 
 % Direction of beam center axis, only used if beamtypeflag ~= 2:
 MCinput.ux0 = 0;                   % trajectory unit vector x composant
 MCinput.uy0 = 0;                   % trajectory unit vector y composant
 MCinput.uz0 = sqrt(1-MCinput.ux0^2-MCinput.uy0^2); % % trajectory unit vector z composant. Make sure that ux0^2 + uy0^2 + uz0^2 = 1.
 
-% Focus properties and divergence angles, only used if beamtypeflag == 0, 1, 5 or 6
+% Focus properties and divergence angles, only used if beamtypeflag == 0, 1, 5, 6 or 7
 MCinput.waist = 0.015;             % [cm] focus waist 1/e^2 radius
 % MCinput.divergence = wavelength*1e-9/(pi*MCinput.waist*1e-2); % [rad] Diffraction limited divergence angle for Gaussian beam
 MCinput.divergence = 15/180*pi;         % [rad] divergence 1/e^2 half-angle of beam

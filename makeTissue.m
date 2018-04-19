@@ -43,9 +43,9 @@ Lz = .1;                 % [cm] z size of simulation area
 dx = Lx/nx;             % [cm] size of x bins
 dy = Ly/ny;             % [cm] size of y bins
 dz = Lz/nz;             % [cm] size of z bins
-x  = ((0:nx-1)-(nx-1)/2)*dx;
-y  = ((0:ny-1)-(ny-1)/2)*dy;
-z  = ((0:nz-1)+1/2)*dz;
+x  = ((0:nx-1)-(nx-1)/2)*dx; % [cm] x position of centers of voxels
+y  = ((0:ny-1)-(ny-1)/2)*dy; % [cm] y position of centers of voxels
+z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 [X,Y,Z] = ndgrid(single(x),single(y),single(z)); % The single data type is used to conserve memory
 
 %% Define tissue T(x,y,z) (user-specified)
