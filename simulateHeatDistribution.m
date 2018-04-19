@@ -134,7 +134,7 @@ title('Tissue type illustration');
 datacursormode on;
 dataCursorHandle = datacursormode(tissueFigure);
 
-fprintf('Place one or more (shift+click) temperature sensor in the tissue,\n and hit (almost) any key to continue.\nYou can also resize the temperature figure now and position the slices,\n which is useful for movie generation.');
+fprintf('Place one or more (shift+click) temperature sensor in the tissue,\n and hit (almost) any key to continue.\nYou can also resize the temperature figure now and position the slices,\n which is useful for movie generation.\n');
 pause
 cursorInfo = getCursorInfo(dataCursorHandle);
 numTemperatureSensors = length(cursorInfo);
