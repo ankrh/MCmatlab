@@ -174,8 +174,24 @@ if numTemperatureSensors; figure(temperatureSensorFigure); end
 
 fprintf('[nx,ny,nz]=[%d,%d,%d]. Number of pulses is %d.\nIllumination on for %d steps and off for %d steps in each pulse. Step size is %0.2e s.\n',nx,ny,nz,n_pulses,nt_on,nt_off,dt);
 
-if(makemovie)
-    movieframes(1) = getframe(heatsimFigure);
+if(makemovie) % Make a temporary figure showing the tissue type illustration to put into the beginning of the movie
+    tempFigure = figure;
+    plotVolumetric(x,y,z,T,tissueList);
+    title('Tissue type illustration');
+    tempFigure.Position = heatsimFigure.Position; % Size has to be the same as the temperature plot
+    tempFigure.Children(6).Value = heatsimFigure.Children(6).Value; % Slices have to be set at the same positions
+    tempFigure.Children(7).Value = heatsimFigure.Children(7).Value;
+    tempFigure.Children(8).Value = heatsimFigure.Children(8).Value;
+    callbackfunc = tempFigure.Children(6).Callback{1};
+    vars = tempFigure.Children(6).Callback{2};
+    feval(callbackfunc,tempFigure.Children(6),[],vars); % To update the display of the slices we have to call the callback function
+    feval(callbackfunc,tempFigure.Children(7),[],vars);
+    feval(callbackfunc,tempFigure.Children(8),[],vars);
+    drawnow;
+    movieframes(1) = getframe(tempFigure);
+    delete(tempFigure);
+    
+    movieframes(2) = getframe(heatsimFigure);
 end
 
 tic
@@ -200,7 +216,7 @@ for j=1:n_pulses
         h_title.String = ['Temperature evolution, t = ' num2str(timeVector(frameidx),'%#.2g') ' s'];
         
         if(makemovie)
-            movieframes(frameidx) = getframe(heatsimFigure);
+            movieframes(frameidx+1) = getframe(heatsimFigure);
         end
         
         if nt_vec(i) == nt_on
@@ -249,7 +265,7 @@ end
 fprintf('./Data/%s_heatSimoutput.mat saved\n',name);
 
 if(makemovie)
-    movieframes = [movieframes(1:end) repmat(movieframes(end),1,round(length(movieframes)/10))];
+    movieframes = [repmat(movieframes(1),1,30) movieframes(1:end) repmat(movieframes(end),1,30)];
     writerObj = VideoWriter(['./Data/' name '_heatSimoutput.mp4'],'MPEG-4');
     open(writerObj);
     writeVideo(writerObj,movieframes);
