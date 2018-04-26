@@ -12,7 +12,7 @@ caller = dbstack(1);
 
 switch caller.name
     case 'makeTissue'
-        fileNames = fileNames;
+        % fileNames = fileNames;
     case 'runMonteCarlo'
         fileNames = fileNames(2:end);
     case 'runMonteCarloFluorescence'
