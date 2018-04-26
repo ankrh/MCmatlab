@@ -42,6 +42,9 @@ Lz = .1;                 % [cm] z size of simulation area
 
 wavelength_fluorescence = 600; % [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
 
+%% Check for preexisting files
+if(~deleteDataFiles(name)); return; end
+
 %% Calculate x,y,z vectors and grids
 dx = Lx/nx;             % [cm] size of x bins
 dy = Ly/ny;             % [cm] size of y bins
@@ -109,27 +112,6 @@ if(~isnan(wavelength_fluorescence))
     end
 else
     [T, tissueList] = makeTissueList(T,wavelength);
-end
-
-%% Check for preexisting files
-if(exist(['./Data/' name '.mat'],'file') || exist(['./Data/' name '_MCoutput.mat'],'file') || exist(['./Data/' name '_MCoutput_fluorescence.mat'],'file') || exist(['./Data/' name '_heatSimoutput.mat'],'file') || exist(['./Data/' name '_heatSimoutput.mp4'],'file'))
-    if(strcmp(questdlg('Tissue definition and/or computation results by this name already exist. Delete existing files?','Overwrite prompt','Yes','No, abort','Yes'),'No, abort'))
-        fprintf('Aborted without saving data.\n');
-        return;
-    end
-    
-    if(exist(['./Data/' name '_MCoutput.mat'],'file'))
-        delete(['./Data/' name '_MCoutput.mat']);
-    end
-    if(exist(['./Data/' name '_MCoutput_fluorescence.mat'],'file'))
-        delete(['./Data/' name '_MCoutput_fluorescence.mat']);
-    end
-    if(exist(['./Data/' name '_heatSimoutput.mat'],'file'))
-        delete(['./Data/' name '_heatSimoutput.mat']);
-    end
-    if(exist(['./Data/' name '_heatSimoutput.mp4'],'file'))
-        delete(['./Data/' name '_heatSimoutput.mp4']);
-    end
 end
 
 %% Save output

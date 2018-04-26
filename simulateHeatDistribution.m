@@ -43,6 +43,8 @@ function [temperatureSensor, timeVector] = simulateHeatDistribution(name)
 %   2014-01: Rasmus L. Pedersen & Mathias Christensen, DTU Fotonik
 %   2017-06: Anders K. Hansen & Dominik Marti, DTU Fotonik
 
+%% Check for preexisting files
+if(~deleteDataFiles(name)); return; end
 
 %% Load data from makeTissue.m and MonteCarlo.m
 load(['./Data/' name '.mat']);
@@ -233,18 +235,6 @@ for j=1:n_pulses
     end
 end
 toc;
-
-%% Check for preexisting files
-if(exist(['./Data/' name '_heatSimoutput.mat'],'file') || exist(['./Data/' name '_heatSimoutput.mp4'],'file'))
-    if(strcmp(questdlg('Computation results by this name already exist. Delete existing files?','Overwrite prompt','Yes','No, abort','Yes'),'No, abort'))
-        fprintf('Aborted without saving data.\n');
-        return;
-    end
-    
-    if(exist(['./Data/' name '_heatSimoutput.mp4'],'file'))
-        delete(['./Data/' name '_heatSimoutput.mp4']);
-    end
-end
 
 %% Plot and save results
 figure(heatsimFigure)

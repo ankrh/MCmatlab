@@ -4,6 +4,9 @@ function runMonteCarloFluorescence(name)
 
 % Created 2018-04-19 by Anders K. Hansen, DTU Fotonik
 
+%% Check for preexisting files
+if(~deleteDataFiles(name)); return; end
+
 %% Load data from makeTissue.m and runMonteCarlo.m
 load(['./Data/' name '.mat']);
 load(['./Data/' name '_MCoutput.mat']);
@@ -34,14 +37,6 @@ MCinput_fluorescence.sourceDistribution = Y_vec(T).*mua_vec(T)*P.*F./(1 + P*F./s
 
 %% Call Monte Carlo C script to get fluorescence distribution
 I_fluorescence = mcxyz(MCinput_fluorescence); % This is an absolute fluence rate (intensity) quantity, unlike the "F" matrices which are actually fluence rates normalized to the incident power
-
-%% Check for preexisting files
-if(exist(['./Data/' name '_MCoutput_fluorescence.mat'],'file'))
-    if(strcmp(questdlg('Computation results by this name already exist. Delete existing files?','Overwrite prompt','Yes','No, abort','Yes'),'No, abort'))
-        fprintf('Aborted without saving data.\n');
-        return;
-    end
-end
 
 %% Save output and clear memory
 save(['./Data/' name '_MCoutput_fluorescence.mat'],'I_fluorescence','MCinput_fluorescence','P');
