@@ -10,7 +10,7 @@ fileNames = {...
 
 caller = dbstack(1);
 
-switch caller.name
+switch caller(1).name
     case 'makeTissue'
         % fileNames = fileNames;
     case 'runMonteCarlo'
