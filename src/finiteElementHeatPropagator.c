@@ -9,7 +9,7 @@
  *  2017-06-07: Adapted to MATLAB mex file generation by Anders K. Hansen, DTU Fotonik
  *
  ** COMPILING ON WINDOWS
- * Can be compiled using "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp' .\src\finiteElementHeatPropagator.c ".\src\libut.lib""
+ * Can be compiled using "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' -outdir private .\src\finiteElementHeatPropagator.c ".\src\libut.lib""
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Go to MATLAB's addon manager and tell it to install the "Support for MinGW-w64 compiler"
@@ -19,10 +19,8 @@
  *
  ** COMPILING ON MAC
  * As of June 2017, the macOS compiler doesn't support libut (for ctrl+c 
- * breaking) or openmp (for multithreading). To compile, you need to 
- * comment out the lines referring to those libraries. They are marked with
- * "comment out on macOS".
- * This file can then be compiled with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast' ./src/finiteElementHeatPropagator.c"
+ * breaking) or openmp (for multithreading).
+ * This file can then be compiled with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -std=c11 -Wall -pedantic' -outdir private ./src/finiteElementHeatPropagator.c"
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Install XCode from the App Store
@@ -31,10 +29,10 @@
 
 #include <math.h>
 #include "mex.h"
-#include "matrix.h"
-#include "omp.h"  // comment out on macOS
-
-extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing the mex function  // comment out on macOS
+#ifdef _WIN32 // This is defined on both win32 and win64 systems. We use this preprocessor condition to avoid loading openmp or libut on, e.g., Mac
+#include "omp.h"
+extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing the mex function
+#endif
 
 void mexFunction( int nlhs, mxArray *plhs[],
         int nrhs, mxArray const *prhs[] ) {
@@ -60,60 +58,59 @@ void mexFunction( int nlhs, mxArray *plhs[],
     
     plhs[0] = mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL);
     
-    double *outputTemp    = mxGetPr(plhs[0]); // outputTemp is an nx*ny*nz array of doubles
-    int nt                = (int)*mxGetPr(prhs[0]); // nt is an integer (number of time steps to perform)
-    double *Temp          = mxGetPr(prhs[1]); // Temp is an nx*ny*nz array of doubles
-    unsigned char *T      = (unsigned char *)mxGetData(prhs[2]); // T is a nx*ny*nz array of uint8 (unsigned char) containing values from 0..nT-1
-    double *dTperdeltaT   = mxGetPr(prhs[3]); // dTperdeltaT is an nT*nT*3 array of doubles
-    double *dT_abs        = mxGetPr(prhs[4]); // dT_abs is an nx*ny*nz array of doubles
+    double *outputTemp  = mxGetPr(plhs[0]); // outputTemp is an nx*ny*nz array of doubles
+    int nt              = *mxGetPr(prhs[0]); // nt is an integer (number of time steps to perform)
+    double *Temp        = mxGetPr(prhs[1]); // Temp is an nx*ny*nz array of doubles
+    unsigned char *T    = mxGetData(prhs[2]); // T is a nx*ny*nz array of uint8 (unsigned char) containing values from 0..nT-1
+    double *dTperdeltaT = mxGetPr(prhs[3]); // dTperdeltaT is an nT*nT*3 array of doubles
+    double *dT_abs      = mxGetPr(prhs[4]); // dT_abs is an nx*ny*nz array of doubles
     
-    double *tempTemp = (double *)malloc(nx*ny*nz*sizeof(double)); // Temporary temperature matrix
+    double *tempTemp = mxMalloc(nx*ny*nz*sizeof(double)); // Temporary temperature matrix
     
     double **srcTemp = &Temp; // Pointer to the pointer to whichever temperature matrix is to be read from
     double **tgtTemp; // Pointer to the pointer to whichever temperature matrix is to be written to
     
-    if(nt%2) { // If nt is odd then we can start by writing to the output temperature matrix (pointed to by plhs[0]), otherwise we start by writing to the temporary temperature matrix
-        tgtTemp = &outputTemp;
-    } else {
-        tgtTemp = &tempTemp;
-    }
+    tgtTemp = (nt%2)? &outputTemp: &tempTemp; // If nt is odd then we can start by writing to the output temperature matrix (pointed to by plhs[0]), otherwise we start by writing to the temporary temperature matrix
     
+    #ifdef _WIN32
     #pragma omp parallel num_threads(omp_get_num_procs())
+    #endif
     {
         int ix,iy,iz;
         int n,i;
         double dT;
         
         for(n=0; n<nt; n++) {
-            if(ctrlc_caught) {
-                break;
-            }
+            if(ctrlc_caught) break;
+            #ifdef _WIN32
             #pragma omp for schedule(auto)
+            #endif
             for(iz=0; iz<nz; iz++) {
                 for(iy=0; iy<ny; iy++) {
                     for(ix=0; ix<nx; ix++) {
-//                         ix = i%nx;    // ix = (i/(1    ))%(nx);
-//                         iy = i/nx%ny; // iy = (i/(nx   ))%(ny);
-//                         iz = i/nx/ny; // iz = (i/(nx*ny))%(nz);
                         i = ix + iy*nx + iz*nx*ny;
 
                         dT = dT_abs[i];
-                        if(ix != 0   ) {dT += ((*srcTemp)[i-1]     - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i-1    ]*nT          ];};
-                        if(ix != nx-1) {dT += ((*srcTemp)[i+1]     - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i+1    ]*nT          ];};
-                        if(iy != 0   ) {dT += ((*srcTemp)[i-nx]    - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i-nx   ]*nT +   nT*nT];};
-                        if(iy != ny-1) {dT += ((*srcTemp)[i+nx]    - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i+nx   ]*nT +   nT*nT];};
-                        if(iz != 0   ) {dT += ((*srcTemp)[i-nx*ny] - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i-nx*ny]*nT + 2*nT*nT];};
-                        if(iz != nz-1) {dT += ((*srcTemp)[i+nx*ny] - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i+nx*ny]*nT + 2*nT*nT];};
+                        if(ix != 0   ) dT += ((*srcTemp)[i-1]     - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i-1    ]*nT          ];
+                        if(ix != nx-1) dT += ((*srcTemp)[i+1]     - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i+1    ]*nT          ];
+                        if(iy != 0   ) dT += ((*srcTemp)[i-nx]    - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i-nx   ]*nT +   nT*nT];
+                        if(iy != ny-1) dT += ((*srcTemp)[i+nx]    - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i+nx   ]*nT +   nT*nT];
+                        if(iz != 0   ) dT += ((*srcTemp)[i-nx*ny] - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i-nx*ny]*nT + 2*nT*nT];
+                        if(iz != nz-1) dT += ((*srcTemp)[i+nx*ny] - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i+nx*ny]*nT + 2*nT*nT];
                         (*tgtTemp)[i] = (*srcTemp)[i] + dT;
                     }
                 }
             }
+            #ifdef _WIN32
             #pragma omp master
+            #endif
             {
-                if(utIsInterruptPending()) {  // comment out on macOS (whole if-block)
+                #ifdef _WIN32
+                if(utIsInterruptPending()) {
                     ctrlc_caught = true;
                     printf("\nCtrl+C detected, stopping.\n");
                 }
+                #endif
 
                 if(tgtTemp == &outputTemp) {
                     tgtTemp = &tempTemp;
@@ -123,11 +120,12 @@ void mexFunction( int nlhs, mxArray *plhs[],
                     srcTemp = &tempTemp;
                 }
             }
+            #ifdef _WIN32
             #pragma omp barrier
+            #endif
         }
     }
     
-    
-    free(tempTemp);
+    mxFree(tempTemp);
     return;
 }

@@ -115,7 +115,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     int     nT = mxGetN(tissueList);
     unsigned char *v = mxGetData(T);
     
-    unsigned long i;        /* General-purpose non-thread-specific index variable */
+    long i;        /* General-purpose non-thread-specific index variable */
     double 	muav[nT];            // muav[0:nT-1], absorption coefficient of ith tissue type
 	double 	musv[nT];            // scattering coeff. 
 	double 	gv[nT];              // anisotropy of scattering
@@ -133,13 +133,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     }
     
 	/* other variables */
-	unsigned long long	nPhotons;           /* number of photons in simulation */
+	long long	nPhotons;                   /* number of photons in simulation */
 	int     pctProgress = 0;                /* Simulation progress in percent */
     int     newPctProgress;    
     bool    ctrlc_caught = false;           // Has a ctrl+c been passed from MATLAB?
-	double  extendedBoxScaleFactor;
-	extendedBoxScaleFactor = 6.0;
-    /* The extendedBoxScaleFactor determines the size of the region that 
+	double  infWaveScaleFactor = 6;
+    /* The infWaveScaleFactor determines the size of the region that 
      * photons are launched in for the infinite plane wave without 
      * boundaries but also the region that photons are allowed to stay 
      * alive in (if outside, the probability of returning to the region
@@ -223,7 +222,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     // Show tissue on screen, along central z-axis, by listing tissue type #'s.
     printf("Central axial profile of tissue types:\n");
     for (i=0; i<nz; i++) {
-        printf("%d",v[(long)(i*ny*nx + ny/2*nx + nx/2)]+1); // +1 because we convert from C's 0-based indexing to MATLAB's 1-based indexing
+        printf("%d",v[i*ny*nx + ny/2*nx + nx/2]+1); // +1 because we convert from C's 0-based indexing to MATLAB's 1-based indexing
     }
     printf("\n\n");
     
@@ -236,7 +235,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 	
 	// INITIALIZATIONS
 	if (sourceDist) {
-        S_CDF = malloc((nx*ny*nz + 1)*sizeof(double));
+        S_CDF = mxMalloc((nx*ny*nz + 1)*sizeof(double));
         S_CDF[0] = 0;
         for(i=1;i<(nx*ny*nz+1);i++) S_CDF[i] = S_CDF[i-1] + S[i-1];
         sourcesum = S_CDF[nx*ny*nz];
@@ -264,8 +263,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 		double	x = 0, y = 0, z = 0;        /* photon position */
 		double	ux, uy, uz;     /* photon trajectory as unit vector composants */
         double  rand;           /* Random number used for lookup into CDF of 3D source */
-        unsigned long d;        /* Used in CDF lookup */
-		double  uxx, uyy, uzz;	/* temporary values used during SPIN */
+        long    d;              /* Used in CDF lookup */
+		double  ux_temp;        /* temporary value used during SPIN */
 		double	s;              /* step sizes. s = -log(RND)/mus [cm] */
 		double  stepLeft;       /* dimensionless step size*/
 		double	costheta;       /* cos(theta) */
@@ -283,28 +282,26 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 		double  xTarget, yTarget, zTarget;
 		double	wx0, wy0, wz0;  /* normal vector 2 to photon trajectory. Not necessarily normal to v0. */
 		double	r, theta, phi;
-		unsigned long j;        /* General-purpose thread-specific index variable */
+        long    j;        /* General-purpose thread-specific index variable */
 		double	xTentative, yTentative, zTentative; /* temporary variables, used during photon step. */
-		int 	ix, iy, iz;     /* Used to track photons */
+		long 	ix, iy, iz;     /* Used to track photons */
 		bool    photonInsideVolume;  /* flag, true or false */
-		//int		photonStepsCounter;
 		dsfmt_t dsfmt;			/* Thread-specific "state" of dSFMT pseudo-random number generator */
 
         #ifdef _WIN32
-		dsfmt_init_gen_rand(&dsfmt,(unsigned long)(simulationTimeStart.tv_nsec + omp_get_thread_num())); // Seed random number generator
-        //printf("Thread #%i seeded with %li\n",omp_get_thread_num()+1,(unsigned long)(simulationTimeStart.tv_nsec + omp_get_thread_num()));
+		dsfmt_init_gen_rand(&dsfmt,simulationTimeStart.tv_nsec + omp_get_thread_num()); // Seed random number generator
+        //printf("Thread #%i seeded with %li\n",omp_get_thread_num()+1,(uint32_t)(simulationTimeStart.tv_nsec + omp_get_thread_num()));
         #else
-		dsfmt_init_gen_rand(&dsfmt,(unsigned long)(simulationTimeStart.tv_nsec)); // Seed random number generator
+		dsfmt_init_gen_rand(&dsfmt,simulationTimeStart.tv_nsec); // Seed random number generator
         #endif
 		do {
 			/**** LAUNCH 
 			 Initialize photon position and trajectory.
 			 *****/
 
-			photonWeight = 1.0;                    /* set photon weight to one */
-			photonAlive = true;      /* Launch an ALIVE photon */
-			sameVoxel = false;					/* Photon is initialized as if it has just entered the voxel it's created in, to ensure proper initialization of voxel index and ray properties */
-			//photonStepsCounter = 0;
+			photonWeight = 1;
+			photonAlive = true;
+			sameVoxel = false; // Photon is initialized as if it has just entered the voxel it's created in, to ensure proper initialization of voxel index and ray properties
 			
             #ifdef _WIN32
 			#pragma omp atomic
@@ -320,36 +317,33 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                 j = d/2; // Index of the middle element of the current section
                 while (!(S_CDF[j] < rand && S_CDF[j+1] >= rand)) { // Binary tree search
                     if (S_CDF[j] >= rand) {
-                        j += (d-2)/4 - d/2;
+                        j = j + (d-2)/4 - d/2;
                         d = d/2 - 1;
                     } else {
-                        d -= d/2+1;
-                        j += 1 + d/2;
+                        d = d - d/2 - 1;
+                        j = j + d/2 + 1;
                     }
                 }
                 
-                ix = j%nx;    // ix = (i/(1    ))%(nx);
-                iy = j/nx%ny; // iy = (i/(nx   ))%(ny);
-                iz = j/nx/ny; // iz = (i/(nx*ny))%(nz);
+                ix = j%nx;
+                iy = j/nx%ny;
+                iz = j/nx/ny;
                 
                 x = (ix - nx/2.0 + 1 - RandomNum)*dx;
                 y = (iy - ny/2.0 + 1 - RandomNum)*dy;
                 z = (iz          + 1 - RandomNum)*dz;
                 
-                costheta = 1.0 - 2.0*RandomNum;
-                sintheta = sqrt(1.0 - costheta*costheta);
-                psi = 2.0*PI*RandomNum;
-                cospsi = cos(psi);
-                if (psi < PI) sinpsi =  sqrt(1.0 - cospsi*cospsi); 
-                else          sinpsi = -sqrt(1.0 - cospsi*cospsi);
+                costheta = 1 - 2*RandomNum;
+                sintheta = sqrt(1 - costheta*costheta);
+                psi = 2*PI*RandomNum;
                 
-                ux = sintheta*cospsi;
-                uy = sintheta*sinpsi;
+                ux = sintheta*cos(psi);
+                uy = sintheta*sin(psi);
                 uz = costheta;
             } else switch (beamtypeFlag) {
                 case 0: // top-hat focus, top-hat far field beam
                     r		= waist*sqrt(RandomNum); // for target calculation
-                    phi		= RandomNum*2.0*PI;
+                    phi		= RandomNum*2*PI;
                     wx0		= vx0;
                     wy0		= vy0;
                     wz0		= vz0;
@@ -360,7 +354,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                     zTarget = zFocus + r*wz0;
 
                     theta	= divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-                    phi		= RandomNum*2.0*PI;
+                    phi		= RandomNum*2*PI;
                     wx0		= vx0;
                     wy0		= vy0;
                     wz0		= vz0;
@@ -377,7 +371,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                 break;
                 case 1: // Gaussian focus, Gaussian far field beam
                     r		= waist*sqrt(-0.5*log(RandomNum)); // for target calculation
-                    phi		= RandomNum*2.0*PI;
+                    phi		= RandomNum*2*PI;
                     wx0		= vx0;
                     wy0		= vy0;
                     wz0		= vz0;
@@ -388,7 +382,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                     zTarget = zFocus + r*wz0;
 
                     theta	= divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-                    phi		= RandomNum*2.0*PI;
+                    phi		= RandomNum*2*PI;
                     wx0		= vx0;
                     wy0		= vy0;
                     wz0		= vz0;
@@ -404,29 +398,24 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                     z		= 0;
                 break;
                 case 2: // isotropically emitting point source
-                    costheta = 1.0 - 2.0*RandomNum;
-                    sintheta = sqrt(1.0 - costheta*costheta);
-                    psi = 2.0*PI*RandomNum;
-                    cospsi = cos(psi);
-                    if (psi < PI)
-                        sinpsi = sqrt(1.0 - cospsi*cospsi); 
-                    else
-                        sinpsi = -sqrt(1.0 - cospsi*cospsi);
+                    costheta = 1 - 2*RandomNum;
+                    sintheta = sqrt(1 - costheta*costheta);
+                    psi = 2*PI*RandomNum;
                     x = xFocus;
                     y = yFocus;
                     z = zFocus;
-                    ux = sintheta*cospsi;
-                    uy = sintheta*sinpsi;
+                    ux = sintheta*cos(psi);
+                    uy = sintheta*sin(psi);
                     uz = costheta;
                 break;
                 case 3: // infinite plane wave
                     if (boundaryFlag==1) {
-                        x = nx*dx*(RandomNum-0.5); // Generates a random x coordinate within the box
-                        y = ny*dy*(RandomNum-0.5); // Generates a random y coordinate within the box
+                        x = nx*dx*(RandomNum-0.5); // Generates a random x coordinate within the cuboid
+                        y = ny*dy*(RandomNum-0.5); // Generates a random y coordinate within the cuboid
                     }
                     else {
-                        x = extendedBoxScaleFactor*nx*dx*(RandomNum-0.5); // Generates a random x coordinate within an interval extendedBoxScaleFactor times the box' size
-                        y = extendedBoxScaleFactor*ny*dy*(RandomNum-0.5); // Generates a random y coordinate within an interval extendedBoxScaleFactor times the box' size
+                        x = infWaveScaleFactor*nx*dx*(RandomNum-0.5); // Generates a random x coordinate within an interval infWaveScaleFactor times the cuboid's size
+                        y = infWaveScaleFactor*ny*dy*(RandomNum-0.5); // Generates a random y coordinate within an interval infWaveScaleFactor times the cuboid's size
                     }
                     z = 0;
                     ux = ux0;
@@ -443,7 +432,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                 break;
                 case 5: // top-hat focus, Gaussian far field beam
                     r		= waist*sqrt(RandomNum); // for target calculation
-                    phi		= RandomNum*2.0*PI;
+                    phi		= RandomNum*2*PI;
                     wx0		= vx0;
                     wy0		= vy0;
                     wz0		= vz0;
@@ -454,7 +443,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                     zTarget = zFocus + r*wz0;
 
                     theta	= divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-                    phi		= RandomNum*2.0*PI;
+                    phi		= RandomNum*2*PI;
                     wx0		= vx0;
                     wy0		= vy0;
                     wz0		= vz0;
@@ -471,7 +460,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                 break;
                 case 6: // Gaussian focus, top-hat far field beam
                     r		= waist*sqrt(-0.5*log(RandomNum)); // for target calculation
-                    phi		= RandomNum*2.0*PI;
+                    phi		= RandomNum*2*PI;
                     wx0		= vx0;
                     wy0		= vy0;
                     wz0		= vz0;
@@ -482,7 +471,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                     zTarget = zFocus + r*wz0;
 
                     theta	= divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-                    phi		= RandomNum*2.0*PI;
+                    phi		= RandomNum*2*PI;
                     wx0		= vx0;
                     wy0		= vy0;
                     wz0		= vz0;
@@ -499,7 +488,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                 break;
                 case 7: // Laguerre-Gaussian LG01 focus, LG01 far field beam
                     r		= waist*sqrt((gsl_sf_lambert_Wm1(-RandomNum*exp(-1))+1)/(-2))/1.50087; // for target calculation
-                    phi		= RandomNum*2.0*PI;
+                    phi		= RandomNum*2*PI;
                     wx0		= vx0;
                     wy0		= vy0;
                     wz0		= vz0;
@@ -524,22 +513,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 			/* HOP_DROP_SPIN_CHECK
 			 Propagate one photon until it dies as determined by ROULETTE.
 			 *******/
-			do {
+			do { // while photonAlive
 				/**** HOP
 				 Take step to new position
-				 s = dimensionless stepsize
-				 ux, uy, uz are unit vector components of current photon trajectory
 				 *****/
 				stepLeft	= -log(RandomNum);				/* dimensionless step */
-				//photonStepsCounter += 1;
 				
-				do{  // while stepLeft>0
+				do {  // while stepLeft>0
 					if (!sameVoxel) {
-						/* Get tissue voxel properties of current position.
-						 * If photon beyond outer edge of defined voxels, 
-						 * the tissue equals properties of outermost voxels.
-						 * Therefore, set outermost voxels to infinite background value.
-						 */
 						ix = floor(nx/2.0 + x/dx);
 						iy = floor(ny/2.0 + y/dy);
 						iz = floor(z/dz);        
@@ -555,16 +536,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 							if (iz<0)   {iz=0;    photonInsideVolume = false;}
 							if (ix<0)   {ix=0;    photonInsideVolume = false;}
 							if (iy<0)   {iy=0;    photonInsideVolume = false;}
-						}
-						else if (boundaryFlag==1) { // Escape at boundaries
+						} else if (boundaryFlag==1) { // Escape at boundaries
 							if (iz>=nz) {iz=nz-1; photonAlive = false;}
 							if (ix>=nx) {ix=nx-1; photonAlive = false;}
 							if (iy>=ny) {iy=ny-1; photonAlive = false;}
 							if (iz<0)   {iz=0;    photonAlive = false;}
 							if (ix<0)   {ix=0;    photonAlive = false;}
 							if (iy<0)   {iy=0;    photonAlive = false;}
-						}
-						else if (boundaryFlag==2) { // Escape at top surface, no x,y bottom z boundaries
+						} else if (boundaryFlag==2) { // Escape at top surface, no x,y bottom z boundaries
 							if (iz>=nz) {iz=nz-1; photonInsideVolume = false;}
 							if (ix>=nx) {ix=nx-1; photonInsideVolume = false;}
 							if (iy>=ny) {iy=ny-1; photonInsideVolume = false;}
@@ -573,12 +552,15 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 							if (iy<0)   {iy=0;    photonInsideVolume = false;}
 						}
                         if (!photonInsideVolume) {
-                            if ((fabs(x) > extendedBoxScaleFactor*nx*dx/2.0) || (fabs(y) > extendedBoxScaleFactor*ny*dy/2.0) || (fabs(z-nz*dz/2.0) > extendedBoxScaleFactor*nz*dz/2.0)) {photonAlive = false;};
+                            if ((fabs(x) > infWaveScaleFactor*nx*dx/2.0) || (fabs(y) > infWaveScaleFactor*ny*dy/2.0) || (fabs(z-nz*dz/2.0) > infWaveScaleFactor*nz*dz/2.0)) {photonAlive = false;};
                         }
 						if (!photonAlive) break;
 						
-						/* Get the tissue type of located voxel */
-						j		= (long)(iz*ny*nx + iy*nx + ix);
+						/* Get tissue voxel properties of current position.
+						 * If photon beyond outer edge of defined voxels, 
+						 * the tissue equals properties of outermost voxels.
+						 */
+						j		= iz*ny*nx + iy*nx + ix;
 						mua 	= muav[v[j]];
 						mus 	= musv[v[j]];
 						g 		= gv[v[j]];
@@ -595,8 +577,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                                 floor(ny/2.0 + y/dy) == floor(ny/2.0 + yTentative/dy) &&
                                 floor(         z/dz) == floor(         zTentative/dz);
                     
-					if (sameVoxel) /* photon in same voxel */
-					{  
+					if (sameVoxel) { /* photon in same voxel */
 						x=xTentative;					/* Update positions. */
 						y=yTentative;
 						z=zTentative;
@@ -604,51 +585,40 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 						/**** DROP
 						 Drop photon weight (photonWeight) into local bin.
 						 *****/
-						absorb = photonWeight*(1 - exp(-mua*s));	/* photon weight absorbed at this step */
-						photonWeight -= absorb;					/* decrement WEIGHT by amount absorbed */
-						// If photon within volume of heterogeneity, deposit energy in F[]. 
-						// Normalize F[] later, when save output. 
-						if (photonInsideVolume) {
+						absorb = photonWeight*(1 - exp(-mua*s));   /* photon weight absorbed at this step */
+						photonWeight -= absorb;					   /* decrement WEIGHT by amount absorbed */
+						if (photonInsideVolume) {	// only save data if the photon is inside simulation cuboid
                             #ifdef _WIN32
 							#pragma omp atomic
                             #endif
-								F[j] += absorb;	// only save data if the photon is inside simulation cube
+								F[j] += absorb;
 						}
 						
-						/* Update stepLeft */
 						stepLeft = 0;		/* dimensionless step remaining */
-					}
-					else /* photon has crossed voxel boundary */
-					{
+                    } else { /* photon has crossed voxel boundary */
 						/* step to voxel face + "littlest step" so just inside new voxel. */
 						s = ls + FindVoxelFace(x,y,z,dx,dy,dz,nx,ny,ux,uy,uz);
 						
 						/**** DROP
 						 Drop photon weight (photonWeight) into local bin.
 						 *****/
-						absorb = photonWeight*(1-exp(-mua*s));   /* photon weight absorbed at this step */
-						photonWeight -= absorb;                  /* decrement WEIGHT by amount absorbed */
-						// If photon within volume of heterogeneity, deposit energy in F[]. 
-						// Normalize F[] later, when save output. 
-						if (photonInsideVolume) {
+						absorb = photonWeight*(1 - exp(-mua*s));   /* photon weight absorbed at this step */
+						photonWeight -= absorb;                    /* decrement WEIGHT by amount absorbed */
+						if (photonInsideVolume) {	// only save data if the photon is inside simulation cuboid
                             #ifdef _WIN32
 							#pragma omp atomic
                             #endif
-								F[j] += absorb;	// only save data if the photon is inside simulation cube
+								F[j] += absorb;
 						}
 						
-						/* Update stepLeft */
 						stepLeft -= s*mus;  /* dimensionless step remaining */
 						if (stepLeft<=ls) stepLeft = 0;
 						
-						/* Update positions. */
 						x += s*ux;
 						y += s*uy;
 						z += s*uz;
-						
-					} //(sameVoxel) /* same voxel */
-					
-				} while(stepLeft>0); //do...while
+					}
+				} while(stepLeft>0);
 				
 				/**** CHECK ROULETTE 
 				 If photon weight below THRESHOLD, then terminate photon using Roulette technique.
@@ -668,39 +638,27 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 					 Convert theta and psi into cosines ux, uy, uz. 
 					 *****/
 					/* Sample for costheta */
-					if (g == 0.0) costheta = 2.0*RandomNum - 1.0;
-					else          costheta = (1.0 + g*g - pow((1.0 - g*g)/(1.0 - g + 2*g*RandomNum),2))/(2.0*g);
-                    
-					sintheta = sqrt(1.0 - costheta*costheta); /* sqrt() is faster than sin(). */
+                    costheta = g? (1 + g*g - pow((1 - g*g)/(1 - g + 2*g*RandomNum),2))/(2*g) : 2*RandomNum - 1;
+					sintheta = sqrt(1 - costheta*costheta);
 					
 					/* Sample psi. */
-					psi = 2.0*PI*RandomNum;
+					psi = 2*PI*RandomNum;
 					cospsi = cos(psi);
-					if (psi < PI) sinpsi = sqrt(1.0 - cospsi*cospsi);     /* sqrt() is faster than sin(). */
-					else          sinpsi = -sqrt(1.0 - cospsi*cospsi);
-					
+					sinpsi = sin(psi);
+                    
 					/* New trajectory. */
 					if (1 - fabs(uz) <= ONE_MINUS_COSZERO) {      /* close to perpendicular. */
-						uxx = sintheta * cospsi;
-						uyy = sintheta * sinpsi;
-						uzz = costheta * SIGN(uz);   /* SIGN() is faster than division. */
-					} 
-					else {					/* usually use this option */
-						uxx = sintheta * (ux * uz * cospsi - uy * sinpsi) / sqrt(1.0 - uz * uz) + ux * costheta;
-						uyy = sintheta * (uy * uz * cospsi + ux * sinpsi) / sqrt(1.0 - uz * uz) + uy * costheta;
-						uzz = -sintheta * cospsi * sqrt(1.0 - uz * uz) + uz * costheta;
+						ux = sintheta*cospsi;
+						uy = sintheta*sinpsi;
+						uz = costheta*SIGN(uz);
+					} else {					                  /* usually use this option */
+						ux_temp = sintheta*(ux*uz*cospsi - uy*sinpsi)/sqrt(1 - uz*uz) + ux*costheta;
+						uy      = sintheta*(uy*uz*cospsi + ux*sinpsi)/sqrt(1 - uz*uz) + uy*costheta;
+						uz      = -sintheta*cospsi*sqrt(1 - uz*uz) + uz*costheta;
+                        ux      = ux_temp;
 					}
-					
-					/* Update trajectory */
-					ux = uxx;
-					uy = uyy;
-					uz = uzz;
 				}
-				
 			} while (photonAlive);
-			/* end STEP_CHECK_HOP_SPIN */
-			/* if ALIVE, continue propagating */
-			/* If photon DEAD, then launch new photon. */	
 			
             #ifdef _WIN32
 			#pragma omp master
@@ -716,7 +674,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                 clock_gettime(CLOCK_MONOTONIC, &simulationTimeCurrent);
  
 				// Print out message about progress.
-                newPctProgress = 100*(simulationTimeCurrent.tv_sec - simulationTimeStart.tv_sec + (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1000000000.0) / (simulationTimeRequested*60.0);
+                newPctProgress = 100*(simulationTimeCurrent.tv_sec - simulationTimeStart.tv_sec + (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1000000000.0) / (simulationTimeRequested*60);
 				if ((newPctProgress != pctProgress) && !ctrlc_caught) {
 					pctProgress = newPctProgress;
 					if ((pctProgress<10) || (pctProgress>90) || (fmod(pctProgress, 10)==0)) {
@@ -730,10 +688,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     
 	printf("------------------------------------------------------\n");
 	clock_gettime(CLOCK_MONOTONIC, &simulationTimeCurrent);
-	simulationTimeSpent = (double)(simulationTimeCurrent.tv_sec  - simulationTimeStart.tv_sec ) + (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1000000000.0;
+	simulationTimeSpent = simulationTimeCurrent.tv_sec - simulationTimeStart.tv_sec + (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1000000000.0;
 	printf("Simulated %0.1e photons at a rate of %0.1e photons per minute\n",(double)nPhotons, nPhotons*60/simulationTimeSpent);
 	
-    if (sourceDist) free(S_CDF);
+    if (sourceDist) mxFree(S_CDF);
     
     /**** SAVE
      Convert data to relative fluence rate [cm^-2] and return.
@@ -746,7 +704,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 		}
     } else if (beamtypeFlag == 3 && boundaryFlag != 1) {
 		for (i=0; i<nx*ny*nz;i++){
-			F[i] /= dx*dy*dz*nPhotons/(extendedBoxScaleFactor*extendedBoxScaleFactor)*muav[v[i]]; // Normalized fluence rate [W/cm^2/W.incident]
+			F[i] /= dx*dy*dz*nPhotons/(infWaveScaleFactor*infWaveScaleFactor)*muav[v[i]]; // Normalized fluence rate [W/cm^2/W.incident]
 		}
 	} else {
 		for (i=0; i<nx*ny*nz;i++){
