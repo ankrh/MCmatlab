@@ -1,7 +1,38 @@
 function runMonteCarloFluorescence(name)
-% Script for simulating distribution and magnitude of fluorescence
-% based on runMonteCarlo.m
+%   Script for simulating distribution and magnitude of fluorescence
+%   based on the output of runMonteCarlo.m
+%
+%   Prepares and runs the Monte Carlo simulation.
+%   After finishing, calls lookmcxyz for the display of the result.
+%
+%   Define the time requested for simulating photons.
+%   Define the power of the excitation beam (used to take saturation into
+%   account).
+%   Define the behaviour of photons that stray outside the tissue cuboid:
+%       0 = no boundaries: photons wander freely also outside the tissue
+%       cuboid and get killed only if they wander too far (6 times the cuboid
+%       size).
+%       1 = escape at boundaries: photons that stray outside the tissue
+%       cuboid get killed immediately.
+%       2 = escape at surface only: photons that hit the top surface get
+%       killed immediately, photons hitting other surfaces can wander up to
+%       6 times the cuboid size.
+%
+%   Input
+%       name
+%           the basename of the file as specified in makeTissue.m
+%
+%   Output
+%       ./Data/[name]_MCoutput_fluorescence.mat
+%           file containing the 3D fluorescence fluence rate distribution
+%
+%   Requires
+%       deleteDataFiles.m
+%       mcxyz.mex (architecture specific)
+%       lookmcxyz.m
+%
 
+%% Updates
 % Created 2018-04-19 by Anders K. Hansen, DTU Fotonik
 
 %% Check for preexisting files
@@ -17,7 +48,7 @@ MCinput_fluorescence = MCinput;
 % Simulation duration
 MCinput_fluorescence.simulationTime = 0.1;      % [min] time duration of the simulation
 
-% Incident excitation power, relevant only if fluorescence saturations are finite
+% Incident excitation power, for taking fluorescence saturations into account
 P = 2; % [W]
 
 % Boundary type
@@ -46,4 +77,4 @@ clear I_fluorescence MCinput_fluorescence
 %% Call lookmcxyz
 lookmcxyz(name);
 
-return
+end

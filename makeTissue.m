@@ -1,28 +1,28 @@
 function makeTissue
 %
-%   Builds and saves a tissue in a voxel-space. The tissue properties are
+%   Builds and saves a tissue in a rectangular cuboid voxel-space. The tissue properties are
 %   loaded from makeTissueList.m.
 %
-%   First, define the wavelength in nm, and the tissue cube built of voxels.
-%   Then, fill the voxel space with indeces pointing to the required tissue
+%   First, define the wavelength in nm, and the tissue cuboid built of voxels.
+%   Then, fill the voxel space with indices pointing to the required tissue
 %   types as listed in makeTissueList.m.
 %   This file produces the .mat file required as an input to
-%   runMonteCarlo.m, and it displays both the tissue cube as well as an
-%   overview over the optical and thermal properties of the tissue types.
-%   Note that the tissue cube is defined in xyz-coordinates (and not yxz).
+%   runMonteCarlo.m, and it displays both the tissue cuboid as well as an
+%   overview over the optical, thermal and fluorescence properties of the tissue types (if available).
+%   Note that the tissue cuboid is defined in xyz-coordinates (and not yxz).
 %
 %   Displays
-%       Tissue cube
-%       Tissue optical and thermal properties
+%       Tissue cuboid
+%       Tissue optical, thermal and fluorescence properties
 %
 %   Output
 %       ./Data/[name].mat
-%           file containing the 3D tissue cube definition (voxels)
+%           file containing the 3D tissue cuboid definition (voxels)
 %
 %   Requires
+%       deleteDataFiles.m
 %       makeTissueList.m
-%       plotVolumetric.m
-%       plotTissueProperties.m
+%       lookmcxyz.m
 %
 
 %% Updates
@@ -103,7 +103,7 @@ T(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 16; % fluorescence abso
 % T(X.^2 + Y.^2 < water_radius^2) = 2; % water
 % T(X.^2 + Y.^2 < fibre_radius^2) = 11; % fibre
 
-%% Get the tissueList and reduce T
+%% Get the tissueList and the reduced T matrix
 if(~isnan(wavelength_fluorescence))
     [~,tissueList_fluorescence] = makeTissueList(T,wavelength_fluorescence);
     [T, tissueList] = makeTissueList(T,wavelength);
@@ -125,4 +125,4 @@ fprintf('./Data/%s.mat saved\n',name)
 %% Make plots
 lookmcxyz(name);
 
-return
+end

@@ -1,17 +1,17 @@
 function [T, tissueList] = makeTissueList(T,wavelength)
-%   Returns the tissue optical properties at the wavelength nm and, if 
-%   defined, the thermal properties. Defining the thermal properties is
-%   only necessary for the heat simulations and can be omitted.
+%   Returns the known tissue properties (optical, thermal and/or fluorescence) at the specified wavelength.
+%   Defining the thermal or fluorescence properties is only necessary if you want to run simulations based on
+%   those properties.
 %   
 %   tissueList contains mua, mus and g for each tissue type;
 %       mua is the absorption coefficient [cm^-1] and must be positive (not zero)
 %       mus is the scattering coefficient [cm^-1] and must be positive (not zero)
 %       g is the anisotropy factor and must satisfy -1 <= g <= 1
-%   tissueList may further contain VHC, D and TC for each tissue type;
+%   it may further contain VHC, D and TC for some tissues;
 %       VHC is volumetric heat capacity [J/(cm^3*K)] and must be positive
 %       D is density [kg/cm^3] and must be positive (this value is only illustrative and not used in the simulations)
 %       TC is thermal conductivity [W/(cm*K)] and must be non-negative
-%   and it may further contain data for fluorescence properties for some tissues:
+%   and it may further contain data for fluorescence properties for some tissues;
 %       Y is fluorescence power yield (watts of emitted fluorescence light per watt of absorbed pump light) [-]
 %       sat is saturation excitation intensity [W/cm^2]
 
@@ -310,4 +310,4 @@ for j=1:length(tissueList)
     end
 end
 
-return
+end
