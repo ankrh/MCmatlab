@@ -93,7 +93,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
     plotVolumetric(x,y,z,mua_vec(T).*F);
     title('Normalized absorbed power per unit volume [W/cm^3/W.incident] ')
     
-    fprintf('\n%.2g%% of the input light was absorbed within the volume.\n',100*dx*dy*dz*sum(mua_vec(T(:)).*F(:).'));
+    fprintf('\n%.2g%% of the input light was absorbed within the volume.\n',100*dx*dy*dz*sum(sum(sum(mua_vec(T).*F))));
 
     if(exist(['./Data/' name '_MCoutput_fluorescence.mat'],'file'))
         load(['./Data/' name '_MCoutput_fluorescence.mat'],'P','I_fluorescence');
@@ -101,7 +101,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
         %% Remind the user what the input power was and plot emitter distribution
         fprintf('\nFluorescence was simulated for %.2g W of input excitation power.\n',P);
         
-        fprintf('Out of this, %.2g W was absorbed within the volume.\n',dx*dy*dz*sum(mua_vec(T(:)).*P.*F(:).'));
+        fprintf('Out of this, %.2g W was absorbed within the volume.\n',dx*dy*dz*sum(sum(sum(mua_vec(T).*P.*F))));
         
         if(~ishandle(6))
             h_f = figure(6);
@@ -116,7 +116,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
         plotVolumetric(x,y,z,FluorescenceEmitters);
         title('Fluorescence emitter distribution [W/cm^3] ')
 
-        fprintf('Out of this, %.2g W was re-emitted as fluorescence.\n',dx*dy*dz*sum(FluorescenceEmitters(:)));
+        fprintf('Out of this, %.2g W was re-emitted as fluorescence.\n',dx*dy*dz*sum(sum(sum(FluorescenceEmitters))));
         
         %% Make fluence rate plot
         if(~ishandle(7))
@@ -141,7 +141,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
         plotVolumetric(x,y,z,mua_vec(T).*I_fluorescence);
         title('Absorbed fluorescence power per unit volume [W/cm^3] ')
 
-        fprintf('Out of this, %.2g W was re-absorbed within the volume.\n\n',dx*dy*dz*sum(mua_vec(T(:)).*I_fluorescence(:).'));
+        fprintf('Out of this, %.2g W was re-absorbed within the volume.\n\n',dx*dy*dz*sum(sum(sum(mua_vec(T).*I_fluorescence))));
     end
 end
 
