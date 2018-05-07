@@ -11,6 +11,9 @@ function [T, tissueList] = makeTissueList(T,wavelength)
 %       VHC is volumetric heat capacity [J/(cm^3*K)] and must be positive
 %       D is density [kg/cm^3] and must be positive (this value is only illustrative and not used in the simulations)
 %       TC is thermal conductivity [W/(cm*K)] and must be non-negative
+%   and it may further for some tissues contain parameters to calculate heat-induced damage;
+%       E is the Arrhenius activation energy [J/mol]
+%       A is the Arrhenius pre-exponential factor [1/s]
 %   and it may further contain data for fluorescence properties for some tissues;
 %       Y is fluorescence power yield (watts of emitted fluorescence light per watt of absorbed pump light) [-]
 %       sat is saturation excitation intensity [W/cm^2]
@@ -122,6 +125,8 @@ tissueList(j).g   = gg;
 tissueList(j).VHC   = 3617*1.050e-3;
 tissueList(j).D     = 1.050e-3;
 tissueList(j).TC    = 0.52e-2;
+tissueList(j).E   = 340e3;%273.4e3; % J/mol    PLACEHOLDER DATA ONLY
+tissueList(j).A   = 1.6e55;%3e44; % 1/s        PLACEHOLDER DATA ONLY
 
 j=7;
 tissueList(j).name  = 'vessel';
@@ -278,13 +283,20 @@ tissueMap(unique(T)) = 1:nT;
 tissueList = tissueList(unique(T)); % Reduced tissue list, containing only the used tissues
 T = tissueMap(T); % Reduced tissue matrix, using only numbers from 1 up to the number of used tissues
 
-%% Fill in fluorescence assumptions
-% For all tissues for which the fluorescence power yield Y was
-% not specified, assume it is zero. Also, if the fluorescence saturation
+%% Fill in fluorescence and Arrhenius parameter assumptions
+% For all tissues for which the fluorescence power yield Y, Arrhenius
+% activation energy E or Arrhenius pre-exponential factor A was not 
+% specified, assume they are zero. Also, if the fluorescence saturation
 % was not specified, assume it is infinite.
 for j=1:length(tissueList)
     if(~isfield(tissueList,'Y') || isempty(tissueList(j).Y))
         tissueList(j).Y = 0;
+    end
+    if(~isfield(tissueList,'E') || isempty(tissueList(j).E))
+        tissueList(j).E = 0;
+    end
+    if(~isfield(tissueList,'A') || isempty(tissueList(j).A))
+        tissueList(j).A = 0;
     end
     if(~isfield(tissueList,'sat') || isempty(tissueList(j).sat))
         tissueList(j).sat = Inf;
@@ -307,6 +319,10 @@ for j=1:length(tissueList)
         error('tissue %s has Y < 0',tissueList(j).name,j);
     elseif(tissueList(j).sat <= 0)
         error('tissue %s has sat <= 0',tissueList(j).name,j);
+    elseif(tissueList(j).E < 0)
+        error('tissue %s has E < 0',tissueList(j).name,j);
+    elseif(tissueList(j).A < 0)
+        error('tissue %s has A < 0',tissueList(j).name,j);
     end
 end
 

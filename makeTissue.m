@@ -31,7 +31,7 @@ function makeTissue
 %   2018-04: Anders K. Hansen
 
 %% Define parameters (user-specified)
-wavelength  = 450;     % [nm] set the wavelength of the Monte Carlo simulation
+wavelength  = 577;     % [nm] set the wavelength of the Monte Carlo simulation
 name = 'tissue';        % name of the simulation
 nx = 100;               % number of bins in the x direction
 ny = 100;               % number of bins in the y direction
@@ -40,7 +40,7 @@ Lx = .1;                 % [cm] x size of simulation area
 Ly = .1;                 % [cm] y size of simulation area
 Lz = .1;                 % [cm] z size of simulation area
 
-wavelength_fluorescence = 600; % [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
+wavelength_fluorescence = NaN; % [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
 
 %% Check for preexisting files
 if(~deleteDataFiles(name)); return; end
@@ -59,18 +59,18 @@ z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 % T = 3*ones(nx,ny,nz,'uint8'); % "standard" tissue
 
 %% Blood vessel example:
-% zsurf = 0.01;
-% epd_thick = 0.006;
-% vesselradius  = 0.0100;
-% T = ones(nx,ny,nz,'uint8'); % fill background with air
-% T(Z > zsurf) = 4; % epidermis
-% T(Z > zsurf + epd_thick) = 5; % dermis
-% T(Y.^2 + (Z - (zsurf + 2*epd_thick + vesselradius)).^2 < vesselradius^2) = 6; % blood
+zsurf = 0.01;
+epd_thick = 0.006;
+vesselradius  = 0.0100;
+T = ones(nx,ny,nz,'uint8'); % fill background with air
+T(Z > zsurf) = 4; % epidermis
+T(Z > zsurf + epd_thick) = 5; % dermis
+T(Y.^2 + (Z - (zsurf + 2*epd_thick + vesselradius)).^2 < vesselradius^2) = 6; % blood
 
 %% Fluorescing cylinder example:
-cylinderradius  = 0.0100;
-T = 17*ones(nx,ny,nz,'uint8'); % fill background with fluorescent tissue
-T(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 16; % fluorescence absorber
+% cylinderradius  = 0.0100;
+% T = 17*ones(nx,ny,nz,'uint8'); % fill background with fluorescent tissue
+% T(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 16; % fluorescence absorber
 
 %% Hair example:
 % zsurf = 0.02;  % position of gel/skin surface[cm]

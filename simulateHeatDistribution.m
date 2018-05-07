@@ -21,6 +21,7 @@ function [temperatureSensor, timeVector] = simulateHeatDistribution(name)
 %       3D temperature evolution during illumination and diffusion
 %       Temperature evolution for the individual temperature sensors (x-y-plot)
 %       3D temperature distributions after illumination and after diffusion
+%       Tissue cuboid showing any heat-induced tissue damage
 %
 %   Output
 %       temperatureSensor
@@ -58,18 +59,20 @@ load(['./Data/' name '.mat']);
 load(['./Data/' name '_MCoutput.mat'],'F');
 
 %% Define parameters (user-specified)
-Winc             = 1; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
-onduration       = 0.1; % [s] Pulse on-duration
-offduration      = 0.1; % [s] Pulse off-duration
-Temp             = zeros(size(T)); % [deg C] Initial temperature distribution
+Winc             = 0.1; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
+onduration       = 0.05; % [s] Pulse on-duration
+offduration      = 0.05; % [s] Pulse off-duration
+Temp             = 37*ones(size(T)); % [deg C] Initial temperature distribution
 n_pulses         = 1; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
 
-plotTempLimits   = [0 65]; % [deg C], the expected range of temperatures, used only for setting the color scale in the plot
+plotTempLimits   = [37 100]; % [deg C], the expected range of temperatures, used only for setting the color scale in the plot
 extremeprecision = false; % false: normal time step resolution (dt = dtmax/2), true: high time step resolution (dt = dtmax/100)
 n_updates        = 100; % Number of times data is extracted for plots during each illumination phase and diffusion phase. Must be at least 1.
 makemovie        = true; % flag to specify whether a movie of the temperature evolution should be output. Remember to set plotTempLimits appropriately.
 
 %% Determine remaining parameters
+R = 8.3144598; % Gas constant [J/mol/K]
+
 if n_pulses ~= 1 && (onduration == 0 || offduration == 0)
     n_pulses = 1; % If either pulse on-duration or off-duration is 0, it doesn't make sense to talk of multiple pulses
     fprintf('\nWarning: Number of pulses changed to 1 since either on-duration or off-duration is 0.\n\n');
@@ -84,6 +87,15 @@ dz = z(2) - z(1);
 
 HC = dx*dy*dz*[tissueList.VHC]; % Heat capacity array. Element i is the HC of tissue i in the reduced tissue list.
 TC = [tissueList.TC]; % Thermal conductivity array. Element i is the TC of tissue i in the reduced tissue list.
+
+if(any([tissueList.A])) % If non-zero Arrhenius data exists, prepare to calculate tissue damage.
+    calcDamage = true;
+    A = [tissueList.A];
+    E = [tissueList.E];
+    Omega = zeros(size(T));
+else
+    calcDamage = false;
+end
 
 %% Calculate time step
 if extremeprecision
@@ -225,6 +237,7 @@ for j=1:n_pulses
     for i = 2:length(nt_vec)
         frameidx = i+(j-1)*(length(nt_vec)-1);
         Temp = finiteElementHeatPropagator(nt_vec(i)-nt_vec(i-1),Temp,T-1,dTperdeltaT,(nt_vec(i) <= nt_on)*dT_abs); % Arguments (nt,[[[Temp]]],[[[T]]],[[[dTperdeltaT]]],[[[dT_abs]]]). Contents of T have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
+        Omega = Omega + (timeVector(frameidx)-timeVector(frameidx-1))*A(T).*exp(-E(T)./(R*(Temp + 273.15)));
         
         if numTemperatureSensors
             temperatureSensor(:,frameidx) = Temp(temperatureSensorPosition);
@@ -279,13 +292,31 @@ elseif n_pulses == 1
 else
     title(['Temperature after ' num2str(n_pulses) ' pulses'])
 end
+
+if calcDamage
+    if(~ishandle(12))
+        damageFigure = figure(12);
+        damageFigure.Position = [40 80 1100 650];
+    else
+        damageFigure = figure(12);
+    end
+    damageFigure.Name = 'Tissue damage illustration';
+    T_damage = T;
+    T_damage(Omega > 1) = nT + 1;
+    tissueList(nT + 1).name = 'Damaged tissue';
+    plotVolumetric(x,y,z,T_damage,tissueList);
+    title('Tissue damage illustration');
+    save(['./Data/' name '_heatSimoutput.mat'],'Omega','-append');
+end
 fprintf('./Data/%s_heatSimoutput.mat saved\n',name);
 
 if(makemovie)
     movieframes = [repmat(movieframes(1),1,30) movieframes(1:end) repmat(movieframes(end),1,30)];
     writerObj = VideoWriter(['./Data/' name '_heatSimoutput.mp4'],'MPEG-4');
     open(writerObj);
+    warning('off','MATLAB:audiovideo:VideoWriter:mp4FramePadded');
     writeVideo(writerObj,movieframes);
+    warning('on','MATLAB:audiovideo:VideoWriter:mp4FramePadded');
     close(writerObj);
     fprintf('./Data/%s_heatSimoutput.mp4 saved\n',name);
 end
