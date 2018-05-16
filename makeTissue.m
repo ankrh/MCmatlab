@@ -116,9 +116,9 @@ end
 
 %% Save output
 if(~isnan(wavelength_fluorescence))
-    save(['./Data/' name '.mat'],'x','y','z','tissueList','tissueList_fluorescence','T','wavelength','wavelength_fluorescence')
+    save(['./Data/' name '.mat'],'dx','dy','dz','nx','ny','nz','x','y','z','tissueList','tissueList_fluorescence','T','wavelength','wavelength_fluorescence')
 else
-    save(['./Data/' name '.mat'],'x','y','z','tissueList','T','wavelength')
+    save(['./Data/' name '.mat'],'dx','dy','dz','nx','ny','nz','x','y','z','tissueList','T','wavelength')
 end
 fprintf('./Data/%s.mat saved\n',name)
 
