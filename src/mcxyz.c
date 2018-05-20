@@ -53,17 +53,15 @@
 #define CHANCE      0.1  		// used in roulette
 #define SIGN(x)     ((x)>=0 ? 1:-1)
 #define RandomNum   dsfmt_genrand_open_close(&dsfmt) // Calls for a random number in (0,1]
-#define ONE_MINUS_COSZERO 1.0E-12   // If 1-cos(theta) <= ONE_MINUS_COSZERO, fabs(theta) <= 1e-6 rad.
-// If 1+cos(theta) <= ONE_MINUS_COSZERO, fabs(PI-theta) <= 1e-6 rad.
 
 // Function for rotating a point at coordinates (x,y,z) an angle theta around an axis with direction unit vector (ux,uy,uz).
 void axisrotate(double *x, double *y, double *z, double ux, double uy, double uz, double theta) {	
     double xin = *x, yin = *y, zin = *z;
 	double st = sin(theta), ct = cos(theta);
 	
-	*x = (ct + ux*ux*(1-ct))   *xin	 +  (ux*uy*(1-ct) - uz*st)*yin  +  (ux*uz*(1-ct) + uy*st)*zin;
-	*y = (uy*ux*(1-ct) + uz*st)*xin	 +  (ct + uy*uy*(1-ct))   *yin  +  (uy*uz*(1-ct) - ux*st)*zin;
-	*z = (uz*ux*(1-ct) - uy*st)*xin	 +  (uz*uy*(1-ct) + ux*st)*yin  +  (ct + uz*uz*(1-ct))   *zin;
+	*x = (ux*ux*(1-ct) +    ct)*xin	 +  (ux*uy*(1-ct) - uz*st)*yin  +  (ux*uz*(1-ct) + uy*st)*zin;
+	*y = (uy*ux*(1-ct) + uz*st)*xin	 +  (uy*uy*(1-ct) +    ct)*yin  +  (uy*uz*(1-ct) - ux*st)*zin;
+	*z = (uz*ux*(1-ct) - uy*st)*xin	 +  (uz*uy*(1-ct) + ux*st)*yin  +  (uz*uz*(1-ct) +    ct)*zin;
 }
 
 #ifdef _WIN32
@@ -133,85 +131,56 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 
     // time
 	double	simulationTimeSpent;               // Spent time durations of computation.
-	time_t	currentCalendarTime;
 	struct  timespec simulationTimeStart, simulationTimeCurrent;
 	
     // Display parameters
-    printf("nx = %d, dx = %0.8f [cm]\n",nx,dx);
-    printf("ny = %d, dy = %0.8f [cm]\n",ny,dy);
-    printf("nz = %d, dz = %0.8f [cm]\n\n",nz,dz);
+    printf("---------------------------------------------------------\n");
+    printf("(nx,ny,nz) = (%d,%d,%d), (dx,dy,dz) = (%0.1e,%0.1e,%0.1e) cm\n",nx,ny,nz,dx,dy,dz);
 
-    if(sourceDist) printf("Using isotropically emitting 3D distribution as light source\n\n");
+    if(sourceDist) printf("Using isotropically emitting 3D distribution as light source\n");
     else {
-        printf("beamtypeFlag = %d\n",beamtypeFlag);
         switch(beamtypeFlag) {
             case 0:
-                printf("Using top-hat focus, top-hat far field beam\n\n");
+                printf("Using top-hat focus, top-hat far field beam\n");
                 break;
             case 1:
-                printf("Using Gaussian focus, Gaussian far field beam\n\n");
+                printf("Using Gaussian focus, Gaussian far field beam\n");
                 break;
             case 2:
-                printf("Using isotropic point source\n\n");
+                printf("Using isotropic point source\n");
                 break;
             case 3:
-                printf("Using infinite plane wave\n\n");
+                printf("Using infinite plane wave\n");
                 break;
             case 4:
-                printf("Using pencil beam\n\n");
+                printf("Using pencil beam\n");
                 break;
             case 5:
-                printf("Using top-hat focus, Gaussian far field beam\n\n");
+                printf("Using top-hat focus, Gaussian far field beam\n");
                 break;
             case 6:
-                printf("Using Gaussian focus, top-hat far field beam\n\n");
+                printf("Using Gaussian focus, top-hat far field beam\n");
                 break;
             case 7:
-                printf("Using Laguerre-Gaussian LG01 focus, LG01 far field beam\n\n");
+                printf("Using Laguerre-Gaussian LG01 focus, LG01 far field beam\n");
                 break;
         }
 
-        printf("xFocus = %0.8f [cm]\n",xFocus);
-        printf("yFocus = %0.8f [cm]\n",yFocus);
-        printf("zFocus = %0.8f [cm]\n",zFocus);
-
-        if(beamtypeFlag!=2) {
-            printf("Beam direction defined by unit vector:\n");
-            printf("ux0 = %0.8f\n",ux0);
-            printf("uy0 = %0.8f\n",uy0);
-            printf("uz0 = %0.8f\n",uz0);
-        }
-        if(beamtypeFlag<=1) {
-            printf("Beam waist radius = %0.8f [cm]\n",waist);
-            printf("Beam divergence half-angle = %0.8f [rad]\n",divergence);
+        printf("Focus location = (%0.1e,%0.1e,%0.1e) cm\n",xFocus,yFocus,zFocus);
+        if(beamtypeFlag!=2) printf("Beam direction = (%0.3f,%0.3f,%0.3f)\n",ux0,uy0,uz0);
+        if(beamtypeFlag!=2 && beamtypeFlag!=3 && beamtypeFlag!=4) {
+            printf("Beam waist = %0.1e cm, divergence = %0.1e rad\n",waist,divergence);
         }
     }
     
-    if(boundaryFlag==0) printf("boundaryFlag = 0, so no boundaries.\n");
-    else if(boundaryFlag==1) printf("boundaryFlag = 1, so escape at all boundaries.\n");    
-	else if(boundaryFlag==2) printf("boundaryFlag = 2, so escape at surface only.\n");    
+    if(boundaryFlag==0) printf("boundaryFlag = 0, so no boundaries\n");
+    else if(boundaryFlag==1) printf("boundaryFlag = 1, so escape at all boundaries\n");    
+	else if(boundaryFlag==2) printf("boundaryFlag = 2, so escape at surface only\n");    
 	else {
         printf("Error: Invalid boundaryFlag\n");
         return;
     }
-	
-    printf("\n%d tissues used:\n\n",nT);
-    for(i=0; i<nT; i++) {
-        printf("muav[%ld] = %0.8f [cm^-1]\n",i+1,muav[i]); // +1 because we convert from C's 0-based indexing to MATLAB's 1-based indexing
-        printf("musv[%ld] = %0.8f [cm^-1]\n",i+1,musv[i]); // +1 because we convert from C's 0-based indexing to MATLAB's 1-based indexing
-        printf("  gv[%ld] = %0.8f [--]\n\n",i+1,gv[i]);    // +1 because we convert from C's 0-based indexing to MATLAB's 1-based indexing
-    }
     
-    // Show tissue on screen, along central z-axis, by listing tissue type #'s.
-    printf("Central axial profile of tissue types:\n");
-    for(i=0; i<nz; i++) printf("%d",v[i*ny*nx + ny/2*nx + nx/2]+1); // +1 because we convert from C's 0-based indexing to MATLAB's 1-based indexing
-    printf("\n\n");
-    
-	// ============================ MAJOR CYCLE ========================
-	clock_gettime(CLOCK_MONOTONIC, &simulationTimeStart);
-	currentCalendarTime = time(NULL);
-	printf("%s", ctime(&currentCalendarTime));	
-	
 	// INITIALIZATIONS
 	if(sourceDist) {
         S_CDF = mxMalloc((nx*ny*nz + 1)*sizeof(double));
@@ -225,13 +194,16 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 		vz0 = 0;
 	}
 
-    printf("Simulation time requested = %0.2f min\n\n",simulationTimeRequested);
+    printf("Simulation duration = %0.2f min\n\n",simulationTimeRequested);
 	
 	// RUN - Launch photons, initializing each one before propagation
-	printf("------------- Begin Monte Carlo -------------\n");
+	printf("Calculating...   0%% done");
     mexEvalString("drawnow;");
 	
     nPhotons = 0;
+	
+    // ============================ MAJOR CYCLE ========================
+	clock_gettime(CLOCK_MONOTONIC, &simulationTimeStart);
 	
     #ifdef _WIN32
     #pragma omp parallel num_threads(omp_get_num_procs())
@@ -240,7 +212,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 		double	ux, uy, uz;         // photon trajectory as unit vector composants
         double  rand;               // Random number used for lookup into CDF of 3D source
         long    d;                  // Used in CDF lookup
-		double  ux_temp;            // temporary value used during SPIN
+		double  ux_temp, uy_temp;   // temporary values used during SPIN
 		double	s;                  // step sizes. s = -log(RND)/mus [cm]
 		double  stepLeft;           // dimensionless step size
 		double	costheta;           // cos(theta)
@@ -259,7 +231,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 		double	wx0, wy0, wz0;      // normal vector 2 to photon trajectory. Not necessarily normal to v0.
 		double	r, theta, phi;
         long    j;                  // General-purpose thread-specific index variable
-        double  sx, sy, sz;         // Distances along current trajectory to next voxel boundary plane parallel to the yz, xz and xy planes, respectively
+        double  sx, sy, sz, sxyzmin;// Distances along current trajectory to next voxel boundary plane parallel to the yz, xz and xy planes, respectively, and the minimum of the three.
 		double 	ix=0, iy=0, iz=0;   // Fractional x, y, or z indices. Used to track photons
 		bool    photonInsideVolume; // Is the photon inside the cuboid?
 		dsfmt_t dsfmt;			    // Thread-specific "state" of dSFMT pseudo-random number generator
@@ -269,7 +241,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         #else
 		dsfmt_init_gen_rand(&dsfmt,simulationTimeStart.tv_nsec); // Seed random number generator
         #endif
-		do {
+		while((pctProgress < 100) && !ctrlc_caught) {
 			// LAUNCH - Initialize photon position and trajectory
 
 			photonWeight = 1;
@@ -480,7 +452,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
             }
             
 			// HOP_DROP_SPIN_CHECK - Propagate one photon until it dies as determined by ROULETTE
-			do { // while photonAlive
+			while(photonAlive) {
                 // Calculate distances to next voxel boundary planes
                 sx = ux? (floor(ix) + (ux>0) - ix)*dx/ux : INFINITY;
                 sy = uy? (floor(iy) + (uy>0) - iy)*dy/uy : INFINITY;
@@ -489,7 +461,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 				// HOP - Take step to new position
 				stepLeft	= -log(RandomNum); // dimensionless step
 				
-				do {  // while stepLeft>0
+				do { // while(stepLeft>0)
 					if(!sameVoxel) { // If photon has just entered a new voxel or has just been launched
                         photonInsideVolume = (ix < nx && ix >= 0 && iy < ny && iy >= 0 && iz < nz && iz >= 0);
                         
@@ -516,7 +488,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                          * the closest defined voxel. */
                         j = ((iz < 0)? 0: ((iz >= nz)? nz-1: floor(iz)))*nx*ny +
                             ((iy < 0)? 0: ((iy >= ny)? ny-1: floor(iy)))*nx    +
-                            ((ix < 0)? 0: ((ix >= nx)? nx-1: floor(ix))); // Index values are restrained to the interval [0,n[
+                            ((ix < 0)? 0: ((ix >= nx)? nx-1: floor(ix))); // Index values are restrained to integers in the interval [0,n-1]
 						mua 	= muav[v[j]];
 						mus 	= musv[v[j]];
 						g 		= gv[v[j]];
@@ -524,21 +496,26 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 					
 					s     = stepLeft/mus; // Step size [cm]
                     
-                    if(s <= sx && s <= sy && s <= sz) { // s is smallest, so the photon stays within the voxel
+                    sxyzmin = fmin(sx,fmin(sy,sz));
+                    if(s < sxyzmin) { // s is smallest, so the photon stays within the voxel
                         sameVoxel = true;
                         stepLeft = 0;
-                    } else { // Photon crosses a voxel boundary
+                    } else if(s == sxyzmin) { // photon gets scattered exactly on a voxel boundary
                         sameVoxel = false;
-                        s = fmin(sx,fmin(sy,sz));
+                        stepLeft = 0;
+                    } else { // photon crosses voxel boundary
+                        sameVoxel = false;
+                        s = sxyzmin;
                         stepLeft -= s*mus;
                     }
 
                     ix = (sx==s)? ((ux>0)? floor(ix+1): nextafter(floor(ix),-INFINITY)): (ix + s*ux/dx); // The nextafter function is used to move the photon the smallest possible amount (machine precision) into the voxel.
-                    sx = (sx==s)? ((ux>0)? dx/ux      : -dx/ux                        ): (sx - s      );
                     iy = (sy==s)? ((uy>0)? floor(iy+1): nextafter(floor(iy),-INFINITY)): (iy + s*uy/dy);
-                    sy = (sy==s)? ((uy>0)? dy/uy      : -dy/uy                        ): (sy - s      );
                     iz = (sz==s)? ((uz>0)? floor(iz+1): nextafter(floor(iz),-INFINITY)): (iz + s*uz/dz);
-                    sz = (sz==s)? ((uz>0)? dz/uz      : -dz/uz                        ): (sz - s      );
+                    
+                    sx = (sx==s)? dx/fabs(ux): sx - s;
+                    sy = (sy==s)? dy/fabs(uy): sy - s;
+                    sz = (sz==s)? dz/fabs(uz): sz - s;
                     
                     // DROP - Drop photon weight into local bin
                     absorb = photonWeight*(1 - exp(-mua*s));   // photon weight absorbed at this step
@@ -570,18 +547,19 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 					cospsi = cos(psi);
 					sinpsi = sin(psi);
                     
-					if(1 - fabs(uz) <= ONE_MINUS_COSZERO) {      // close to perpendicular
+                    if(fabs(uz) < 1) {
+						ux_temp =  sintheta*(ux*uz*cospsi - uy*sinpsi)/sqrt(ux*ux + uy*uy) + ux*costheta;
+						uy_temp =  sintheta*(uy*uz*cospsi + ux*sinpsi)/sqrt(ux*ux + uy*uy) + uy*costheta;
+						uz      = -sintheta*(      cospsi            )*sqrt(ux*ux + uy*uy) + uz*costheta;
+                        uy      = uy_temp;
+                        ux      = ux_temp;
+                    } else {
 						ux = sintheta*cospsi;
 						uy = sintheta*sinpsi;
 						uz = costheta*SIGN(uz);
-					} else {					                  // usually use this option
-						ux_temp = sintheta*(ux*uz*cospsi - uy*sinpsi)/sqrt(1 - uz*uz) + ux*costheta;
-						uy      = sintheta*(uy*uz*cospsi + ux*sinpsi)/sqrt(1 - uz*uz) + uy*costheta;
-						uz      = -sintheta*cospsi*sqrt(1 - uz*uz) + uz*costheta;
-                        ux      = ux_temp;
-					}
+                    }
 				}
-			} while(photonAlive);
+			} // while(photonAlive)
 			
             #ifdef _WIN32
 			#pragma omp master
@@ -591,29 +569,30 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                 #ifdef _WIN32
                 if(utIsInterruptPending()) {
                     ctrlc_caught = true;
-                    printf("Ctrl+C detected, stopping.\n");
+                    printf("\nCtrl+C detected, stopping.");
                 }
                 #endif
                 clock_gettime(CLOCK_MONOTONIC, &simulationTimeCurrent);
  
 				// Print out message about progress.
-                newPctProgress = 100*(simulationTimeCurrent.tv_sec - simulationTimeStart.tv_sec + (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1000000000.0) / (simulationTimeRequested*60);
+                newPctProgress = 100*(simulationTimeCurrent.tv_sec  - simulationTimeStart.tv_sec +
+                                     (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1e9) / (simulationTimeRequested*60);
 				if((newPctProgress != pctProgress) && !ctrlc_caught) {
 					pctProgress = newPctProgress;
-					if((pctProgress<10) || (pctProgress>90) || (fmod(pctProgress, 10)==0)) {
-						printf("%i%% done\n", pctProgress);
-                        mexEvalString("drawnow;");
-					}
+                    printf("\b\b\b\b\b\b\b\b\b%3.i%% done", pctProgress);
+                    mexEvalString("drawnow;");
 				}
 			}
-		} while((pctProgress < 100) && !ctrlc_caught);  // end RUN
+		} // while((pctProgress < 100) && !ctrlc_caught)
 	}
     
-	printf("------------------------------------------------------\n");
 	clock_gettime(CLOCK_MONOTONIC, &simulationTimeCurrent);
-	simulationTimeSpent = simulationTimeCurrent.tv_sec - simulationTimeStart.tv_sec + (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1000000000.0;
-	printf("Simulated %0.1e photons at a rate of %0.1e photons per minute\n",(double)nPhotons, nPhotons*60/simulationTimeSpent);
-	
+	simulationTimeSpent = simulationTimeCurrent.tv_sec  - simulationTimeStart.tv_sec +
+                         (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1e9;
+	printf("\nSimulated %0.1e photons at a rate of %0.1e photons per minute\n",(double)nPhotons, nPhotons*60/simulationTimeSpent);
+    printf("---------------------------------------------------------\n");
+    mexEvalString("drawnow;");
+    
     if(sourceDist) mxFree(S_CDF);
     
     // SAVE - Convert data to relative fluence rate [cm^-2] and return
@@ -627,9 +606,5 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 		for(i=0; i<nx*ny*nz;i++) F[i] /= dx*dy*dz*nPhotons*muav[v[i]]; // Normalized fluence rate [W/cm^2/W.incident]
 	}
 	
-    printf("------------------------------------------------------\n");
-    currentCalendarTime = time(NULL);
-    printf("%s\n", ctime(&currentCalendarTime));
-
     return;
 }
