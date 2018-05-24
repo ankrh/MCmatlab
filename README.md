@@ -14,10 +14,11 @@ You are welcome to use this code in whatever way you want. When doing so, please
 
 ### How do I get set up? ###
 
-A quick description of how to run mcxyz, using MATLAB R2014B or later.
-Note that if you want to use the pre-compiled mex-files, you may need to update MATLAB to the most recent version to avoid crashes.
+Requirements:
+- Windows 8.1 or later, or macOS 10.12 (Sierra) or later (this software is not compatible with macOS 10.11 El Capitan)
+- MATLAB R2014B or later (if you want to use the pre-compiled mex-files, you need to update MATLAB to the most recent version)
 
-PROGRAMS:
+MATLAB PROGRAMS:
 makeTissue.m
 runMonteCarlo.m
 runMonteCarloFluorescence.m
@@ -26,7 +27,7 @@ simulateHeatDistribution.m
 
 HELPERFILE:
 makeTissueList.m
-	
+
 INSTRUCTIONS:
 1. Compilation
 The folders include all the executables necessary, so you don't need to compile anything. If, however, you want to change the routine in either the mcxyz.c source code (in the folder "src") or the finiteElementHeatPropagator.c source code (in the folder "src"), you will need to recompile the respective mex-files. Check out those two source-files on how to do so.
