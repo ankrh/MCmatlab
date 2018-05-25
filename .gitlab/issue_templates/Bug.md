@@ -1,8 +1,11 @@
-# General Description
+# General description
 
-# OS and MATLAB version used
+# Versions (soft- and hardware) used
+## OS and hardware
+## MATLAB
+## mex-files (precompiled or self-built)
 
-# Steps required to reproduce the Bug
+# Steps to reproduce the bug
 
 # Expected behavior
 
