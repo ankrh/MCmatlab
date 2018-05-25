@@ -15,8 +15,9 @@ You are welcome to use this code in whatever way you want. When doing so, please
 ### How do I get set up? ###
 
 Requirements:
-- Windows 8.1 or later, or macOS 10.12 (Sierra) or later (this software is not compatible with macOS 10.11 El Capitan)
+- Windows 7 or later, or macOS 10.12 (Sierra) or later (this software is not compatible with macOS 10.11 El Capitan)
 - MATLAB R2014B or later (if you want to use the pre-compiled mex-files, you need to update MATLAB to the most recent version)
+ - Image Processing Toolbox for MATLAB
 
 MATLAB PROGRAMS:
 makeTissue.m
