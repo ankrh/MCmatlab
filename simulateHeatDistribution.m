@@ -237,7 +237,7 @@ for j=1:n_pulses
     for i = 2:length(nt_vec)
         frameidx = i+(j-1)*(length(nt_vec)-1);
         Temp = finiteElementHeatPropagator(nt_vec(i)-nt_vec(i-1),Temp,T-1,dTperdeltaT,(nt_vec(i) <= nt_on)*dT_abs); % Arguments (nt,[[[Temp]]],[[[T]]],[[[dTperdeltaT]]],[[[dT_abs]]]). Contents of T have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
-        Omega = Omega + (timeVector(frameidx)-timeVector(frameidx-1))*A(T).*exp(-E(T)./(R*(Temp + 273.15)));
+        if calcDamage; Omega = Omega + (timeVector(frameidx)-timeVector(frameidx-1))*A(T).*exp(-E(T)./(R*(Temp + 273.15))); end;
         
         if numTemperatureSensors
             temperatureSensor(:,frameidx) = Temp(temperatureSensorPosition);
