@@ -75,7 +75,7 @@ MCinput.beamtypeFlag = 7;
 % Position of focus, only used for beamtypeFlag ~=3 (if beamtypeFlag == 2 this is the source position)
 MCinput.xFocus = 0;                % [cm] x position of focus
 MCinput.yFocus = 0;                % [cm] y position of focus
-MCinput.zFocus = (z(end)+z(1))/2;  % [cm] z position of focus
+MCinput.zFocus = nz*dz/2;          % [cm] z position of focus
 
 % Direction of beam center axis, only used if beamtypeflag ~= 2:
 MCinput.ux0 = 0;                   % trajectory unit vector x composant
