@@ -294,18 +294,18 @@ void scatterPhoton(struct photon * const P, struct geometry const * const G) {
     double costheta = P->g? (1 + P->g*P->g - pow((1 - P->g*P->g)/(1 - P->g + 2*P->g*RandomNum),2))/(2*P->g) : 2*RandomNum - 1;
     double sintheta = sqrt(1 - costheta*costheta);
     double phi = 2*PI*RandomNum;
-    double cospsi = cos(phi);
-    double sinpsi = sin(phi);
+    double cosphi = cos(phi);
+    double sinphi = sin(phi);
 
     if(fabs(P->u[2]) < 1) {
-        double ux_temp =  sintheta*(P->u[0]*P->u[2]*cospsi - P->u[1]*sinpsi)/sqrt(P->u[0]*P->u[0] + P->u[1]*P->u[1]) + P->u[0]*costheta;
-        double uy_temp =  sintheta*(P->u[1]*P->u[2]*cospsi + P->u[0]*sinpsi)/sqrt(P->u[0]*P->u[0] + P->u[1]*P->u[1]) + P->u[1]*costheta;
-        P->u[2]        = -sintheta*(                cospsi                 )*sqrt(P->u[0]*P->u[0] + P->u[1]*P->u[1]) + P->u[2]*costheta;
+        double ux_temp =  sintheta*(P->u[0]*P->u[2]*cosphi - P->u[1]*sinphi)/sqrt(P->u[0]*P->u[0] + P->u[1]*P->u[1]) + P->u[0]*costheta;
+        double uy_temp =  sintheta*(P->u[1]*P->u[2]*cosphi + P->u[0]*sinphi)/sqrt(P->u[0]*P->u[0] + P->u[1]*P->u[1]) + P->u[1]*costheta;
+        P->u[2]        = -sintheta*(                cosphi                 )*sqrt(P->u[0]*P->u[0] + P->u[1]*P->u[1]) + P->u[2]*costheta;
         P->u[1]        = uy_temp;
         P->u[0]        = ux_temp;
     } else {
-        P->u[0] = sintheta*cospsi;
-        P->u[1] = sintheta*sinpsi;
+        P->u[0] = sintheta*cosphi;
+        P->u[1] = sintheta*sinphi;
         P->u[2] = costheta*SIGN(P->u[2]);
     }
     
