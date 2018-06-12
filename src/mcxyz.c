@@ -16,6 +16,7 @@
  *      Uses the Mersenne Twister for random number generation.
  *  2017-06-07: Adapted to MATLAB mex file generation by Anders K. Hansen, DTU Fotonik
  *  2018-04-19: Added support for illuminating with an isotropically emitting 3D distribution of sources, such as a collection of fluorescing emitters
+ *  2018-06-08: Code refactored by Anders K. Hansen, DTU Fotonik
  *
  ** COMPILING ON WINDOWS
  * Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -O3 -fopenmp -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -O3 -fopenmp -std=c11 -Wall -pedantic' -outdir private .\src\mcxyz.c ".\src\libut.lib""
@@ -78,7 +79,7 @@ struct beam { // Struct type for the constant beam definitions
 };
 
 struct photon { // Struct type for parameters describing the thread-specific current state of a photon
-    double         i[3],u[3]; // Fractional position index i, ray trajectory unit vector u
+    double         i[3],u[3],D[3]; // Fractional position indices i, ray trajectory unit vector u and distances D to next voxel boundary (yz, xz or yz) along current trajectory
     long           j; // Linear index of current voxel (or closest defined voxel if photon outside cuboid)
     double         mua,mus,g; // Absorption, scattering and anisotropy values at current photon position
     double         stepLeft,weight;
@@ -216,6 +217,9 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         break;
     }
     
+    // Calculate distances to next voxel boundary planes
+    for(idx=0;idx<3;idx++) P->D[idx] = P->u[idx]? (floor(P->i[idx]) + (P->u[idx]>0) - P->i[idx])*G->d[idx]/P->u[idx] : INFINITY;
+    
     P->stepLeft	= -log(RandomNum);
     P->nLaunches++;
 }
@@ -256,17 +260,23 @@ void getNewVoxelProperties(struct photon * const P, struct geometry const * cons
 void propagatePhoton(struct photon * const P, struct geometry const * const G, double * const F) {
     long idx;
 
-    long double s = (long double)P->stepLeft/P->mus; // s starts out as the propagation distance until next scattering event (assuming current mus value)...
-    for(idx=0;idx<3;idx++) if(P->u[idx]) s = fminl(s,(floor(P->i[idx]) + (P->u[idx]>0) - (long double)P->i[idx])*G->d[idx]/P->u[idx]); // but if any of the distances to the next voxel boundary (yz, xz or xy) are smaller, set s to that smallest value
+    P->sameVoxel = true;
 
+    double s = fmin(P->stepLeft/P->mus,fmin(P->D[0],fmin(P->D[1],P->D[2])));
+    P->stepLeft -= s*P->mus;
+    
     for(idx=0;idx<3;idx++) {
-        P->i[idx] += s*P->u[idx]/G->d[idx]; // Here it is important that s (a long double) has higher precision than P->i (a double)
-        if(!fmod(P->i[idx],1) && P->u[idx]) { // If we have arrived at a voxel boundary without simply traveling parallel to it...
-            P->sameVoxel = false; // then we are in a new voxel...
-            if(P->u[idx] < 0) P->i[idx] = nextafter(P->i[idx],-INFINITY); // and if we were traveling in the negative direction, we need to nudge the photon the smallest possible amount into the next voxel
+        long i_old = floor(P->i[idx]);
+        P->i[idx] += s*P->u[idx]/G->d[idx]; // First take the expected step (including various rounding errors)
+        if(s == P->D[idx]) { // If we were supposed to go to the next voxel along this dimension
+            while(floor(P->i[idx]) == i_old) P->i[idx] += SIGN(P->u[idx])*DBL_EPSILON*(fabs(P->i[idx])+1); // Then nudge photon forwards until it's in the next voxel
+            P->sameVoxel = false;
+            P->D[idx] = G->d[idx]/fabs(P->u[idx]); // Reset voxel boundary distance
+        } else { // If we were supposed to remain in the same voxel along this dimension
+            while(floor(P->i[idx]) != i_old) P->i[idx] -= SIGN(P->u[idx])*DBL_EPSILON*(fabs(P->i[idx])+1); // Then nudge photon backwards until it's in the same voxel
+            P->D[idx] -= s;
         }
     }
-    P->stepLeft -= s*P->mus;
     
     double absorb = P->weight*(1 - exp(-P->mua*s));   // photon weight absorbed at this step
     P->weight -= absorb;					   // decrement WEIGHT by amount absorbed
@@ -296,6 +306,7 @@ void scatterPhoton(struct photon * const P, struct geometry const * const G) {
     double phi = 2*PI*RandomNum;
     double cosphi = cos(phi);
     double sinphi = sin(phi);
+    long idx;
 
     if(fabs(P->u[2]) < 1) {
         double ux_temp =  sintheta*(P->u[0]*P->u[2]*cosphi - P->u[1]*sinphi)/sqrt(P->u[0]*P->u[0] + P->u[1]*P->u[1]) + P->u[0]*costheta;
@@ -309,6 +320,9 @@ void scatterPhoton(struct photon * const P, struct geometry const * const G) {
         P->u[2] = costheta*SIGN(P->u[2]);
     }
     
+    // Calculate distances to next voxel boundary planes
+    for(idx=0;idx<3;idx++) P->D[idx] = P->u[idx]? (floor(P->i[idx]) + (P->u[idx]>0) - P->i[idx])*G->d[idx]/P->u[idx] : INFINITY;
+
     P->stepLeft	= -log(RandomNum);
 }
 
