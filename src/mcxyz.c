@@ -267,13 +267,13 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, d
     
     for(idx=0;idx<3;idx++) {
         long i_old = floor(P->i[idx]);
-        P->i[idx] += s*P->u[idx]/G->d[idx]; // First take the expected step (including various rounding errors)
-        if(s == P->D[idx]) { // If we were supposed to go to the next voxel along this dimension
-            while(floor(P->i[idx]) == i_old) P->i[idx] += SIGN(P->u[idx])*DBL_EPSILON*(fabs(P->i[idx])+1); // Then nudge photon forwards until it's in the next voxel
+        if(s == P->D[idx]) { // If we're supposed to go to the next voxel along this dimension
+            P->i[idx] = (P->u[idx] > 0)? i_old + 1: i_old - DBL_EPSILON*(abs(i_old)+1);
             P->sameVoxel = false;
             P->D[idx] = G->d[idx]/fabs(P->u[idx]); // Reset voxel boundary distance
         } else { // If we were supposed to remain in the same voxel along this dimension
-            while(floor(P->i[idx]) != i_old) P->i[idx] -= SIGN(P->u[idx])*DBL_EPSILON*(fabs(P->i[idx])+1); // Then nudge photon backwards until it's in the same voxel
+            P->i[idx] += s*P->u[idx]/G->d[idx]; // First take the expected step (including various rounding errors)
+            if(floor(P->i[idx]) != i_old) P->i[idx] = (P->u[idx] > 0)? i_old + 1 - DBL_EPSILON*(abs(i_old)+1): i_old ; // If photon due to rounding errors actually crossed the border, set it to be barely in the original voxel
             P->D[idx] -= s;
         }
     }
