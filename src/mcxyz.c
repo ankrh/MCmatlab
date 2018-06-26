@@ -53,8 +53,8 @@ extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing th
 #define CHANCE      0.1  		// used in roulette
 #define SIGN(x)     ((x)>=0 ? 1:-1)
 #define RandomNum   dsfmt_genrand_open_close(&P->dsfmt) // Calls for a random number in (0,1]
-#define DETECTOR_RES_1 1000 // First axis resolution used in for the Detector Plane, Detector Back Focal Plane and Detector Far Field
-#define DETECTOR_RES_2 1000 // Second axis resolution used in for the Detector Plane, Detector Back Focal Plane and Detector Far Field
+#define DETECTOR_RES_1 101 // First axis resolution used in for the Detector Plane, Detector Back Focal Plane and Detector Far Field
+#define DETECTOR_RES_2 101 // Second axis resolution used in for the Detector Plane, Detector Back Focal Plane and Detector Far Field
 #define KILLRANGE   6.0
     /* KILLRANGE determines the region that photons are allowed to stay 
      * alive in in multiples of the cuboid size (if outside, the probability
@@ -80,13 +80,13 @@ struct beam { // Struct type for the constant beam definitions
     double         v[3];
 };
 
-struct detector { // Struct type for the constant detector (e.g., objective lens or fiber tip) definitions
-    double         r[3]; // Position of center of detector aperture (could be an objective lens or a fiber tip)
-    double         u[3]; // Unit vector pointing in the direction that the detector is facing (if the detector is located above the tissue the z component of u should generally be positive, if located below the tissue as in a transmission measurement, the z component should generally be negative)
-    double         v[3]; // Unit vector in detector plane (normal to u)
-    double         f; // Focal length of the detector modeled as an ideal thin lens. If detector is a fiber tip, this will be INFINITY
-    double         diam; // Diameter of the detector aperture. For an ideal thin lens, this is 2*tan(arcsin(NA/f)).
-    double         FOV; // Field of view of the detector. If the detector is a fiber tip, this is 
+struct lightcollector { // Struct type for the constant light collector definitions. It can be either an objective lens (for 0<f<INFINITY) or a fiber tip or simple aperture (for f=INFINITY)
+    double         r[3]; // Position of center of objective focal plane (not the objective itself) or position of center of the fiber tip
+    double         theta; // Polar angle that the objective or fiber is facing
+    double         phi; // Azimuthal angle of objective or fiber orientation
+    double         f; // Focal length of the objective. If the light collector is a fiber tip, this will be INFINITY.
+    double         diam; // Diameter of the objective aperture or core diameter of the fiber. For an ideal thin lens objective, this is 2*tan(arcsin(lensNA/f)).
+    double         FSorNA; // For an objective lens: Field Size of the imaging system (diameter of area in object plane that gets imaged). For a fiber tip: The fiber's NA.
 };
 
 struct photon { // Struct type for parameters describing the thread-specific current state of a photon
@@ -99,17 +99,25 @@ struct photon { // Struct type for parameters describing the thread-specific cur
     long long      nLaunches; // Number of times this photon has been launched
 };
 
-void crossprod(double *a, double *b, double *axb) {
-    axb[0] = a[1]*b[2] - a[2]*b[1];
-    axb[1] = a[2]*b[0] - a[0]*b[2];
-    axb[2] = a[0]*b[1] - a[1]*b[0];
+void unitcrossprod(double *a, double *b, double *c) {
+    c[0] = a[1]*b[2] - a[2]*b[1];
+    c[1] = a[2]*b[0] - a[0]*b[2];
+    c[2] = a[0]*b[1] - a[1]*b[0];
+    double norm = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
+    for(int idx=0;idx<3;idx++) c[idx] /= norm;
 }
 
-double dotprod(double *a, double *b) {
-    return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+void xyztoXYZ(double const * const r, double const theta, double const phi, double * const r_out) {
+    // If input r is given in the simulation (x,y,z) frame, then output r_out is that point's coordinates in 
+    // the (X,Y,Z) light collector frame, where Z is pointing in the direction denoted by the spherical
+    // coordinates theta and phi and X lies in the xy plane.
+    r_out[0] =            sin(phi)*r[0] -            cos(phi)*r[1];
+    r_out[1] = cos(theta)*cos(phi)*r[0] + cos(theta)*sin(phi)*r[1] - sin(theta)*r[2];
+    r_out[2] = sin(theta)*cos(phi)*r[0] + sin(phi)*sin(theta)*r[1] + cos(theta)*r[2];
 }
 
 void axisrotate(double const * const r, double const * const u, double const theta, double * const r_out) {
+    // Rotate the point r an angle theta around vector u, storing result in r_out
 	double st = sin(theta), ct = cos(theta);
 	
     r_out[0] = (u[0]*u[0]*(1-ct) +      ct)*r[0] + (u[0]*u[1]*(1-ct) - u[2]*st)*r[1] + (u[0]*u[2]*(1-ct) + u[1]*st)*r[2];
@@ -245,8 +253,7 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
     P->nLaunches++;
 }
 
-void checkEscape(struct photon * const P, struct geometry const * const G, struct detector const * const D, double *DP, double *DBFP, double *DFF) {
-    long idx;
+void checkEscape(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC, double *LCP, double *ImP, double *LCFF) {
     bool escaped = false;
     P->insideVolume = P->i[0] < G->n[0] && P->i[0] >= 0 &&
                       P->i[1] < G->n[1] && P->i[1] >= 0 &&
@@ -259,7 +266,8 @@ void checkEscape(struct photon * const P, struct geometry const * const G, struc
                         fabs(P->i[2]/G->n[2] - 1.0/2) <  KILLRANGE/2);
             break;
         case 1:
-            escaped = P->alive = P->insideVolume;
+            P->alive = P->insideVolume;
+            escaped = !P->insideVolume;
             break;
         case 2:
             P->alive = (fabs(P->i[0]/G->n[0] - 1.0/2) <  KILLRANGE/2 &&
@@ -270,28 +278,46 @@ void checkEscape(struct photon * const P, struct geometry const * const G, struc
             break;
     }
     
-    if(escaped && DP) { // If DP is not NULL then that's because the user wants to simulate detection (nlhs == 4)
-        // Check distance between ray and detector center at the point of intersection between line and plane
-         // Project P->u onto D->u. Verify that result is negative.
-        double dp = P->u[0]*D->u[0] + P->u[1]*D->u[1] + P->u[2]*D->u[2]; // Dot product
-        if(dp < 0) { // If this dot product is negative then the photon is not moving parallel to the plane and is heading in the correct direction (general direction of photon trajectory is opposite to general direction of detector orientation)
-            double rCP[3] = {(P->i[0] - G->n[0]/2.0)*G->d[0],
-                             (P->i[1] - G->n[1]/2.0)*G->d[1],
-                             (P->i[2]              )*G->d[2]}; // Current photon position in x, y, z coordinates
+    if(escaped && LCP) { // If LCP is not NULL then that's because the user wants to simulate detection (nlhs == 4)
+        double U[3];
+        xyztoXYZ(P->u,LC->theta,LC->phi,U); // U is now the photon trajectory in basis of detection frame (X,Y,Z)
+        
+        if(U[2] < 0) { // If the Z component of U is negative then the photon is moving towards the light collector plane
+            double resc[3] = {(P->i[0] - G->n[0]/2.0)*G->d[0] - LC->r[0],
+                              (P->i[1] - G->n[1]/2.0)*G->d[1] - LC->r[1],
+                              (P->i[2]              )*G->d[2] - LC->r[2]}; // Photon position relative to the light collector focal plane center when it escapes the cuboid, in the (x,y,z) basis
             
-            double XDP = ...; // X coordinate (detector v vector direction) of photon when it crosses the detector plane
-            double YDP = ...; // Y coordinate (orthogonal to detector v and u vector directions) of photon when it crosses the detector plane
-            double distDP = sqrt(XDP*XDP + YDP*YDP);
+            double Resc[3];
+            xyztoXYZ(resc,LC->theta,LC->phi,Resc); // Resc is now the photon position in the light collector frame (X,Y,Z) when it escapes the cuboid
             
-            double U[2] = { ..., // Projection of P->u on D->v
-                            ...  // Projection of P->u on "D->w"
-            };
+            double RLCP[2]; // XY coordinates of the point where the photon crosses the light collector plane
+            RLCP[0] = Resc[0] - Resc[2]*U[0]/U[2];
+            RLCP[1] = Resc[1] - Resc[2]*U[1]/U[2];
             
-//             double t = (D->u[0]*(D->r[0] - rCP[0]) + 
-//                         D->u[1]*(D->r[1] - rCP[1]) + 
-//                         D->u[2]*(D->r[2] - rCP[2]))/dp;
-//             
-//             double rDP[3] = {t*P->u[0],t*P->u[1],t*P->u[2]}; // Point where photon hits the detector plane
+            double distLCP = sqrt(RLCP[0]*RLCP[0] + RLCP[1]*RLCP[1]); // Distance between light collector center and the point where the photon crosses the light collector plane
+            
+            if(distLCP < LC->diam/2) { // If the distance is less than the radius of the light collector
+                if(isfinite(LC->f)) { // If the light collector is an objective lens
+                    double RImP[2]; // Back-propagated position that the photon would have had in the object plane if propagating freely. This corresponds to where the photon will end up in the image plane for magnification 1x.
+                    RImP[0] = RLCP[0] + LC->f*U[0]/U[2];
+                    RImP[1] = RLCP[1] + LC->f*U[1]/U[2];
+                    double distImP = sqrt(RImP[0]*RImP[0] + RImP[1]*RImP[1]);
+                    if(distImP < LC->FSorNA/2) { // If the photon is coming from the area within the Field Size
+                        LCP [(long)(DETECTOR_RES_1*(RLCP[0]/LC->diam   + 1.0/2)) + DETECTOR_RES_1*(long)(DETECTOR_RES_2*(RLCP[1]/LC->diam   + 1.0/2))] += P->weight;
+                        ImP [(long)(DETECTOR_RES_1*(RImP[0]/LC->FSorNA + 1.0/2)) + DETECTOR_RES_1*(long)(DETECTOR_RES_2*(RImP[1]/LC->FSorNA + 1.0/2))] += P->weight;
+                        double thetaLCFF = atan(distImP/LC->f); // Light collector far field polar angle
+                        double phiLCFF = atan2(RImP[1],RImP[0]); // Light collector far field azimuthal angle
+                        LCFF[(long)(DETECTOR_RES_1*(thetaLCFF/(PI/2*(1+DBL_EPSILON)))) + DETECTOR_RES_1*(long)(DETECTOR_RES_2*((phiLCFF+PI)/(2*PI*(1+DBL_EPSILON))))] += P->weight;
+                    }
+                } else { // If the light collector is a fiber tip
+                    double thetaLCFF = atan(-sqrt(U[0]*U[0] + U[1]*U[1])/U[2]); // Light collector far field polar angle
+                    if(thetaLCFF < asin(fmin(1,LC->FSorNA))) { // If the photon has an angle within the fiber's NA acceptance
+                        LCP [(long)(DETECTOR_RES_1*(RLCP[0]/LC->diam   + 1.0/2)) + DETECTOR_RES_1*(long)(DETECTOR_RES_2*(RLCP[1]/LC->diam   + 1.0/2))] += P->weight;
+                        double phiLCFF = atan2(U[1],U[0]); // Light collector far field azimuthal angle
+                        LCFF[(long)(DETECTOR_RES_1*(thetaLCFF/(PI/2*(1+DBL_EPSILON)))) + DETECTOR_RES_1*(long)(DETECTOR_RES_2*((phiLCFF+PI)/(2*PI*(1+DBL_EPSILON))))] += P->weight;
+                    }
+                }
+            }
         }
     }
 }
@@ -404,7 +430,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     }
     
     // Timekeeping variables
-    double          simulationTimeRequested = *mxGetDoubles(mxGetField(prhs[0],0,"simulationTime"));
+    double          simulationTimeRequested = *mxGetPr(mxGetField(prhs[0],0,"simulationTime"));
 	double          simulationTimeSpent;
 	struct timespec simulationTimeStart, simulationTimeCurrent;
 	
@@ -415,18 +441,18 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 	double 	musv[nT];            // scattering coeff. 
 	double 	gv[nT];              // anisotropy of scattering
     for(idx=0;idx<nT;idx++) {
-        muav[idx] = *mxGetDoubles(mxGetField(tissueList,idx,"mua"));
-        musv[idx] = *mxGetDoubles(mxGetField(tissueList,idx,"mus"));
-        gv[idx]   = *mxGetDoubles(mxGetField(tissueList,idx,"g"));
+        muav[idx] = *mxGetPr(mxGetField(tissueList,idx,"mua"));
+        musv[idx] = *mxGetPr(mxGetField(tissueList,idx,"mus"));
+        gv[idx]   = *mxGetPr(mxGetField(tissueList,idx,"g"));
     }
     
     mwSize const  *dimPtr = mxGetDimensions(mxGetField(prhs[0],0,"T"));
     struct geometry const G_var = (struct geometry) {
-        .d = {*mxGetDoubles(mxGetField(prhs[0],0,"dx")),
-              *mxGetDoubles(mxGetField(prhs[0],0,"dy")),
-              *mxGetDoubles(mxGetField(prhs[0],0,"dz"))},
+        .d = {*mxGetPr(mxGetField(prhs[0],0,"dx")),
+              *mxGetPr(mxGetField(prhs[0],0,"dy")),
+              *mxGetPr(mxGetField(prhs[0],0,"dz"))},
         .n = {dimPtr[0], dimPtr[1], dimPtr[2]},
-        .boundaryFlag = *mxGetDoubles(mxGetField(prhs[0],0,"boundaryFlag")),
+        .boundaryFlag = *mxGetPr(mxGetField(prhs[0],0,"boundaryFlag")),
         .muav = muav,
         .musv = musv,
         .gv = gv,
@@ -449,59 +475,60 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         for(idx=1;idx<(L+1);idx++) S[idx] /= sourcesum;
     }
     
-    double u[3] = {*mxGetDoubles(mxGetField(prhs[0],0,"ux0")),
-                   *mxGetDoubles(mxGetField(prhs[0],0,"uy0")),
-                   *mxGetDoubles(mxGetField(prhs[0],0,"uz0"))}; // Temporary array
+    double tb = *mxGetPr(mxGetField(prhs[0],0,"thetaBeam"));
+    double pb = *mxGetPr(mxGetField(prhs[0],0,"phiBeam"));
+    
+    double u[3] = {sin(tb)*cos(pb),
+                   sin(tb)*sin(pb),
+                   cos(tb)}; // Temporary array
+    
+    double v[3] = {1,0,0};
+    if(u[2]!=1) unitcrossprod(u,(double[]){0,0,1},v);
     
     struct beam const B_var = (struct beam) {
-        .beamtypeFlag =  *mxGetDoubles(mxGetField(prhs[0],0,"beamtypeFlag")),
+        .beamtypeFlag =  *mxGetPr(mxGetField(prhs[0],0,"beamtypeFlag")),
         .S            =  S,
         .sourcesum    =  sourcesum,
-        .waist        =  *mxGetDoubles(mxGetField(prhs[0],0,"waist")),
-        .divergence   =  *mxGetDoubles(mxGetField(prhs[0],0,"divergence")),
-        .focus        = {*mxGetDoubles(mxGetField(prhs[0],0,"xFocus")),
-                         *mxGetDoubles(mxGetField(prhs[0],0,"yFocus")),
-                         *mxGetDoubles(mxGetField(prhs[0],0,"zFocus"))},
+        .waist        =  *mxGetPr(mxGetField(prhs[0],0,"waist")),
+        .divergence   =  *mxGetPr(mxGetField(prhs[0],0,"divergence")),
+        .focus        = {*mxGetPr(mxGetField(prhs[0],0,"xFocus")),
+                         *mxGetPr(mxGetField(prhs[0],0,"yFocus")),
+                         *mxGetPr(mxGetField(prhs[0],0,"zFocus"))},
         .u            = {u[0],u[1],u[2]},
-        .v            = {(u[2]==1)? 1: -u[1]/sqrt(u[1]*u[1] + u[0]*u[0]),
-                         (u[2]==1)? 0:  u[0]/sqrt(u[1]*u[1] + u[0]*u[0]),
-                         0} // normal vector to photon trajectory
+        .v            = {v[0],v[1],v[2]} // normal vector to beam center axis
     };
     struct beam const *B = &B_var;
     
     // Detector struct definition
-    u[0] =  *mxGetDoubles(mxGetField(prhs[0],0,"uxDetector"));
-    u[1] =  *mxGetDoubles(mxGetField(prhs[0],0,"uyDetector"));
-    u[2] =  *mxGetDoubles(mxGetField(prhs[0],0,"uzDetector"));
+    double theta = *mxGetPr(mxGetField(prhs[0],0,"thetaDet"));
+    double phi   = *mxGetPr(mxGetField(prhs[0],0,"phiDet"));
+    double f     = *mxGetPr(mxGetField(prhs[0],0,"fDet"));
     
-    struct detector const D_var = (struct detector) {
-        .r            = {*mxGetDoubles(mxGetField(prhs[0],0,"xDetector")),
-                         *mxGetDoubles(mxGetField(prhs[0],0,"yDetector")),
-                         *mxGetDoubles(mxGetField(prhs[0],0,"zDetector"))},
-        .u            = {u[0],u[1],u[2]},
-        .v            = {(fabs(u[2])==1)? 1: -u[1]/sqrt(u[1]*u[1] + u[0]*u[0]),
-                         (fabs(u[2])==1)? 0:  u[0]/sqrt(u[1]*u[1] + u[0]*u[0]),
-                         0} // normal vector to photon trajectory
-        .f            =  *mxGetDoubles(mxGetField(prhs[0],0,"fDetector"),
-        .diam         =  *mxGetDoubles(mxGetField(prhs[0],0,"diamDetector"),
-        .FOV          =  *mxGetDoubles(mxGetField(prhs[0],0,"FOVDetector")
-    };
-    struct detector const *D = &D_var;
+    struct lightcollector const LC_var = (struct lightcollector) {
+        .r            = {*mxGetPr(mxGetField(prhs[0],0,"xFPCDet")) - (isfinite(f)? f*sin(theta)*cos(phi):0), // xyz coordinates of center of light collector
+                         *mxGetPr(mxGetField(prhs[0],0,"yFPCDet")) - (isfinite(f)? f*sin(theta)*sin(phi):0),
+                         *mxGetPr(mxGetField(prhs[0],0,"zFPCDet")) - (isfinite(f)? f*cos(theta):0)},
+        .theta        =  theta,
+        .phi          =  phi,
+        .f            =  f,
+        .diam         =  *mxGetPr(mxGetField(prhs[0],0,"diamDet")),
+        .FSorNA       =  *mxGetPr(mxGetField(prhs[0],0,"FSorNADet"))};
+    struct lightcollector const *LC = &LC_var;
     
     // Prepare output variables
     plhs[0] = mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL);
-    double  *F = mxGetDoubles(plhs[0]);
+    double  *F = mxGetPr(plhs[0]);
     
-    double *DP = NULL;
-    double *DBFP = NULL;
-    double *DFF = NULL;
+    double *LCP = NULL; // Light Collector Plane
+    double *ImP = NULL; // Image Plane (for 1x magnification)
+    double *LCFF = NULL; // Light Collector far field (hemisphere angle space)
     if(nlhs == 4) {
         plhs[1] = mxCreateNumericMatrix(DETECTOR_RES_1,DETECTOR_RES_2,mxDOUBLE_CLASS,mxREAL);
         plhs[2] = mxCreateNumericMatrix(DETECTOR_RES_1,DETECTOR_RES_2,mxDOUBLE_CLASS,mxREAL);
         plhs[3] = mxCreateNumericMatrix(DETECTOR_RES_1,DETECTOR_RES_2,mxDOUBLE_CLASS,mxREAL);
-        DP = mxGetDoubles(plhs[1]); // Detector Plane
-        DBFP = mxGetDoubles(plhs[2]); // Detector Back Focal Plane
-        DFF = mxGetDoubles(plhs[3]); // Detector Far Field
+        LCP  = mxGetPr(plhs[1]);
+        ImP  = mxGetPr(plhs[2]);
+        LCFF = mxGetPr(plhs[3]);
     }
     
     // Display parameters
@@ -561,6 +588,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 	
     #ifdef _WIN32
     #pragma omp parallel num_threads(omp_get_num_procs())
+//     #pragma omp parallel num_threads(1)
     #endif
 	{
         struct photon P_var;
@@ -580,7 +608,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 			while(P->alive) {
 				while(P->stepLeft>0) {
 					if(!P->sameVoxel) {
-                        checkEscape(P,G,D,DP,DBFP,DFF);
+                        checkEscape(P,G,LC,LCP,ImP,LCFF);
                         if(!P->alive) break;
                         getNewVoxelProperties(P,G); // If photon has just entered a new voxel or has just been launched
                     }

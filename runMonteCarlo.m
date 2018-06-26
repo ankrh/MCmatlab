@@ -53,7 +53,7 @@ load(['./Data/' name '.mat']);
 
 %% Define parameters (user-specified)
 % Simulation duration
-MCinput.simulationTime = 0.1;      % [min] time duration of the simulation
+MCinput.simulationTime = .1;      % [min] time duration of the simulation
 
 % Boundary type
 % 0 = no boundaries
@@ -70,22 +70,52 @@ MCinput.boundaryFlag = 1;
 % 5 = top-hat focus, Gaussian far field beam
 % 6 = Gaussian focus, top-hat far field beam
 % 7 = Laguerre-Gaussian LG01 focus, LG01 far field beam
-MCinput.beamtypeFlag = 7;
+MCinput.beamtypeFlag = 3;
 
 % Position of focus, only used for beamtypeFlag ~=3 (if beamtypeFlag == 2 this is the source position)
 MCinput.xFocus = 0;                % [cm] x position of focus
 MCinput.yFocus = 0;                % [cm] y position of focus
 MCinput.zFocus = nz*dz/2;          % [cm] z position of focus
 
-% Direction of beam center axis, only used if beamtypeflag ~= 2:
-MCinput.ux0 = 0;                   % trajectory unit vector x composant
-MCinput.uy0 = 0;                   % trajectory unit vector y composant
-MCinput.uz0 = sqrt(1-MCinput.ux0^2-MCinput.uy0^2); % % trajectory unit vector z composant. Make sure that ux0^2 + uy0^2 + uz0^2 = 1.
+% Direction of beam center axis, only used if beamtypeflag ~= 2
+% Given in terms of spherical coordinates theta and phi measured in radians, using the ISO
+% convention illustrated at https://en.wikipedia.org/wiki/Spherical_coordinate_system
+% Keep in mind that th z-axis in the volumetric plots is shown pointing down.
+% For basically all cases, you want to satisfy 0<=theta<pi/2.
+% Examples: theta = 0, phi = 0 means a beam going straight down (positive z direction)
+%           theta = pi/4, phi = 0 means a beam going halfway between the positive x and positive z directions.
+%           theta = pi/4, phi = -pi/2 means a beam going halfway between the negative y and positive z directions
+MCinput.thetaBeam = 0; % [rad]
+MCinput.phiBeam   = 0; % [rad]
 
 % Focus properties and divergence angles, only used if beamtypeflag == 0, 1, 5, 6 or 7
 MCinput.waist = 0.015;             % [cm] focus waist 1/e^2 radius
 % MCinput.divergence = wavelength*1e-9/(pi*MCinput.waist*1e-2); % [rad] Diffraction limited divergence angle for Gaussian beam
 MCinput.divergence = 15/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
+
+%% Optional detector properties
+% Position of either the center of the objective lens focal plane or the fiber tip
+MCinput.xFPCDet = 0; % [cm]
+MCinput.yFPCDet = 0; % [cm]
+MCinput.zFPCDet = 0; % [cm] negative values correspond to a location above the volume
+
+% Direction that the detector is facing, defined in the same way as the beam direction using
+% ISO spherical coordinates
+% For detector above the surface, you usually want to satisfy 0<=theta<=pi/2.
+% For a detector below the surface, such as measuring in transmission, you usually want pi/2<=theta<=pi
+% If theta = 0 or pi, phi serves only to rotate the view of the tissue. If you want the detector X axis 
+% to coincide with the tissue cuboid x axis, use phi = pi/2 in that case.
+MCinput.thetaDet = 0; % [rad]
+MCinput.phiDet   = pi/2; % [rad]
+
+% Focal length of the detector (if it is not a lens, set this to inf). Must be positive.
+MCinput.fDet = inf; % [cm]
+
+% Diameter of the detector aperture. For an ideal thin lens, this is 2*tan(arcsin(lensNA/f)).
+MCinput.diamDet = 0.5; % [cm]
+
+% For an objective lens: Field Size of the imaging system (diameter of area in object plane that gets imaged). For a fiber tip: The fiber's NA.
+MCinput.FSorNADet = 2; % [cm or dimensionless]
 
 %% Determine remaining parameters
 % Voxel sizes
@@ -99,14 +129,19 @@ MCinput.T = T-1; % The tissue matrix has to be converted from MATLAB's 1-based i
 clear T
 
 %% Call Monte Carlo C script (mex file) to get fluence rate (intensity) distribution
-F = mcxyz(MCinput);
+[F,LCP,ImP,LCFF] = mcxyz(MCinput);
 
 %% Save output and clear memory
 save(['./Data/' name '_MCoutput.mat'],'F','MCinput');
 fprintf('./Data/%s_MCoutput.mat saved\n',name);
-clear F MCinput
+% clear F MCinput
 
 %% Make plots
+close all
 lookmcxyz(name);
+
+figure;imagesc([-MCinput.diamDet MCinput.diamDet]/2,[-MCinput.diamDet MCinput.diamDet]/2,LCP.');title('Light Collector Plane');axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
+figure;imagesc([-MCinput.FSorNADet MCinput.FSorNADet]/2,[-MCinput.FSorNADet MCinput.FSorNADet]/2,ImP.');title('Image Plane');axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
+figure;imagesc([0 pi/2],[-pi pi],LCFF.');title('Light Collector Far Field');axis xy;axis equal;axis tight;xlabel('theta [rad]');ylabel('phi [rad]');
 
 end

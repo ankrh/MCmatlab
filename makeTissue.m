@@ -33,12 +33,12 @@ function makeTissue
 %% Define parameters (user-specified)
 wavelength  = 577;     % [nm] set the wavelength of the Monte Carlo simulation
 name = 'tissue';        % name of the simulation
-nx = 100;               % number of bins in the x direction
-ny = 100;               % number of bins in the y direction
-nz = 100;               % number of bins in the z direction
-Lx = .1;                 % [cm] x size of simulation area
-Ly = .1;                 % [cm] y size of simulation area
-Lz = .1;                 % [cm] z size of simulation area
+nx = 101;               % number of bins in the x direction
+ny = 101;               % number of bins in the y direction
+nz = 101;               % number of bins in the z direction
+Lx = 1;                 % [cm] x size of simulation area
+Ly = 1;                 % [cm] y size of simulation area
+Lz = 1;                 % [cm] z size of simulation area
 
 wavelength_fluorescence = NaN; % [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
 
@@ -59,13 +59,13 @@ z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 % T = 3*ones(nx,ny,nz,'uint8'); % "standard" tissue
 
 %% Blood vessel example:
-zsurf = 0.01;
-epd_thick = 0.006;
-vesselradius  = 0.0100;
-T = ones(nx,ny,nz,'uint8'); % fill background with air
-T(Z > zsurf) = 4; % epidermis
-T(Z > zsurf + epd_thick) = 5; % dermis
-T(Y.^2 + (Z - (zsurf + 2*epd_thick + vesselradius)).^2 < vesselradius^2) = 6; % blood
+% zsurf = 0.01;
+% epd_thick = 0.006;
+% vesselradius  = 0.0100;
+% T = ones(nx,ny,nz,'uint8'); % fill background with air
+% T(Z > zsurf) = 4; % epidermis
+% T(Z > zsurf + epd_thick) = 5; % dermis
+% T(Y.^2 + (Z - (zsurf + 2*epd_thick + vesselradius)).^2 < vesselradius^2) = 6; % blood
 
 %% Fluorescing cylinder example:
 % cylinderradius  = 0.0100;
@@ -102,6 +102,17 @@ T(Y.^2 + (Z - (zsurf + 2*epd_thick + vesselradius)).^2 < vesselradius^2) = 6; % 
 % T(X.^2 + Y.^2 < vessel_radius^2) = 7; % vessel
 % T(X.^2 + Y.^2 < water_radius^2) = 2; % water
 % T(X.^2 + Y.^2 < fibre_radius^2) = 11; % fibre
+
+%% Imaging example:
+T = 1*ones(nx,ny,nz,'uint8'); % Air background
+% T(X.^2+Y.^2 > 0.02^2) = 19;
+% T(1,:,:) = 19;
+% T(:,[1 end],:) = 19;
+% T(Z > 0.011) = 19;
+T(1:(nx*(ny+1)+1):end) = 18; % Set diagonal positions to testscatterer
+% T(X.^2 + Y.^2 < 0.5^2) = 18;
+% T(:,:,2) = 1;
+% T((end-1)/2+1) = 18;
 
 %% Get the tissueList and the reduced T matrix
 if(~isnan(wavelength_fluorescence))
