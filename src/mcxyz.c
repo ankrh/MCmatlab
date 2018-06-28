@@ -113,7 +113,7 @@ void xyztoXYZ(double const * const r, double const theta, double const phi, doub
     // coordinates theta and phi and X lies in the xy plane.
     r_out[0] =            sin(phi)*r[0] -            cos(phi)*r[1];
     r_out[1] = cos(theta)*cos(phi)*r[0] + cos(theta)*sin(phi)*r[1] - sin(theta)*r[2];
-    r_out[2] = sin(theta)*cos(phi)*r[0] + sin(phi)*sin(theta)*r[1] + cos(theta)*r[2];
+    r_out[2] = sin(theta)*cos(phi)*r[0] + sin(theta)*sin(phi)*r[1] + cos(theta)*r[2];
 }
 
 void axisrotate(double const * const r, double const * const u, double const theta, double * const r_out) {

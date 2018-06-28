@@ -279,7 +279,7 @@ end
 j=18;
 tissueList(j).name  = 'testscatterer';
 tissueList(j).mua   = 0.0000001;
-tissueList(j).mus   = 10000;
+tissueList(j).mus   = 100;
 tissueList(j).g     = 0;
 
 j=19;

@@ -85,7 +85,7 @@ MCinput.zFocus = nz*dz/2;          % [cm] z position of focus
 % Examples: theta = 0, phi = 0 means a beam going straight down (positive z direction)
 %           theta = pi/4, phi = 0 means a beam going halfway between the positive x and positive z directions.
 %           theta = pi/4, phi = -pi/2 means a beam going halfway between the negative y and positive z directions
-MCinput.thetaBeam = 0; % [rad]
+MCinput.thetaBeam = pi/6; % [rad]
 MCinput.phiBeam   = 0; % [rad]
 
 % Focus properties and divergence angles, only used if beamtypeflag == 0, 1, 5, 6 or 7
@@ -94,10 +94,11 @@ MCinput.waist = 0.015;             % [cm] focus waist 1/e^2 radius
 MCinput.divergence = 15/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
 
 %% Optional detector properties
+MCinput.useLightCollector = true;
 % Position of either the center of the objective lens focal plane or the fiber tip
 MCinput.xFPCDet = 0; % [cm]
 MCinput.yFPCDet = 0; % [cm]
-MCinput.zFPCDet = 0; % [cm] negative values correspond to a location above the volume
+MCinput.zFPCDet = nz*dz/2; % [cm] negative values correspond to a location above the volume
 
 % Direction that the detector is facing, defined in the same way as the beam direction using
 % ISO spherical coordinates
@@ -105,17 +106,17 @@ MCinput.zFPCDet = 0; % [cm] negative values correspond to a location above the v
 % For a detector below the surface, such as measuring in transmission, you usually want pi/2<=theta<=pi
 % If theta = 0 or pi, phi serves only to rotate the view of the tissue. If you want the detector X axis 
 % to coincide with the tissue cuboid x axis, use phi = pi/2 in that case.
-MCinput.thetaDet = 0; % [rad]
-MCinput.phiDet   = pi/2; % [rad]
+MCinput.thetaDet = pi; % [rad]
+MCinput.phiDet   = 0; % [rad]
 
 % Focal length of the detector (if it is not a lens, set this to inf). Must be positive.
-MCinput.fDet = inf; % [cm]
+MCinput.fDet = 1; % [cm]
 
 % Diameter of the detector aperture. For an ideal thin lens, this is 2*tan(arcsin(lensNA/f)).
 MCinput.diamDet = 0.5; % [cm]
 
 % For an objective lens: Field Size of the imaging system (diameter of area in object plane that gets imaged). For a fiber tip: The fiber's NA.
-MCinput.FSorNADet = 2; % [cm or dimensionless]
+MCinput.FSorNADet = 1; % [cm or dimensionless]
 
 %% Determine remaining parameters
 % Voxel sizes

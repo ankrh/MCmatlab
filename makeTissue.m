@@ -109,8 +109,9 @@ T = 1*ones(nx,ny,nz,'uint8'); % Air background
 % T(1,:,:) = 19;
 % T(:,[1 end],:) = 19;
 % T(Z > 0.011) = 19;
-T(1:(nx*(ny+1)+1):end) = 18; % Set diagonal positions to testscatterer
-% T(X.^2 + Y.^2 < 0.5^2) = 18;
+% T(1:(nx*(ny+1)+1):end) = 18; % Set diagonal positions to testscatterer
+T(51,51,:) = 18;
+T(51,1:51,51) = 18;
 % T(:,:,2) = 1;
 % T((end-1)/2+1) = 18;
 

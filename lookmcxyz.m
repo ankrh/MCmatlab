@@ -67,7 +67,7 @@ if(exist('tissueList_fluorescence','var'))
 end
 
 if(exist(['./Data/' name '_MCoutput.mat'],'file'))
-    load(['./Data/' name '_MCoutput.mat'],'F');
+    load(['./Data/' name '_MCoutput.mat'],'F','MCinput');
     dx = x(2)-x(1); dy = y(2)-y(1); dz = z(2)-z(1);
     
     %% Make fluence rate plot
@@ -80,6 +80,20 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
     h_f.Name = 'Normalized fluence rate';
     plotVolumetric(x,y,z,F);
     title('Normalized fluence rate (Intensity) [W/cm^2/W.incident] ')
+    
+    if(MCinput.useLightCollector)
+        arrowlength = sqrt((nx*dx)^2+(ny*dy)^2+(nz*dz)^2)/10;
+        Zvec = [sin(MCinput.thetaDet)*cos(MCinput.phiDet) , sin(MCinput.thetaDet)*sin(MCinput.phiDet) , cos(MCinput.thetaDet)];
+        Xvec = [sin(MCinput.phiDet) , -cos(MCinput.phiDet) , 0];
+        Yvec = cross(Zvec,Xvec);
+        FPC = [MCinput.xFPCDet , MCinput.yFPCDet , MCinput.zFPCDet];
+        FPC_X = FPC + arrowlength*Xvec;
+        line([FPC(1) FPC_X(1)],[FPC(2) FPC_X(2)],[FPC(3) FPC_X(3)],'Linewidth',2)
+        text(FPC_X(1),FPC_X(2),FPC_X(3),'X','HorizontalAlignment','center')
+        FPC_Y = FPC + arrowlength*Yvec;
+        line([FPC(1) FPC_Y(1)],[FPC(2) FPC_Y(2)],[FPC(3) FPC_Y(3)],'Linewidth',2)
+        text(FPC_Y(1),FPC_Y(2),FPC_Y(3),'Y','HorizontalAlignment','center')
+    end
     
     %% Make power absorption plot
     if(~ishandle(5))
