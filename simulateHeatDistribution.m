@@ -59,15 +59,16 @@ load(['./Data/' name '.mat']);
 load(['./Data/' name '_MCoutput.mat'],'F');
 
 %% Define parameters (user-specified)
-Winc             = 0.1; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
-onduration       = 0.05; % [s] Pulse on-duration
-offduration      = 0.05; % [s] Pulse off-duration
+Winc             = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
+onduration       = 0.001; % [s] Pulse on-duration
+offduration      = 0.004; % [s] Pulse off-duration
 Temp             = 37*ones(size(T)); % [deg C] Initial temperature distribution
-n_pulses         = 1; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
+n_pulses         = 5; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
 
-plotTempLimits   = [37 100]; % [deg C], the expected range of temperatures, used only for setting the color scale in the plot
+plotTempLimits   = [37 105]; % [deg C], the expected range of temperatures, used only for setting the color scale in the plot
 extremeprecision = false; % false: normal time step resolution (dt = dtmax/2), true: high time step resolution (dt = dtmax/100)
-n_updates        = 100; % Number of times data is extracted for plots during each illumination phase and diffusion phase. Must be at least 1.
+n_updates_on     = 30; % Number of times data is extracted for plots during each illumination phase . Must be at least 1.
+n_updates_off    = 120; % Number of times data is extracted for plots during each diffusion phase. Must be at least 1.
 makemovie        = true; % flag to specify whether a movie of the temperature evolution should be output. Remember to set plotTempLimits appropriately.
 
 %% Determine remaining parameters
@@ -105,20 +106,20 @@ else
 end
 
 if onduration ~= 0
-    nt_on = max(n_updates,ceil(onduration/dtmax)); % Number of time steps with illumination
+    nt_on = max(n_updates_on,ceil(onduration/dtmax)); % Number of time steps with illumination
     dt = onduration/nt_on; % Time step size
     if offduration ~= 0
-        nt_off = max(n_updates,ceil(offduration/dt)); % Number of time steps without illumination
+        nt_off = max(n_updates_off,ceil(offduration/dt)); % Number of time steps without illumination
     else
         nt_off = 0;
     end
 else
     nt_on = 0;
-    nt_off = max(n_updates,ceil(offduration/dtmax)); % Number of time steps without illumination
+    nt_off = max(n_updates_off,ceil(offduration/dtmax)); % Number of time steps without illumination
     dt = offduration/nt_off; % Time step size
 end
 
-nt_vec = unique(floor([linspace(0,nt_on,n_updates+1) linspace(nt_on + nt_off/n_updates,nt_on + nt_off,n_updates)])); % Vector of nt's on which the plots should be updated
+nt_vec = unique(floor([linspace(0,nt_on,n_updates_on+1) linspace(nt_on + nt_off/n_updates_off,nt_on + nt_off,n_updates_off)])); % Vector of nt's on which the plots should be updated
 
 timeVector = [0 , repmat(nt_vec(2:end),1,n_pulses)+repelem(0:n_pulses-1,length(nt_vec)-1)*nt_vec(end)]*dt;
 
@@ -140,8 +141,9 @@ if(~ishandle(9))
 else
     heatsimFigure = figure(9);
 end
+clf;
 heatsimFigure.Name = 'Temperature evolution';
-plotVolumetric(x,y,z,Temp);
+plotVolumetric(x,y,z,Temp,'reverseZ');
 h_title = title(['Temperature evolution, t = ' num2str(timeVector(1),'%#.2g') ' s']);
 caxis(plotTempLimits); % User-defined color scale limits
 
@@ -152,8 +154,9 @@ if(~ishandle(1))
 else
     tissueFigure = figure(1);
 end
+clf;
 tissueFigure.Name = 'Tissue type illustration';
-plotVolumetric(x,y,z,T,tissueList);
+plotVolumetric(x,y,z,T,'reverseZTissueIllustration',tissueList);
 title('Tissue type illustration');
 
 datacursormode on;
@@ -208,7 +211,7 @@ fprintf('[nx,ny,nz]=[%d,%d,%d]. Number of pulses is %d.\nIllumination on for %d 
 
 if(makemovie) % Make a temporary figure showing the tissue type illustration to put into the beginning of the movie
     tempFigure = figure;
-    plotVolumetric(x,y,z,T,tissueList);
+    plotVolumetric(x,y,z,T,'reverseZTissueIllustration',tissueList);
     title('Tissue type illustration');
     tempFigure.Position = heatsimFigure.Position; % Size has to be the same as the temperature plot
     tempFigure.Children(6).Value = heatsimFigure.Children(6).Value; % Slices have to be set at the same positions
@@ -229,9 +232,9 @@ end
 tic
 for j=1:n_pulses
     if nt_on
-        fprintf(['Illuminating pulse #' num2str(j) '... \n' repmat('-',1,n_updates)]);
+        fprintf(['Illuminating pulse #' num2str(j) '... \n' repmat('-',1,n_updates_on)]);
     else
-        fprintf(['Diffusing heat... \n' repmat('-',1,n_updates)]);
+        fprintf(['Diffusing heat... \n' repmat('-',1,n_updates_off)]);
     end
     drawnow;
     for i = 2:length(nt_vec)
@@ -258,7 +261,7 @@ for j=1:n_pulses
             end
             fprintf('\b\b Done\n');
             if nt_off
-                fprintf(['Diffusing heat... \n' repmat('-',1,n_updates)]);
+                fprintf(['Diffusing heat... \n' repmat('-',1,n_updates_off)]);
             end
         elseif nt_vec(i) == nt_on + nt_off
             fprintf('\b\b Done\n');
@@ -285,9 +288,11 @@ elseif n_pulses == 1
     else
         illumFigure = figure(10);
     end
+    clf;
     illumFigure.Name = 'Temperature after illumination';
-    plotVolumetric(x,y,z,Temp_illum);
+    plotVolumetric(x,y,z,Temp_illum,'reverseZ');
     title('Temperature after illumination');
+    caxis(plotTempLimits); % User-defined color scale limits
     save(['./Data/' name '_heatSimoutput.mat'],'Temp_illum','-append');
 else
     title(['Temperature after ' num2str(n_pulses) ' pulses'])
@@ -303,8 +308,8 @@ if calcDamage
     damageFigure.Name = 'Tissue damage illustration';
     T_damage = T;
     T_damage(Omega > 1) = nT + 1;
-    tissueList(nT + 1).name = 'Damaged tissue';
-    plotVolumetric(x,y,z,T_damage,tissueList);
+    tissueList(nT + 1).name = 'damage';
+    plotVolumetric(x,y,z,T_damage,'reverseZTissueIllustration',tissueList);
     title('Tissue damage illustration');
     save(['./Data/' name '_heatSimoutput.mat'],'Omega','-append');
 end
@@ -313,6 +318,7 @@ fprintf('./Data/%s_heatSimoutput.mat saved\n',name);
 if(makemovie)
     movieframes = [repmat(movieframes(1),1,30) movieframes(1:end) repmat(movieframes(end),1,30)];
     writerObj = VideoWriter(['./Data/' name '_heatSimoutput.mp4'],'MPEG-4');
+    writerObj.Quality = 100;
     open(writerObj);
     warning('off','MATLAB:audiovideo:VideoWriter:mp4FramePadded');
     writeVideo(writerObj,movieframes);

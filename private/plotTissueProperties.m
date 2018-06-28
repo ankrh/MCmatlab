@@ -3,7 +3,7 @@ function plotTissueProperties(tissueList)
 clf;
 
 nT = length(tissueList);
-cmap = colormap(hsv(nT));
+cmap = colormap(lines(nT));
 
 plotThermalProperties = (isfield(tissueList,'VHC') && isfield(tissueList,'TC') && length([tissueList.VHC]) == nT && length([tissueList.TC]) == nT);
 plotFluorescenceProperties = any([tissueList.Y] > 0);

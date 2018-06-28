@@ -31,11 +31,11 @@ function makeTissue
 %   2018-04: Anders K. Hansen
 
 %% Define parameters (user-specified)
-wavelength  = 577;     % [nm] set the wavelength of the Monte Carlo simulation
+wavelength  = 532;     % [nm] set the wavelength of the Monte Carlo simulation
 name = 'tissue';        % name of the simulation
-nx = 100;               % number of bins in the x direction
-ny = 100;               % number of bins in the y direction
-nz = 100;               % number of bins in the z direction
+nx = 200;               % number of bins in the x direction
+ny = 200;               % number of bins in the y direction
+nz = 200;               % number of bins in the z direction
 Lx = .1;                 % [cm] x size of simulation area
 Ly = .1;                 % [cm] y size of simulation area
 Lz = .1;                 % [cm] z size of simulation area
@@ -62,10 +62,11 @@ z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 zsurf = 0.01;
 epd_thick = 0.006;
 vesselradius  = 0.0100;
-T = ones(nx,ny,nz,'uint8'); % fill background with air
+vesseldepth = 0.04;
+T = 2*ones(nx,ny,nz,'uint8'); % fill background with water (gel)
 T(Z > zsurf) = 4; % epidermis
 T(Z > zsurf + epd_thick) = 5; % dermis
-T(Y.^2 + (Z - (zsurf + 2*epd_thick + vesselradius)).^2 < vesselradius^2) = 6; % blood
+T(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 6; % blood
 
 %% Fluorescing cylinder example:
 % cylinderradius  = 0.0100;

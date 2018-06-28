@@ -125,8 +125,8 @@ tissueList(j).g   = gg;
 tissueList(j).VHC   = 3617*1.050e-3;
 tissueList(j).D     = 1.050e-3;
 tissueList(j).TC    = 0.52e-2;
-tissueList(j).E   = 340e3;%273.4e3; % J/mol    PLACEHOLDER DATA ONLY
-tissueList(j).A   = 1.6e55;%3e44; % 1/s        PLACEHOLDER DATA ONLY
+tissueList(j).E   = 422.5e3; % J/mol    PLACEHOLDER DATA ONLY
+tissueList(j).A   = 7.6e66; % 1/s        PLACEHOLDER DATA ONLY
 
 j=7;
 tissueList(j).name  = 'vessel';
