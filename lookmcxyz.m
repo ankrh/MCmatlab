@@ -41,7 +41,7 @@ else
     h_f = figure(1);
 end
 h_f.Name = 'Tissue type illustration';
-plotVolumetric(x,y,z,T,tissueList);
+plotVolumetric(x,y,z,T,'reverseZTissueIllustration',tissueList);
 title('Tissue type illustration');
 
 %% Make tissue properties plot
@@ -78,7 +78,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
         h_f = figure(4);
     end
     h_f.Name = 'Normalized fluence rate';
-    plotVolumetric(x,y,z,F);
+    plotVolumetric(x,y,z,F,'reverseZfromZero');
     title('Normalized fluence rate (Intensity) [W/cm^2/W.incident] ')
     
     if(MCinput.useLightCollector)
@@ -86,13 +86,24 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
         Zvec = [sin(MCinput.thetaDet)*cos(MCinput.phiDet) , sin(MCinput.thetaDet)*sin(MCinput.phiDet) , cos(MCinput.thetaDet)];
         Xvec = [sin(MCinput.phiDet) , -cos(MCinput.phiDet) , 0];
         Yvec = cross(Zvec,Xvec);
-        FPC = [MCinput.xFPCDet , MCinput.yFPCDet , MCinput.zFPCDet];
+        FPC = [MCinput.xFPCDet , MCinput.yFPCDet , MCinput.zFPCDet]; % Focal Plane Center
         FPC_X = FPC + arrowlength*Xvec;
         line([FPC(1) FPC_X(1)],[FPC(2) FPC_X(2)],[FPC(3) FPC_X(3)],'Linewidth',2)
         text(FPC_X(1),FPC_X(2),FPC_X(3),'X','HorizontalAlignment','center')
         FPC_Y = FPC + arrowlength*Yvec;
         line([FPC(1) FPC_Y(1)],[FPC(2) FPC_Y(2)],[FPC(3) FPC_Y(3)],'Linewidth',2)
         text(FPC_Y(1),FPC_Y(2),FPC_Y(3),'Y','HorizontalAlignment','center')
+        
+        if isfinite(MCinput.fDet)
+            fieldperimeter = MCinput.FSorNADet/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + FPC;
+            line(fieldperimeter(:,1),fieldperimeter(:,2),fieldperimeter(:,3),'Color','b','LineWidth',2);
+
+            LCC = FPC - Zvec*MCinput.fDet; % Light Collector Center
+        else
+            LCC = FPC;
+        end
+        detectoraperture = MCinput.diamDet/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
+        line(detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
     end
     
     %% Make power absorption plot
@@ -104,7 +115,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
     end
     h_f.Name = 'Normalized power absorption';
     mua_vec = [tissueList.mua];
-    plotVolumetric(x,y,z,mua_vec(T).*F);
+    plotVolumetric(x,y,z,mua_vec(T).*F,'reverseZfromZero');
     title('Normalized absorbed power per unit volume [W/cm^3/W.incident] ')
     
     fprintf('\n%.2g%% of the input light was absorbed within the volume.\n',100*dx*dy*dz*sum(sum(sum(mua_vec(T).*F))));
@@ -127,7 +138,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
         Y_vec = [tissueList.Y]; % The tissues' fluorescence power efficiencies
         sat_vec = [tissueList.sat]; % The tissues' fluorescence saturation fluence rates (intensity)
         FluorescenceEmitters = Y_vec(T).*mua_vec(T)*P.*F./(1 + P*F./sat_vec(T)); % [W/cm^3]
-        plotVolumetric(x,y,z,FluorescenceEmitters);
+        plotVolumetric(x,y,z,FluorescenceEmitters,'reverseZfromZero');
         title('Fluorescence emitter distribution [W/cm^3] ')
 
         fprintf('Out of this, %.2g W was re-emitted as fluorescence.\n',dx*dy*dz*sum(sum(sum(FluorescenceEmitters))));
@@ -140,7 +151,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
             h_f = figure(7);
         end
         h_f.Name = 'Fluorescence fluence rate';
-        plotVolumetric(x,y,z,I_fluorescence);
+        plotVolumetric(x,y,z,I_fluorescence,'reverseZfromZero');
         title('Fluorescence fluence rate (Intensity) [W/cm^2] ')
         
         %% Make power absorption plot
@@ -152,7 +163,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
         end
         h_f.Name = 'Fluorescence power absorption';
         mua_vec = [tissueList_fluorescence.mua];
-        plotVolumetric(x,y,z,mua_vec(T).*I_fluorescence);
+        plotVolumetric(x,y,z,mua_vec(T).*I_fluorescence,'reverseZfromZero');
         title('Absorbed fluorescence power per unit volume [W/cm^3] ')
 
         fprintf('Out of this, %.2g W was re-absorbed within the volume.\n\n',dx*dy*dz*sum(sum(sum(mua_vec(T).*I_fluorescence))));

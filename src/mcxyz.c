@@ -53,8 +53,6 @@ extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing th
 #define CHANCE      0.1  		// used in roulette
 #define SIGN(x)     ((x)>=0 ? 1:-1)
 #define RandomNum   dsfmt_genrand_open_close(&P->dsfmt) // Calls for a random number in (0,1]
-#define DETECTOR_RES_1 101 // First axis resolution used in for the Detector Plane, Detector Back Focal Plane and Detector Far Field
-#define DETECTOR_RES_2 101 // Second axis resolution used in for the Detector Plane, Detector Back Focal Plane and Detector Far Field
 #define KILLRANGE   6.0
     /* KILLRANGE determines the region that photons are allowed to stay 
      * alive in in multiples of the cuboid size (if outside, the probability
@@ -87,6 +85,7 @@ struct lightcollector { // Struct type for the constant light collector definiti
     double         f; // Focal length of the objective. If the light collector is a fiber tip, this will be INFINITY.
     double         diam; // Diameter of the objective aperture or core diameter of the fiber. For an ideal thin lens objective, this is 2*tan(arcsin(lensNA/f)).
     double         FSorNA; // For an objective lens: Field Size of the imaging system (diameter of area in object plane that gets imaged). For a fiber tip: The fiber's NA.
+    long           res[2]; // Resolution of light collector planes in pixels along X and Y axes
 };
 
 struct photon { // Struct type for parameters describing the thread-specific current state of a photon
@@ -303,18 +302,18 @@ void checkEscape(struct photon * const P, struct geometry const * const G, struc
                     RImP[1] = RLCP[1] + LC->f*U[1]/U[2];
                     double distImP = sqrt(RImP[0]*RImP[0] + RImP[1]*RImP[1]);
                     if(distImP < LC->FSorNA/2) { // If the photon is coming from the area within the Field Size
-                        LCP [(long)(DETECTOR_RES_1*(RLCP[0]/LC->diam   + 1.0/2)) + DETECTOR_RES_1*(long)(DETECTOR_RES_2*(RLCP[1]/LC->diam   + 1.0/2))] += P->weight;
-                        ImP [(long)(DETECTOR_RES_1*(RImP[0]/LC->FSorNA + 1.0/2)) + DETECTOR_RES_1*(long)(DETECTOR_RES_2*(RImP[1]/LC->FSorNA + 1.0/2))] += P->weight;
+                        LCP [(long)(LC->res[0]*(RLCP[0]/LC->diam   + 1.0/2)) + LC->res[0]*(long)(LC->res[1]*(RLCP[1]/LC->diam   + 1.0/2))] += P->weight;
+                        ImP [(long)(LC->res[0]*(RImP[0]/LC->FSorNA + 1.0/2)) + LC->res[0]*(long)(LC->res[1]*(RImP[1]/LC->FSorNA + 1.0/2))] += P->weight;
                         double thetaLCFF = atan(distImP/LC->f); // Light collector far field polar angle
                         double phiLCFF = atan2(RImP[1],RImP[0]); // Light collector far field azimuthal angle
-                        LCFF[(long)(DETECTOR_RES_1*(thetaLCFF/(PI/2*(1+DBL_EPSILON)))) + DETECTOR_RES_1*(long)(DETECTOR_RES_2*((phiLCFF+PI)/(2*PI*(1+DBL_EPSILON))))] += P->weight;
+                        LCFF[(long)(LC->res[0]*(thetaLCFF/(PI/2*(1+DBL_EPSILON)))) + LC->res[0]*(long)(LC->res[1]*((phiLCFF+PI)/(2*PI*(1+DBL_EPSILON))))] += P->weight;
                     }
                 } else { // If the light collector is a fiber tip
                     double thetaLCFF = atan(-sqrt(U[0]*U[0] + U[1]*U[1])/U[2]); // Light collector far field polar angle
                     if(thetaLCFF < asin(fmin(1,LC->FSorNA))) { // If the photon has an angle within the fiber's NA acceptance
-                        LCP [(long)(DETECTOR_RES_1*(RLCP[0]/LC->diam   + 1.0/2)) + DETECTOR_RES_1*(long)(DETECTOR_RES_2*(RLCP[1]/LC->diam   + 1.0/2))] += P->weight;
+                        LCP [(long)(LC->res[0]*(RLCP[0]/LC->diam   + 1.0/2)) + LC->res[0]*(long)(LC->res[1]*(RLCP[1]/LC->diam   + 1.0/2))] += P->weight;
                         double phiLCFF = atan2(U[1],U[0]); // Light collector far field azimuthal angle
-                        LCFF[(long)(DETECTOR_RES_1*(thetaLCFF/(PI/2*(1+DBL_EPSILON)))) + DETECTOR_RES_1*(long)(DETECTOR_RES_2*((phiLCFF+PI)/(2*PI*(1+DBL_EPSILON))))] += P->weight;
+                        LCFF[(long)(LC->res[0]*(thetaLCFF/(PI/2*(1+DBL_EPSILON)))) + LC->res[0]*(long)(LC->res[1]*((phiLCFF+PI)/(2*PI*(1+DBL_EPSILON))))] += P->weight;
                     }
                 }
             }
@@ -512,7 +511,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         .phi          =  phi,
         .f            =  f,
         .diam         =  *mxGetPr(mxGetField(prhs[0],0,"diamDet")),
-        .FSorNA       =  *mxGetPr(mxGetField(prhs[0],0,"FSorNADet"))};
+        .FSorNA       =  *mxGetPr(mxGetField(prhs[0],0,"FSorNADet")),
+        .res          = {*mxGetPr(mxGetField(prhs[0],0,"resXDet")),
+                         *mxGetPr(mxGetField(prhs[0],0,"resYDet"))}};
     struct lightcollector const *LC = &LC_var;
     
     // Prepare output variables
@@ -523,9 +524,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     double *ImP = NULL; // Image Plane (for 1x magnification)
     double *LCFF = NULL; // Light Collector far field (hemisphere angle space)
     if(nlhs == 4) {
-        plhs[1] = mxCreateNumericMatrix(DETECTOR_RES_1,DETECTOR_RES_2,mxDOUBLE_CLASS,mxREAL);
-        plhs[2] = mxCreateNumericMatrix(DETECTOR_RES_1,DETECTOR_RES_2,mxDOUBLE_CLASS,mxREAL);
-        plhs[3] = mxCreateNumericMatrix(DETECTOR_RES_1,DETECTOR_RES_2,mxDOUBLE_CLASS,mxREAL);
+        plhs[1] = mxCreateNumericMatrix(LC->res[0],LC->res[1],mxDOUBLE_CLASS,mxREAL);
+        plhs[2] = mxCreateNumericMatrix(LC->res[0],LC->res[1],mxDOUBLE_CLASS,mxREAL);
+        plhs[3] = mxCreateNumericMatrix(LC->res[0],LC->res[1],mxDOUBLE_CLASS,mxREAL);
         LCP  = mxGetPr(plhs[1]);
         ImP  = mxGetPr(plhs[2]);
         LCFF = mxGetPr(plhs[3]);

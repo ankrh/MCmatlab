@@ -26,26 +26,74 @@ yh = y(end); % y high
 zl = z(1); % z low
 zh = z(end); % z high
 
+checkboxvisible = true; % Assume the log10 checkbox should be visible
+directmapping = false; % Assume CDataMapping should not be set to direct
+reverseZ = false; % Assume z axis is not inverted
+fromZero = false; % Assume that the minimum of the color scale should not necessarily be zero
+colormap(GPBGYRcolormap); % Assume we want to use the GPBGYR (Grey-Purple-Blue-Green-Yellow-Red) colormap
+colorbar;
+if ~isempty(varargin)
+    plottype = varargin{1};
+    if strcmp(plottype,'reverseZTissueIllustration')
+        reverseZ = true;
+        tissueList = varargin{2};
+        checkboxvisible = false;
+        directmapping = true;
+        colormap(lines(length(tissueList)));
+        colorbar('TickLabels',{tissueList.name},'Ticks',(1:length(tissueList))+0.5);
+    elseif strcmp(plottype,'reverseZfromZero')
+        reverseZ = true;
+        fromZero = true;
+    end
+end
+
+slider3start = 1; % Assume that slider 3 should start at the minimum value
+zback = zl; % Assume the back surface in the z direction is the one at high z
+if reverseZ
+    slider3start = nz;
+    zback = zh;
+end
+
+if ~directmapping
+    if min(h_f.UserData(:)) ~= max(h_f.UserData(:))
+        if fromZero
+            caxis([0 max(h_f.UserData(:))]);
+        else
+            caxis([min(h_f.UserData(:)) max(h_f.UserData(:))]);
+        end
+    else
+        caxis([min(h_f.UserData(:)) min(h_f.UserData(:))+1]);
+    end
+end
+
 warning('off','MATLAB:hg:UIControlSliderStepValueDifference');
 h_slider1 = uicontrol('Parent',h_f,'Style','slider','Position',[30,20,200,20],...
               'value',nx, 'min',1, 'max',nx,'SliderStep',[1/(nx-1) 0.1]);
 h_slider2 = uicontrol('Parent',h_f,'Style','slider','Position',[30,40,200,20],...
               'value',ny, 'min',1, 'max',ny,'SliderStep',[1/(ny-1) 0.1]);
 h_slider3 = uicontrol('Parent',h_f,'Style','slider','Position',[30,60,200,20],...
-              'value',nz, 'min',1, 'max',nz,'SliderStep',[1/(nz-1) 0.1]);
+              'value',slider3start, 'min',1, 'max',nz,'SliderStep',[1/(nz-1) 0.1]);
 warning('on','MATLAB:hg:UIControlSliderStepValueDifference');
 uicontrol('style','text','String','x','Position',[10,18,20,20])
 uicontrol('style','text','String','y','Position',[10,38,20,20])
 uicontrol('style','text','String','z','Position',[10,58,20,20])
 h_checkbox1 = uicontrol('Parent',h_f,'Style','checkbox','Position',[70,90,20,20]);
 h_checkbox1text = uicontrol('style','text','String','log10 plot','Position',[16,87,50,20]);
+if ~checkboxvisible
+    set(h_checkbox1,'Visible','off');
+    set(h_checkbox1text,'Visible','off');
+end
 
-h_surfxmax   = surface(repmat(xh,ny,nz),repmat(y', 1,nz),repmat(z ,ny, 1),squeeze(h_f.UserData(end,:,:)),'LineStyle','none');
-h_surfymax   = surface(repmat(x', 1,nz),repmat(yh,nx,nz),repmat(z ,nx, 1),squeeze(h_f.UserData(:,end,:)),'LineStyle','none');
-h_surfzmax   = surface(repmat(x', 1,ny),repmat(y ,nx, 1),repmat(zh,nx,ny),squeeze(h_f.UserData(:,:,end)),'LineStyle','none');
-h_surfxslice = surface(repmat(xh,ny,nz),repmat(y', 1,nz),repmat(z ,ny, 1),squeeze(h_f.UserData(end,:,:)),'LineStyle','none');
-h_surfyslice = surface(repmat(x', 1,nz),repmat(yh,nx,nz),repmat(z ,nx, 1),squeeze(h_f.UserData(:,end,:)),'LineStyle','none');
-h_surfzslice = surface(repmat(x', 1,ny),repmat(y ,nx, 1),repmat(zh,nx,ny),squeeze(h_f.UserData(:,:,end)),'LineStyle','none');
+h_surfxback  = surface(repmat(xh,ny,nz),repmat(y', 1,nz),repmat(z    ,ny, 1),squeeze(h_f.UserData(end,:,:)),'LineStyle','none');
+h_surfyback  = surface(repmat(x', 1,nz),repmat(yh,nx,nz),repmat(z    ,nx, 1),squeeze(h_f.UserData(:,end,:)),'LineStyle','none');
+h_surfzback  = surface(repmat(x', 1,ny),repmat(y ,nx, 1),repmat(zback,nx,ny),squeeze(h_f.UserData(:,:,end)),'LineStyle','none');
+h_surfxslice = surface(repmat(xh,ny,nz),repmat(y', 1,nz),repmat(z    ,ny, 1),squeeze(h_f.UserData(end,:,:)),'LineStyle','none');
+h_surfyslice = surface(repmat(x', 1,nz),repmat(yh,nx,nz),repmat(z    ,nx, 1),squeeze(h_f.UserData(:,end,:)),'LineStyle','none');
+h_surfzslice = surface(repmat(x', 1,ny),repmat(y ,nx, 1),repmat(zback,nx,ny),squeeze(h_f.UserData(:,:,end)),'LineStyle','none');
+
+if directmapping
+    set([h_surfxback h_surfyback h_surfzback h_surfxslice h_surfyslice h_surfzslice],'CDataMapping','direct');
+end
 
 line([xh xh xh xh xh],[yl yh yh yl yl],[zh zh zl zl zh],'Color','k');
 line([xl xh xh xl xl],[yh yh yh yh yh],[zh zh zl zl zh],'Color','k');
@@ -54,29 +102,15 @@ h_xline = line([xh xh xh xh xh xh xh],[yh yh yh yl yl yh yh],[zl zl zh zh zl zl 
 h_yline = line([xl xl xh xh xl xl xh],[yh yh yh yh yh yh yh],[zh zh zh zl zl zh zh],'Color','k');
 h_zline = line([xh xh xh xl xl xh xh],[yl yl yh yh yl yl yh],[zh zh zh zh zh zh zh],'Color','k');
 
-if ~isempty(varargin)
-    tissueList = varargin{1};
-    set(h_checkbox1,'Visible','off');
-    set(h_checkbox1text,'Visible','off');
-    set([h_surfxmax h_surfymax h_surfzmax h_surfxslice h_surfyslice h_surfzslice],'CDataMapping','direct');
-    colormap(hsv(length(tissueList)));
-    colorbar('TickLabels',{tissueList.name},'Ticks',(1:length(tissueList))+0.5);
-else
-    colormap(parula(1024));
-    colorbar
-    if min(h_f.UserData(:)) ~= max(h_f.UserData(:))
-        caxis([min(h_f.UserData(:)) max(h_f.UserData(:))]);
-    else
-        caxis([min(h_f.UserData(:)) min(h_f.UserData(:))+1]);
-    end
-end
 axis tight
 axis equal
 xlabel('x [cm]')
 ylabel('y [cm]')
 zlabel('z [cm]')
 set(gca,'fontsize',18)
-set(gca,'ZDir','reverse')
+if reverseZ
+    set(gca,'ZDir','reverse')
+end
 view(3)
 
 if ~verLessThan('matlab','9.0')
@@ -86,9 +120,9 @@ end
 vars = struct('h_checkbox1',h_checkbox1,...
     'h_slider1',h_slider1,'h_slider2',h_slider2,'h_slider3',h_slider3,...
     'x',x,'y',y,'z',z,...
-    'h_surfxmax',h_surfxmax,'h_surfymax',h_surfymax,'h_surfzmax',h_surfzmax,...
+    'h_surfxback',h_surfxback,'h_surfyback',h_surfyback,'h_surfzback',h_surfzback,...
     'h_surfxslice',h_surfxslice,'h_surfyslice',h_surfyslice,'h_surfzslice',h_surfzslice,...
-    'h_xline',h_xline,'h_yline',h_yline,'h_zline',h_zline);
+    'h_xline',h_xline,'h_yline',h_yline,'h_zline',h_zline,'fromZero',fromZero);
 
 set(h_checkbox1,'Callback',{@callback,vars});
 set(h_slider1,'Callback',{@callback,vars});
@@ -119,9 +153,9 @@ h_f = get(vars.h_checkbox1,'Parent');
 switch src
     case vars.h_checkbox1
         if plotLog
-            set(vars.h_surfxmax  ,'CData',squeeze(log10(h_f.UserData(end,:,:))));
-            set(vars.h_surfymax  ,'CData',squeeze(log10(h_f.UserData(:,end,:))));
-            set(vars.h_surfzmax  ,'CData',squeeze(log10(h_f.UserData(:,:,end))));
+            set(vars.h_surfxback ,'CData',squeeze(log10(h_f.UserData(end,:,:))));
+            set(vars.h_surfyback ,'CData',squeeze(log10(h_f.UserData(:,end,:))));
+            set(vars.h_surfzback ,'CData',squeeze(log10(h_f.UserData(:,:,end))));
             set(vars.h_surfxslice,'CData',squeeze(log10(h_f.UserData(xsi,:,:))));
             set(vars.h_surfyslice,'CData',squeeze(log10(h_f.UserData(:,ysi,:))));
             set(vars.h_surfzslice,'CData',squeeze(log10(h_f.UserData(:,:,zsi))));
@@ -134,14 +168,18 @@ switch src
                 end
             end
         else
-            set(vars.h_surfxmax  ,'CData',squeeze(h_f.UserData(end,:,:)));
-            set(vars.h_surfymax  ,'CData',squeeze(h_f.UserData(:,end,:)));
-            set(vars.h_surfzmax  ,'CData',squeeze(h_f.UserData(:,:,end)));
+            set(vars.h_surfxback ,'CData',squeeze(h_f.UserData(end,:,:)));
+            set(vars.h_surfyback ,'CData',squeeze(h_f.UserData(:,end,:)));
+            set(vars.h_surfzback ,'CData',squeeze(h_f.UserData(:,:,end)));
             set(vars.h_surfxslice,'CData',squeeze(h_f.UserData(xsi,:,:)));
             set(vars.h_surfyslice,'CData',squeeze(h_f.UserData(:,ysi,:)));
             set(vars.h_surfzslice,'CData',squeeze(h_f.UserData(:,:,zsi)));
             if ~isempty(event) % event is empty if callback was made because UserData was changed. In that case we don't want to renormalize the color scale.
-                caxis([min(h_f.UserData(:)) max(h_f.UserData(:))]);
+                if vars.fromZero
+                    caxis([0 max(h_f.UserData(:))]);
+                else
+                    caxis([min(h_f.UserData(:)) max(h_f.UserData(:))]);
+                end
             end
         end
     case vars.h_slider1
