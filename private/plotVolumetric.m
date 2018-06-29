@@ -29,6 +29,7 @@ zh = z(end); % z high
 checkboxvisible = true; % Assume the log10 checkbox should be visible
 directmapping = false; % Assume CDataMapping should not be set to direct
 reverseZ = false; % Assume z axis is not inverted
+fromZero = false; % Assume that the minimum of the color scale should not necessarily be zero
 colormap(GPBGYRcolormap); % Assume we want to use the GPBGYR (Grey-Purple-Blue-Green-Yellow-Red) colormap
 colorbar;
 if ~isempty(varargin)
@@ -40,6 +41,9 @@ if ~isempty(varargin)
         directmapping = true;
         colormap(lines(length(tissueList)));
         colorbar('TickLabels',{tissueList.name},'Ticks',(1:length(tissueList))+0.5);
+    elseif strcmp(plottype,'reverseZfromZero')
+        reverseZ = true;
+        fromZero = true;
     elseif strcmp(plottype,'reverseZ')
         reverseZ = true;
     end
@@ -54,7 +58,11 @@ end
 
 if ~directmapping
     if min(h_f.UserData(:)) ~= max(h_f.UserData(:))
-        caxis([min(h_f.UserData(:)) max(h_f.UserData(:))]);
+        if fromZero
+            caxis([0 max(h_f.UserData(:))]);
+        else
+            caxis([min(h_f.UserData(:)) max(h_f.UserData(:))]);
+        end
     else
         caxis([min(h_f.UserData(:)) min(h_f.UserData(:))+1]);
     end
@@ -116,7 +124,7 @@ vars = struct('h_checkbox1',h_checkbox1,...
     'x',x,'y',y,'z',z,...
     'h_surfxback',h_surfxback,'h_surfyback',h_surfyback,'h_surfzback',h_surfzback,...
     'h_surfxslice',h_surfxslice,'h_surfyslice',h_surfyslice,'h_surfzslice',h_surfzslice,...
-    'h_xline',h_xline,'h_yline',h_yline,'h_zline',h_zline);
+    'h_xline',h_xline,'h_yline',h_yline,'h_zline',h_zline,'fromZero',fromZero);
 
 set(h_checkbox1,'Callback',{@callback,vars});
 set(h_slider1,'Callback',{@callback,vars});
@@ -169,7 +177,11 @@ switch src
             set(vars.h_surfyslice,'CData',squeeze(h_f.UserData(:,ysi,:)));
             set(vars.h_surfzslice,'CData',squeeze(h_f.UserData(:,:,zsi)));
             if ~isempty(event) % event is empty if callback was made because UserData was changed. In that case we don't want to renormalize the color scale.
-                caxis([min(h_f.UserData(:)) max(h_f.UserData(:))]);
+                if vars.fromZero
+                    caxis([0 max(h_f.UserData(:))]);
+                else
+                    caxis([min(h_f.UserData(:)) max(h_f.UserData(:))]);
+                end
             end
         end
     case vars.h_slider1

@@ -4,24 +4,8 @@ function runMonteCarlo(name)
 %   After finishing, calls lookmcxyz for the display of the result.
 %
 %   Define the time requested for simulating photons.
-%   Define the behaviour of photons that stray outside the tissue cuboid:
-%       0 = no boundaries: photons wander freely also outside the tissue
-%       cuboid and get killed only if they wander too far (6 times the cuboid
-%       size).
-%       1 = escape at boundaries: photons that stray outside the tissue
-%       cuboid get killed immediately.
-%       2 = escape at surface only: photons that hit the top surface get
-%       killed immediately, photons hitting other surfaces can wander up to
-%       6 times the cuboid size.
-%   Define the beam parameters. The following beam types can be requested:
-%       0 = top-hat focus, top-hat far field beam
-%       1 = Gaussian focus, Gaussian far field beam
-%       2 = isotropically emitting point
-%       3 = infinite plane wave
-%       4 = pencil beam
-%       5 = top-hat focus, Gaussian far field beam
-%       6 = Gaussian focus, top-hat far field beam
-%       7 = Laguerre-Gaussian LG01 focus, LG01 far field beam
+%   Define the behaviour of photons that stray outside the tissue cuboid.
+%   Define the beam parameters.
 %   Depending on the chosen beam type, define the focus position, the beam
 %   waist of the focus, the divergence angle and/or the direction of the
 %   beam's center axis.
@@ -56,36 +40,45 @@ load(['./Data/' name '.mat']);
 MCinput.simulationTime = 0.1;      % [min] time duration of the simulation
 
 % Boundary type
-% 0 = no boundaries
-% 1 = escape at boundaries
-% 2 = escape at surface only. No x, y, bottom z boundaries
-MCinput.boundaryFlag = 1;
+% 0: No boundaries. Photons wander freely also outside the tissue cuboid and
+%    get killed only if they wander too far (6 times the cuboid size).
+% 1: Escape at boundaries. Photons that stray outside the tissue cuboid get
+%    killed immediately.
+% 2: Escape at surface only. Photons that hit the top surface get killed
+%    immediately, photons hitting other surfaces can wander up to 6 times
+%    the cuboid size.
+MCinput.boundaryFlag = 2;
 
 % Beam type
-% 0 = top-hat focus, top-hat far field beam
-% 1 = Gaussian focus, Gaussian far field beam
-% 2 = isotropically emitting point
-% 3 = infinite plane wave
-% 4 = pencil beam
-% 5 = top-hat focus, Gaussian far field beam
-% 6 = Gaussian focus, top-hat far field beam
-% 7 = Laguerre-Gaussian LG01 focus, LG01 far field beam
-MCinput.beamtypeFlag = 0;
+% 0: Pencil beam
+% 1: Isotropically emitting point source
+% 2: Infinite plane wave
+% 3: Gaussian focus, Gaussian far field beam
+% 4: Gaussian focus, top-hat far field beam
+% 5: Top-hat focus, Gaussian far field beam
+% 6: Top-hat focus, top-hat far field beam
+% 7: Laguerre-Gaussian LG01 beam
+MCinput.beamtypeFlag = 6;
 
-% Position of focus, only used for beamtypeFlag ~=3 (if beamtypeFlag == 2 this is the source position)
+% Position of focus, only used for beamtypeFlag ~=2 (if beamtypeFlag == 1 this is the source position)
 MCinput.xFocus = 0;                % [cm] x position of focus
 MCinput.yFocus = 0;                % [cm] y position of focus
-MCinput.zFocus = 0;          % [cm] z position of focus
+MCinput.zFocus = 0;                % [cm] z position of focus
 
-% Direction of beam center axis, only used if beamtypeflag ~= 2:
-MCinput.ux0 = 0;                   % trajectory unit vector x composant
-MCinput.uy0 = 0;                   % trajectory unit vector y composant
-MCinput.uz0 = sqrt(1-MCinput.ux0^2-MCinput.uy0^2); % % trajectory unit vector z composant. Make sure that ux0^2 + uy0^2 + uz0^2 = 1.
+% Direction of beam center axis, only used if beamtypeflag ~= 1:
+% Given in terms of the spherical coordinates theta and phi measured in radians, using the ISO
+% convention illustrated at https://en.wikipedia.org/wiki/Spherical_coordinate_system
+% Keep in mind that the z-axis in the volumetric plots is shown pointing down, so you want to satisfy 0<=theta<pi/2.
+% Examples: theta = 0, phi = 0 means a beam going straight down (positive z direction)
+%           theta = pi/4, phi = 0 means a beam going halfway between the positive x and positive z directions.
+%           theta = pi/4, phi = -pi/2 means a beam going halfway between the negative y and positive z directions
+MCinput.thetaBeam = 0; % [rad]
+MCinput.phiBeam   = 0; % [rad]
 
-% Focus properties and divergence angles, only used if beamtypeflag == 0, 1, 5, 6 or 7
+% Focus properties and divergence angles, only used if beamtypeflag > 2
 MCinput.waist = 0.03;             % [cm] focus waist 1/e^2 radius
 % MCinput.divergence = wavelength*1e-9/(pi*MCinput.waist*1e-2); % [rad] Diffraction limited divergence angle for Gaussian beam
-MCinput.divergence = 0/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
+MCinput.divergence = 15/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
 
 %% Determine remaining parameters
 % Voxel sizes

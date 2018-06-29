@@ -74,8 +74,8 @@ struct beam { // Struct type for the constant beam definitions
     double         sourcesum;
     double         waist,divergence;
     double         focus[3];
-    double         u0[3];
-    double         v0[3];
+    double         u[3];
+    double         v[3];
 };
 
 struct photon { // Struct type for parameters describing the thread-specific current state of a photon
@@ -87,6 +87,14 @@ struct photon { // Struct type for parameters describing the thread-specific cur
     dsfmt_t        dsfmt; // "State" of the Mersenne Twister pseudo-random number generator
     long long      nLaunches; // Number of times this photon has been launched
 };
+
+void unitcrossprod(double *a, double *b, double *c) {
+    c[0] = a[1]*b[2] - a[2]*b[1];
+    c[1] = a[2]*b[0] - a[0]*b[2];
+    c[2] = a[0]*b[1] - a[1]*b[0];
+    double norm = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
+    for(int idx=0;idx<3;idx++) c[idx] /= norm;
+}
 
 void axisrotate(double const * const r, double const * const u, double const theta, double * const r_out) {
 	double st = sin(theta), ct = cos(theta);
@@ -129,33 +137,13 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->u[1] = sintheta*sin(phi);
         P->u[2] = costheta;
     } else switch (B->beamtypeFlag) {
-        case 0: // Top-hat focus, top-hat far field beam
-            phi  	= RandomNum*2*PI;
-            axisrotate(B->v0,B->u0,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
-            r		= B->waist*sqrt(RandomNum); // for target calculation
-            for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
-            phi     = RandomNum*2*PI;
-            axisrotate(B->v0,B->u0,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-            phi     = B->divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-            axisrotate(B->u0,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
-            P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-            P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
+        case 0: // pencil beam
+            P->i[0] = (B->focus[0] - B->focus[2]*B->u[0]/B->u[2])/G->d[0] + G->n[0]/2.0;
+            P->i[1] = (B->focus[1] - B->focus[2]*B->u[1]/B->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
+            for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
         break;
-        case 1: // Gaussian focus, Gaussian far field beam
-            phi     = RandomNum*2*PI;
-            axisrotate(B->v0,B->u0,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
-            r		= B->waist*sqrt(-0.5*log(RandomNum)); // for target calculation
-            for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
-            phi     = RandomNum*2*PI;
-            axisrotate(B->v0,B->u0,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-            phi     = B->divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-            axisrotate(B->u0,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
-            P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-            P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
-            P->i[2] = 0;
-        break;
-        case 2: // Isotropically emitting point source
+        case 1: // isotropically emitting point source
             P->i[0] = B->focus[0]/G->d[0] + G->n[0]/2.0;
             P->i[1] = B->focus[1]/G->d[1] + G->n[1]/2.0;
             P->i[2] = B->focus[2]/G->d[2];
@@ -166,51 +154,71 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
             P->u[1] = sintheta*sin(phi);
             P->u[2] = costheta;
         break;
-        case 3: // infinite plane wave
+        case 2: // infinite plane wave
             P->i[0] = ((G->boundaryFlag==1)? 1: KILLRANGE)*G->n[0]*(RandomNum-0.5) + G->n[0]/2.0; // Generates a random ix coordinate within the cuboid
             P->i[1] = ((G->boundaryFlag==1)? 1: KILLRANGE)*G->n[1]*(RandomNum-0.5) + G->n[1]/2.0; // Generates a random iy coordinate within the cuboid
             P->i[2] = 0;
-            for(idx=0;idx<3;idx++) P->u[idx] = B->u0[idx];
+            for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
         break;
-        case 4: // pencil beam
-            P->i[0] = (B->focus[0] - B->focus[2]*B->u0[0]/B->u0[2])/G->d[0] + G->n[0]/2.0;
-            P->i[1] = (B->focus[1] - B->focus[2]*B->u0[1]/B->u0[2])/G->d[1] + G->n[1]/2.0;
-            P->i[2] = 0;
-            for(idx=0;idx<3;idx++) P->u[idx] = B->u0[idx];
-        break;
-        case 5: // top-hat focus, Gaussian far field beam
+        case 3: // Gaussian focus, Gaussian far field beam
             phi     = RandomNum*2*PI;
-            axisrotate(B->v0,B->u0,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
-            r		= B->waist*sqrt(RandomNum); // for target calculation
-            for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
-            phi     = RandomNum*2*PI;
-            axisrotate(B->v0,B->u0,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-            phi     = B->divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-            axisrotate(B->u0,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
-            P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-            P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
-            P->i[2] = 0;
-        break;
-        case 6: // Gaussian focus, top-hat far field beam
-            phi     = RandomNum*2*PI;
-            axisrotate(B->v0,B->u0,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
+            axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
             r		= B->waist*sqrt(-0.5*log(RandomNum)); // for target calculation
             for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
             phi     = RandomNum*2*PI;
-            axisrotate(B->v0,B->u0,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-            phi     = B->divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-            axisrotate(B->u0,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
+            axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+            phi     = B->divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+            axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
             P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
             P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
         break;
-        case 7: // Laguerre-Gaussian LG01 focus, LG01 far field beam
+        case 4: // Gaussian focus, top-hat far field beam
             phi     = RandomNum*2*PI;
-            axisrotate(B->v0,B->u0,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
+            axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
+            r		= B->waist*sqrt(-0.5*log(RandomNum)); // for target calculation
+            for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
+            phi     = RandomNum*2*PI;
+            axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+            phi     = B->divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+            axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
+            P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+            P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
+            P->i[2] = 0;
+        break;
+        case 5: // top-hat focus, Gaussian far field beam
+            phi     = RandomNum*2*PI;
+            axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
+            r		= B->waist*sqrt(RandomNum); // for target calculation
+            for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
+            phi     = RandomNum*2*PI;
+            axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+            phi     = B->divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+            axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
+            P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+            P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
+            P->i[2] = 0;
+        break;
+        case 6: // top-hat focus, top-hat far field beam
+            phi  	= RandomNum*2*PI;
+            axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
+            r		= B->waist*sqrt(RandomNum); // for target calculation
+            for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
+            phi     = RandomNum*2*PI;
+            axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+            phi     = B->divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+            axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
+            P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+            P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
+            P->i[2] = 0;
+        break;
+        case 7: // Laguerre-Gaussian LG01 beam
+            phi     = RandomNum*2*PI;
+            axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
             r		= B->waist*sqrt((gsl_sf_lambert_Wm1(-RandomNum*exp(-1))+1)/(-2))/1.50087; // for target calculation
             for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
             phi     = B->divergence*sqrt((gsl_sf_lambert_Wm1(-RandomNum*exp(-1))+1)/(-2))/1.50087; // for trajectory calculation. The sqrt is valid within paraxial approximation.
-            axisrotate(B->u0,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
+            axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
             P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
             P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
@@ -393,9 +401,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         for(idx=1;idx<(L+1);idx++) S[idx] /= sourcesum;
     }
     
-    double u0[3] =      {*mxGetPr(mxGetField(prhs[0],0,"ux0")),
-                         *mxGetPr(mxGetField(prhs[0],0,"uy0")),
-                         *mxGetPr(mxGetField(prhs[0],0,"uz0"))};
+    double tb = *mxGetPr(mxGetField(prhs[0],0,"thetaBeam"));
+    double pb = *mxGetPr(mxGetField(prhs[0],0,"phiBeam"));
+    double u[3] = {sin(tb)*cos(pb),
+                   sin(tb)*sin(pb),
+                   cos(tb)}; // Temporary array
+    
+    double v[3] = {1,0,0};
+    if(u[2]!=1) unitcrossprod(u,(double[]){0,0,1},v);
     
     struct beam const B_var = (struct beam) {
         .beamtypeFlag =  *mxGetPr(mxGetField(prhs[0],0,"beamtypeFlag")),
@@ -406,10 +419,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         .focus        = {*mxGetPr(mxGetField(prhs[0],0,"xFocus")),
                          *mxGetPr(mxGetField(prhs[0],0,"yFocus")),
                          *mxGetPr(mxGetField(prhs[0],0,"zFocus"))},
-        .u0           = {u0[0],u0[1],u0[2]},
-        .v0           = {(u0[2]==1)? 1: -u0[1]/sqrt(u0[1]*u0[1] + u0[0]*u0[0]),
-                         (u0[2]==1)? 0:  u0[0]/sqrt(u0[1]*u0[1] + u0[0]*u0[0]),
-                         0} // normal vector to photon trajectory
+        .u            = {u[0],u[1],u[2]},
+        .v            = {v[0],v[1],v[2]} // normal vector to beam center axis
     };
     struct beam const *B = &B_var;
     
@@ -426,45 +437,39 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     else {
         switch(B->beamtypeFlag) {
             case 0:
-                printf("Using top-hat focus, top-hat far field beam\n");
+                printf("Using pencil beam\n");
                 break;
             case 1:
-                printf("Using Gaussian focus, Gaussian far field beam\n");
+                printf("Using isotropically emitting point source\n");
                 break;
             case 2:
-                printf("Using isotropic point source\n");
-                break;
-            case 3:
                 printf("Using infinite plane wave\n");
                 break;
+            case 3:
+                printf("Using Gaussian focus, Gaussian far field beam\n");
+                break;
             case 4:
-                printf("Using pencil beam\n");
+                printf("Using Gaussian focus, top-hat far field beam\n");
                 break;
             case 5:
                 printf("Using top-hat focus, Gaussian far field beam\n");
                 break;
             case 6:
-                printf("Using Gaussian focus, top-hat far field beam\n");
+                printf("Using top-hat focus, top-hat far field beam\n");
                 break;
             case 7:
-                printf("Using Laguerre-Gaussian LG01 focus, LG01 far field beam\n");
+                printf("Using Laguerre-Gaussian LG01 beam\n");
                 break;
         }
 
-        printf("Focus location = (%0.1e,%0.1e,%0.1e) cm\n",B->focus[0],B->focus[1],B->focus[2]);
-        if(B->beamtypeFlag!=2) printf("Beam direction = (%0.3f,%0.3f,%0.3f)\n",B->u0[0],B->u0[1],B->u0[2]);
-        if(B->beamtypeFlag!=2 && B->beamtypeFlag!=3 && B->beamtypeFlag!=4) {
-            printf("Beam waist = %0.1e cm, divergence = %0.1e rad\n",B->waist,B->divergence);
-        }
+        if(B->beamtypeFlag!=2) printf("Focus location = (%0.1e,%0.1e,%0.1e) cm\n",B->focus[0],B->focus[1],B->focus[2]);
+        if(B->beamtypeFlag!=1) printf("Beam direction = (%0.3f,%0.3f,%0.3f)\n",B->u[0],B->u[1],B->u[2]);
+        if(B->beamtypeFlag >2) printf("Beam waist = %0.1e cm, divergence = %0.1e rad\n",B->waist,B->divergence);
     }
     
     if(G->boundaryFlag==0) printf("boundaryFlag = 0, so no boundaries\n");
     else if(G->boundaryFlag==1) printf("boundaryFlag = 1, so escape at all boundaries\n");    
 	else if(G->boundaryFlag==2) printf("boundaryFlag = 2, so escape at surface only\n");    
-	else {
-        printf("Error: Invalid boundaryFlag\n");
-        return;
-    }
     
     printf("Simulation duration = %0.2f min\n\n",simulationTimeRequested);
 	printf("Calculating...   0%% done");

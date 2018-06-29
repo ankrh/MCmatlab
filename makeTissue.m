@@ -1,7 +1,7 @@
 function makeTissue
 %
-%   Builds and saves a tissue in a rectangular cuboid voxel-space. The tissue properties are
-%   loaded from makeTissueList.m.
+%   Builds and saves a tissue in a rectangular cuboid voxel-space.
+%   The tissue properties are loaded from makeTissueList.m.
 %
 %   First, define the wavelength in nm, and the tissue cuboid built of voxels.
 %   Then, fill the voxel space with indices pointing to the required tissue

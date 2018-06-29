@@ -78,7 +78,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
         h_f = figure(4);
     end
     h_f.Name = 'Normalized fluence rate';
-    plotVolumetric(x,y,z,F,'reverseZ');
+    plotVolumetric(x,y,z,F,'reverseZfromZero');
     title('Normalized fluence rate (Intensity) [W/cm^2/W.incident] ')
     
     %% Make power absorption plot
@@ -90,7 +90,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
     end
     h_f.Name = 'Normalized power absorption';
     mua_vec = [tissueList.mua];
-    plotVolumetric(x,y,z,mua_vec(T).*F,'reverseZ');
+    plotVolumetric(x,y,z,mua_vec(T).*F,'reverseZfromZero');
     title('Normalized absorbed power per unit volume [W/cm^3/W.incident] ')
     
     fprintf('\n%.2g%% of the input light was absorbed within the volume.\n',100*dx*dy*dz*sum(sum(sum(mua_vec(T).*F))));
@@ -113,7 +113,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
         Y_vec = [tissueList.Y]; % The tissues' fluorescence power efficiencies
         sat_vec = [tissueList.sat]; % The tissues' fluorescence saturation fluence rates (intensity)
         FluorescenceEmitters = Y_vec(T).*mua_vec(T)*P.*F./(1 + P*F./sat_vec(T)); % [W/cm^3]
-        plotVolumetric(x,y,z,FluorescenceEmitters,'reverseZ');
+        plotVolumetric(x,y,z,FluorescenceEmitters,'reverseZfromZero');
         title('Fluorescence emitter distribution [W/cm^3] ')
 
         fprintf('Out of this, %.2g W was re-emitted as fluorescence.\n',dx*dy*dz*sum(sum(sum(FluorescenceEmitters))));
@@ -126,7 +126,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
             h_f = figure(7);
         end
         h_f.Name = 'Fluorescence fluence rate';
-        plotVolumetric(x,y,z,I_fluorescence,'reverseZ');
+        plotVolumetric(x,y,z,I_fluorescence,'reverseZfromZero');
         title('Fluorescence fluence rate (Intensity) [W/cm^2] ')
         
         %% Make power absorption plot
@@ -138,7 +138,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
         end
         h_f.Name = 'Fluorescence power absorption';
         mua_vec = [tissueList_fluorescence.mua];
-        plotVolumetric(x,y,z,mua_vec(T).*I_fluorescence,'reverseZ');
+        plotVolumetric(x,y,z,mua_vec(T).*I_fluorescence,'reverseZfromZero');
         title('Absorbed fluorescence power per unit volume [W/cm^3] ')
 
         fprintf('Out of this, %.2g W was re-absorbed within the volume.\n\n',dx*dy*dz*sum(sum(sum(mua_vec(T).*I_fluorescence))));

@@ -23,6 +23,7 @@ for i=1:nT
 end
 set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12);
 title('\mu_a [cm^{-1}]');
+box on;grid on;grid minor;
 
 subplot(rows,3,2);
 hold on;
@@ -31,6 +32,7 @@ for i=1:nT
 end
 set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12);
 title('\mu_s [cm^{-1}]');
+box on;grid on;grid minor;
 
 subplot(rows,3,3);
 hold on;
@@ -39,6 +41,7 @@ for i=1:nT
 end
 set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12);
 title('g');
+box on;grid on;grid minor;
 
 if plotThermalProperties
     subplot(rows,3,4);
@@ -48,7 +51,8 @@ if plotThermalProperties
     end
     set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12);
     title('VHC [J/(cm^3*K)]');
-    
+    box on;grid on;grid minor;
+
     subplot(rows,3,5);
     hold on;
     for i=1:nT
@@ -56,7 +60,8 @@ if plotThermalProperties
     end
     set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12);
     title('TC [W/(cm*K)]');
-    
+    box on;grid on;grid minor;
+
     if  plotFluorescenceProperties
         subplot(rows,3,7);
         hold on;
@@ -65,7 +70,8 @@ if plotThermalProperties
         end
         set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12);
         title('\epsilon');
-        
+        box on;grid on;grid minor;
+
         subplot(rows,3,8);
         hold on;
         for i=1:nT
@@ -73,6 +79,7 @@ if plotThermalProperties
         end
         set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12);
         title('Fluor. sat. [W/cm^3]');
+        box on;grid on;grid minor;
     end
 elseif  plotFluorescenceProperties
     subplot(rows,3,4);
@@ -82,6 +89,7 @@ elseif  plotFluorescenceProperties
     end
     set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12);
     title('Y');
+    box on;grid on;grid minor;
 
     subplot(rows,3,5);
     hold on;
@@ -90,5 +98,6 @@ elseif  plotFluorescenceProperties
     end
     set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12);
     title('Fluor. sat. [W/cm^2]');
+    box on;grid on;grid minor;
 end
 end
