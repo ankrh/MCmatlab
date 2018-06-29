@@ -1,7 +1,7 @@
 function runMonteCarlo(name)
 %
 %   Prepares the illumination beam and runs the Monte Carlo simulation.
-%   After finishing, calls lookmcxyz for the display of the result.
+%   After finishing, calls lookMCmatlab for the display of the result.
 %
 %   Define the time requested for simulating photons.
 %   Define the behaviour of photons that stray outside the tissue cuboid.
@@ -20,8 +20,8 @@ function runMonteCarlo(name)
 %
 %   Requires
 %       deleteDataFiles.m
-%       mcxyz.mex (architecture specific)
-%       lookmcxyz.m
+%       MCmatlab.mex (architecture specific)
+%       lookMCmatlab.m
 %
 
 %% Updates
@@ -78,7 +78,7 @@ MCinput.phiBeam   = 0; % [rad]
 % Focus properties and divergence angles, only used if beamtypeflag > 2
 MCinput.waist = 0.03;             % [cm] focus waist 1/e^2 radius
 % MCinput.divergence = wavelength*1e-9/(pi*MCinput.waist*1e-2); % [rad] Diffraction limited divergence angle for Gaussian beam
-MCinput.divergence = 15/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
+MCinput.divergence = 0/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
 
 %% Determine remaining parameters
 % Voxel sizes
@@ -92,7 +92,7 @@ MCinput.T = T-1; % The tissue matrix has to be converted from MATLAB's 1-based i
 clear T
 
 %% Call Monte Carlo C script (mex file) to get fluence rate (intensity) distribution
-F = mcxyz(MCinput);
+F = MCmatlab(MCinput);
 
 %% Save output and clear memory
 save(['./Data/' name '_MCoutput.mat'],'F','MCinput');
@@ -100,6 +100,6 @@ fprintf('./Data/%s_MCoutput.mat saved\n',name);
 clear F MCinput
 
 %% Make plots
-lookmcxyz(name);
+lookMCmatlab(name);
 
 end

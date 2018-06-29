@@ -3,7 +3,7 @@ function runMonteCarloFluorescence(name)
 %   based on the output of runMonteCarlo.m
 %
 %   Prepares and runs the Monte Carlo simulation.
-%   After finishing, calls lookmcxyz for the display of the result.
+%   After finishing, calls lookMCmatlab for the display of the result.
 %
 %   Define the time requested for simulating photons.
 %   Define the power of the excitation beam (used to take saturation into
@@ -28,8 +28,8 @@ function runMonteCarloFluorescence(name)
 %
 %   Requires
 %       deleteDataFiles.m
-%       mcxyz.mex (architecture specific)
-%       lookmcxyz.m
+%       MCmatlab.mex (architecture specific)
+%       lookMCmatlab.m
 %
 
 %% Updates
@@ -67,14 +67,14 @@ sat_vec = [tissueList.sat]; % The tissues' fluorescence saturation fluence rates
 MCinput_fluorescence.sourceDistribution = Y_vec(T).*mua_vec(T)*P.*F./(1 + P*F./sat_vec(T)); % [W/cm^3]
 
 %% Call Monte Carlo C script to get fluorescence distribution
-I_fluorescence = mcxyz(MCinput_fluorescence); % This is an absolute fluence rate (intensity) quantity, unlike the "F" matrices which are actually fluence rates normalized to the incident power
+I_fluorescence = MCmatlab(MCinput_fluorescence); % This is an absolute fluence rate (intensity) quantity, unlike the "F" matrices which are actually fluence rates normalized to the incident power
 
 %% Save output and clear memory
 save(['./Data/' name '_MCoutput_fluorescence.mat'],'I_fluorescence','MCinput_fluorescence','P');
 fprintf('./Data/%s_MCoutput_fluorescence.mat saved\n',name);
 clear I_fluorescence MCinput_fluorescence
 
-%% Call lookmcxyz
-lookmcxyz(name);
+%% Make plots
+lookMCmatlab(name);
 
 end

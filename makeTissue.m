@@ -22,7 +22,7 @@ function makeTissue
 %   Requires
 %       deleteDataFiles.m
 %       makeTissueList.m
-%       lookmcxyz.m
+%       lookMCmatlab.m
 %
 
 %% Updates
@@ -124,6 +124,6 @@ end
 fprintf('./Data/%s.mat saved\n',name)
 
 %% Make plots
-lookmcxyz(name);
+lookMCmatlab(name);
 
 end

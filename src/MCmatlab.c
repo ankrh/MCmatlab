@@ -1,25 +1,17 @@
 /********************************************
  *
- *  mcxyz.c,	in the C programming language
+ *  MCmatlab.c,	in the C programming language, written for MATLAB MEX function generation
+ *  Compliant with the ISO C11 standard
  *
- * created 2010, 2012 by
- *	Steven L. JACQUES
- *  Ting LI
- *	Oregon Health & Science University
+ *  Heavily inspired by mcxyz by Steven Jacques, Ting Li, Scott Prahl at the Oregon Health & Science University
  *
  * Log:
- *  2010: Written by Ting Li based on Steve's mcsub.c.
- *  2010-12-30: Use Steve Jacques' FindVoxelFace().
- *  2012-05-08: Reorganized by Steve Jacques.
- *  2014-01-09: Edited to included a uniformly distributed light source over the entire surface by Mathias Christensen, DTU Fotonik.
- *  2017-04-20: Overhauled by Anders K. Hansen and Dominik Marti, DTU Fotonik. Fundamental method remained unchanged.
- *      Uses the Mersenne Twister for random number generation.
  *  2017-06-07: Adapted to MATLAB mex file generation by Anders K. Hansen, DTU Fotonik
  *  2018-04-19: Added support for illuminating with an isotropically emitting 3D distribution of sources, such as a collection of fluorescing emitters
  *  2018-06-08: Code refactored by Anders K. Hansen, DTU Fotonik
  *
  ** COMPILING ON WINDOWS
- * Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -O3 -fopenmp -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -O3 -fopenmp -std=c11 -Wall -pedantic' -outdir private .\src\mcxyz.c ".\src\libut.lib""
+ * Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -O3 -fopenmp -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -O3 -fopenmp -std=c11 -Wall -pedantic' -outdir private .\src\MCmatlab.c ".\src\libut.lib""
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Go to MATLAB's addon manager and tell it to install the "Support for MinGW-w64 compiler"
@@ -30,7 +22,7 @@
  ** COMPILING ON MAC
  * As of June 2017, the macOS compiler doesn't support libut (for ctrl+c 
  * breaking) or openmp (for multithreading).
- * Compile in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -O3 -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -O3 -std=c11 -Wall -pedantic' -outdir private ./src/mcxyz.c"
+ * Compile in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -O3 -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -O3 -std=c11 -Wall -pedantic' -outdir private ./src/MCmatlab.c"
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Install XCode from the App Store
@@ -40,7 +32,7 @@
 #include "mex.h"
 #include <math.h>
 #include <time.h>
-#include "lambert.c" // For calculating the Lambert W function, originally part of the GNU Scientific Library, created by K. Briggs, G. Jungman and B. Gough and slightly modified by A. Hansen for easier mcxyz integration
+#include "lambert.c" // For calculating the Lambert W function, originally part of the GNU Scientific Library, created by K. Briggs, G. Jungman and B. Gough and slightly modified by A. Hansen for easier MCmatlab integration
 #define DSFMT_MEXP 19937 // Mersenne exponent for dSFMT
 #include "dSFMT-src-2.2.3/dSFMT.c" // Double precision SIMD oriented Fast Mersenne Twister(dSFMT)
 #ifdef _WIN32 // This is defined on both win32 and win64 systems. We use this preprocessor condition to avoid loading openmp or libut on, e.g., Mac
