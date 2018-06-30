@@ -1,4 +1,4 @@
-function lookmcxyz(name)
+function lookMCmatlab(name)
 %
 %   Displays the tissue cuboid, an overview over the known optical, thermal
 %   and flourescence properties of the tissue types and the output of any
