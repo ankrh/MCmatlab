@@ -46,10 +46,8 @@ function [temperatureSensor, timeVector] = simulateHeatDistribution(name)
 %       updateVolumetric.m
 %       finiteElementHeatPropagator.mex (architecture specific)
 %
-
-%% Updates
-%   2014-01: Rasmus L. Pedersen & Mathias Christensen, DTU Fotonik
-%   2017-06: Anders K. Hansen & Dominik Marti, DTU Fotonik
+%% Acknowledgement
+%   Work on this heat solver was started by Rasmus L. Pedersen & Mathias Christensen, DTU Fotonik
 
 %% Check for preexisting files
 if(~deleteDataFiles(name)); return; end

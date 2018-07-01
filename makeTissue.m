@@ -25,10 +25,8 @@ function makeTissue
 %       lookMCmatlab.m
 %
 
-%% Updates
-%   2014-08: Steven L. Jacques
-%   2017-06: Anders K. Hansen & Dominik Marti, DTU Fotonik
-%   2018-04: Anders K. Hansen
+%% Acknowledgement
+%   This function was inspired by maketissue of the mcxyz program hosted at omlc.org
 
 %% Define parameters (user-specified)
 wavelength  = 532;     % [nm] set the wavelength of the Monte Carlo simulation

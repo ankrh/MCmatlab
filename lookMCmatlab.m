@@ -25,12 +25,10 @@ function lookMCmatlab(name)
 %       plotTissueProperties.m
 %
 
-%% Updates
-%   2014-08: Steven L. Jacques
-%   2017-02: Steven L. Jacques
-%   2017-06: Anders K. Hansen & Dominik Marti, DTU Fotonik
-%   2018-04: Anders K. Hansen
+%% Acknowledgement
+%   This function was inspired by lookmcxyz of the mcxyz MC program hosted at omlc.org
 
+%% Load tissue definition
 load(['./Data/' name '.mat']);
 
 %% Make tissue plot
@@ -67,7 +65,7 @@ if(exist('tissueList_fluorescence','var'))
 end
 
 if(exist(['./Data/' name '_MCoutput.mat'],'file'))
-    load(['./Data/' name '_MCoutput.mat'],'F');
+    load(['./Data/' name '_MCoutput.mat'],'MCoutput');
     dx = x(2)-x(1); dy = y(2)-y(1); dz = z(2)-z(1);
     
     %% Make fluence rate plot
@@ -78,7 +76,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
         h_f = figure(4);
     end
     h_f.Name = 'Normalized fluence rate';
-    plotVolumetric(x,y,z,F,'MCmatlab_fromZero');
+    plotVolumetric(x,y,z,MCoutput.F,'MCmatlab_fromZero');
     title('Normalized fluence rate (Intensity) [W/cm^2/W.incident] ')
     
     %% Make power absorption plot
@@ -90,18 +88,18 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
     end
     h_f.Name = 'Normalized power absorption';
     mua_vec = [tissueList.mua];
-    plotVolumetric(x,y,z,mua_vec(T).*F,'MCmatlab_fromZero');
+    plotVolumetric(x,y,z,mua_vec(T).*MCoutput.F,'MCmatlab_fromZero');
     title('Normalized absorbed power per unit volume [W/cm^3/W.incident] ')
     
-    fprintf('\n%.2g%% of the input light was absorbed within the volume.\n',100*dx*dy*dz*sum(sum(sum(mua_vec(T).*F))));
+    fprintf('\n%.2g%% of the input light was absorbed within the volume.\n',100*dx*dy*dz*sum(sum(sum(mua_vec(T).*MCoutput.F))));
 
     if(exist(['./Data/' name '_MCoutput_fluorescence.mat'],'file'))
-        load(['./Data/' name '_MCoutput_fluorescence.mat'],'P','I_fluorescence');
+        load(['./Data/' name '_MCoutput_fluorescence.mat'],'P','MCoutput_fluorescence');
         
         %% Remind the user what the input power was and plot emitter distribution
         fprintf('\nFluorescence was simulated for %.2g W of input excitation power.\n',P);
         
-        fprintf('Out of this, %.2g W was absorbed within the volume.\n',dx*dy*dz*sum(sum(sum(mua_vec(T).*P.*F))));
+        fprintf('Out of this, %.2g W was absorbed within the volume.\n',dx*dy*dz*sum(sum(sum(mua_vec(T).*P.*MCoutput.F))));
         
         if(~ishandle(6))
             h_f = figure(6);
@@ -112,7 +110,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
         h_f.Name = 'Fluorescence emitters';
         Y_vec = [tissueList.Y]; % The tissues' fluorescence power efficiencies
         sat_vec = [tissueList.sat]; % The tissues' fluorescence saturation fluence rates (intensity)
-        FluorescenceEmitters = Y_vec(T).*mua_vec(T)*P.*F./(1 + P*F./sat_vec(T)); % [W/cm^3]
+        FluorescenceEmitters = Y_vec(T).*mua_vec(T)*P.*MCoutput.F./(1 + P*MCoutput.F./sat_vec(T)); % [W/cm^3]
         plotVolumetric(x,y,z,FluorescenceEmitters,'MCmatlab_fromZero');
         title('Fluorescence emitter distribution [W/cm^3] ')
 
@@ -126,7 +124,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
             h_f = figure(7);
         end
         h_f.Name = 'Fluorescence fluence rate';
-        plotVolumetric(x,y,z,I_fluorescence,'MCmatlab_fromZero');
+        plotVolumetric(x,y,z,MCoutput_fluorescence.F,'MCmatlab_fromZero');
         title('Fluorescence fluence rate (Intensity) [W/cm^2] ')
         
         %% Make power absorption plot
@@ -138,10 +136,10 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
         end
         h_f.Name = 'Fluorescence power absorption';
         mua_vec = [tissueList_fluorescence.mua];
-        plotVolumetric(x,y,z,mua_vec(T).*I_fluorescence,'MCmatlab_fromZero');
+        plotVolumetric(x,y,z,mua_vec(T).*MCoutput_fluorescence.F,'MCmatlab_fromZero');
         title('Absorbed fluorescence power per unit volume [W/cm^3] ')
 
-        fprintf('Out of this, %.2g W was re-absorbed within the volume.\n\n',dx*dy*dz*sum(sum(sum(mua_vec(T).*I_fluorescence))));
+        fprintf('Out of this, %.2g W was re-absorbed within the volume.\n\n',dx*dy*dz*sum(sum(sum(mua_vec(T).*MCoutput_fluorescence.F))));
     end
 end
 

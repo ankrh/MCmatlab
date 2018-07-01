@@ -1,4 +1,5 @@
 function [T, tissueList] = makeTissueList(T,wavelength)
+%
 %   Returns the known tissue properties (optical, thermal and/or fluorescence) at the specified wavelength.
 %   Defining the thermal or fluorescence properties is only necessary if you want to run simulations based on
 %   those properties.
@@ -7,25 +8,24 @@ function [T, tissueList] = makeTissueList(T,wavelength)
 %       mua is the absorption coefficient [cm^-1] and must be positive (not zero)
 %       mus is the scattering coefficient [cm^-1] and must be positive (not zero)
 %       g is the anisotropy factor and must satisfy -1 <= g <= 1
-%   it may further contain VHC, D and TC for some tissues;
+%   it may contain VHC, D and TC for some tissues;
 %       VHC is volumetric heat capacity [J/(cm^3*K)] and must be positive
 %       D is density [kg/cm^3] and must be positive (this value is only illustrative and not used in the simulations)
 %       TC is thermal conductivity [W/(cm*K)] and must be non-negative
-%   and it may further for some tissues contain parameters to calculate heat-induced damage;
+%   and it may for some tissues contain parameters to calculate heat-induced damage;
 %       E is the Arrhenius activation energy [J/mol]
 %       A is the Arrhenius pre-exponential factor [1/s]
-%   and it may further contain data for fluorescence properties for some tissues;
+%   and it may contain data for fluorescence properties for some tissues;
 %       Y is fluorescence power yield (watts of emitted fluorescence light per watt of absorbed pump light) [-]
 %       sat is saturation excitation intensity [W/cm^2]
 
 %   Requires
 %       SpectralLIB.mat
 
-%% Updates
-%   2014-01: Rasmus L. Pedersen, Mathias Christensen & Josefine Nielsen, DTU Fotonik
-%   2014-08: Steven L. Jacques
-%   2017-06: Anders K. Hansen, Dominik Marti & Kira Schmidt, DTU Fotonik
-%   2018-04: Anders K. Hansen
+%% Acknowledgement
+%   This function was inspired by makeTissueList of the mcxyz program hosted at omlc.org
+%   Many parameters, formulas and the spectralLIB library is from mcxyz and
+%   other work by Steven Jacques and collaborators.
 
 %% Load spectral library
 load spectralLIB.mat

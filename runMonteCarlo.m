@@ -24,11 +24,6 @@ function runMonteCarlo(name)
 %       lookMCmatlab.m
 %
 
-%% Updates
-%   2014-01: Mathias Christensen & Rasmus L. Pedersen, DTU Fotonik
-%   2017-06: Anders K. Hansen & Dominik Marti, DTU Fotonik
-%   2018-04: Anders K. Hansen
-
 %% Check for preexisting files
 if(~deleteDataFiles(name)); return; end
 
@@ -92,12 +87,12 @@ MCinput.T = T-1; % The tissue matrix has to be converted from MATLAB's 1-based i
 clear T
 
 %% Call Monte Carlo C script (mex file) to get fluence rate (intensity) distribution
-F = MCmatlab(MCinput);
+MCoutput = MCmatlab(MCinput);
 
 %% Save output and clear memory
-save(['./Data/' name '_MCoutput.mat'],'F','MCinput');
+save(['./Data/' name '_MCoutput.mat'],'MCoutput','MCinput');
 fprintf('./Data/%s_MCoutput.mat saved\n',name);
-clear F MCinput
+clear MCoutput MCinput
 
 %% Make plots
 lookMCmatlab(name);

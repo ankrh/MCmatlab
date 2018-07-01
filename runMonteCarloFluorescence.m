@@ -64,15 +64,15 @@ MCinput_fluorescence.tissueList = tissueList_fluorescence;
 mua_vec = [tissueList.mua]; % The tissues' excitation absorption coefficients
 Y_vec = [tissueList.Y]; % The tissues' fluorescence power yields
 sat_vec = [tissueList.sat]; % The tissues' fluorescence saturation fluence rates (intensity)
-MCinput_fluorescence.sourceDistribution = Y_vec(T).*mua_vec(T)*P.*F./(1 + P*F./sat_vec(T)); % [W/cm^3]
+MCinput_fluorescence.sourceDistribution = Y_vec(T).*mua_vec(T)*P.*MCoutput.F./(1 + P*MCoutput.F./sat_vec(T)); % [W/cm^3]
 
 %% Call Monte Carlo C script to get fluorescence distribution
-I_fluorescence = MCmatlab(MCinput_fluorescence); % This is an absolute fluence rate (intensity) quantity, unlike the "F" matrices which are actually fluence rates normalized to the incident power
+MCoutput_fluorescence = MCmatlab(MCinput_fluorescence); % MCoutput_fluorescence.F is an absolute fluence rate (intensity) quantity, unlike the non-fluorescence MCoutput.F which are actually fluence rates normalized to the incident power
 
 %% Save output and clear memory
-save(['./Data/' name '_MCoutput_fluorescence.mat'],'I_fluorescence','MCinput_fluorescence','P');
+save(['./Data/' name '_MCoutput_fluorescence.mat'],'MCoutput_fluorescence','MCinput_fluorescence','P');
 fprintf('./Data/%s_MCoutput_fluorescence.mat saved\n',name);
-clear I_fluorescence MCinput_fluorescence
+clear MCoutput_fluorescence MCinput_fluorescence
 
 %% Make plots
 lookMCmatlab(name);

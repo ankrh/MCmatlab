@@ -3,12 +3,7 @@
  *  MCmatlab.c,	in the C programming language, written for MATLAB MEX function generation
  *  Compliant with the ISO C11 standard
  *
- *  Heavily inspired by mcxyz by Steven Jacques, Ting Li, Scott Prahl at the Oregon Health & Science University
- *
- * Log:
- *  2017-06-07: Adapted to MATLAB mex file generation by Anders K. Hansen, DTU Fotonik
- *  2018-04-19: Added support for illuminating with an isotropically emitting 3D distribution of sources, such as a collection of fluorescing emitters
- *  2018-06-08: Code refactored by Anders K. Hansen, DTU Fotonik
+ *  Heavily inspired by mcxyz.c by Steven Jacques, Ting Li, Scott Prahl at the Oregon Health & Science University
  *
  ** COMPILING ON WINDOWS
  * Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -O3 -fopenmp -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -O3 -fopenmp -std=c11 -Wall -pedantic' -outdir private .\src\MCmatlab.c ".\src\libut.lib""
@@ -77,7 +72,7 @@ struct photon { // Struct type for parameters describing the thread-specific cur
     double         stepLeft,weight;
     bool           insideVolume,alive,sameVoxel;
     dsfmt_t        dsfmt; // "State" of the Mersenne Twister pseudo-random number generator
-    long long      nLaunches; // Number of times this photon has been launched
+    long long      nThreadPhotons; // Number of times this thread has launched a photon
 };
 
 void unitcrossprod(double *a, double *b, double *c) {
@@ -221,7 +216,7 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
     for(idx=0;idx<3;idx++) P->D[idx] = P->u[idx]? (floor(P->i[idx]) + (P->u[idx]>0) - P->i[idx])*G->d[idx]/P->u[idx] : INFINITY;
     
     P->stepLeft	= -log(RandomNum);
-    P->nLaunches++;
+    P->nThreadPhotons++;
 }
 
 void getNewVoxelProperties(struct photon * const P, struct geometry const * const G) {
@@ -326,7 +321,7 @@ void scatterPhoton(struct photon * const P, struct geometry const * const G) {
     P->stepLeft	= -log(RandomNum);
 }
 
-void normalizeDeposition(struct beam const * const B, struct geometry const * const G, long long nPhotons, double * const F) {
+void normalizeDeposition(struct beam const * const B, struct geometry const * const G, double nPhotons, double * const F) {
     long j;
     long L = G->n[0]*G->n[1]*G->n[2]; // Total number of voxels in cuboid
     // Normalize deposition to yield either absolute or relative fluence rate (F).
@@ -345,7 +340,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 	int       pctProgress = 0;      // Simulation progress in percent
     int       newPctProgress;    
     bool      ctrlc_caught = false; // Has a ctrl+c been passed from MATLAB?
-    long long nPhotons = 0;
     
     // Timekeeping variables
     double          simulationTimeRequested = *mxGetPr(mxGetField(prhs[0],0,"simulationTime"));
@@ -416,10 +410,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     };
     struct beam const *B = &B_var;
     
-    // Prepare output matrix
-    plhs[0] = mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL);
-    double  *F = mxGetPr(plhs[0]);
-    for(idx=0;idx<L;idx++) F[idx] = 0;
+    // Prepare output MATLAB struct
+    plhs[0] = mxCreateStructMatrix(1,1,3,(const char *[]){"F","nPhotons","nThreads"});
+    mxSetField(plhs[0],0,"F",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
+    double  *F = mxGetPr(mxGetField(plhs[0],0,"F"));
+    mxSetField(plhs[0],0,"nPhotons",mxCreateDoubleMatrix(1,1,mxREAL));
+    double *nPhotonsPtr = mxGetPr(mxGetField(plhs[0],0,"nPhotons"));
+    mxSetField(plhs[0],0,"nThreads",mxCreateDoubleMatrix(1,1,mxREAL));
+    double *nThreadsPtr = mxGetPr(mxGetField(plhs[0],0,"nThreads"));
     
     // Display parameters
     printf("---------------------------------------------------------\n");
@@ -471,13 +469,16 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 	clock_gettime(CLOCK_MONOTONIC, &simulationTimeStart);
 	
     #ifdef _WIN32
-    #pragma omp parallel num_threads(omp_get_num_procs())
+    *nThreadsPtr = omp_get_num_procs();
+    #pragma omp parallel num_threads((long)*nThreadsPtr)
+    #else
+    *nThreadsPtr = 1;
     #endif
 	{
         struct photon P_var;
         struct photon *P = &P_var;
         
-        P->nLaunches = 0;
+        P->nThreadPhotons = 0;
         
         #ifdef _WIN32
 		dsfmt_init_gen_rand(&P->dsfmt,simulationTimeStart.tv_nsec + omp_get_thread_num()); // Seed the photon's random number generator
@@ -523,14 +524,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         #ifdef _WIN32
         #pragma omp atomic
         #endif
-        nPhotons += P->nLaunches; // Add up the launches made in the individual threads to the total photon counter
+        *nPhotonsPtr += P->nThreadPhotons; // Add up the launches made in the individual threads to the total photon counter
 	}
     
 	clock_gettime(CLOCK_MONOTONIC, &simulationTimeCurrent);
 	simulationTimeSpent = simulationTimeCurrent.tv_sec  - simulationTimeStart.tv_sec +
                          (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1e9;
-	printf("\nSimulated %0.2e photons at a rate of %0.2e photons per minute\n",(double)nPhotons, nPhotons*60/simulationTimeSpent);
+	printf("\nSimulated %0.2e photons at a rate of %0.2e photons per minute\n",*nPhotonsPtr, *nPhotonsPtr*60/simulationTimeSpent);
     printf("---------------------------------------------------------\n");
     mexEvalString("drawnow;");
-    normalizeDeposition(B,G,nPhotons,F); // Convert data to either relative or absolute fluence rate
+    normalizeDeposition(B,G,*nPhotonsPtr,F); // Convert data to either relative or absolute fluence rate
 }
