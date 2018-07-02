@@ -21,27 +21,24 @@ hold on;
 for i=1:nT
     bar(i,tissueList(i).mua,'FaceColor',cmap(i,:));
 end
-set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12);
+set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
 title('\mu_a [cm^{-1}]');
-box on;grid on;grid minor;
 
 subplot(rows,3,2);
 hold on;
 for i=1:nT
     bar(i,tissueList(i).mus,'FaceColor',cmap(i,:));
 end
-set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12);
+set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
 title('\mu_s [cm^{-1}]');
-box on;grid on;grid minor;
 
 subplot(rows,3,3);
 hold on;
 for i=1:nT
     bar(i,tissueList(i).g,'FaceColor',cmap(i,:));
 end
-set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12);
+set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
 title('g');
-box on;grid on;grid minor;
 
 if plotThermalProperties
     subplot(rows,3,4);
@@ -49,18 +46,16 @@ if plotThermalProperties
     for i=1:nT
         bar(i,tissueList(i).VHC,'FaceColor',cmap(i,:));
     end
-    set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12);
+    set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
     title('VHC [J/(cm^3*K)]');
-    box on;grid on;grid minor;
 
     subplot(rows,3,5);
     hold on;
     for i=1:nT
         bar(i,tissueList(i).TC,'FaceColor',cmap(i,:));
     end
-    set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12);
+    set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
     title('TC [W/(cm*K)]');
-    box on;grid on;grid minor;
 
     if  plotFluorescenceProperties
         subplot(rows,3,7);
@@ -68,18 +63,16 @@ if plotThermalProperties
         for i=1:nT
             bar(i,tissueList(i).Y,'FaceColor',cmap(i,:));
         end
-        set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12);
+        set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
         title('\epsilon');
-        box on;grid on;grid minor;
 
         subplot(rows,3,8);
         hold on;
         for i=1:nT
             bar(i,tissueList(i).sat,'FaceColor',cmap(i,:));
         end
-        set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12);
+        set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
         title('Fluor. sat. [W/cm^3]');
-        box on;grid on;grid minor;
     end
 elseif  plotFluorescenceProperties
     subplot(rows,3,4);
@@ -87,17 +80,15 @@ elseif  plotFluorescenceProperties
     for i=1:nT
         bar(i,tissueList(i).Y,'FaceColor',cmap(i,:));
     end
-    set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12);
+    set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
     title('Y');
-    box on;grid on;grid minor;
 
     subplot(rows,3,5);
     hold on;
     for i=1:nT
         bar(i,tissueList(i).sat,'FaceColor',cmap(i,:));
     end
-    set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12);
+    set(gca,'XTick',1:nT,'XTickLabel',{tissueList.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
     title('Fluor. sat. [W/cm^2]');
-    box on;grid on;grid minor;
 end
 end

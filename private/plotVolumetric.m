@@ -26,6 +26,7 @@ yh = y(end); % y high
 zl = z(1); % z low
 zh = z(end); % z high
 
+xyzaxes = false; % Assume axes are not necessarily spatial axes and should not be labeled or set "axis equal"
 checkboxvisible = true; % Assume the log10 checkbox should be visible
 directmapping = false; % Assume CDataMapping should not be set to direct
 reverseZ = false; % Assume z axis is not inverted
@@ -34,16 +35,21 @@ colormap(GPBGYRcolormap); % Assume we want to use the GPBGYR (Grey-Purple-Blue-G
 colorbar;
 if ~isempty(varargin)
     plottype = varargin{1};
-    if strcmp(plottype,'reverseZTissueIllustration')
+    if strcmp(plottype,'MCmatlab_TissueIllustration')
+        xyzaxes = true;
         reverseZ = true;
         tissueList = varargin{2};
         checkboxvisible = false;
         directmapping = true;
         colormap(lines(length(tissueList)));
         colorbar('TickLabels',{tissueList.name},'Ticks',(1:length(tissueList))+0.5);
-    elseif strcmp(plottype,'reverseZfromZero')
+    elseif strcmp(plottype,'MCmatlab_fromZero')
+        xyzaxes = true;
         reverseZ = true;
         fromZero = true;
+    elseif strcmp(plottype,'MCmatlab')
+        xyzaxes = true;
+        reverseZ = true;
     end
 end
 
@@ -97,16 +103,18 @@ end
 
 line([xh xh xh xh xh],[yl yh yh yl yl],[zh zh zl zl zh],'Color','k');
 line([xl xh xh xl xl],[yh yh yh yh yh],[zh zh zl zl zh],'Color','k');
-line([xl xl xh xh xl],[yl yh yh yl yl],[zh zh zh zh zh],'Color','k');
+line([xl xl xh xh xl],[yl yh yh yl yl],[zback zback zback zback zback],'Color','k');
 h_xline = line([xh xh xh xh xh xh xh],[yh yh yh yl yl yh yh],[zl zl zh zh zl zl zh],'Color','k');
 h_yline = line([xl xl xh xh xl xl xh],[yh yh yh yh yh yh yh],[zh zh zh zl zl zh zh],'Color','k');
-h_zline = line([xh xh xh xl xl xh xh],[yl yl yh yh yl yl yh],[zh zh zh zh zh zh zh],'Color','k');
+h_zline = line([xh xh xh xl xl xh xh],[yl yl yh yh yl yl yh],[zback zback zback zback zback zback zback],'Color','k');
 
 axis tight
-axis equal
-xlabel('x [cm]')
-ylabel('y [cm]')
-zlabel('z [cm]')
+if xyzaxes
+    axis equal
+    xlabel('x [cm]')
+    ylabel('y [cm]')
+    zlabel('z [cm]')
+end
 set(gca,'fontsize',18)
 if reverseZ
     set(gca,'ZDir','reverse')

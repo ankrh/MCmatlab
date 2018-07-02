@@ -26,7 +26,7 @@
  *  [Corless, Gonnet, Hare, and Jeffrey, "On Lambert's W Function".]
  */
 
-// Shamelessly modified for simpler integration into mcxyz by Anders Hansen, DTU Fotonik, February 2018
+// Shamelessly modified for simpler integration into MCmatlab by Anders Hansen, DTU Fotonik, February 2018
 
 /* Halley iteration (eqn. 5.12, Corless et al) */
 static double

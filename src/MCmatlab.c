@@ -1,25 +1,12 @@
 /********************************************
  *
- *  mcxyz.c,	in the C programming language
+ *  MCmatlab.c,	in the C programming language, written for MATLAB MEX function generation
+ *  Compliant with the ISO C11 standard
  *
- * created 2010, 2012 by
- *	Steven L. JACQUES
- *  Ting LI
- *	Oregon Health & Science University
- *
- * Log:
- *  2010: Written by Ting Li based on Steve's mcsub.c.
- *  2010-12-30: Use Steve Jacques' FindVoxelFace().
- *  2012-05-08: Reorganized by Steve Jacques.
- *  2014-01-09: Edited to included a uniformly distributed light source over the entire surface by Mathias Christensen, DTU Fotonik.
- *  2017-04-20: Overhauled by Anders K. Hansen and Dominik Marti, DTU Fotonik. Fundamental method remained unchanged.
- *      Uses the Mersenne Twister for random number generation.
- *  2017-06-07: Adapted to MATLAB mex file generation by Anders K. Hansen, DTU Fotonik
- *  2018-04-19: Added support for illuminating with an isotropically emitting 3D distribution of sources, such as a collection of fluorescing emitters
- *  2018-06-08: Code refactored by Anders K. Hansen, DTU Fotonik
+ *  Heavily inspired by mcxyz.c by Steven Jacques, Ting Li, Scott Prahl at the Oregon Health & Science University
  *
  ** COMPILING ON WINDOWS
- * Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -O3 -fopenmp -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -O3 -fopenmp -std=c11 -Wall -pedantic' -outdir private .\src\mcxyz.c ".\src\libut.lib""
+ * Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -O3 -fopenmp -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -O3 -fopenmp -std=c11 -Wall -pedantic' -outdir private .\src\MCmatlab.c ".\src\libut.lib""
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Go to MATLAB's addon manager and tell it to install the "Support for MinGW-w64 compiler"
@@ -30,17 +17,19 @@
  ** COMPILING ON MAC
  * As of June 2017, the macOS compiler doesn't support libut (for ctrl+c 
  * breaking) or openmp (for multithreading).
- * Compile in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -O3 -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -O3 -std=c11 -Wall -pedantic' -outdir private ./src/mcxyz.c"
+ * Compile in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -O3 -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -O3 -std=c11 -Wall -pedantic' -outdir private ./src/MCmatlab.c"
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Install XCode from the App Store
  * 2. Type "mex -setup" in the MATLAB command window
  ********************************************/
+    #include <windows.h>
+
 
 #include "mex.h"
 #include <math.h>
 #include <time.h>
-#include "lambert.c" // For calculating the Lambert W function, originally part of the GNU Scientific Library, created by K. Briggs, G. Jungman and B. Gough and slightly modified by A. Hansen for easier mcxyz integration
+#include "lambert.c" // For calculating the Lambert W function, originally part of the GNU Scientific Library, created by K. Briggs, G. Jungman and B. Gough and slightly modified by A. Hansen for easier MCmatlab integration
 #define DSFMT_MEXP 19937 // Mersenne exponent for dSFMT
 #include "dSFMT-src-2.2.3/dSFMT.c" // Double precision SIMD oriented Fast Mersenne Twister(dSFMT)
 #ifdef _WIN32 // This is defined on both win32 and win64 systems. We use this preprocessor condition to avoid loading openmp or libut on, e.g., Mac
@@ -71,7 +60,7 @@ struct geometry { // Struct type for the constant geometry definitions
 struct beam { // Struct type for the constant beam definitions
     int            beamtypeFlag;
     double         *S;
-    double         sourcesum;
+    double         power;
     double         waist,divergence;
     double         focus[3];
     double         u[3];
@@ -95,7 +84,7 @@ struct photon { // Struct type for parameters describing the thread-specific cur
     double         stepLeft,weight;
     bool           insideVolume,alive,sameVoxel;
     dsfmt_t        dsfmt; // "State" of the Mersenne Twister pseudo-random number generator
-    long long      nLaunches; // Number of times this photon has been launched
+    long long      nThreadPhotons; // Number of times this thread has launched a photon
 };
 
 void unitcrossprod(double *a, double *b, double *c) {
@@ -157,33 +146,13 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->u[1] = sintheta*sin(phi);
         P->u[2] = costheta;
     } else switch (B->beamtypeFlag) {
-        case 0: // Top-hat focus, top-hat far field beam
-            phi  	= RandomNum*2*PI;
-            axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
-            r		= B->waist*sqrt(RandomNum); // for target calculation
-            for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
-            phi     = RandomNum*2*PI;
-            axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v to w0 is phi.
-            phi     = B->divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-            axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
-            P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-            P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
+        case 0: // pencil beam
+            P->i[0] = (B->focus[0] - B->focus[2]*B->u[0]/B->u[2])/G->d[0] + G->n[0]/2.0;
+            P->i[1] = (B->focus[1] - B->focus[2]*B->u[1]/B->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
+            for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
         break;
-        case 1: // Gaussian focus, Gaussian far field beam
-            phi     = RandomNum*2*PI;
-            axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
-            r		= B->waist*sqrt(-0.5*log(RandomNum)); // for target calculation
-            for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
-            phi     = RandomNum*2*PI;
-            axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v to w0 is phi.
-            phi     = B->divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-            axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
-            P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-            P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
-            P->i[2] = 0;
-        break;
-        case 2: // Isotropically emitting point source
+        case 1: // isotropically emitting point source
             P->i[0] = B->focus[0]/G->d[0] + G->n[0]/2.0;
             P->i[1] = B->focus[1]/G->d[1] + G->n[1]/2.0;
             P->i[2] = B->focus[2]/G->d[2];
@@ -194,17 +163,37 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
             P->u[1] = sintheta*sin(phi);
             P->u[2] = costheta;
         break;
-        case 3: // infinite plane wave
+        case 2: // infinite plane wave
             P->i[0] = ((G->boundaryFlag==1)? 1: KILLRANGE)*G->n[0]*(RandomNum-0.5) + G->n[0]/2.0; // Generates a random ix coordinate within the cuboid
             P->i[1] = ((G->boundaryFlag==1)? 1: KILLRANGE)*G->n[1]*(RandomNum-0.5) + G->n[1]/2.0; // Generates a random iy coordinate within the cuboid
             P->i[2] = 0;
             for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
         break;
-        case 4: // pencil beam
-            P->i[0] = (B->focus[0] - B->focus[2]*B->u[0]/B->u[2])/G->d[0] + G->n[0]/2.0;
-            P->i[1] = (B->focus[1] - B->focus[2]*B->u[1]/B->u[2])/G->d[1] + G->n[1]/2.0;
+        case 3: // Gaussian focus, Gaussian far field beam
+            phi     = RandomNum*2*PI;
+            axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
+            r		= B->waist*sqrt(-0.5*log(RandomNum)); // for target calculation
+            for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
+            phi     = RandomNum*2*PI;
+            axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+            phi     = B->divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+            axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
+            P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+            P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
-            for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
+        break;
+        case 4: // Gaussian focus, top-hat far field beam
+            phi     = RandomNum*2*PI;
+            axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
+            r		= B->waist*sqrt(-0.5*log(RandomNum)); // for target calculation
+            for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
+            phi     = RandomNum*2*PI;
+            axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+            phi     = B->divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+            axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
+            P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+            P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
+            P->i[2] = 0;
         break;
         case 5: // top-hat focus, Gaussian far field beam
             phi     = RandomNum*2*PI;
@@ -212,27 +201,27 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
             r		= B->waist*sqrt(RandomNum); // for target calculation
             for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
             phi     = RandomNum*2*PI;
-            axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v to w0 is phi.
+            axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
             phi     = B->divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
             axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
             P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
             P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
         break;
-        case 6: // Gaussian focus, top-hat far field beam
-            phi     = RandomNum*2*PI;
+        case 6: // top-hat focus, top-hat far field beam
+            phi  	= RandomNum*2*PI;
             axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
-            r		= B->waist*sqrt(-0.5*log(RandomNum)); // for target calculation
+            r		= B->waist*sqrt(RandomNum); // for target calculation
             for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
             phi     = RandomNum*2*PI;
-            axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v to w0 is phi.
+            axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
             phi     = B->divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
             axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
             P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
             P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
         break;
-        case 7: // Laguerre-Gaussian LG01 focus, LG01 far field beam
+        case 7: // Laguerre-Gaussian LG01 beam
             phi     = RandomNum*2*PI;
             axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
             r		= B->waist*sqrt((gsl_sf_lambert_Wm1(-RandomNum*exp(-1))+1)/(-2))/1.50087; // for target calculation
@@ -249,10 +238,10 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
     for(idx=0;idx<3;idx++) P->D[idx] = P->u[idx]? (floor(P->i[idx]) + (P->u[idx]>0) - P->i[idx])*G->d[idx]/P->u[idx] : INFINITY;
     
     P->stepLeft	= -log(RandomNum);
-    P->nLaunches++;
+    P->nThreadPhotons++;
 }
 
-void checkEscape(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC, double *LCP, double *ImP, double *LCFF) {
+void checkEscape(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC, double *LCP, double *ImP) {
     bool escaped = false;
     P->insideVolume = P->i[0] < G->n[0] && P->i[0] >= 0 &&
                       P->i[1] < G->n[1] && P->i[1] >= 0 &&
@@ -277,7 +266,7 @@ void checkEscape(struct photon * const P, struct geometry const * const G, struc
             break;
     }
     
-    if(escaped && LCP) { // If LCP is not NULL then that's because the user wants to simulate detection (nlhs == 4)
+    if(escaped && LCP) { // If LCP is not NULL then that's because useLightCollector was set to true (non-zero)
         double U[3];
         xyztoXYZ(P->u,LC->theta,LC->phi,U); // U is now the photon trajectory in basis of detection frame (X,Y,Z)
         
@@ -304,16 +293,16 @@ void checkEscape(struct photon * const P, struct geometry const * const G, struc
                     if(distImP < LC->FSorNA/2) { // If the photon is coming from the area within the Field Size
                         LCP [(long)(LC->res[0]*(RLCP[0]/LC->diam   + 1.0/2)) + LC->res[0]*(long)(LC->res[1]*(RLCP[1]/LC->diam   + 1.0/2))] += P->weight;
                         ImP [(long)(LC->res[0]*(RImP[0]/LC->FSorNA + 1.0/2)) + LC->res[0]*(long)(LC->res[1]*(RImP[1]/LC->FSorNA + 1.0/2))] += P->weight;
-                        double thetaLCFF = atan(distImP/LC->f); // Light collector far field polar angle
-                        double phiLCFF = atan2(RImP[1],RImP[0]); // Light collector far field azimuthal angle
-                        LCFF[(long)(LC->res[0]*(thetaLCFF/(PI/2*(1+DBL_EPSILON)))) + LC->res[0]*(long)(LC->res[1]*((phiLCFF+PI)/(2*PI*(1+DBL_EPSILON))))] += P->weight;
+//                         double thetaLCFF = atan(distImP/LC->f); // Light collector far field polar angle
+//                         double phiLCFF = atan2(RImP[1],RImP[0]); // Light collector far field azimuthal angle
+//                         LCFF[(long)(LC->res[0]*(thetaLCFF/(PI/2*(1+DBL_EPSILON)))) + LC->res[0]*(long)(LC->res[1]*((phiLCFF+PI)/(2*PI*(1+DBL_EPSILON))))] += P->weight;
                     }
                 } else { // If the light collector is a fiber tip
                     double thetaLCFF = atan(-sqrt(U[0]*U[0] + U[1]*U[1])/U[2]); // Light collector far field polar angle
                     if(thetaLCFF < asin(fmin(1,LC->FSorNA))) { // If the photon has an angle within the fiber's NA acceptance
                         LCP [(long)(LC->res[0]*(RLCP[0]/LC->diam   + 1.0/2)) + LC->res[0]*(long)(LC->res[1]*(RLCP[1]/LC->diam   + 1.0/2))] += P->weight;
-                        double phiLCFF = atan2(U[1],U[0]); // Light collector far field azimuthal angle
-                        LCFF[(long)(LC->res[0]*(thetaLCFF/(PI/2*(1+DBL_EPSILON)))) + LC->res[0]*(long)(LC->res[1]*((phiLCFF+PI)/(2*PI*(1+DBL_EPSILON))))] += P->weight;
+//                         double phiLCFF = atan2(U[1],U[0]); // Light collector far field azimuthal angle
+//                         LCFF[(long)(LC->res[0]*(thetaLCFF/(PI/2*(1+DBL_EPSILON)))) + LC->res[0]*(long)(LC->res[1]*((phiLCFF+PI)/(2*PI*(1+DBL_EPSILON))))] += P->weight;
                     }
                 }
             }
@@ -402,17 +391,31 @@ void scatterPhoton(struct photon * const P, struct geometry const * const G) {
     P->stepLeft	= -log(RandomNum);
 }
 
-void normalizeDeposition(struct beam const * const B, struct geometry const * const G, long long nPhotons, double * const F) {
+void normalizeDeposition(struct beam const * const B, struct geometry const * const G, struct lightcollector const * const LC, double * const F, double * const LCP, double * const ImP, double nPhotons) {
     long j;
+    double V = G->d[0]*G->d[1]*G->d[2]; // Voxel volume
     long L = G->n[0]*G->n[1]*G->n[2]; // Total number of voxels in cuboid
+    long L_LC = LC->res[0]*LC->res[1]; // Total number of pixels in light collector planes
     // Normalize deposition to yield either absolute or relative fluence rate (F).
     if(B->S) { // For a 3D source distribution (e.g., fluorescence)
-		for(j=0; j<L;j++) F[j] /= nPhotons*G->muav[G->v[j]]/B->sourcesum; // Absolute fluence rate [W/cm^2]
+		for(j=0; j<L;j++) F[j] /= V*nPhotons*G->muav[G->v[j]]/B->power; // Absolute fluence rate [W/cm^2].
+        if(LCP) for(j=0;j<L_LC;j++) {
+            LCP[j] /= LC->diam  *LC->diam  /L_LC*nPhotons/B->power; // Absolute fluence rate [W/cm^2]
+            ImP[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/B->power; // Absolute fluence rate [W/cm^2]
+        }
         mxFree(B->S);
     } else if(B->beamtypeFlag == 3 && G->boundaryFlag != 1) { // For infinite plane wave launched into volume without absorbing walls
-		for(j=0; j<L;j++) F[j] /= G->d[0]*G->d[1]*G->d[2]*nPhotons*G->muav[G->v[j]]/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
+		for(j=0; j<L;j++) F[j] /= V*nPhotons*G->muav[G->v[j]]/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
+        if(LCP) for(j=0;j<L_LC;j++) {
+            LCP[j] /= LC->diam  *LC->diam  /L_LC*nPhotons/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
+            ImP[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
+        }
 	} else {
-		for(j=0; j<L;j++) F[j] /= G->d[0]*G->d[1]*G->d[2]*nPhotons*G->muav[G->v[j]]; // Normalized fluence rate [W/cm^2/W.incident]
+		for(j=0; j<L;j++) F[j] /= V*nPhotons*G->muav[G->v[j]]; // Normalized fluence rate [W/cm^2/W.incident]
+        if(LCP) for(j=0;j<L_LC;j++) {
+            LCP[j] /= LC->diam  *LC->diam  /L_LC*nPhotons; // Normalized fluence rate [W/cm^2/W.incident]
+            ImP[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons; // Normalized fluence rate [W/cm^2/W.incident]
+        }
 	}
 }
 
@@ -421,12 +424,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 	int       pctProgress = 0;      // Simulation progress in percent
     int       newPctProgress;    
     bool      ctrlc_caught = false; // Has a ctrl+c been passed from MATLAB?
-    long long nPhotons = 0;
-    
-    if(nlhs != 1 && nlhs != 4) {
-        printf("Error: Number of output variables must be either 1 (when simulating without detection) or 4 (when simulating with detection)\n");
-        return;
-    }
     
     // Timekeeping variables
     double          simulationTimeRequested = *mxGetPr(mxGetField(prhs[0],0,"simulationTime"));
@@ -462,21 +459,21 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     long L = G->n[0]*G->n[1]*G->n[2]; // Total number of voxels in cuboid
     
 	// Beam struct definition
-    double *S_PDF       = mxGetData(mxGetField(prhs[0],0,"sourceDistribution")); // Probability density function of 3D source distribution
-    double sourcesum    = 0;
+    double *S_PDF       = mxGetData(mxGetField(prhs[0],0,"sourceDistribution")); // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
+    double power        = 0;
     double *S           = NULL; // Cumulative distribution function
 	if(S_PDF) {
         S = mxMalloc((L+1)*sizeof(double));
         if(!S) {printf("Out of memory, returning...\n"); return;}
         S[0] = 0;
         for(idx=1;idx<(L+1);idx++) S[idx] = S[idx-1] + S_PDF[idx-1];
-        sourcesum = S[L];
-        for(idx=1;idx<(L+1);idx++) S[idx] /= sourcesum;
+        power = S[L]*G->d[0]*G->d[1]*G->d[2];
+        for(idx=1;idx<(L+1);idx++) S[idx] /= S[L];
     }
     
     double tb = *mxGetPr(mxGetField(prhs[0],0,"thetaBeam"));
     double pb = *mxGetPr(mxGetField(prhs[0],0,"phiBeam"));
-    
+
     double u[3] = {sin(tb)*cos(pb),
                    sin(tb)*sin(pb),
                    cos(tb)}; // Temporary array
@@ -487,7 +484,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     struct beam const B_var = (struct beam) {
         .beamtypeFlag =  *mxGetPr(mxGetField(prhs[0],0,"beamtypeFlag")),
         .S            =  S,
-        .sourcesum    =  sourcesum,
+        .power        =  power,
         .waist        =  *mxGetPr(mxGetField(prhs[0],0,"waist")),
         .divergence   =  *mxGetPr(mxGetField(prhs[0],0,"divergence")),
         .focus        = {*mxGetPr(mxGetField(prhs[0],0,"xFocus")),
@@ -499,38 +496,47 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     struct beam const *B = &B_var;
     
     // Detector struct definition
-    double theta = *mxGetPr(mxGetField(prhs[0],0,"thetaDet"));
-    double phi   = *mxGetPr(mxGetField(prhs[0],0,"phiDet"));
-    double f     = *mxGetPr(mxGetField(prhs[0],0,"fDet"));
+    bool useLightCollector = *mxGetPr(mxGetField(prhs[0],0,"useLightCollector"));
     
+    double theta = *mxGetPr(mxGetField(prhs[0],0,"theta_LC"));
+    double phi   = *mxGetPr(mxGetField(prhs[0],0,"phi_LC"));
+    double f     = *mxGetPr(mxGetField(prhs[0],0,"f_LC"));
+
     struct lightcollector const LC_var = (struct lightcollector) {
-        .r            = {*mxGetPr(mxGetField(prhs[0],0,"xFPCDet")) - (isfinite(f)? f*sin(theta)*cos(phi):0), // xyz coordinates of center of light collector
-                         *mxGetPr(mxGetField(prhs[0],0,"yFPCDet")) - (isfinite(f)? f*sin(theta)*sin(phi):0),
-                         *mxGetPr(mxGetField(prhs[0],0,"zFPCDet")) - (isfinite(f)? f*cos(theta):0)},
+        .r            = {*mxGetPr(mxGetField(prhs[0],0,"xFPC_LC")) - (isfinite(f)? f*sin(theta)*cos(phi):0), // xyz coordinates of center of light collector
+                         *mxGetPr(mxGetField(prhs[0],0,"yFPC_LC")) - (isfinite(f)? f*sin(theta)*sin(phi):0),
+                         *mxGetPr(mxGetField(prhs[0],0,"zFPC_LC")) - (isfinite(f)? f*cos(theta):0)},
         .theta        =  theta,
         .phi          =  phi,
         .f            =  f,
-        .diam         =  *mxGetPr(mxGetField(prhs[0],0,"diamDet")),
-        .FSorNA       =  *mxGetPr(mxGetField(prhs[0],0,"FSorNADet")),
-        .res          = {*mxGetPr(mxGetField(prhs[0],0,"resXDet")),
-                         *mxGetPr(mxGetField(prhs[0],0,"resYDet"))}};
+        .diam         =  *mxGetPr(mxGetField(prhs[0],0,"diam_LC")),
+        .FSorNA       =  *mxGetPr(mxGetField(prhs[0],0,"FSorNA_LC")),
+        .res          = {*mxGetPr(mxGetField(prhs[0],0,"resX_LC")),
+                         *mxGetPr(mxGetField(prhs[0],0,"resY_LC"))}};
     struct lightcollector const *LC = &LC_var;
     
-    // Prepare output variables
-    plhs[0] = mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL);
-    double  *F = mxGetPr(plhs[0]);
+    // Prepare output MATLAB struct
+    double *LCP  = NULL;
+    double *ImP  = NULL;
+//     double *LCFF = NULL;
     
-    double *LCP = NULL; // Light Collector Plane
-    double *ImP = NULL; // Image Plane (for 1x magnification)
-    double *LCFF = NULL; // Light Collector far field (hemisphere angle space)
-    if(nlhs == 4) {
-        plhs[1] = mxCreateNumericMatrix(LC->res[0],LC->res[1],mxDOUBLE_CLASS,mxREAL);
-        plhs[2] = mxCreateNumericMatrix(LC->res[0],LC->res[1],mxDOUBLE_CLASS,mxREAL);
-        plhs[3] = mxCreateNumericMatrix(LC->res[0],LC->res[1],mxDOUBLE_CLASS,mxREAL);
-        LCP  = mxGetPr(plhs[1]);
-        ImP  = mxGetPr(plhs[2]);
-        LCFF = mxGetPr(plhs[3]);
+    if(useLightCollector) {
+        plhs[0] = mxCreateStructMatrix(1,1,5,(const char *[]){"F","LCP","ImP","nPhotons","nThreads"});
+        mxSetField(plhs[0],0,"LCP", mxCreateDoubleMatrix(LC->res[0],LC->res[1],mxREAL));
+        mxSetField(plhs[0],0,"ImP", mxCreateDoubleMatrix(LC->res[0],LC->res[1],mxREAL));
+//         mxSetField(plhs[0],0,"LCFF",mxCreateDoubleMatrix(LC->res[0],LC->res[1],mxREAL));
+        LCP  = mxGetPr(mxGetField(plhs[0],0,"LCP"));
+        ImP  = mxGetPr(mxGetField(plhs[0],0,"ImP"));
+//         LCFF = mxGetPr(mxGetField(plhs[0],0,"LCFF"));
+    } else {
+        plhs[0] = mxCreateStructMatrix(1,1,3,(const char *[]){"F","nPhotons","nThreads"});
     }
+    mxSetField(plhs[0],0,"F",       mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
+    mxSetField(plhs[0],0,"nPhotons",mxCreateDoubleMatrix(1,1,mxREAL));
+    mxSetField(plhs[0],0,"nThreads",mxCreateDoubleMatrix(1,1,mxREAL));
+    double *F           = mxGetPr(mxGetField(plhs[0],0,"F"));
+    double *nPhotonsPtr = mxGetPr(mxGetField(plhs[0],0,"nPhotons"));
+    double *nThreadsPtr = mxGetPr(mxGetField(plhs[0],0,"nThreads"));
     
     // Display parameters
     printf("---------------------------------------------------------\n");
@@ -540,45 +546,39 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     else {
         switch(B->beamtypeFlag) {
             case 0:
-                printf("Using top-hat focus, top-hat far field beam\n");
+                printf("Using pencil beam\n");
                 break;
             case 1:
-                printf("Using Gaussian focus, Gaussian far field beam\n");
+                printf("Using isotropically emitting point source\n");
                 break;
             case 2:
-                printf("Using isotropic point source\n");
-                break;
-            case 3:
                 printf("Using infinite plane wave\n");
                 break;
+            case 3:
+                printf("Using Gaussian focus, Gaussian far field beam\n");
+                break;
             case 4:
-                printf("Using pencil beam\n");
+                printf("Using Gaussian focus, top-hat far field beam\n");
                 break;
             case 5:
                 printf("Using top-hat focus, Gaussian far field beam\n");
                 break;
             case 6:
-                printf("Using Gaussian focus, top-hat far field beam\n");
+                printf("Using top-hat focus, top-hat far field beam\n");
                 break;
             case 7:
-                printf("Using Laguerre-Gaussian LG01 focus, LG01 far field beam\n");
+                printf("Using Laguerre-Gaussian LG01 beam\n");
                 break;
         }
 
-        printf("Focus location = (%0.1e,%0.1e,%0.1e) cm\n",B->focus[0],B->focus[1],B->focus[2]);
-        if(B->beamtypeFlag!=2) printf("Beam direction = (%0.3f,%0.3f,%0.3f)\n",B->u[0],B->u[1],B->u[2]);
-        if(B->beamtypeFlag!=2 && B->beamtypeFlag!=3 && B->beamtypeFlag!=4) {
-            printf("Beam waist = %0.1e cm, divergence = %0.1e rad\n",B->waist,B->divergence);
-        }
+        if(B->beamtypeFlag!=2) printf("Focus location = (%0.1e,%0.1e,%0.1e) cm\n",B->focus[0],B->focus[1],B->focus[2]);
+        if(B->beamtypeFlag!=1) printf("Beam direction = (%0.3f,%0.3f,%0.3f)\n",B->u[0],B->u[1],B->u[2]);
+        if(B->beamtypeFlag >2) printf("Beam waist = %0.1e cm, divergence = %0.1e rad\n",B->waist,B->divergence);
     }
     
     if(G->boundaryFlag==0) printf("boundaryFlag = 0, so no boundaries\n");
     else if(G->boundaryFlag==1) printf("boundaryFlag = 1, so escape at all boundaries\n");    
 	else if(G->boundaryFlag==2) printf("boundaryFlag = 2, so escape at surface only\n");    
-	else {
-        printf("Error: Invalid boundaryFlag\n");
-        return;
-    }
     
     printf("Simulation duration = %0.2f min\n\n",simulationTimeRequested);
 	printf("Calculating...   0%% done");
@@ -588,14 +588,16 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 	clock_gettime(CLOCK_MONOTONIC, &simulationTimeStart);
 	
     #ifdef _WIN32
-    #pragma omp parallel num_threads(omp_get_num_procs())
-//     #pragma omp parallel num_threads(1)
+    *nThreadsPtr = omp_get_num_procs();
+    #pragma omp parallel num_threads((long)*nThreadsPtr)
+    #else
+    *nThreadsPtr = 1;
     #endif
 	{
         struct photon P_var;
         struct photon *P = &P_var;
         
-        P->nLaunches = 0;
+        P->nThreadPhotons = 0;
         
         #ifdef _WIN32
 		dsfmt_init_gen_rand(&P->dsfmt,simulationTimeStart.tv_nsec + omp_get_thread_num()); // Seed the photon's random number generator
@@ -609,7 +611,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 			while(P->alive) {
 				while(P->stepLeft>0) {
 					if(!P->sameVoxel) {
-                        checkEscape(P,G,LC,LCP,ImP,LCFF);
+                        checkEscape(P,G,LC,LCP,ImP);
                         if(!P->alive) break;
                         getNewVoxelProperties(P,G); // If photon has just entered a new voxel or has just been launched
                     }
@@ -645,14 +647,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         #ifdef _WIN32
         #pragma omp atomic
         #endif
-        nPhotons += P->nLaunches; // Add up the launches made in the individual threads to the total photon counter
+        *nPhotonsPtr += P->nThreadPhotons; // Add up the launches made in the individual threads to the total photon counter
 	}
     
 	clock_gettime(CLOCK_MONOTONIC, &simulationTimeCurrent);
 	simulationTimeSpent = simulationTimeCurrent.tv_sec  - simulationTimeStart.tv_sec +
                          (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1e9;
-	printf("\nSimulated %0.2e photons at a rate of %0.2e photons per minute\n",(double)nPhotons, nPhotons*60/simulationTimeSpent);
+	printf("\nSimulated %0.2e photons at a rate of %0.2e photons per minute\n",*nPhotonsPtr, *nPhotonsPtr*60/simulationTimeSpent);
     printf("---------------------------------------------------------\n");
     mexEvalString("drawnow;");
-    normalizeDeposition(B,G,nPhotons,F); // Convert data to either relative or absolute fluence rate
+    normalizeDeposition(B,G,LC,F,LCP,ImP,*nPhotonsPtr); // Convert data to either relative or absolute fluence rate
 }

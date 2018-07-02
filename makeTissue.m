@@ -1,7 +1,7 @@
 function makeTissue
 %
-%   Builds and saves a tissue in a rectangular cuboid voxel-space. The tissue properties are
-%   loaded from makeTissueList.m.
+%   Builds and saves a tissue in a rectangular cuboid voxel-space.
+%   The tissue properties are loaded from makeTissueList.m.
 %
 %   First, define the wavelength in nm, and the tissue cuboid built of voxels.
 %   Then, fill the voxel space with indices pointing to the required tissue
@@ -22,20 +22,18 @@ function makeTissue
 %   Requires
 %       deleteDataFiles.m
 %       makeTissueList.m
-%       lookmcxyz.m
+%       lookMCmatlab.m
 %
 
-%% Updates
-%   2014-08: Steven L. Jacques
-%   2017-06: Anders K. Hansen & Dominik Marti, DTU Fotonik
-%   2018-04: Anders K. Hansen
+%% Acknowledgement
+%   This function was inspired by maketissue of the mcxyz program hosted at omlc.org
 
 %% Define parameters (user-specified)
-wavelength  = 532;     % [nm] set the wavelength of the Monte Carlo simulation
+wavelength  = 450;     % [nm] set the wavelength of the Monte Carlo simulation
 name = 'tissue';        % name of the simulation
-nx = 21;               % number of bins in the x direction
-ny = 21;               % number of bins in the y direction
-nz = 21;               % number of bins in the z direction
+nx = 20;               % number of bins in the x direction
+ny = 20;               % number of bins in the y direction
+nz = 20;               % number of bins in the z direction
 Lx = 1;                 % [cm] x size of simulation area
 Ly = 1;                 % [cm] y size of simulation area
 Lz = 1;                 % [cm] z size of simulation area
@@ -70,8 +68,8 @@ z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 
 %% Fluorescing cylinder example:
 % cylinderradius  = 0.0100;
-% T = 17*ones(nx,ny,nz,'uint8'); % fill background with fluorescent tissue
-% T(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 16; % fluorescence absorber
+% T = 17*ones(nx,ny,nz,'uint8'); % fill background with fluorescence absorber
+% T(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 16; % fluorescent tissue
 
 %% Hair example:
 % zsurf = 0.02;  % position of gel/skin surface[cm]
@@ -106,15 +104,8 @@ z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 
 %% Imaging example:
 T = 1*ones(nx,ny,nz,'uint8'); % Air background
-% T(X.^2+Y.^2 > 0.02^2) = 19;
-% T(1,:,:) = 19;
-% T(:,[1 end],:) = 19;
-% T(Z > 0.011) = 19;
-T(1:(nx*(ny+1)+1):end) = 18; % Set diagonal positions to testscatterer
-% T(51,51,:) = 18;
-% T(51,1:51,51) = 18;
-% T(:,:,2) = 1;
-% T((end-1)/2+1) = 18;
+T(1:(nx*(ny+1)+1):end) = 18; % Set xyz diagonal positions to testscatterer
+T(1:(nx*(ny+1)):end) = 18; % Set yz diagonal positions to testscatterer
 
 %% Get the tissueList and the reduced T matrix
 if(~isnan(wavelength_fluorescence))
@@ -136,6 +127,6 @@ end
 fprintf('./Data/%s.mat saved\n',name)
 
 %% Make plots
-lookmcxyz(name);
+lookMCmatlab(name);
 
 end
