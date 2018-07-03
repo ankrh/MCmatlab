@@ -8,9 +8,8 @@ function [T, tissueList] = makeTissueList(T,wavelength)
 %       mua is the absorption coefficient [cm^-1] and must be positive (not zero)
 %       mus is the scattering coefficient [cm^-1] and must be positive (not zero)
 %       g is the anisotropy factor and must satisfy -1 <= g <= 1
-%   it may contain VHC, D and TC for some tissues;
+%   it may contain VHC and TC for some tissues;
 %       VHC is volumetric heat capacity [J/(cm^3*K)] and must be positive
-%       D is density [kg/cm^3] and must be positive (this value is only illustrative and not used in the simulations)
 %       TC is thermal conductivity [W/(cm*K)] and must be non-negative
 %   and it may for some tissues contain parameters to calculate heat-induced damage;
 %       E is the Arrhenius activation energy [J/mol]
@@ -48,7 +47,6 @@ tissueList(j).mua   = 1e-8;
 tissueList(j).mus   = 1e-8;
 tissueList(j).g     = 0;
 tissueList(j).VHC   = 1.2e-3;
-tissueList(j).D     = 1.2e-6;
 tissueList(j).TC    = 0; % Real value is 2.6e-4, but we set it to zero to neglect the heat transport to air
 
 j=2;
@@ -57,7 +55,6 @@ tissueList(j).mua   = 0.001;
 tissueList(j).mus   = 10;
 tissueList(j).g     = 1.0;
 tissueList(j).VHC   = 4.19;
-tissueList(j).D     = 1e-3;
 tissueList(j).TC    = 5.8e-3;
 
 j=3;
@@ -66,7 +63,6 @@ tissueList(j).mua   = 1;
 tissueList(j).mus   = 100;
 tissueList(j).g     = 0.9;
 tissueList(j).VHC = 3391*1.109e-3;
-tissueList(j).D  = 1.109e-3;
 tissueList(j).TC = 0.37e-2;
 
 j=4;
@@ -85,7 +81,6 @@ tissueList(j).mua = MU*X;
 tissueList(j).mus = musp/(1-gg);
 tissueList(j).g   = gg;
 tissueList(j).VHC =3391*1.109e-3;
-tissueList(j).D =1.109e-3;
 tissueList(j).TC =0.37e-2;
 
 j=5;
@@ -104,7 +99,6 @@ tissueList(j).mua = MU*X;
 tissueList(j).mus = musp/(1-gg);
 tissueList(j).g   = gg;
 tissueList(j).VHC =3391*1.109e-3;
-tissueList(j).D =1.109e-3;
 tissueList(j).TC =0.37e-2;
 
 j=6;
@@ -123,7 +117,6 @@ tissueList(j).mua = MU*X;
 tissueList(j).mus = musp/(1-gg);
 tissueList(j).g   = gg;
 tissueList(j).VHC   = 3617*1.050e-3;
-tissueList(j).D     = 1.050e-3;
 tissueList(j).TC    = 0.52e-2;
 tissueList(j).E   = 422.5e3; % J/mol    PLACEHOLDER DATA ONLY
 tissueList(j).A   = 7.6e66; % 1/s        PLACEHOLDER DATA ONLY
@@ -134,7 +127,6 @@ tissueList(j).mua   = 0.8;
 tissueList(j).mus   = 230;
 tissueList(j).g     = 0.9;
 tissueList(j).VHC   = 4200*1.06e-3;
-tissueList(j).D     = 1.06-3;
 tissueList(j).TC    = 6.1e-3;
 
 j=8;
@@ -143,7 +135,6 @@ tissueList(j).mua   = 0.1;
 tissueList(j).mus   = 30;
 tissueList(j).g     = 0.96;
 tissueList(j).VHC   = 750*2.97e-3;
-tissueList(j).D     = 2.970e-3;
 tissueList(j).TC    = 9e-3;
 
 j=9;
@@ -152,7 +143,6 @@ tissueList(j).mua   = 4; %in cm ^ -1, doi:10.1364/AO.34.001278
 tissueList(j).mus   = 270; %range between 260-280
 tissueList(j).g     = 0.93;
 tissueList(j).VHC   = 1260*2.14e-3; % Volumetric Heat Capacity [J/(cm^3*K)]
-tissueList(j).D     = 2.140e-3; % Density, [kg/cm^3]
 tissueList(j).TC    = 6e-3; % Thermal Conductivity [W/(cm*K)]
 
 j=10;
@@ -168,7 +158,6 @@ tissueList(j).mua = MU*X; %Here the hair is set to absorb twice as much as the e
 tissueList(j).mus = musp/(1-gg);
 tissueList(j).g   = gg;
 tissueList(j).VHC = 1530*1.3e-3; % Thermal data has been approximated using the data for horn, as horn and hair are both composed of keratin
-tissueList(j).D   = 1.3e-3;
 tissueList(j).TC  = 6.3e-3;
 
 j=11;
@@ -177,7 +166,6 @@ tissueList(j).mua   = 0.0001;
 tissueList(j).mus   = 0.6666;
 tissueList(j).g     = 0;
 tissueList(j).VHC   = 703*2.203e-3;
-tissueList(j).D     = 2.203e-3;
 tissueList(j).TC    = 13.8e-3;
 
 j=12;
@@ -186,7 +174,6 @@ tissueList(j).mua   = 1119;
 tissueList(j).mus   = 15;
 tissueList(j).g     = 0.8;
 tissueList(j).VHC   = 5.363*1.048e-3;
-tissueList(j).D     = 1.048e-3;
 tissueList(j).TC    = 4.6e-3;
 
 j=13;
@@ -206,7 +193,6 @@ tissueList(j).mua = MU*X;
 tissueList(j).mus = musp/(1-gg);
 tissueList(j).g   = gg;
 tissueList(j).VHC = 3391*1.109e-3;
-tissueList(j).D  = 1.109e-3;
 tissueList(j).TC = 0.37e-2;
 
 j=14;
@@ -226,7 +212,6 @@ tissueList(j).mua = MU*X;
 tissueList(j).mus = musp/(1-gg);
 tissueList(j).g   = gg;
 tissueList(j).VHC = 3391*1.109e-3;
-tissueList(j).D  = 1.109e-3;
 tissueList(j).TC = 0.37e-2;
 
 j=15;
@@ -246,7 +231,6 @@ tissueList(j).mua = MU*X;
 tissueList(j).mus = musp/(1-gg);
 tissueList(j).g   = gg;
 tissueList(j).VHC = 3391*1.109e-3;
-tissueList(j).D  = 1.109e-3;
 tissueList(j).TC = 0.37e-2;
 
 j=16;
