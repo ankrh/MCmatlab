@@ -219,7 +219,7 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
     P->nThreadPhotons++;
 }
 
-void getNewVoxelProperties(struct photon * const P, struct geometry const * const G) {
+void checkEscape(struct photon * const P, struct geometry const * const G) {
     P->insideVolume = P->i[0] < G->n[0] && P->i[0] >= 0 &&
                       P->i[1] < G->n[1] && P->i[1] >= 0 &&
                       P->i[2] < G->n[2] && P->i[2] >= 0;
@@ -240,7 +240,9 @@ void getNewVoxelProperties(struct photon * const P, struct geometry const * cons
                              P->i[2]                  >= 0);
             break;
     }
+}
 
+void getNewVoxelProperties(struct photon * const P, struct geometry const * const G) {
     /* Get tissue voxel properties of current position.
      * If photon is outside cuboid, properties are those of
      * the closest defined voxel. */
@@ -490,12 +492,16 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
             launchPhoton(P,B,G);
             
 			while(P->alive) {
-				while(P->stepLeft>0 && P->alive) {
-					if(!P->sameVoxel) getNewVoxelProperties(P,G); // If photon has just entered a new voxel or has just been launched
-                    if(P->alive) propagatePhoton(P,G,F);
+				while(P->stepLeft>0) {
+					if(!P->sameVoxel) {
+                        checkEscape(P,G);
+                        if(!P->alive) break;
+                        getNewVoxelProperties(P,G); // If photon has just entered a new voxel or has just been launched
+                    }
+                    propagatePhoton(P,G,F);
 				}
-                if(P->alive) checkRoulette(P);
-				if(P->alive) scatterPhoton(P,G);
+                checkRoulette(P);
+				scatterPhoton(P,G);
 			}
 			
             #ifdef _WIN32
