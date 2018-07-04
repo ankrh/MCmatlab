@@ -54,7 +54,7 @@ if(~deleteDataFiles(name)); return; end
 
 %% Load data from makeTissue.m and MonteCarlo.m
 load(['./Data/' name '.mat']);
-load(['./Data/' name '_MCoutput.mat'],'F');
+load(['./Data/' name '_MCoutput.mat'],'MCoutput');
 
 %% Define parameters (user-specified)
 Winc             = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
@@ -129,32 +129,32 @@ clear TC_eff
 
 %% Calculate temperature change due to absorbed heat per time step
 mua_vec = [tissueList.mua];
-dT_abs = mua_vec(T).*F*dt*dx*dy*dz*Winc./HC(T); % Temperature change from absorption per time step [deg C] (mua_vec(T).*F is a 3D matrix of normalized volumetric powers)
-clear F
+dT_abs = mua_vec(T).*MCoutput.F*dt*dx*dy*dz*Winc./HC(T); % Temperature change from absorption per time step [deg C] (mua_vec(T).*F is a 3D matrix of normalized volumetric powers)
+clear MCoutput
 
 %% Prepare the temperature plot
-if(~ishandle(9))
-    heatsimFigure = figure(9);
+if(~ishandle(21))
+    heatsimFigure = figure(21);
     heatsimFigure.Position = [40 80 1100 650];
 else
-    heatsimFigure = figure(9);
+    heatsimFigure = figure(21);
 end
 clf;
 heatsimFigure.Name = 'Temperature evolution';
-plotVolumetric(x,y,z,Temp,'reverseZ');
+plotVolumetric(x,y,z,Temp,'MCmatlab');
 h_title = title(['Temperature evolution, t = ' num2str(timeVector(1),'%#.2g') ' s']);
 caxis(plotTempLimits); % User-defined color scale limits
 
 %% Make plots to visualize tissue properties
-if(~ishandle(1))
-    tissueFigure = figure(1);
+if(~ishandle(22))
+    tissueFigure = figure(22);
     tissueFigure.Position = [40 80 1100 650];
 else
-    tissueFigure = figure(1);
+    tissueFigure = figure(22);
 end
 clf;
 tissueFigure.Name = 'Tissue type illustration';
-plotVolumetric(x,y,z,T,'reverseZTissueIllustration',tissueList);
+plotVolumetric(x,y,z,T,'MCmatlab_TissueIllustration',tissueList);
 title('Tissue type illustration');
 
 datacursormode on;
@@ -180,11 +180,11 @@ if numTemperatureSensors
     
     temperatureSensorTissues = {tissueList(T(temperatureSensorPosition)).name};
     
-    if(~ishandle(11))
-        temperatureSensorFigure = figure(11);
+    if(~ishandle(23))
+        temperatureSensorFigure = figure(23);
         temperatureSensorFigure.Position = [40 80 1100 650];
     else
-        temperatureSensorFigure = figure(11);
+        temperatureSensorFigure = figure(23);
     end
     clf;
     temperatureSensorFigure.Name = 'Temperature sensors';
@@ -209,7 +209,7 @@ fprintf('[nx,ny,nz]=[%d,%d,%d]. Number of pulses is %d.\nIllumination on for %d 
 
 if(makemovie) % Make a temporary figure showing the tissue type illustration to put into the beginning of the movie
     tempFigure = figure;
-    plotVolumetric(x,y,z,T,'reverseZTissueIllustration',tissueList);
+    plotVolumetric(x,y,z,T,'MCmatlab_TissueIllustration',tissueList);
     title('Tissue type illustration');
     tempFigure.Position = heatsimFigure.Position; % Size has to be the same as the temperature plot
     tempFigure.Children(6).Value = heatsimFigure.Children(6).Value; % Slices have to be set at the same positions
@@ -280,15 +280,15 @@ elseif ~nt_off
 elseif n_pulses == 1
     heatsimFigure.Name = 'Temperature after diffusion';
     title('Temperature after diffusion')
-    if(~ishandle(10))
-        illumFigure = figure(10);
+    if(~ishandle(24))
+        illumFigure = figure(24);
         illumFigure.Position = [40 80 1100 650];
     else
-        illumFigure = figure(10);
+        illumFigure = figure(24);
     end
     clf;
     illumFigure.Name = 'Temperature after illumination';
-    plotVolumetric(x,y,z,Temp_illum,'reverseZ');
+    plotVolumetric(x,y,z,Temp_illum,'MCmatlab');
     title('Temperature after illumination');
     caxis(plotTempLimits); % User-defined color scale limits
     save(['./Data/' name '_heatSimoutput.mat'],'Temp_illum','-append');
@@ -297,17 +297,17 @@ else
 end
 
 if calcDamage
-    if(~ishandle(12))
-        damageFigure = figure(12);
+    if(~ishandle(25))
+        damageFigure = figure(25);
         damageFigure.Position = [40 80 1100 650];
     else
-        damageFigure = figure(12);
+        damageFigure = figure(25);
     end
     damageFigure.Name = 'Tissue damage illustration';
     T_damage = T;
     T_damage(Omega > 1) = nT + 1;
     tissueList(nT + 1).name = 'damage';
-    plotVolumetric(x,y,z,T_damage,'reverseZTissueIllustration',tissueList);
+    plotVolumetric(x,y,z,T_damage,'MCmatlab_TissueIllustration',tissueList);
     title('Tissue damage illustration');
     save(['./Data/' name '_heatSimoutput.mat'],'Omega','-append');
 end
