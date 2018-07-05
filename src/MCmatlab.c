@@ -23,8 +23,6 @@
  * 1. Install XCode from the App Store
  * 2. Type "mex -setup" in the MATLAB command window
  ********************************************/
-    #include <windows.h>
-
 
 #include "mex.h"
 #include <math.h>
@@ -241,7 +239,51 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
     P->nThreadPhotons++;
 }
 
-void checkEscape(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC, double *LCP, double *ImP) {
+void formImage(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC, double *Image) {
+    double U[3];
+    xyztoXYZ(P->u,LC->theta,LC->phi,U); // U is now the photon trajectory in basis of detection frame (X,Y,Z)
+
+    if(U[2] < 0) { // If the Z component of U is negative then the photon is moving towards the light collector plane
+        double resc[3] = {(P->i[0] - G->n[0]/2.0)*G->d[0] - LC->r[0],
+                          (P->i[1] - G->n[1]/2.0)*G->d[1] - LC->r[1],
+                          (P->i[2]              )*G->d[2] - LC->r[2]}; // Photon position relative to the light collector focal plane center when it escapes the cuboid, in the (x,y,z) basis
+
+        double Resc[3];
+        xyztoXYZ(resc,LC->theta,LC->phi,Resc); // Resc is now the photon position in the light collector frame (X,Y,Z) when it escapes the cuboid
+
+        double RLCP[2]; // XY coordinates of the point where the photon crosses the light collector plane
+        RLCP[0] = Resc[0] - Resc[2]*U[0]/U[2];
+        RLCP[1] = Resc[1] - Resc[2]*U[1]/U[2];
+
+        double distLCP = sqrt(RLCP[0]*RLCP[0] + RLCP[1]*RLCP[1]); // Distance between light collector center and the point where the photon crosses the light collector plane
+
+        if(distLCP < LC->diam/2) { // If the distance is less than the radius of the light collector
+            if(isfinite(LC->f)) { // If the light collector is an objective lens
+                double RImP[2]; // Back-propagated position that the photon would have had in the object plane if propagating freely. This corresponds to where the photon will end up in the image plane for magnification 1x.
+                RImP[0] = RLCP[0] + LC->f*U[0]/U[2];
+                RImP[1] = RLCP[1] + LC->f*U[1]/U[2];
+                double distImP = sqrt(RImP[0]*RImP[0] + RImP[1]*RImP[1]);
+                if(distImP < LC->FSorNA/2) { // If the photon is coming from the area within the Field Size
+                    #ifdef _WIN32
+                    #pragma omp atomic
+                    #endif
+                    Image[           (long)(LC->res[0]*(RImP[0]/LC->FSorNA + 1.0/2)) + 
+                          LC->res[0]*(long)(LC->res[1]*(RImP[1]/LC->FSorNA + 1.0/2))] += P->weight;
+                }
+            } else { // If the light collector is a fiber tip
+                double thetaLCFF = atan(-sqrt(U[0]*U[0] + U[1]*U[1])/U[2]); // Light collector far field polar angle
+                if(thetaLCFF < asin(fmin(1,LC->FSorNA))) { // If the photon has an angle within the fiber's NA acceptance
+                    #ifdef _WIN32
+                    #pragma omp atomic
+                    #endif
+                    Image[0] += P->weight;
+                }
+            }
+        }
+    }
+}
+
+void checkEscape(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC, double *Image) {
     bool escaped = false;
     P->insideVolume = P->i[0] < G->n[0] && P->i[0] >= 0 &&
                       P->i[1] < G->n[1] && P->i[1] >= 0 &&
@@ -266,48 +308,7 @@ void checkEscape(struct photon * const P, struct geometry const * const G, struc
             break;
     }
     
-    if(escaped && LCP) { // If LCP is not NULL then that's because useLightCollector was set to true (non-zero)
-        double U[3];
-        xyztoXYZ(P->u,LC->theta,LC->phi,U); // U is now the photon trajectory in basis of detection frame (X,Y,Z)
-        
-        if(U[2] < 0) { // If the Z component of U is negative then the photon is moving towards the light collector plane
-            double resc[3] = {(P->i[0] - G->n[0]/2.0)*G->d[0] - LC->r[0],
-                              (P->i[1] - G->n[1]/2.0)*G->d[1] - LC->r[1],
-                              (P->i[2]              )*G->d[2] - LC->r[2]}; // Photon position relative to the light collector focal plane center when it escapes the cuboid, in the (x,y,z) basis
-            
-            double Resc[3];
-            xyztoXYZ(resc,LC->theta,LC->phi,Resc); // Resc is now the photon position in the light collector frame (X,Y,Z) when it escapes the cuboid
-            
-            double RLCP[2]; // XY coordinates of the point where the photon crosses the light collector plane
-            RLCP[0] = Resc[0] - Resc[2]*U[0]/U[2];
-            RLCP[1] = Resc[1] - Resc[2]*U[1]/U[2];
-            
-            double distLCP = sqrt(RLCP[0]*RLCP[0] + RLCP[1]*RLCP[1]); // Distance between light collector center and the point where the photon crosses the light collector plane
-            
-            if(distLCP < LC->diam/2) { // If the distance is less than the radius of the light collector
-                if(isfinite(LC->f)) { // If the light collector is an objective lens
-                    double RImP[2]; // Back-propagated position that the photon would have had in the object plane if propagating freely. This corresponds to where the photon will end up in the image plane for magnification 1x.
-                    RImP[0] = RLCP[0] + LC->f*U[0]/U[2];
-                    RImP[1] = RLCP[1] + LC->f*U[1]/U[2];
-                    double distImP = sqrt(RImP[0]*RImP[0] + RImP[1]*RImP[1]);
-                    if(distImP < LC->FSorNA/2) { // If the photon is coming from the area within the Field Size
-                        LCP [(long)(LC->res[0]*(RLCP[0]/LC->diam   + 1.0/2)) + LC->res[0]*(long)(LC->res[1]*(RLCP[1]/LC->diam   + 1.0/2))] += P->weight;
-                        ImP [(long)(LC->res[0]*(RImP[0]/LC->FSorNA + 1.0/2)) + LC->res[0]*(long)(LC->res[1]*(RImP[1]/LC->FSorNA + 1.0/2))] += P->weight;
-//                         double thetaLCFF = atan(distImP/LC->f); // Light collector far field polar angle
-//                         double phiLCFF = atan2(RImP[1],RImP[0]); // Light collector far field azimuthal angle
-//                         LCFF[(long)(LC->res[0]*(thetaLCFF/(PI/2*(1+DBL_EPSILON)))) + LC->res[0]*(long)(LC->res[1]*((phiLCFF+PI)/(2*PI*(1+DBL_EPSILON))))] += P->weight;
-                    }
-                } else { // If the light collector is a fiber tip
-                    double thetaLCFF = atan(-sqrt(U[0]*U[0] + U[1]*U[1])/U[2]); // Light collector far field polar angle
-                    if(thetaLCFF < asin(fmin(1,LC->FSorNA))) { // If the photon has an angle within the fiber's NA acceptance
-                        LCP [(long)(LC->res[0]*(RLCP[0]/LC->diam   + 1.0/2)) + LC->res[0]*(long)(LC->res[1]*(RLCP[1]/LC->diam   + 1.0/2))] += P->weight;
-//                         double phiLCFF = atan2(U[1],U[0]); // Light collector far field azimuthal angle
-//                         LCFF[(long)(LC->res[0]*(thetaLCFF/(PI/2*(1+DBL_EPSILON)))) + LC->res[0]*(long)(LC->res[1]*((phiLCFF+PI)/(2*PI*(1+DBL_EPSILON))))] += P->weight;
-                    }
-                }
-            }
-        }
-    }
+    if(escaped && Image) formImage(P,G,LC,Image); // If Image is not NULL then that's because useLightCollector was set to true (non-zero)
 }
 
 void getNewVoxelProperties(struct photon * const P, struct geometry const * const G) {
@@ -391,30 +392,30 @@ void scatterPhoton(struct photon * const P, struct geometry const * const G) {
     P->stepLeft	= -log(RandomNum);
 }
 
-void normalizeDeposition(struct beam const * const B, struct geometry const * const G, struct lightcollector const * const LC, double * const F, double * const LCP, double * const ImP, double nPhotons) {
+void normalizeDeposition(struct beam const * const B, struct geometry const * const G, struct lightcollector const * const LC, double * const F, double * const Image, double nPhotons) {
     long j;
     double V = G->d[0]*G->d[1]*G->d[2]; // Voxel volume
     long L = G->n[0]*G->n[1]*G->n[2]; // Total number of voxels in cuboid
     long L_LC = LC->res[0]*LC->res[1]; // Total number of pixels in light collector planes
     // Normalize deposition to yield either absolute or relative fluence rate (F).
     if(B->S) { // For a 3D source distribution (e.g., fluorescence)
-		for(j=0; j<L;j++) F[j] /= V*nPhotons*G->muav[G->v[j]]/B->power; // Absolute fluence rate [W/cm^2].
-        if(LCP) for(j=0;j<L_LC;j++) {
-            LCP[j] /= LC->diam  *LC->diam  /L_LC*nPhotons/B->power; // Absolute fluence rate [W/cm^2]
-            ImP[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/B->power; // Absolute fluence rate [W/cm^2]
+		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->v[j]]/B->power; // Absolute fluence rate [W/cm^2].
+        if(Image) {
+            if(L_LC > 1) for(j=0;j<L_LC;j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/B->power; // Absolute fluence rate [W/cm^2]
+            else Image[0] /= nPhotons/B->power; // Absolute power [W]
         }
         mxFree(B->S);
     } else if(B->beamtypeFlag == 3 && G->boundaryFlag != 1) { // For infinite plane wave launched into volume without absorbing walls
-		for(j=0; j<L;j++) F[j] /= V*nPhotons*G->muav[G->v[j]]/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
-        if(LCP) for(j=0;j<L_LC;j++) {
-            LCP[j] /= LC->diam  *LC->diam  /L_LC*nPhotons/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
-            ImP[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
+		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->v[j]]/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
+        if(Image) {
+            if(L_LC > 1) for(j=0;j<L_LC;j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
+            else Image[0] /= nPhotons/(KILLRANGE*KILLRANGE); // Normalized power [W/W.incident]
         }
 	} else {
-		for(j=0; j<L;j++) F[j] /= V*nPhotons*G->muav[G->v[j]]; // Normalized fluence rate [W/cm^2/W.incident]
-        if(LCP) for(j=0;j<L_LC;j++) {
-            LCP[j] /= LC->diam  *LC->diam  /L_LC*nPhotons; // Normalized fluence rate [W/cm^2/W.incident]
-            ImP[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons; // Normalized fluence rate [W/cm^2/W.incident]
+		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->v[j]]; // Normalized fluence rate [W/cm^2/W.incident]
+        if(Image) {
+            if(L_LC > 1) for(j=0;j<L_LC;j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons; // Normalized fluence rate [W/cm^2/W.incident]
+            else Image[0] /= nPhotons; // Normalized power [W/W.incident]
         }
 	}
 }
@@ -510,24 +511,18 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         .phi          =  phi,
         .f            =  f,
         .diam         =  *mxGetPr(mxGetField(prhs[0],0,"diam_LC")),
-        .FSorNA       =  *mxGetPr(mxGetField(prhs[0],0,"FSorNA_LC")),
-        .res          = {*mxGetPr(mxGetField(prhs[0],0,"resX_LC")),
-                         *mxGetPr(mxGetField(prhs[0],0,"resY_LC"))}};
+        .FSorNA       =  *mxGetPr(mxGetField(prhs[0],0,isfinite(f)?"FieldSize_LC":"NA_LC")),
+        .res          = {isfinite(f)?*mxGetPr(mxGetField(prhs[0],0,"resX_LC")):1,
+                         isfinite(f)?*mxGetPr(mxGetField(prhs[0],0,"resY_LC")):1}};
     struct lightcollector const *LC = &LC_var;
     
     // Prepare output MATLAB struct
-    double *LCP  = NULL;
-    double *ImP  = NULL;
-//     double *LCFF = NULL;
+    double *Image  = NULL;
     
     if(useLightCollector) {
-        plhs[0] = mxCreateStructMatrix(1,1,5,(const char *[]){"F","LCP","ImP","nPhotons","nThreads"});
-        mxSetField(plhs[0],0,"LCP", mxCreateDoubleMatrix(LC->res[0],LC->res[1],mxREAL));
-        mxSetField(plhs[0],0,"ImP", mxCreateDoubleMatrix(LC->res[0],LC->res[1],mxREAL));
-//         mxSetField(plhs[0],0,"LCFF",mxCreateDoubleMatrix(LC->res[0],LC->res[1],mxREAL));
-        LCP  = mxGetPr(mxGetField(plhs[0],0,"LCP"));
-        ImP  = mxGetPr(mxGetField(plhs[0],0,"ImP"));
-//         LCFF = mxGetPr(mxGetField(plhs[0],0,"LCFF"));
+        plhs[0] = mxCreateStructMatrix(1,1,4,(const char *[]){"F","Image","nPhotons","nThreads"});
+        mxSetField(plhs[0],0,"Image", mxCreateDoubleMatrix(LC->res[0],LC->res[1],mxREAL));
+        Image  = mxGetPr(mxGetField(plhs[0],0,"Image"));
     } else {
         plhs[0] = mxCreateStructMatrix(1,1,3,(const char *[]){"F","nPhotons","nThreads"});
     }
@@ -611,7 +606,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 			while(P->alive) {
 				while(P->stepLeft>0) {
 					if(!P->sameVoxel) {
-                        checkEscape(P,G,LC,LCP,ImP);
+                        checkEscape(P,G,LC,Image);
                         if(!P->alive) break;
                         getNewVoxelProperties(P,G); // If photon has just entered a new voxel or has just been launched
                     }
@@ -656,5 +651,5 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 	printf("\nSimulated %0.2e photons at a rate of %0.2e photons per minute\n",*nPhotonsPtr, *nPhotonsPtr*60/simulationTimeSpent);
     printf("---------------------------------------------------------\n");
     mexEvalString("drawnow;");
-    normalizeDeposition(B,G,LC,F,LCP,ImP,*nPhotonsPtr); // Convert data to either relative or absolute fluence rate
+    normalizeDeposition(B,G,LC,F,Image,*nPhotonsPtr); // Convert data to either relative or absolute fluence rate
 }

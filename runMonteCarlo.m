@@ -76,6 +76,7 @@ MCinput.waist = 0.003;                  % [cm] focus waist 1/e^2 radius
 MCinput.divergence = 15/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
 
 %% Optional light collector properties (user-specified)
+% A "light collector" in this context can be either an objective lens or a fiber tip
 MCinput.useLightCollector = 1; % Set to 1 for true, 0 for false
 
 % Position of either the center of the objective lens focal plane or the fiber tip
@@ -83,23 +84,26 @@ MCinput.xFPC_LC = 0;% [cm]
 MCinput.yFPC_LC = 0;% [cm]
 MCinput.zFPC_LC = nz*dz/2;% [cm] negative values correspond to a location above the volume
 
-% Direction that the detector is facing, defined in the same way as the beam direction using
+% Direction that the light collector is facing, defined in the same way as the beam direction using
 % ISO spherical coordinates.
-% For a detector above the surface (negative z), you'll want to satisfy 0<=theta<=pi/2.
-% For a detector below the surface (positive z), such as measuring in transmission, you'll want pi/2<=theta<=pi
-% If theta = 0 or pi, phi serves only to rotate the view of the tissue. If you want the detector X axis 
+% For above the surface (negative z), you'll want to satisfy 0<=theta<=pi/2.
+% For below the surface (positive z), such as measuring in transmission, you'll want pi/2<=theta<=pi
+% If theta = 0 or pi, phi serves only to rotate the view of the tissue. If you want the light collector X axis 
 % to coincide with the tissue cuboid x axis, use phi = pi/2.
 MCinput.theta_LC = atan(1/sqrt(2)); % [rad]
 MCinput.phi_LC   = -3*pi/4; % [rad]
 
-% Focal length of the detector (if it is not a lens, set this to inf). Must be positive.
-MCinput.f_LC = 1; % [cm]
+% Focal length of the objective lens (if light collector is a fiber, set this to inf).
+MCinput.f_LC = inf; % [cm]
 
-% Diameter of the detector aperture. For an ideal thin lens, this is 2*tan(arcsin(lensNA/f)).
-MCinput.diam_LC = 2; % [cm]
+% Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(lensNA)).
+MCinput.diam_LC = 1; % [cm]
 
-% For an objective lens: Field Size of the imaging system (diameter of area in object plane that gets imaged). For a fiber tip: The fiber's NA.
-MCinput.FSorNA_LC = 2; % [cm or dimensionless]
+% Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f_LC.
+MCinput.FieldSize_LC = 2; % [cm]
+
+% Fiber NA. Only used for infinite f_LC.
+MCinput.NA_LC = 0.22; % [-]
 
 % Resolution of light collector in pixels
 MCinput.resX_LC = 200;

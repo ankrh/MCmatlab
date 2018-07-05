@@ -119,48 +119,40 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
         text(FPC_Y(1),FPC_Y(2),FPC_Y(3),'Y','HorizontalAlignment','center','FontSize',18)
         
         if isfinite(MCinput.f_LC)
-            fieldperimeter = MCinput.FSorNA_LC/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + FPC;
+            fieldperimeter = MCinput.FieldSize_LC/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + FPC;
             h1 = line(fieldperimeter(:,1),fieldperimeter(:,2),fieldperimeter(:,3),'Color','b','LineWidth',2);
             LCC = FPC - Zvec*MCinput.f_LC; % Light Collector Center
             detectoraperture = MCinput.diam_LC/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
             h2 = line(detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
             legend([h1 h2],'Imaged area','Lens aperture','Location','northeast');
-        
-            if(~ishandle(5))
-                h_f = figure(5);
-                h_f.Position = [40 80 1100 650];
-            else
-                h_f = figure(5);
+
+            if MCinput.resX_LC*MCinput.resY_LC > 1
+                if(~ishandle(5))
+                    h_f = figure(5);
+                    h_f.Position = [40 80 1100 650];
+                else
+                    h_f = figure(5);
+                end
+                clf;
+                h_f.Name = 'Image';
+                imagesc([-MCinput.FieldSize_LC MCinput.FieldSize_LC]/2,[-MCinput.FieldSize_LC MCinput.FieldSize_LC]/2,MCoutput.Image.');
+                title('Normalized fluence rate in the image plane at 1x magnification [W/cm^2/W.incident]');axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
+                set(gca,'FontSize',18);
+                colormap(GPBGYRcolormap);
+                colorbar;
             end
-            clf;
-            h_f.Name = 'Image plane';
-            imagesc([-MCinput.FSorNA_LC MCinput.FSorNA_LC]/2,[-MCinput.FSorNA_LC MCinput.FSorNA_LC]/2,MCoutput.ImP.');
-            title('Fluence rate in the image plane at 1x magnification [W/cm^2/W.incident]');axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
-            set(gca,'FontSize',18);
-            colormap(GPBGYRcolormap);
-            colorbar;
         else
             LCC = FPC;
             detectoraperture = MCinput.diam_LC/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
             h2 = line(detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
             legend(h2,'Fiber aperture','Location','northeast');
         end
-        
-        if(~ishandle(6))
-            h_f = figure(6);
-            h_f.Position = [40 80 1100 650];
-        else
-            h_f = figure(6);
-        end
-        clf;
-        h_f.Name = 'Light collector plane';
-        imagesc([-MCinput.diam_LC MCinput.diam_LC]/2,[-MCinput.diam_LC MCinput.diam_LC]/2,MCoutput.LCP.');
-        title('Light in the light collector plane that ends up detected [W/cm^2/W.incident]');axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
-        set(gca,'FontSize',18);
-        colormap(GPBGYRcolormap);
-        colorbar;
 
-        fprintf('%.3g%% of input power ends up on the detector.\n',100*mean(mean(MCoutput.LCP))*MCinput.diam_LC^2);
+        if length(MCoutput.Image) > 1
+            fprintf('%.3g%% of input power ends up on the detector.\n',100*mean(mean(MCoutput.Image))*MCinput.FieldSize_LC^2);
+        else
+            fprintf('%.3g%% of input power ends up on the detector.\n',100*MCoutput.Image);
+        end
     end
 
     if(exist(['./Data/' name '_MCoutput_fluorescence.mat'],'file'))
@@ -237,26 +229,28 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
             text(FPC_Y(1),FPC_Y(2),FPC_Y(3),'Y','HorizontalAlignment','center','FontSize',18)
 
             if isfinite(MCinput_fluorescence.f_LC)
-                fieldperimeter = MCinput_fluorescence.FSorNA_LC/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + FPC;
+                fieldperimeter = MCinput_fluorescence.FieldSize_LC/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + FPC;
                 h1 = line(fieldperimeter(:,1),fieldperimeter(:,2),fieldperimeter(:,3),'Color','b','LineWidth',2);
                 LCC = FPC - Zvec*MCinput_fluorescence.f_LC; % Light Collector Center
                 detectoraperture = MCinput_fluorescence.diam_LC/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
                 h2 = line(detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
                 legend([h1 h2],'Imaged area','Lens aperture','Location','northeast');
 
-                if(~ishandle(13))
-                    h_f = figure(13);
-                    h_f.Position = [40 80 1100 650];
-                else
-                    h_f = figure(13);
+                if MCinput_fluorescence.resX_LC*MCinput_fluorescence.resY_LC > 1
+                    if(~ishandle(13))
+                        h_f = figure(13);
+                        h_f.Position = [40 80 1100 650];
+                    else
+                        h_f = figure(13);
+                    end
+                    clf;
+                    h_f.Name = 'Fluorescence image';
+                    imagesc([-MCinput_fluorescence.FieldSize_LC MCinput_fluorescence.FieldSize_LC]/2,[-MCinput_fluorescence.FieldSize_LC MCinput_fluorescence.FieldSize_LC]/2,MCoutput_fluorescence.Image.');
+                    title('Fluence rate in the fluorescence image plane at 1x magnification [W/cm^2]');axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
+                    set(gca,'FontSize',18);
+                    colormap(GPBGYRcolormap);
+                    colorbar;
                 end
-                clf;
-                h_f.Name = 'Fluorescence image plane';
-                imagesc([-MCinput_fluorescence.FSorNA_LC MCinput_fluorescence.FSorNA_LC]/2,[-MCinput_fluorescence.FSorNA_LC MCinput_fluorescence.FSorNA_LC]/2,MCoutput_fluorescence.ImP.');
-                title('Detected fluorescence light in the image plane [W/cm^2]');axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
-                set(gca,'FontSize',18);
-                colormap(GPBGYRcolormap);
-                colorbar;
             else
                 LCC = FPC;
                 detectoraperture = MCinput_fluorescence.diam_LC/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
@@ -264,21 +258,11 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
                 legend(h2,'Fiber aperture','Location','northeast');
             end
 
-            if(~ishandle(14))
-                h_f = figure(14);
-                h_f.Position = [40 80 1100 650];
+            if length(MCoutput.Image) > 1
+                fprintf('%.3g%% of fluorescence ends up on the detector.\n',100*mean(mean(MCoutput_fluorescence.Image))*MCinput_fluorescence.FieldSize_LC^2);
             else
-                h_f = figure(14);
+                fprintf('%.3g%% of fluorescence ends up on the detector.\n',100*MCoutput_fluorescence.Image);
             end
-            clf;
-            h_f.Name = 'Fluorescence light collector plane';
-            imagesc([-MCinput_fluorescence.diam_LC MCinput_fluorescence.diam_LC]/2,[-MCinput_fluorescence.diam_LC MCinput_fluorescence.diam_LC]/2,MCoutput_fluorescence.LCP.');
-            title('Detected fluorescence light in the light collector plane [W/cm^2]');axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
-            set(gca,'FontSize',18);
-            colormap(GPBGYRcolormap);
-            colorbar;
-            
-            fprintf('%.3g W of fluorescence ends up on the detector.\n',mean(mean(MCoutput_fluorescence.LCP))*MCinput_fluorescence.diam_LC^2);
         end
     end
 end
