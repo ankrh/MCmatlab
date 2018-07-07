@@ -29,14 +29,14 @@ function makeTissue
 %   This function was inspired by maketissue of the mcxyz program hosted at omlc.org
 
 %% Define parameters (user-specified)
-wavelength  = 532;     % [nm] set the wavelength of the Monte Carlo simulation
+wavelength  = 450;     % [nm] set the wavelength of the Monte Carlo simulation
 name = 'tissue';        % name of the simulation
-nx = 200;               % number of bins in the x direction
-ny = 200;               % number of bins in the y direction
-nz = 200;               % number of bins in the z direction
-Lx = .1;                 % [cm] x size of simulation area
-Ly = .1;                 % [cm] y size of simulation area
-Lz = .1;                 % [cm] z size of simulation area
+nx = 20;               % number of bins in the x direction
+ny = 20;               % number of bins in the y direction
+nz = 20;               % number of bins in the z direction
+Lx = 1;                 % [cm] x size of simulation area
+Ly = 1;                 % [cm] y size of simulation area
+Lz = 1;                 % [cm] z size of simulation area
 
 wavelength_fluorescence = NaN; % [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
 
@@ -57,19 +57,19 @@ z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 % T = 3*ones(nx,ny,nz,'uint8'); % "standard" tissue
 
 %% Blood vessel example:
-zsurf = 0.01;
-epd_thick = 0.006;
-vesselradius  = 0.0100;
-vesseldepth = 0.04;
-T = 2*ones(nx,ny,nz,'uint8'); % fill background with water (gel)
-T(Z > zsurf) = 4; % epidermis
-T(Z > zsurf + epd_thick) = 5; % dermis
-T(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 6; % blood
+% zsurf = 0.01;
+% epd_thick = 0.006;
+% vesselradius  = 0.0100;
+% vesseldepth = 0.04;
+% T = 2*ones(nx,ny,nz,'uint8'); % fill background with water (gel)
+% T(Z > zsurf) = 4; % epidermis
+% T(Z > zsurf + epd_thick) = 5; % dermis
+% T(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 6; % blood
 
 %% Fluorescing cylinder example:
 % cylinderradius  = 0.0100;
-% T = 17*ones(nx,ny,nz,'uint8'); % fill background with fluorescent tissue
-% T(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 16; % fluorescence absorber
+% T = 17*ones(nx,ny,nz,'uint8'); % fill background with fluorescence absorber
+% T(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 16; % fluorescent tissue
 
 %% Hair example:
 % zsurf = 0.02;  % position of gel/skin surface[cm]
@@ -101,6 +101,11 @@ T(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 6; % blood
 % T(X.^2 + Y.^2 < vessel_radius^2) = 7; % vessel
 % T(X.^2 + Y.^2 < water_radius^2) = 2; % water
 % T(X.^2 + Y.^2 < fibre_radius^2) = 11; % fibre
+
+%% Imaging example:
+T = 1*ones(nx,ny,nz,'uint8'); % Air background
+T(1:(nx*(ny+1)+1):end) = 18; % Set xyz diagonal positions to testscatterer
+T(1:(nx*(ny+1)):end) = 18; % Set yz diagonal positions to testscatterer
 
 %% Get the tissueList and the reduced T matrix
 if(~isnan(wavelength_fluorescence))

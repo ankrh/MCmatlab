@@ -45,7 +45,7 @@ j=1;
 tissueList(j).name  = 'air';
 tissueList(j).mua   = 1e-8;
 tissueList(j).mus   = 1e-8;
-tissueList(j).g     = 0;
+tissueList(j).g     = 1;
 tissueList(j).VHC   = 1.2e-3;
 tissueList(j).TC    = 0; % Real value is 2.6e-4, but we set it to zero to neglect the heat transport to air
 
@@ -259,6 +259,18 @@ else
     tissueList(j).mus = 100;
     tissueList(j).g   = 0.9;
 end
+
+j=18;
+tissueList(j).name  = 'testscatterer';
+tissueList(j).mua   = 0.0000001;
+tissueList(j).mus   = 100;
+tissueList(j).g     = 0;
+
+j=19;
+tissueList(j).name  = 'testabsorber';
+tissueList(j).mua   = 10000000000;
+tissueList(j).mus   = 1;
+tissueList(j).g     = 0;
 
 %% Trim tissueList down to use only the tissues included in the input matrix T, and reduce T accordingly
 nT = length(unique(T)); % Number of different tissues in simulation
