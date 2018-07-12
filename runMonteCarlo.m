@@ -53,12 +53,12 @@ MCinput.boundaryFlag = 1;
 % 5: Top-hat focus, Gaussian far field beam
 % 6: Top-hat focus, top-hat far field beam
 % 7: Laguerre-Gaussian LG01 beam
-MCinput.beamtypeFlag = 2;
+MCinput.beamtypeFlag = 6;
 
 % Position of focus, only used for beamtypeFlag ~=2 (if beamtypeFlag == 1 this is the source position)
 MCinput.xFocus = 0;                % [cm] x position of focus
 MCinput.yFocus = 0;                % [cm] y position of focus
-MCinput.zFocus = nz*dz/2;          % [cm] z position of focus
+MCinput.zFocus = 0.028;          % [cm] z position of focus
 
 % Direction of beam center axis, only used if beamtypeflag ~= 1:
 % Given in terms of the spherical coordinates theta and phi measured in radians, using the ISO
@@ -71,13 +71,13 @@ MCinput.thetaBeam = 0; % [rad]
 MCinput.phiBeam   = 0; % [rad]
 
 % Focus properties and divergence angles, only used if beamtypeflag > 2
-MCinput.waist = 0.003;                  % [cm] focus waist 1/e^2 radius
+MCinput.waist = 0.000003;                  % [cm] focus waist 1/e^2 radius
 % MCinput.divergence = wavelength*1e-9/(pi*MCinput.waist*1e-2); % [rad] Diffraction limited divergence angle for Gaussian beam
-MCinput.divergence = 15/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
+MCinput.divergence = 25/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
 
 %% Optional light collector properties (user-specified)
 % A "light collector" in this context can be either an objective lens or a fiber tip
-MCinput.useLightCollector = 1; % Set to 1 for true, 0 for false
+MCinput.useLightCollector = 0; % Set to 1 for true, 0 for false
 
 % Position of either the center of the objective lens focal plane or the fiber tip
 MCinput.xFPC_LC = 0;% [cm]
@@ -119,6 +119,9 @@ MCinput.dz = z(2)-z(1);            % [cm] voxel size in z direction
 MCinput.tissueList = tissueList;
 MCinput.T = T-1; % The tissue matrix has to be converted from MATLAB's 1-based indexing to C's 0-based indexing
 clear T
+
+% Array of refractive indices along z axis
+MCinput.RI = RI;
 
 %% Check to ensure that the light collector is not inside the cuboid
 if MCinput.useLightCollector

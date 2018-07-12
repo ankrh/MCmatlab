@@ -272,6 +272,12 @@ tissueList(j).mua   = 10000000000;
 tissueList(j).mus   = 1;
 tissueList(j).g     = 0;
 
+j=20;
+tissueList(j).name  = 'metalreflector';
+tissueList(j).mua   = 1;
+tissueList(j).mus   = 1;
+tissueList(j).g     = 0;
+
 %% Trim tissueList down to use only the tissues included in the input matrix T, and reduce T accordingly
 nT = length(unique(T)); % Number of different tissues in simulation
 tissueMap = zeros(1,length(tissueList),'uint8');

@@ -31,12 +31,12 @@ function makeTissue
 %% Define parameters (user-specified)
 wavelength  = 450;     % [nm] set the wavelength of the Monte Carlo simulation
 name = 'tissue';        % name of the simulation
-nx = 20;               % number of bins in the x direction
-ny = 20;               % number of bins in the y direction
-nz = 20;               % number of bins in the z direction
-Lx = 1;                 % [cm] x size of simulation area
-Ly = 1;                 % [cm] y size of simulation area
-Lz = 1;                 % [cm] z size of simulation area
+nx = 101;               % number of bins in the x direction
+ny = 100;               % number of bins in the y direction
+nz = 100;               % number of bins in the z direction
+Lx = .1;                 % [cm] x size of simulation area
+Ly = .1;                 % [cm] y size of simulation area
+Lz = .1;                 % [cm] z size of simulation area
 
 wavelength_fluorescence = NaN; % [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
 
@@ -103,9 +103,17 @@ z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 % T(X.^2 + Y.^2 < fibre_radius^2) = 11; % fibre
 
 %% Imaging example:
-T = 1*ones(nx,ny,nz,'uint8'); % Air background
-T(1:(nx*(ny+1)+1):end) = 18; % Set xyz diagonal positions to testscatterer
-T(1:(nx*(ny+1)):end) = 18; % Set yz diagonal positions to testscatterer
+% T = 1*ones(nx,ny,nz,'uint8'); % Air background
+% T(1:(nx*(ny+1)+1):end) = 18; % Set xyz diagonal positions to testscatterer
+% T(1:(nx*(ny+1)):end) = 18; % Set yz diagonal positions to testscatterer
+
+%% Refraction and reflection example:
+T = 2*ones(nx,ny,nz,'uint8'); % Air background
+T(Z>0.03) = 1; % Water
+% T(Z>0.06) = 20; % Metal reflector
+RI = ones(size(z));
+RI(z<=0.03) = 1.3;
+% RI(z>0.06) = Inf;
 
 %% Get the tissueList and the reduced T matrix
 if(~isnan(wavelength_fluorescence))
@@ -120,9 +128,9 @@ end
 
 %% Save output
 if(~isnan(wavelength_fluorescence))
-    save(['./Data/' name '.mat'],'dx','dy','dz','nx','ny','nz','x','y','z','tissueList','tissueList_fluorescence','T','wavelength','wavelength_fluorescence')
+    save(['./Data/' name '.mat'],'dx','dy','dz','nx','ny','nz','x','y','z','RI','tissueList','tissueList_fluorescence','T','wavelength','wavelength_fluorescence')
 else
-    save(['./Data/' name '.mat'],'dx','dy','dz','nx','ny','nz','x','y','z','tissueList','T','wavelength')
+    save(['./Data/' name '.mat'],'dx','dy','dz','nx','ny','nz','x','y','z','RI','tissueList','T','wavelength')
 end
 fprintf('./Data/%s.mat saved\n',name)
 
