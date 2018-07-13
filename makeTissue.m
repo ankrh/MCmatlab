@@ -31,7 +31,7 @@ function makeTissue
 %% Define parameters (user-specified)
 wavelength  = 450;     % [nm] set the wavelength of the Monte Carlo simulation
 name = 'tissue';        % name of the simulation
-nx = 101;               % number of bins in the x direction
+nx = 100;               % number of bins in the x direction
 ny = 100;               % number of bins in the y direction
 nz = 100;               % number of bins in the z direction
 Lx = .1;                 % [cm] x size of simulation area
@@ -39,6 +39,12 @@ Ly = .1;                 % [cm] y size of simulation area
 Lz = .1;                 % [cm] z size of simulation area
 
 wavelength_fluorescence = NaN; % [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
+
+% Do you want to assume matched boundaries? If so, there is no Fresnel
+% reflection or refraction. Otherwise, refractive indices from
+% makeTissueList are used. Note that non-matched interfaces must be normal
+% to the z axis, so each xy-slice must have a constant refractive index.
+assumeMatchedBoundaries = false; 
 
 %% Check for preexisting files
 if(~deleteDataFiles(name)); return; end
@@ -108,12 +114,9 @@ z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 % T(1:(nx*(ny+1)):end) = 18; % Set yz diagonal positions to testscatterer
 
 %% Refraction and reflection example:
-T = 2*ones(nx,ny,nz,'uint8'); % Air background
-T(Z>0.03) = 1; % Water
-% T(Z>0.06) = 20; % Metal reflector
-RI = ones(size(z));
-RI(z<=0.03) = 1.3;
-% RI(z>0.06) = Inf;
+T = ones(nx,ny,nz,'uint8'); % Air background
+T(Z>0.03) = 2; % Water
+T(Z>0.09) = 20; % Reflector
 
 %% Get the tissueList and the reduced T matrix
 if(~isnan(wavelength_fluorescence))
@@ -126,12 +129,31 @@ else
     [T, tissueList] = makeTissueList(T,wavelength);
 end
 
-%% Save output
-if(~isnan(wavelength_fluorescence))
-    save(['./Data/' name '.mat'],'dx','dy','dz','nx','ny','nz','x','y','z','RI','tissueList','tissueList_fluorescence','T','wavelength','wavelength_fluorescence')
-else
-    save(['./Data/' name '.mat'],'dx','dy','dz','nx','ny','nz','x','y','z','RI','tissueList','T','wavelength')
+%% Extract the refractive indices 
+if(~assumeMatchedBoundaries)
+    for j=1:length(tissueList) % Check that all tissues have a refractive index defined
+        if(~isfield(tissueList,'n') || any(isempty(tissueList(j).n)))
+            error('Refractive index isn''t defined for all tissues');
+        end
+    end
+    n_vec = [tissueList.n];
+    for j=1:nz % Check that each xy slice has constant refractive index, so refractive index is only a function of z
+        if(length(unique(n_vec(T(:,:,j)))) > 1)
+            error('Refractive index is not constant for z index %d (z = %f).\nEach xy slice must have constant refractive index.',j,z(j));
+        end
+    end
+    RI = n_vec(T(1,1,:));
 end
+
+%% Save output
+save(['./Data/' name '.mat'],'dx','dy','dz','nx','ny','nz','x','y','z','tissueList','T','wavelength')
+if(~isnan(wavelength_fluorescence))
+    save(['./Data/' name '.mat'],'tissueList_fluorescence','wavelength_fluorescence','-append');
+end
+if(~assumeMatchedBoundaries)
+    save(['./Data/' name '.mat'],'RI','-append');
+end
+
 fprintf('./Data/%s.mat saved\n',name)
 
 %% Make plots

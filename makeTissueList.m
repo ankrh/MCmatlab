@@ -4,17 +4,19 @@ function [T, tissueList] = makeTissueList(T,wavelength)
 %   Defining the thermal or fluorescence properties is only necessary if you want to run simulations based on
 %   those properties.
 %   
-%   tissueList contains mua, mus and g for each tissue type;
+%   For each tissue, tissueList must contain mua, mus and g;
 %       mua is the absorption coefficient [cm^-1] and must be positive (not zero)
 %       mus is the scattering coefficient [cm^-1] and must be positive (not zero)
 %       g is the anisotropy factor and must satisfy -1 <= g <= 1
-%   it may contain VHC and TC for some tissues;
+%   and it may contain the refractive index for simulating non-matched boundaries such as reflection and refraction;
+%       n is the refractive index and can be from 1 to inf, where inf means the medium is a perfect reflector
+%   and parameters for simulating thermal diffusion;
 %       VHC is volumetric heat capacity [J/(cm^3*K)] and must be positive
 %       TC is thermal conductivity [W/(cm*K)] and must be non-negative
-%   and it may for some tissues contain parameters to calculate heat-induced damage;
+%   and parameters to calculate thermal damage;
 %       E is the Arrhenius activation energy [J/mol]
 %       A is the Arrhenius pre-exponential factor [1/s]
-%   and it may contain data for fluorescence properties for some tissues;
+%   and parameters for fluorescence properties;
 %       Y is fluorescence power yield (watts of emitted fluorescence light per watt of absorbed pump light) [-]
 %       sat is saturation excitation intensity [W/cm^2]
 
@@ -48,6 +50,7 @@ tissueList(j).mus   = 1e-8;
 tissueList(j).g     = 1;
 tissueList(j).VHC   = 1.2e-3;
 tissueList(j).TC    = 0; % Real value is 2.6e-4, but we set it to zero to neglect the heat transport to air
+tissueList(j).n     = 1;
 
 j=2;
 tissueList(j).name  = 'water';
@@ -56,6 +59,7 @@ tissueList(j).mus   = 10;
 tissueList(j).g     = 1.0;
 tissueList(j).VHC   = 4.19;
 tissueList(j).TC    = 5.8e-3;
+tissueList(j).n     = 1.3;
 
 j=3;
 tissueList(j).name  = 'standard tissue';
@@ -64,6 +68,7 @@ tissueList(j).mus   = 100;
 tissueList(j).g     = 0.9;
 tissueList(j).VHC = 3391*1.109e-3;
 tissueList(j).TC = 0.37e-2;
+tissueList(j).n     = 1.3;
 
 j=4;
 tissueList(j).name  = 'epidermis';
@@ -82,6 +87,7 @@ tissueList(j).mus = musp/(1-gg);
 tissueList(j).g   = gg;
 tissueList(j).VHC =3391*1.109e-3;
 tissueList(j).TC =0.37e-2;
+tissueList(j).n     = 1.3;
 
 j=5;
 tissueList(j).name = 'dermis';
@@ -100,6 +106,7 @@ tissueList(j).mus = musp/(1-gg);
 tissueList(j).g   = gg;
 tissueList(j).VHC =3391*1.109e-3;
 tissueList(j).TC =0.37e-2;
+tissueList(j).n     = 1.3;
 
 j=6;
 tissueList(j).name  = 'blood';
@@ -120,6 +127,7 @@ tissueList(j).VHC   = 3617*1.050e-3;
 tissueList(j).TC    = 0.52e-2;
 tissueList(j).E   = 422.5e3; % J/mol    PLACEHOLDER DATA ONLY
 tissueList(j).A   = 7.6e66; % 1/s        PLACEHOLDER DATA ONLY
+tissueList(j).n     = 1.3;
 
 j=7;
 tissueList(j).name  = 'vessel';
@@ -128,6 +136,7 @@ tissueList(j).mus   = 230;
 tissueList(j).g     = 0.9;
 tissueList(j).VHC   = 4200*1.06e-3;
 tissueList(j).TC    = 6.1e-3;
+tissueList(j).n     = 1.3;
 
 j=8;
 tissueList(j).name = 'enamel';
@@ -213,6 +222,7 @@ tissueList(j).mus = musp/(1-gg);
 tissueList(j).g   = gg;
 tissueList(j).VHC = 3391*1.109e-3;
 tissueList(j).TC = 0.37e-2;
+tissueList(j).n     = 1.3;
 
 j=15;
 tissueList(j).name  = 'white matter';
@@ -232,6 +242,7 @@ tissueList(j).mus = musp/(1-gg);
 tissueList(j).g   = gg;
 tissueList(j).VHC = 3391*1.109e-3;
 tissueList(j).TC = 0.37e-2;
+tissueList(j).n     = 1.3;
 
 j=16;
 tissueList(j).name  = 'test fluorescing tissue';
@@ -273,10 +284,11 @@ tissueList(j).mus   = 1;
 tissueList(j).g     = 0;
 
 j=20;
-tissueList(j).name  = 'metalreflector';
+tissueList(j).name  = 'reflector';
 tissueList(j).mua   = 1;
 tissueList(j).mus   = 1;
 tissueList(j).g     = 0;
+tissueList(j).n     = inf;
 
 %% Trim tissueList down to use only the tissues included in the input matrix T, and reduce T accordingly
 nT = length(unique(T)); % Number of different tissues in simulation
@@ -308,23 +320,25 @@ end
 %% Throw an error if a variable doesn't conform to its required interval
 for j=1:length(tissueList)
     if(tissueList(j).mua <= 0)
-        error('tissue %s has mua <= 0',tissueList(j).name,j);
+        error('tissue %s has mua <= 0',tissueList(j).name);
     elseif(tissueList(j).mus <= 0)
-        error('tissue %s has mus <= 0',tissueList(j).name,j);
+        error('tissue %s has mus <= 0',tissueList(j).name);
     elseif(abs(tissueList(j).g) > 1)
-        error('tissue %s has abs(g) > 1',tissueList(j).name,j);
+        error('tissue %s has abs(g) > 1',tissueList(j).name);
+    elseif(tissueList(j).n < 1)
+        error('tissue %s has n < 1',tissueList(j).name);
     elseif(tissueList(j).VHC <= 0)
-        error('tissue %s has VHC <= 0',tissueList(j).name,j);
+        error('tissue %s has VHC <= 0',tissueList(j).name);
     elseif(tissueList(j).TC < 0)
-        error('tissue %s has TC < 0',tissueList(j).name,j);
+        error('tissue %s has TC < 0',tissueList(j).name);
     elseif(tissueList(j).Y < 0)
-        error('tissue %s has Y < 0',tissueList(j).name,j);
+        error('tissue %s has Y < 0',tissueList(j).name);
     elseif(tissueList(j).sat <= 0)
-        error('tissue %s has sat <= 0',tissueList(j).name,j);
+        error('tissue %s has sat <= 0',tissueList(j).name);
     elseif(tissueList(j).E < 0)
-        error('tissue %s has E < 0',tissueList(j).name,j);
+        error('tissue %s has E < 0',tissueList(j).name);
     elseif(tissueList(j).A < 0)
-        error('tissue %s has A < 0',tissueList(j).name,j);
+        error('tissue %s has A < 0',tissueList(j).name);
     end
 end
 

@@ -351,8 +351,8 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, d
                                    pow((RI_ratio*cos_new - P->u[2])/
                                        (RI_ratio*cos_new + P->u[2]),2)/2; // R is the reflectivity assuming equal probability of p or s polarization (unpolarized light at all times)
                         
-                        photondeflection = 1;//RandomNum > R? 1:2; // 1 means refracted, 2 means reflected
-                    } else photondeflection = 1;//2;
+                        photondeflection = RandomNum > R? (fabs(P->u[2]) == 1? 0: 1):2;
+                    } else photondeflection = 2;
                 }
             }
             
@@ -365,11 +365,17 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, d
                 case 1: // Refract, can only happen for idx = 2
                     P->i[2] = (P->u[2] > 0)? i_old + 1: i_old - DBL_EPSILON*(labs(i_old)+1);
                     P->sameVoxel = false;
-                    double scalefactor = sqrt((1 - cos_new*cos_new)/(1 - P->u[2]*P->u[2]));
-                    P->u[0] *= scalefactor;
-                    P->u[1] *= scalefactor;
+                    double scalefactor = sqrt((1 - cos_new*cos_new)/(1 - P->u[2]*P->u[2])); // Here we already know that P->u[2] is not +-1
+                    if(P->u[0]) {
+                        P->u[0] *= scalefactor;
+                        P->D[0] = (floor(P->i[0]) + (P->u[0]>0) - P->i[0])*G->d[0]/P->u[0]; // Recalculate voxel boundary distance for x
+                    }
+                    if(P->u[1]) {
+                        P->u[1] *= scalefactor;
+                        P->D[1] = (floor(P->i[1]) + (P->u[1]>0) - P->i[1])*G->d[1]/P->u[1]; // Recalculate voxel boundary distance for y
+                    }
                     P->u[2] = cos_new;
-                    for(idx=0;idx<3;idx++) P->D[idx] = G->d[idx]/fabs(P->u[idx]); // Reset voxel boundary distance for both x, y and z. Note that here it is important that x and y propagations have already been applied before we here modify their D during the z propagation.
+                    P->D[2] = G->d[2]/fabs(P->u[2]); // Reset voxel boundary distance for z. Note that here it is important that x and y propagations have already been applied before we here modify their D during the z propagation.
                     break;
                 case 2: // Reflect, can only happen for idx = 2
                     P->i[2] = (P->u[2] > 0)? i_old + 1 - DBL_EPSILON*(labs(i_old)+1): i_old;

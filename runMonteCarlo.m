@@ -53,12 +53,12 @@ MCinput.boundaryFlag = 1;
 % 5: Top-hat focus, Gaussian far field beam
 % 6: Top-hat focus, top-hat far field beam
 % 7: Laguerre-Gaussian LG01 beam
-MCinput.beamtypeFlag = 6;
+MCinput.beamtypeFlag = 1;
 
 % Position of focus, only used for beamtypeFlag ~=2 (if beamtypeFlag == 1 this is the source position)
 MCinput.xFocus = 0;                % [cm] x position of focus
 MCinput.yFocus = 0;                % [cm] y position of focus
-MCinput.zFocus = 0.028;          % [cm] z position of focus
+MCinput.zFocus = 0.02;          % [cm] z position of focus
 
 % Direction of beam center axis, only used if beamtypeflag ~= 1:
 % Given in terms of the spherical coordinates theta and phi measured in radians, using the ISO
