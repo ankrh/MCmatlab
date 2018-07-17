@@ -52,7 +52,7 @@ boundaryType = 1;
 
 %% USER SPECIFIED: Define parameters
 wavelength  = 450;		% [nm] set the wavelength of the Monte Carlo simulation
-wavelength_f = 550;		% [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
+wavelength_f = NaN;		% [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
 
 nx = 100;				% number of bins in the x direction
 ny = 100;				% number of bins in the y direction
@@ -82,19 +82,19 @@ z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 % M = 3*ones(nx,ny,nz,'uint8'); % "standard" tissue
 
 %% Blood vessel example:
-% zsurf = 0.01;
-% epd_thick = 0.006;
-% vesselradius  = 0.0100;
-% vesseldepth = 0.04;
-% M = 2*ones(nx,ny,nz,'uint8'); % fill background with water (gel)
-% M(Z > zsurf) = 4; % epidermis
-% M(Z > zsurf + epd_thick) = 5; % dermis
-% M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 6; % blood
+zsurf = 0.01;
+epd_thick = 0.006;
+vesselradius  = 0.0100;
+vesseldepth = 0.04;
+M = 2*ones(nx,ny,nz,'uint8'); % fill background with water (gel)
+M(Z > zsurf) = 4; % epidermis
+M(Z > zsurf + epd_thick) = 5; % dermis
+M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 6; % blood
 
 %% Fluorescing cylinder example:
-cylinderradius  = 0.0100;
-M = 17*ones(nx,ny,nz,'uint8'); % fill background with fluorescence absorber
-M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 16; % fluorescer
+% cylinderradius  = 0.0100;
+% M = 17*ones(nx,ny,nz,'uint8'); % fill background with fluorescence absorber
+% M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 16; % fluorescer
 
 %% Hair example:
 % zsurf = 0.02;  % position of gel/skin surface[cm]

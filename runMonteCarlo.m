@@ -46,7 +46,7 @@ simulationTime = .1;      % [min] time duration of the simulation
 % 5: Top-hat focus, Gaussian far field beam
 % 6: Top-hat focus, top-hat far field beam
 % 7: Laguerre-Gaussian LG01 beam
-beamType = 2;
+beamType = 6;
 
 % Position of focus, only used for beamType ~=2 (if beamType == 1 this is the source position)
 xFocus = 0;                % [cm] x position of focus
@@ -66,11 +66,11 @@ phiBeam   = 0; % [rad]
 % Focus properties and divergence angles, only used if beamtypeflag > 2
 waist = 0.03;                  % [cm] focus waist 1/e^2 radius
 % divergence = G.wavelength*1e-9/(pi*waist*1e-2); % [rad] Diffraction limited divergence angle for Gaussian beam
-divergence = 15/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
+divergence = 0/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
 
 %% USER SPECIFIED: Optional light collector properties
 % A "light collector" in this context can be either an objective lens or a fiber tip
-useLightCollector = 1; % Set to 1 for true, 0 for false
+useLightCollector = 0; % Set to 1 for true, 0 for false
 
 % Position of either the center of the objective lens focal plane or the fiber tip
 xFPC_LC = 0;% [cm]

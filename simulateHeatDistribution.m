@@ -1,27 +1,24 @@
 function [temperatureSensor, timeVector] = simulateHeatDistribution(name)
+%   Created 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
+%   Work on this heat solver was started by Rasmus L. Pedersen & Mathias Christensen, DTU Fotonik
 %   
 %   Simulates temperature evolution due to absorption of light and 
-%   diffusion of heat through the tissue.
+%   diffusion of heat through the cuboid based on output of runMonteCarlo.m.
+%   Also calculates Arrhenius-based thermal damage.
 %
-%   Define the power, the on- and off-duration of the light source,
-%   the number of pulses as well as the starting temperature distribution.
-%   Define the number of times the temperatures should be extracted from
-%   the simulation and plotted/recorded. Each update takes about 50-500 ms
-%   to render depending on the number of voxels.
-%   A movie wil be generated and saved if makemovie is set to true.
-%   Note that the 3D matrices are defined in xyz-coordinates (and not yxz).
-%   
+%	Pay attention to the sections with headers that say "USER SPECIFIED:"
+%	In those sections, you must fill in the parameters relevant for your simulation.
 %
 %   Input
 %       name
-%           the basename of the files as specified in makeTissue.m
+%           the basename of the files saved by defineGeometry.m and runMonteCarlo.m
 %
 %   Displays
-%       Tissue cuboid
+%       Geometry cuboid
 %       3D temperature evolution during illumination and diffusion
 %       Temperature evolution for the individual temperature sensors (x-y-plot)
 %       3D temperature distributions after illumination and after diffusion
-%       Tissue cuboid showing any heat-induced tissue damage
+%       Geometry cuboid showing any thermal damage
 %
 %   Output
 %       temperatureSensor
@@ -46,9 +43,6 @@ function [temperatureSensor, timeVector] = simulateHeatDistribution(name)
 %       updateVolumetric.m
 %       finiteElementHeatPropagator.mex (architecture specific)
 %
-%% Acknowledgement
-%   Work on this heat solver was started by Rasmus L. Pedersen & Mathias Christensen, DTU Fotonik
-
 %% Check for preexisting files
 if(~deleteDataFiles(name)); return; end
 
@@ -56,18 +50,28 @@ if(~deleteDataFiles(name)); return; end
 load(['./Data/' name '.mat']);
 load(['./Data/' name '_MCoutput.mat'],'MCoutput');
 
-%% Define parameters (user-specified)
-Winc             = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
+%% USER SPECIFIED: Define simulation behavior
+% Silent mode (disables overwrite prompt, command window text, progress
+% indication and plot generation)
+silentMode = 0;
+
+% Should MCmatlab leave one processor unused? Useful for doing other work
+% on the PC while simulations are running.
+dontMaxCPU = 0;
+
+% Flag to specify whether a movie of the temperature evolution should be generated.
+makemovie  = true;
+
+%% USER SPECIFIED: Define parameters
+P                = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
 onduration       = 0.001; % [s] Pulse on-duration
 offduration      = 0.004; % [s] Pulse off-duration
-Temp             = 37*ones(size(T)); % [deg C] Initial temperature distribution
-n_pulses         = 5; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
+Temp             = 37*ones(size(G.M)); % [deg C] Initial temperature distribution
+n_pulses         = 2; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
 
 plotTempLimits   = [37 105]; % [deg C], the expected range of temperatures, used only for setting the color scale in the plot
-extremeprecision = false; % false: normal time step resolution (dt = dtmax/2), true: high time step resolution (dt = dtmax/100)
-n_updates_on     = 30; % Number of times data is extracted for plots during each illumination phase . Must be at least 1.
-n_updates_off    = 120; % Number of times data is extracted for plots during each diffusion phase. Must be at least 1.
-makemovie        = true; % flag to specify whether a movie of the temperature evolution should be output. Remember to set plotTempLimits appropriately.
+n_updates_on     = 3; % Number of times data is extracted for plots during each illumination phase . Must be at least 1.
+n_updates_off    = 12; % Number of times data is extracted for plots during each diffusion phase. Must be at least 1.
 
 %% Determine remaining parameters
 R = 8.3144598; % Gas constant [J/mol/K]
@@ -77,31 +81,23 @@ if n_pulses ~= 1 && (onduration == 0 || offduration == 0)
     fprintf('\nWarning: Number of pulses changed to 1 since either on-duration or off-duration is 0.\n\n');
 end
 
-[nx,ny,nz] = size(T);
-nT = length(tissueList); % Number of different tissues in simulation
+[nx,ny,nz] = size(G.M);
+nM = length(G.mediaProperties); % Number of different tissues in simulation
 
-dx = x(2) - x(1);
-dy = y(2) - y(1);
-dz = z(2) - z(1);
+HC = G.dx*G.dy*G.dz*[G.mediaProperties.VHC]; % Heat capacity array. Element i is the HC of tissue i in the reduced tissue list.
+TC = [G.mediaProperties.TC]; % Thermal conductivity array. Element i is the TC of tissue i in the reduced tissue list.
 
-HC = dx*dy*dz*[tissueList.VHC]; % Heat capacity array. Element i is the HC of tissue i in the reduced tissue list.
-TC = [tissueList.TC]; % Thermal conductivity array. Element i is the TC of tissue i in the reduced tissue list.
-
-if(any([tissueList.A])) % If non-zero Arrhenius data exists, prepare to calculate tissue damage.
+if(any([G.mediaProperties.A])) % If non-zero Arrhenius data exists, prepare to calculate tissue damage.
     calcDamage = true;
-    A = [tissueList.A];
-    E = [tissueList.E];
-    Omega = zeros(size(T));
+    A = [G.mediaProperties.A];
+    E = [G.mediaProperties.E];
+    Omega = zeros(size(G.M));
 else
     calcDamage = false;
 end
 
 %% Calculate time step
-if extremeprecision
-    dtmax = calcdtmax(T,TC,HC,dx,dy,dz)/100;
-else
-    dtmax = calcdtmax(T,TC,HC,dx,dy,dz)/2;
-end
+dtmax = calcdtmax(G.M,TC,HC,G.dx,G.dy,G.dz)/2;
 
 if onduration ~= 0
     nt_on = max(n_updates_on,ceil(onduration/dtmax)); % Number of time steps with illumination
@@ -124,12 +120,14 @@ timeVector = [0 , repmat(nt_vec(2:end),1,n_pulses)+repelem(0:n_pulses-1,length(n
 %% Calculate proportionality between voxel-to-voxel temperature difference DeltaT and time step temperature change dT
 TC_eff = 2*(TC'*TC)./(ones(length(TC))*diag(TC)+diag(TC)*ones(length(TC))); % Same as TC_eff(i,j) = 2*TC_red(i)*TC_red(j)/(TC_red(i)+TC_red(j)) but without for loops
 TC_eff(isnan(TC_eff)) = 0; % Neighboring insulating voxels return NaN but should just be 0
-dTperdeltaT = cat(3,dt/dx*dy*dz*TC_eff./(diag(HC)*ones(nT)),dt*dx/dy*dz*TC_eff./(diag(HC)*ones(nT)),dt*dx*dy/dz*TC_eff./(diag(HC)*ones(nT))); % Third dimension corresponds to the different directions of heat diffusion
+dTperdeltaT = cat(3,dt/G.dx*G.dy*G.dz*TC_eff./(diag(HC)*ones(nM)),...
+                    dt*G.dx/G.dy*G.dz*TC_eff./(diag(HC)*ones(nM)),...
+                    dt*G.dx*G.dy/G.dz*TC_eff./(diag(HC)*ones(nM))); % Third dimension corresponds to the different directions of heat diffusion
 clear TC_eff
 
 %% Calculate temperature change due to absorbed heat per time step
-mua_vec = [tissueList.mua];
-dT_abs = mua_vec(T).*MCoutput.F*dt*dx*dy*dz*Winc./HC(T); % Temperature change from absorption per time step [deg C] (mua_vec(T).*F is a 3D matrix of normalized volumetric powers)
+mua_vec = [G.mediaProperties.mua];
+dT_abs = mua_vec(G.M).*MCoutput.F*dt*G.dx*G.dy*G.dz*P./HC(G.M); % Temperature change from absorption per time step [deg C] (mua_vec(G.M).*F is a 3D matrix of normalized volumetric powers)
 clear MCoutput
 
 %% Prepare the temperature plot
@@ -141,11 +139,11 @@ else
 end
 clf;
 heatsimFigure.Name = 'Temperature evolution';
-plotVolumetric(x,y,z,Temp,'MCmatlab');
+plotVolumetric(G.x,G.y,G.z,Temp,'MCmatlab');
 h_title = title(['Temperature evolution, t = ' num2str(timeVector(1),'%#.2g') ' s']);
 caxis(plotTempLimits); % User-defined color scale limits
 
-%% Make plots to visualize tissue properties
+%% Plot the geometry to allow the user to select temperature sensor locations
 if(~ishandle(22))
     tissueFigure = figure(22);
     tissueFigure.Position = [40 80 1100 650];
@@ -153,9 +151,9 @@ else
     tissueFigure = figure(22);
 end
 clf;
-tissueFigure.Name = 'Tissue type illustration';
-plotVolumetric(x,y,z,T,'MCmatlab_TissueIllustration',tissueList);
-title('Tissue type illustration');
+tissueFigure.Name = 'Geometry illustration';
+plotVolumetric(G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties);
+title('Geometry illustration');
 
 datacursormode on;
 dataCursorHandle = datacursormode(tissueFigure);
@@ -168,18 +166,18 @@ numTemperatureSensors = length(cursorInfo);
 if numTemperatureSensors
     for temperatureSensorIndex = numTemperatureSensors:-1:1
         dataCursorPosition = cursorInfo(temperatureSensorIndex).Position;
-        [~, dCPz] = min(abs(z-dataCursorPosition(3)));
-        [~, dCPy] = min(abs(y-dataCursorPosition(2)));
-        [~, dCPx] = min(abs(x-dataCursorPosition(1)));
+        [~, dCPz] = min(abs(G.z-dataCursorPosition(3)));
+        [~, dCPy] = min(abs(G.y-dataCursorPosition(2)));
+        [~, dCPx] = min(abs(G.x-dataCursorPosition(1)));
         temperatureSensorPosition(temperatureSensorIndex) = ...
-            sub2ind(size(T),dCPx,dCPy,dCPz);
+            sub2ind(size(G.M),dCPx,dCPy,dCPz);
     end
     temperatureSensorPosition = fliplr(temperatureSensorPosition); % Reverse array so the order of the sensors is the same as the order they were defined in.
     temperatureSensor = NaN(numTemperatureSensors,length(timeVector));
     temperatureSensor(:,1) = Temp(temperatureSensorPosition);
-    
-    temperatureSensorTissues = {tissueList(T(temperatureSensorPosition)).name};
-    
+
+    temperatureSensorTissues = {G.mediaProperties(G.M(temperatureSensorPosition)).name};
+
     if(~ishandle(23))
         temperatureSensorFigure = figure(23);
         temperatureSensorFigure.Position = [40 80 1100 650];
@@ -202,15 +200,14 @@ else
     temperatureSensor = [];
 end
 
-%% Simulate heat transfer
 if numTemperatureSensors; figure(temperatureSensorFigure); end
 
 fprintf('[nx,ny,nz]=[%d,%d,%d]. Number of pulses is %d.\nIllumination on for %d steps and off for %d steps in each pulse. Step size is %0.2e s.\n',nx,ny,nz,n_pulses,nt_on,nt_off,dt);
 
 if(makemovie) % Make a temporary figure showing the tissue type illustration to put into the beginning of the movie
     tempFigure = figure;
-    plotVolumetric(x,y,z,T,'MCmatlab_TissueIllustration',tissueList);
-    title('Tissue type illustration');
+    plotVolumetric(G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties);
+    title('Geometry illustration');
     tempFigure.Position = heatsimFigure.Position; % Size has to be the same as the temperature plot
     tempFigure.Children(6).Value = heatsimFigure.Children(6).Value; % Slices have to be set at the same positions
     tempFigure.Children(7).Value = heatsimFigure.Children(7).Value;
@@ -223,10 +220,11 @@ if(makemovie) % Make a temporary figure showing the tissue type illustration to 
     drawnow;
     movieframes(1) = getframe(tempFigure);
     delete(tempFigure);
-    
+
     movieframes(2) = getframe(heatsimFigure);
 end
 
+%% Simulate heat transfer
 tic
 for j=1:n_pulses
     if nt_on
@@ -237,8 +235,8 @@ for j=1:n_pulses
     drawnow;
     for i = 2:length(nt_vec)
         frameidx = i+(j-1)*(length(nt_vec)-1);
-        Temp = finiteElementHeatPropagator(nt_vec(i)-nt_vec(i-1),Temp,T-1,dTperdeltaT,(nt_vec(i) <= nt_on)*dT_abs); % Arguments (nt,[[[Temp]]],[[[T]]],[[[dTperdeltaT]]],[[[dT_abs]]]). Contents of T have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
-        if calcDamage; Omega = Omega + (timeVector(frameidx)-timeVector(frameidx-1))*A(T).*exp(-E(T)./(R*(Temp + 273.15))); end;
+        Temp = finiteElementHeatPropagator(nt_vec(i)-nt_vec(i-1),Temp,G.M-1,dTperdeltaT,(nt_vec(i) <= nt_on)*dT_abs); % Arguments (nt,[[[Temp]]],[[[G.M]]],[[[dTperdeltaT]]],[[[dT_abs]]]). Contents of G.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
+        if calcDamage; Omega = Omega + (timeVector(frameidx)-timeVector(frameidx-1))*A(G.M).*exp(-E(G.M)./(R*(Temp + 273.15))); end;
         
         if numTemperatureSensors
             temperatureSensor(:,frameidx) = Temp(temperatureSensorPosition);
@@ -271,7 +269,7 @@ clear finiteElementHeatPropagator; % Unload finiteElementHeatPropagator MEX file
 
 %% Plot and save results
 figure(heatsimFigure)
-save(['./Data/' name '_heatSimoutput.mat'],'temperatureSensor','timeVector','Winc','onduration','offduration','Temp','n_pulses');
+save(['./Data/' name '_heatSimoutput.mat'],'temperatureSensor','timeVector','P','onduration','offduration','Temp','n_pulses');
 if ~nt_on
     heatsimFigure.Name = 'Temperature after diffusion';
     title('Temperature after diffusion');
@@ -305,10 +303,10 @@ if calcDamage
         damageFigure = figure(25);
     end
     damageFigure.Name = 'Tissue damage illustration';
-    T_damage = T;
-    T_damage(Omega > 1) = nT + 1;
-    tissueList(nT + 1).name = 'damage';
-    plotVolumetric(x,y,z,T_damage,'MCmatlab_TissueIllustration',tissueList);
+    M_damage = G.M;
+    M_damage(Omega > 1) = nM + 1;
+    G.mediaProperties(nM + 1).name = 'damage';
+    plotVolumetric(G.x,G.y,G.z,M_damage,'MCmatlab_GeometryIllustration',G.mediaProperties);
     title('Tissue damage illustration');
     save(['./Data/' name '_heatSimoutput.mat'],'Omega','-append');
 end
