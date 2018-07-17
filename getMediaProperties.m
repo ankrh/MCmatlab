@@ -1,14 +1,22 @@
 function [M, mediaProperties] = getMediaProperties(M,wavelength)
-%
-%   Returns the known medium properties (optical, thermal and/or fluorescence) at the specified wavelength.
-%   Defining the thermal or fluorescence properties is only necessary if you want to run simulations based on
-%   those properties.
+%   Created 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
 %   
+%   This function was inspired by makeTissueList.m of the mcxyz program hosted at omlc.org
+%   Many parameters, formulas and the spectralLIB library is from mcxyz and
+%   other work by Steven Jacques and collaborators.
+%
+%   Returns the reduced medium matrix, using only numbers from 1 up to the number of used media, and
+%   the known media properties (optical, thermal and/or fluorescence) at the specified wavelength.
+%   
+%	Pay attention to the sections with headers that say "USER SPECIFIED:"
+%	In those sections, you must fill in the parameters relevant for your simulation.
+%
 %   For each medium, mediaProperties must contain mua, mus and g;
 %       mua is the absorption coefficient [cm^-1] and must be positive (not zero)
 %       mus is the scattering coefficient [cm^-1] and must be positive (not zero)
 %       g is the anisotropy factor and must satisfy -1 <= g <= 1
-%   and it may contain the refractive index for simulating non-matched interfaces such as reflection and refraction;
+%   the following parameters are optional:
+%	mediaProperties may contain the refractive index for simulating non-matched interfaces such as reflection and refraction;
 %       n is the refractive index and can be from 1 to Inf, where Inf means the medium is a perfect reflector
 %   and parameters for simulating thermal diffusion;
 %       VHC is volumetric heat capacity [J/(cm^3*K)] and must be positive
@@ -23,11 +31,6 @@ function [M, mediaProperties] = getMediaProperties(M,wavelength)
 %   Requires
 %       SpectralLIB.mat
 
-%% Acknowledgement
-%   This function was inspired by makeTissueList of the mcxyz program hosted at omlc.org
-%   Many parameters, formulas and the spectralLIB library is from mcxyz and
-%   other work by Steven Jacques and collaborators.
-
 %% Load spectral library
 load spectralLIB.mat
 %   muadeoxy      701x1              5608  double
@@ -41,7 +44,7 @@ MU(:,2) = interp1(nmLIB,muadeoxy,wavelength);
 MU(:,3) = interp1(nmLIB,muawater,wavelength);
 MU(:,4) = interp1(nmLIB,muamel,wavelength);
 
-%% Create mediaProperties
+%% USER SPECIFIED: Define media and their properties
 
 j=1;
 mediaProperties(j).name  = 'air';
@@ -258,6 +261,7 @@ else
     mediaProperties(j).mus = 100;
     mediaProperties(j).g   = 0.9;
 end
+mediaProperties(j).n   = 1.3;
 
 j=17;
 mediaProperties(j).name  = 'test fluorescence absorber';
@@ -270,6 +274,7 @@ else
     mediaProperties(j).mus = 100;
     mediaProperties(j).g   = 0.9;
 end
+mediaProperties(j).n   = 1.3;
 
 j=18;
 mediaProperties(j).name  = 'testscatterer';
@@ -294,7 +299,7 @@ mediaProperties(j).n     = Inf;
 mediumMap = zeros(1,length(mediaProperties),'uint8');
 mediumMap(unique(M)) = 1:length(unique(M));
 mediaProperties = mediaProperties(unique(M)); % Reduced medium list, containing only the used media
-M = mediumMap(M); % Reduced media matrix, using only numbers from 1 up to the number of used media
+M = mediumMap(M); % Reduced medium matrix, using only numbers from 1 up to the number of used media
 
 %% Fill in fluorescence and Arrhenius parameter assumptions
 % For all media for which the fluorescence power yield Y, Arrhenius

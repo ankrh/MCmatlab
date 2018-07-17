@@ -267,6 +267,7 @@ for j=1:n_pulses
     end
 end
 toc;
+clear finiteElementHeatPropagator; % Unload finiteElementHeatPropagator MEX file so it can be modified externally again
 
 %% Plot and save results
 figure(heatsimFigure)

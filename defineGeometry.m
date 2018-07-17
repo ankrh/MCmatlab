@@ -1,23 +1,18 @@
-function G = defineGeometry(name,varargin)
+function defineGeometry(name)
+%   Created 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
+%   
+%   This function was inspired by maketissue.m of the mcxyz program hosted at omlc.org
 %
 %   Builds and saves a definition of the simulation geometry and the
-%   optical media it contains in a rectangular cuboid voxel-space.
+%   optical media it contains in a rectangular cuboid voxel mesh.
 %   The media properties are loaded from getMediaProperties.m.
 %
-%   First, define the wavelength in nm, and the geometry cuboid built of voxels.
-%   Then, fill the voxel space with indices pointing to the required media
-%   as listed in getMediaProperties.m.
-%   This file produces the .mat file required as an input to
-%   runMonteCarlo.m, and it displays both the geometry cuboid as well as an
-%   overview over the optical, thermal and fluorescence properties of the media (if available).
-%   Note that the geometry cuboid is defined in xyz-coordinates (and not yxz).
-%
+%	Pay attention to the sections with headers that say "USER SPECIFIED:"
+%	In those sections, you must fill in the parameters relevant for your simulation.
+%	
 %   Input
 %       name
 %           the basename of the file you want to store the geometry in
-%       varargin
-%           if 'silent' is specified as an additional argument, disables
-%           overwrite prompt and command window text
 %
 %   Displays
 %       Geometry cuboid
@@ -30,28 +25,19 @@ function G = defineGeometry(name,varargin)
 %   Requires
 %       deleteDataFiles.m
 %       getMediaProperties.m
-%       lookMCmatlab.m
+%       plotMCmatlab.m
 %
 
-%% Acknowledgement
-%   This function was inspired by maketissue of the mcxyz program hosted at omlc.org
-
-%% USER SPECIFIED: Define parameters
-wavelength  = 450;     % [nm] set the wavelength of the Monte Carlo simulation
-wavelength_fluorescence = NaN; % [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
-
-nx = 100;               % number of bins in the x direction
-ny = 100;               % number of bins in the y direction
-nz = 100;               % number of bins in the z direction
-Lx = .1;                 % [cm] x size of simulation area
-Ly = .1;                 % [cm] y size of simulation area
-Lz = .1;                 % [cm] z size of simulation area
+%% USER SPECIFIED: Define simulation behavior
+% Silent mode (disables overwrite prompt, command window text, progress
+% indication and plot generation)
+silentMode = 0; % 1 for true, 0 for false
 
 % Do you want to assume matched interfaces? If so, there is no Fresnel
 % reflection or refraction. Otherwise, refractive indices from
 % getMediaProperties are used. Note that non-matched interfaces must be normal
 % to the z axis, so each xy-slice must have a constant refractive index.
-assumeMatchedInterfaces = false; 
+assumeMatchedInterfaces = 1; % 1 for true, 0 for false
 
 % Boundary type
 % 0: No boundaries. Photons wander freely also outside the cuboid and
@@ -61,25 +47,38 @@ assumeMatchedInterfaces = false;
 % 2: Escape at surface only. Photons that hit the top surface get killed
 %    immediately, photons hitting other surfaces can wander up to 6 times
 %    the cuboid size.
-boundaryFlag = 1;
+boundaryType = 1;
 
-%% Check if silent mode was specified
-silentMode = any(strcmpi(varargin,'silent'));
+
+%% USER SPECIFIED: Define parameters
+wavelength  = 450;		% [nm] set the wavelength of the Monte Carlo simulation
+wavelength_f = 550;		% [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
+
+nx = 100;				% number of bins in the x direction
+ny = 100;				% number of bins in the y direction
+nz = 100;				% number of bins in the z direction
+Lx = .1;				% [cm] x size of simulation area
+Ly = .1;				% [cm] y size of simulation area
+Lz = .1;				% [cm] z size of simulation area
 
 %% Check for preexisting files
 if(~silentMode && ~deleteDataFiles(name)); return; end
 
 %% Calculate x,y,z vectors and grids
-dx = Lx/nx;             % [cm] size of x bins
-dy = Ly/ny;             % [cm] size of y bins
-dz = Lz/nz;             % [cm] size of z bins
+dx = Lx/nx;                  % [cm] size of x bins
+dy = Ly/ny;                  % [cm] size of y bins
+dz = Lz/nz;                  % [cm] size of z bins
 x  = ((0:nx-1)-(nx-1)/2)*dx; % [cm] x position of centers of voxels
 y  = ((0:ny-1)-(ny-1)/2)*dy; % [cm] y position of centers of voxels
 z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 [X,Y,Z] = ndgrid(single(x),single(y),single(z)); % The single data type is used to conserve memory
 
 %% USER SPECIFIED: Define medium matrix M(x,y,z)
-%% Standard tissue test:
+% Fill the medium matrix M with indices that point to that location's
+% medium type, as defined in getMediaProperties.
+% Below are some examples you can get inspiration from.
+
+%% Standard tissue example:
 % M = 3*ones(nx,ny,nz,'uint8'); % "standard" tissue
 
 %% Blood vessel example:
@@ -93,9 +92,9 @@ z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 % M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 6; % blood
 
 %% Fluorescing cylinder example:
-% cylinderradius  = 0.0100;
-% M = 17*ones(nx,ny,nz,'uint8'); % fill background with fluorescence absorber
-% M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 16; % fluorescer
+cylinderradius  = 0.0100;
+M = 17*ones(nx,ny,nz,'uint8'); % fill background with fluorescence absorber
+M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 16; % fluorescer
 
 %% Hair example:
 % zsurf = 0.02;  % position of gel/skin surface[cm]
@@ -134,19 +133,19 @@ z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 % M(1:(nx*(ny+1)):end) = 18; % Set yz diagonal positions to testscatterer
 
 %% Refraction and reflection example:
-M = ones(nx,ny,nz,'uint8'); % Air background
-M(Z>0.03) = 2; % Water
-M(Z>0.09) = 20; % Reflector
+% M = ones(nx,ny,nz,'uint8'); % Air background
+% M(Z>0.03) = 2; % Water
+% M(Z>0.09) = 20; % Reflector
 
 %% Get the mediaProperties and the reduced M matrix
-if(~isnan(wavelength_fluorescence))
-    [~,mediaProperties_fluorescence] = getMediaProperties(M,wavelength_fluorescence);
+if(~isnan(wavelength_f))
+    [~,mediaProperties_f] = getMediaProperties(M,wavelength_f);
     [M, mediaProperties] = getMediaProperties(M,wavelength);
     if(~any([mediaProperties.Y]>0))
         error('Fluorescence wavelength isn''t NaN, but none of the media have Y > 0');
     end
 else
-    mediaProperties_fluorescence = NaN;
+    mediaProperties_f = NaN;
     [M, mediaProperties] = getMediaProperties(M,wavelength);
 end
 
@@ -169,15 +168,15 @@ else
 end
 
 %% Collect variables into a struct and save
-G = struct('boundaryFlag',boundaryFlag,'dx',dx,'dy',dy,'dz',dz,'nx',nx,'ny',ny,'nz',nz,'x',x,'y',y,'z',z,...
+G = struct('boundaryType',boundaryType,'dx',dx,'dy',dy,'dz',dz,'nx',nx,'ny',ny,'nz',nz,'x',x,'y',y,'z',z,...
     'wavelength',wavelength,'mediaProperties',mediaProperties,...
-    'wavelength_fluorescence',wavelength_fluorescence,'mediaProperties_fluorescence',mediaProperties_fluorescence,...
+    'wavelength_f',wavelength_f,'mediaProperties_f',mediaProperties_f,...
     'M',M,'RI',RI);
 
 save(['./Data/' name '.mat'],'G');
 if(~silentMode) fprintf('./Data/%s.mat saved\n',name); end
 
 %% Make plots
-if(~silentMode) lookMCmatlab(name); end
+if(~silentMode) plotMCmatlab(name); end
 
 end

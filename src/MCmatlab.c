@@ -2,7 +2,9 @@
  *
  *  MCmatlab.c,	in the C programming language, written for MATLAB MEX function generation
  *  Compliant with the ISO C11 standard
- *
+ *  
+ *  Created 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
+ * 
  *  Heavily inspired by mcxyz.c by Steven Jacques, Ting Li, Scott Prahl at the Oregon Health & Science University
  *
  ** COMPILING ON WINDOWS
@@ -50,14 +52,14 @@ extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing th
 struct geometry { // Struct type for the constant geometry definitions
     double         d[3];
     long           n[3];
-    int            boundaryFlag;
+    int            boundaryType;
     double         *muav,*musv,*gv;
     unsigned char  *M;
     double         *RI;    // Refractive index of each z slice
 };
 
 struct beam { // Struct type for the constant beam definitions
-    int            beamtypeFlag;
+    int            beamType;
     double         *S;
     double         power;
     double         waist,divergence;
@@ -144,7 +146,7 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->u[0] = sintheta*cos(phi);
         P->u[1] = sintheta*sin(phi);
         P->u[2] = costheta;
-    } else switch (B->beamtypeFlag) {
+    } else switch (B->beamType) {
         case 0: // pencil beam
             P->i[0] = (B->focus[0] - B->focus[2]*B->u[0]/B->u[2])/G->d[0] + G->n[0]/2.0;
             P->i[1] = (B->focus[1] - B->focus[2]*B->u[1]/B->u[2])/G->d[1] + G->n[1]/2.0;
@@ -163,8 +165,8 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
             P->u[2] = costheta;
             break;
         case 2: // infinite plane wave
-            P->i[0] = ((G->boundaryFlag==1)? 1: KILLRANGE)*G->n[0]*(RandomNum-0.5) + G->n[0]/2.0; // Generates a random ix coordinate within the cuboid
-            P->i[1] = ((G->boundaryFlag==1)? 1: KILLRANGE)*G->n[1]*(RandomNum-0.5) + G->n[1]/2.0; // Generates a random iy coordinate within the cuboid
+            P->i[0] = ((G->boundaryType==1)? 1: KILLRANGE)*G->n[0]*(RandomNum-0.5) + G->n[0]/2.0; // Generates a random ix coordinate within the cuboid
+            P->i[1] = ((G->boundaryType==1)? 1: KILLRANGE)*G->n[1]*(RandomNum-0.5) + G->n[1]/2.0; // Generates a random iy coordinate within the cuboid
             P->i[2] = 0;
             for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
             break;
@@ -290,7 +292,7 @@ void checkEscape(struct photon * const P, struct geometry const * const G, struc
                       P->i[1] < G->n[1] && P->i[1] >= 0 &&
                       P->i[2] < G->n[2] && P->i[2] >= 0;
 
-    switch (G->boundaryFlag) {
+    switch (G->boundaryType) {
         case 0:
             P->alive = (fabs(P->i[0]/G->n[0] - 1.0/2) <  KILLRANGE/2 &&
                         fabs(P->i[1]/G->n[1] - 1.0/2) <  KILLRANGE/2 &&
@@ -338,7 +340,7 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, d
         if(s == P->D[idx]) { // If we're supposed to go to the voxel boundary along this dimension
             int photondeflection = 0; // Switch that can be 0, 1 or 2. 0 means photon travels straight, 1 means photon is refracted at the voxel boundary, 2 means reflected
             double cos_new = 0;
-            if(idx == 2) { // If we're entering a new z slice
+            if(!isnan(G->RI[0]) && idx == 2) { // If we're simulating refraction/reflection and we're entering a new z slice
                 double RI_ratio = G->RI[i_old>=0? (i_old<G->n[2]? i_old:G->n[2]-1):0]/
                                   G->RI[i_new>=0? (i_new<G->n[2]? i_new:G->n[2]-1):0];
                 if(RI_ratio != 1) { // If there's a refractive index change
@@ -450,7 +452,7 @@ void normalizeDeposition(struct beam const * const B, struct geometry const * co
             else Image[0] /= nPhotons/B->power; // Absolute power [W]
         }
         mxFree(B->S);
-    } else if(B->beamtypeFlag == 3 && G->boundaryFlag != 1) { // For infinite plane wave launched into volume without absorbing walls
+    } else if(B->beamType == 3 && G->boundaryType != 1) { // For infinite plane wave launched into volume without absorbing walls
 		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
         if(Image) {
             if(L_LC > 1) for(j=0;j<L_LC;j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
@@ -473,8 +475,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     bool silentMode = *mxGetPr(mxGetField(prhs[0],0,"silentMode"));
     bool dontMaxCPU = *mxGetPr(mxGetField(prhs[0],0,"dontMaxCPU"));
 
+    
     // To know if we are simulating fluorescence, we check if a "sourceDistribution" field exists. If so, we will use it later in the beam definition.
-    double *S_PDF       = mxGetData(mxGetField(prhs[0],0,"sourceDistribution")); // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
+    mxArray *MatlabBeam = mxGetField(prhs[0],0,"Beam");
+    double *S_PDF       = mxGetData(mxGetField(MatlabBeam,0,"sourceDistribution")); // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
     
     // Timekeeping variables
     double          simulationTimeRequested = *mxGetPr(mxGetField(prhs[0],0,"simulationTime"));
@@ -482,8 +486,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 	struct timespec simulationTimeStart, simulationTimeCurrent;
 	
     // Geometry struct definition
-    mxArray *Gmatlab         = mxGetField(prhs[0],0,"G");
-    mxArray *mediaProperties = mxGetField(Gmatlab,0,S_PDF? "mediaProperties": "mediaProperties_fluorescence"); // If S_PDF is NULL then there was no sourceDistribution field, so we are not simulating fluorescence
+    mxArray *MatlabG         = mxGetField(prhs[0],0,"G");
+    mxArray *mediaProperties = mxGetField(MatlabG,0,S_PDF? "mediaProperties_f": "mediaProperties"); // If S_PDF is NULL then there was no sourceDistribution field, so we are not simulating fluorescence
     int     nM = mxGetN(mediaProperties);
     double 	muav[nM];            // muav[0:nM-1], absorption coefficient of ith medium
 	double 	musv[nM];            // scattering coeff. 
@@ -494,18 +498,18 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         gv[idx]   = *mxGetPr(mxGetField(mediaProperties,idx,"g"));
     }
     
-    mwSize const  *dimPtr = mxGetDimensions(mxGetField(Gmatlab,0,"M"));
+    mwSize const  *dimPtr = mxGetDimensions(mxGetField(MatlabG,0,"M"));
     struct geometry const G_var = (struct geometry) {
-        .d = {*mxGetPr(mxGetField(Gmatlab,0,"dx")),
-              *mxGetPr(mxGetField(Gmatlab,0,"dy")),
-              *mxGetPr(mxGetField(Gmatlab,0,"dz"))},
+        .d = {*mxGetPr(mxGetField(MatlabG,0,"dx")),
+              *mxGetPr(mxGetField(MatlabG,0,"dy")),
+              *mxGetPr(mxGetField(MatlabG,0,"dz"))},
         .n = {dimPtr[0], dimPtr[1], dimPtr[2]},
-        .boundaryFlag = *mxGetPr(mxGetField(Gmatlab,0,"boundaryFlag")),
+        .boundaryType = *mxGetPr(mxGetField(MatlabG,0,"boundaryType")),
         .muav = muav,
         .musv = musv,
         .gv = gv,
-        .M = mxGetData(mxGetField(Gmatlab,0,"M")),
-        .RI = mxGetData(mxGetField(Gmatlab,0,"RI"))
+        .M = mxGetData(mxGetField(MatlabG,0,"M")),
+        .RI = mxGetData(mxGetField(MatlabG,0,"RI"))
     };
     struct geometry const *G = &G_var;
     
@@ -521,49 +525,50 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         power = S[L]*G->d[0]*G->d[1]*G->d[2];
         for(idx=1;idx<(L+1);idx++) S[idx] /= S[L];
     }
-    
-    double tb = *mxGetPr(mxGetField(prhs[0],0,"thetaBeam"));
-    double pb = *mxGetPr(mxGetField(prhs[0],0,"phiBeam"));
+
+    double tb = S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"thetaBeam"));
+    double pb = S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"phiBeam"));
 
     double u[3] = {sin(tb)*cos(pb),
                    sin(tb)*sin(pb),
                    cos(tb)}; // Temporary array
-    
+
     double v[3] = {1,0,0};
     if(u[2]!=1) unitcrossprod(u,(double[]){0,0,1},v);
-    
+
     struct beam const B_var = (struct beam) {
-        .beamtypeFlag =  *mxGetPr(mxGetField(prhs[0],0,"beamtypeFlag")),
+        .beamType     =  S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"beamType")),
         .S            =  S,
         .power        =  power,
-        .waist        =  *mxGetPr(mxGetField(prhs[0],0,"waist")),
-        .divergence   =  *mxGetPr(mxGetField(prhs[0],0,"divergence")),
-        .focus        = {*mxGetPr(mxGetField(prhs[0],0,"xFocus")),
-                         *mxGetPr(mxGetField(prhs[0],0,"yFocus")),
-                         *mxGetPr(mxGetField(prhs[0],0,"zFocus"))},
+        .waist        =  S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"waist")),
+        .divergence   =  S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"divergence")),
+        .focus        = {S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"xFocus")),
+                         S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"yFocus")),
+                         S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"zFocus"))},
         .u            = {u[0],u[1],u[2]},
         .v            = {v[0],v[1],v[2]} // normal vector to beam center axis
     };
     struct beam const *B = &B_var;
-    
-    // Detector struct definition
+
+    // Light Collector struct definition
+    mxArray *MatlabLC      = mxGetField(prhs[0],0,"LightCollector");
     bool useLightCollector = *mxGetPr(mxGetField(prhs[0],0,"useLightCollector"));
     
-    double theta = *mxGetPr(mxGetField(prhs[0],0,"theta_LC"));
-    double phi   = *mxGetPr(mxGetField(prhs[0],0,"phi_LC"));
-    double f     = *mxGetPr(mxGetField(prhs[0],0,"f_LC"));
+    double theta = *mxGetPr(mxGetField(MatlabLC,0,"theta_LC"));
+    double phi   = *mxGetPr(mxGetField(MatlabLC,0,"phi_LC"));
+    double f     = *mxGetPr(mxGetField(MatlabLC,0,"f_LC"));
 
     struct lightcollector const LC_var = (struct lightcollector) {
-        .r            = {*mxGetPr(mxGetField(prhs[0],0,"xFPC_LC")) - (isfinite(f)? f*sin(theta)*cos(phi):0), // xyz coordinates of center of light collector
-                         *mxGetPr(mxGetField(prhs[0],0,"yFPC_LC")) - (isfinite(f)? f*sin(theta)*sin(phi):0),
-                         *mxGetPr(mxGetField(prhs[0],0,"zFPC_LC")) - (isfinite(f)? f*cos(theta)         :0)},
+        .r            = {*mxGetPr(mxGetField(MatlabLC,0,"xFPC_LC")) - (isfinite(f)? f*sin(theta)*cos(phi):0), // xyz coordinates of center of light collector
+                         *mxGetPr(mxGetField(MatlabLC,0,"yFPC_LC")) - (isfinite(f)? f*sin(theta)*sin(phi):0),
+                         *mxGetPr(mxGetField(MatlabLC,0,"zFPC_LC")) - (isfinite(f)? f*cos(theta)         :0)},
         .theta        =  theta,
         .phi          =  phi,
         .f            =  f,
-        .diam         =  *mxGetPr(mxGetField(prhs[0],0,"diam_LC")),
-        .FSorNA       =  *mxGetPr(mxGetField(prhs[0],0,isfinite(f)?"FieldSize_LC":"NA_LC")),
-        .res          = {isfinite(f)? *mxGetPr(mxGetField(prhs[0],0,"resX_LC")):1,
-                         isfinite(f)? *mxGetPr(mxGetField(prhs[0],0,"resY_LC")):1}};
+        .diam         =  *mxGetPr(mxGetField(MatlabLC,0,"diam_LC")),
+        .FSorNA       =  *mxGetPr(mxGetField(MatlabLC,0,isfinite(f)?"FieldSize_LC":"NA_LC")),
+        .res          = {isfinite(f)? *mxGetPr(mxGetField(MatlabLC,0,"resX_LC")):1,
+                         isfinite(f)? *mxGetPr(mxGetField(MatlabLC,0,"resY_LC")):1}};
     struct lightcollector const *LC = &LC_var;
     
     // Prepare output MATLAB struct
@@ -590,7 +595,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 
         if(B->S) printf("Using isotropically emitting 3D distribution as light source\n");
         else {
-            switch(B->beamtypeFlag) {
+            switch(B->beamType) {
                 case 0:
                     printf("Using pencil beam\n");
                     break;
@@ -617,14 +622,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                     break;
             }
 
-            if(B->beamtypeFlag!=2) printf("Focus location = (%0.1e,%0.1e,%0.1e) cm\n",B->focus[0],B->focus[1],B->focus[2]);
-            if(B->beamtypeFlag!=1) printf("Beam direction = (%0.3f,%0.3f,%0.3f)\n",B->u[0],B->u[1],B->u[2]);
-            if(B->beamtypeFlag >2) printf("Beam waist = %0.1e cm, divergence = %0.1e rad\n",B->waist,B->divergence);
+            if(B->beamType!=2) printf("Focus location = (%0.1e,%0.1e,%0.1e) cm\n",B->focus[0],B->focus[1],B->focus[2]);
+            if(B->beamType!=1) printf("Beam direction = (%0.3f,%0.3f,%0.3f)\n",B->u[0],B->u[1],B->u[2]);
+            if(B->beamType >2) printf("Beam waist = %0.1e cm, divergence = %0.1e rad\n",B->waist,B->divergence);
         }
 
-        if(G->boundaryFlag==0) printf("boundaryFlag = 0, so no boundaries\n");
-        else if(G->boundaryFlag==1) printf("boundaryFlag = 1, so escape at all boundaries\n");    
-        else if(G->boundaryFlag==2) printf("boundaryFlag = 2, so escape at surface only\n");    
+        if(G->boundaryType==0) printf("boundaryType = 0, so no boundaries\n");
+        else if(G->boundaryType==1) printf("boundaryType = 1, so escape at all boundaries\n");    
+        else if(G->boundaryType==2) printf("boundaryType = 2, so escape at surface only\n");    
 
         printf("Simulation duration = %0.2f min\n\n",simulationTimeRequested);
         printf("Calculating...   0%% done");

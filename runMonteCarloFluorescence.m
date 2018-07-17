@@ -1,25 +1,18 @@
-function MCoutput_fluorescence = runMonteCarloFluorescence(name,varargin)
+function runMonteCarloFluorescence(name)
+%   Created 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
 %
 %   Script for simulating distribution and magnitude of fluorescence
 %   based on the output of runMonteCarlo.m
 %
 %   Prepares and runs the Monte Carlo simulation.
-%   After finishing, calls lookMCmatlab for the display of the result.
+%   After finishing, calls plotMCmatlab for the display of the result.
 %
-%   Define the time requested for simulating photons.
-%   Define the power of the excitation beam (used to take saturation into
-%   account).
-%   Define the behaviour of photons that stray outside the cuboid.
+%	Pay attention to the sections with headers that say "USER SPECIFIED:"
+%	In those sections, you must fill in the parameters relevant for your simulation.
 %
 %   Input
 %       name
-%           the basename of the files saved by makeGeometry.m and runMonteCarlo.m
-%       varargin
-%           if 'silent' is specified as an additional argument, disables
-%           overwrite prompt, command window text and progress indication
-%           if 'dontMaxCPU' is specified as an additional argument, ensures
-%           that on Windows, MCmatlab will leave one processor unused. (On
-%           Mac, multithreading is not yet implemented anyway)
+%           the basename of the files saved by defineGeometry.m and runMonteCarlo.m
 %
 %   Output
 %       ./Data/[name]_MCoutput_fluorescence.mat
@@ -28,38 +21,37 @@ function MCoutput_fluorescence = runMonteCarloFluorescence(name,varargin)
 %   Requires
 %       deleteDataFiles.m
 %       MCmatlab.mex (architecture specific)
-%       lookMCmatlab.m
+%       plotMCmatlab.m
 %
 
-%% Updates
-% Created 2018-04-19 by Anders K. Hansen, DTU Fotonik
-
-%% Load data from makeGeometry.m and runMonteCarlo.m
+%% Load data from defineGeometry.m and runMonteCarlo.m
 load(['./Data/' name '.mat']);
 load(['./Data/' name '_MCoutput.mat'],'MCoutput');
 
-%% Check if silent mode or dontMaxCPU was specified
-silentMode = double(any(strcmp(varargin,'silent')));
-dontMaxCPU = double(any(strcmpi(varargin,'dontMaxCPU')));
+%% USER SPECIFIED: Define simulation behavior
+% Silent mode (disables overwrite prompt, command window text, progress
+% indication and plot generation)
+silentMode = 0;
 
-%% Check for preexisting files
-if(~silentMode && ~deleteDataFiles(name)); return; end
+% Should MCmatlab leave one processor unused? Useful for doing other work
+% on the PC while simulations are running.
+dontMaxCPU = 0;
 
-%% Define parameters (user-specified)
 % Simulation duration
 simulationTime = 0.1;      % [min] time duration of the simulation
 
+%% USER SPECIFIED: Define power of excitation beam
 % Incident excitation power, for taking fluorescence saturations into account
-P = 2; % [W]
+P_excitation = 2; % [W]
 
-%% Optional light collector properties (user-specified)
+%% USER SPECIFIED: Optional light collector properties
 % A "light collector" in this context can be either an objective lens or a fiber tip
-useLightCollector = 1; % Set to 1 for true, 0 for false
+useLightCollector = 0; % Set to 1 for true, 0 for false
 
 % Position of either the center of the objective lens focal plane or the fiber tip
 xFPC_LC = 0; % [cm]
 yFPC_LC = 0; % [cm]
-zFPC_LC = G.nz*G.dz/2; % [cm] negative values correspond to a location above the volume
+zFPC_LC = 0.03; % [cm] negative values correspond to a location above the volume
 
 % Direction that the light collector is facing, defined in the same way as the beam direction using
 % ISO spherical coordinates.
@@ -86,14 +78,14 @@ NA_LC = 0.22; % [-]
 resX_LC = 200;
 resY_LC = 200;
 
-%% Set remaining parameters
-mediaProperties = mediaProperties_fluorescence;
+%% Check for preexisting files
+if(~silentMode && ~deleteDataFiles(name)); return; end
 
 %% Calculate 3D fluorescence source distribution, including saturation
-mua_vec = [mediaProperties_fluorescence.mua]; % The media's excitation absorption coefficients
-Y_vec = [mediaProperties_fluorescence.Y]; % The media's fluorescence power yields
-sat_vec = [mediaProperties_fluorescence.sat]; % The media's fluorescence saturation fluence rates (intensity)
-sourceDistribution = Y_vec(T).*mua_vec(T)*P.*MCoutput.F./(1 + P*MCoutput.F./sat_vec(T)); % [W/cm^3]
+mua_vec = [G.mediaProperties.mua]; % The media's excitation absorption coefficients
+Y_vec = [G.mediaProperties.Y]; % The media's fluorescence power yields
+sat_vec = [G.mediaProperties.sat]; % The media's fluorescence saturation fluence rates (intensity)
+sourceDistribution = Y_vec(G.M).*mua_vec(G.M)*P_excitation.*MCoutput.F./(1 + P_excitation*MCoutput.F./sat_vec(G.M)); % [W/cm^3]
 
 %% Check to ensure that the light collector is not inside the cuboid
 if useLightCollector
@@ -114,20 +106,25 @@ if useLightCollector
     end    
 end
 
-%% Call Monte Carlo C script (MEX file) to get fluorescence fluence rate (intensity) distribution
+%% Prepare structs
 G.M = G.M - 1; % The medium matrix has to be converted from MATLAB's 1-based indexing to C's 0-based indexing
-MCinput = struct('silentMode',silentMode,'dontMaxCPU',dontMaxCPU,'G',G,'simulationTime',simulationTime,...
-    'sourceDistribution',sourceDistribution,'useLightCollector',useLightCollector,...
-    'xFPC_LC',xFPC_LC,'yFPC_LC',yFPC_LC,'zFPC_LC',zFPC_LC,'theta_LC',theta_LC,'phi_LC',phi_LC,'f_LC',f_LC,...
+Beam = struct('P_excitation',P_excitation,'sourceDistribution',sourceDistribution);
+LightCollector = struct('xFPC_LC',xFPC_LC,'yFPC_LC',yFPC_LC,'zFPC_LC',zFPC_LC,'theta_LC',theta_LC,'phi_LC',phi_LC,'f_LC',f_LC,...
     'diam_LC',diam_LC,'FieldSize_LC',FieldSize_LC,'NA_LC',NA_LC,'resX_LC',resX_LC,'resY_LC',resY_LC);
-MCoutput_fluorescence = MCmatlab(MCinput_fluorescence); % MCoutput_fluorescence.F is an absolute fluence rate (intensity) quantity, unlike the non-fluorescence MCoutput.F which are actually fluence rates normalized to the incident power
+MCinput_f = struct('silentMode',silentMode,'dontMaxCPU',dontMaxCPU,'simulationTime',simulationTime,...
+    'useLightCollector',useLightCollector,'G',G,'Beam',Beam,'LightCollector',LightCollector);
+clear G Beam LightCollector
+
+%% Call Monte Carlo C script (MEX file) to get fluorescence fluence rate (intensity) distribution
+MCoutput_f = MCmatlab(MCinput_f); % MCoutput_f.F is an absolute fluence rate (intensity) quantity, unlike the non-fluorescence MCoutput.F which are actually fluence rates normalized to the incident power
+clear MCmatlab; % Unload MCmatlab MEX file so it can be modified externally again
 
 %% Save output and clear memory
-save(['./Data/' name '_MCoutput_fluorescence.mat'],'MCoutput_fluorescence','MCinput_fluorescence','P');
+save(['./Data/' name '_MCoutput_fluorescence.mat'],'MCoutput_f','MCinput_f');
 if(~silentMode) fprintf('./Data/%s_MCoutput_fluorescence.mat saved\n',name); end
-clear MCoutput_fluorescence
+clear MCinput_f MCoutput_f
 
 %% Make plots
-if(~silentMode) lookMCmatlab(name); end
+if(~silentMode) plotMCmatlab(name); end
 
 end

@@ -1,24 +1,15 @@
-function MCoutput = runMonteCarlo(name,varargin)
+function runMonteCarlo(name)
+%   Created 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
 %
 %   Prepares the illumination beam and runs the Monte Carlo simulation.
-%   After finishing, calls lookMCmatlab for the display of the result.
+%   After finishing, calls plotMCmatlab for the display of the result.
 %
-%   Define the time requested for simulating photons.
-%   Define the behaviour of photons that stray outside the cuboid.
-%   Define the beam parameters.
-%   Depending on the chosen beam type, define the focus position, the beam
-%   waist of the focus, the divergence angle and/or the direction of the
-%   beam's center axis.
+%	Pay attention to the sections with headers that say "USER SPECIFIED:"
+%	In those sections, you must fill in the parameters relevant for your simulation.
 %
 %   Input
 %       name
-%           the basename of the file saved by makeGeometry.m
-%       varargin
-%           if 'silent' is specified as an additional argument, disables
-%           overwrite prompt, command window text and progress indication
-%           if 'dontMaxCPU' is specified as an additional argument, ensures
-%           that on Windows, MCmatlab will leave one processor unused. (On
-%           Mac, multithreading is not yet implemented anyway)
+%           the basename of the file saved by defineGeometry.m
 %
 %   Output
 %       ./Data/[name]_MCoutput.mat
@@ -27,23 +18,25 @@ function MCoutput = runMonteCarlo(name,varargin)
 %   Requires
 %       deleteDataFiles.m
 %       MCmatlab.mex (architecture specific)
-%       lookMCmatlab.m
+%       plotMCmatlab.m
 %
 
-%% Check if silent mode or dontMaxCPU was specified
-silentMode = double(any(strcmp(varargin,'silent')));
-dontMaxCPU = double(any(strcmpi(varargin,'dontMaxCPU')));
-
-%% Check for preexisting files
-if(~silentMode && ~deleteDataFiles(name)); return; end
-
-%% Load data from makeGeometry.m
+%% Load data from defineGeometry.m
 load(['./Data/' name '.mat']);
 
-%% Define parameters (user-specified)
+%% USER SPECIFIED: Define simulation behavior
+% Silent mode (disables overwrite prompt, command window text, progress
+% indication and plot generation)
+silentMode = 0;
+
+% Should MCmatlab leave one processor unused? Useful for doing other work
+% on the PC while simulations are running.
+dontMaxCPU = 0;
+
 % Simulation duration
 simulationTime = .1;      % [min] time duration of the simulation
 
+%% USER SPECIFIED: Define beam
 % Beam type
 % 0: Pencil beam
 % 1: Isotropically emitting point source
@@ -53,9 +46,9 @@ simulationTime = .1;      % [min] time duration of the simulation
 % 5: Top-hat focus, Gaussian far field beam
 % 6: Top-hat focus, top-hat far field beam
 % 7: Laguerre-Gaussian LG01 beam
-beamtypeFlag = 1;
+beamType = 2;
 
-% Position of focus, only used for beamtypeFlag ~=2 (if beamtypeFlag == 1 this is the source position)
+% Position of focus, only used for beamType ~=2 (if beamType == 1 this is the source position)
 xFocus = 0;                % [cm] x position of focus
 yFocus = 0;                % [cm] y position of focus
 zFocus = 0.04;          % [cm] z position of focus
@@ -75,14 +68,14 @@ waist = 0.03;                  % [cm] focus waist 1/e^2 radius
 % divergence = G.wavelength*1e-9/(pi*waist*1e-2); % [rad] Diffraction limited divergence angle for Gaussian beam
 divergence = 15/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
 
-%% Optional light collector properties (user-specified)
+%% USER SPECIFIED: Optional light collector properties
 % A "light collector" in this context can be either an objective lens or a fiber tip
-useLightCollector = 0; % Set to 1 for true, 0 for false
+useLightCollector = 1; % Set to 1 for true, 0 for false
 
 % Position of either the center of the objective lens focal plane or the fiber tip
 xFPC_LC = 0;% [cm]
 yFPC_LC = 0;% [cm]
-zFPC_LC = G.nz*G.dz/2;% [cm] negative values correspond to a location above the volume
+zFPC_LC = 0.03;% [cm] negative values correspond to a location above the volume
 
 % Direction that the light collector is facing, defined in the same way as the beam direction using
 % ISO spherical coordinates.
@@ -90,8 +83,8 @@ zFPC_LC = G.nz*G.dz/2;% [cm] negative values correspond to a location above the 
 % For below the surface (positive z), such as measuring in transmission, you'll want pi/2<=theta<=pi
 % If theta = 0 or pi, phi serves only to rotate the view. If you want the light collector X axis 
 % to coincide with the cuboid x axis, use phi = pi/2.
-theta_LC = atan(1/sqrt(2)); % [rad]
-phi_LC   = -3*pi/4; % [rad]
+theta_LC = 0;%atan(1/sqrt(2)); % [rad]
+phi_LC   = pi/2;%-3*pi/4; % [rad]
 
 % Focal length of the objective lens (if light collector is a fiber, set this to Inf).
 f_LC = 1; % [cm]
@@ -100,14 +93,14 @@ f_LC = 1; % [cm]
 diam_LC = 2; % [cm]
 
 % Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f_LC.
-FieldSize_LC = 2; % [cm]
+FieldSize_LC = .2; % [cm]
 
 % Fiber NA. Only used for infinite f_LC.
 NA_LC = 0.22; % [-]
 
 % Resolution of light collector in pixels
-resX_LC = 400;
-resY_LC = 400;
+resX_LC = 200;
+resY_LC = 200;
 
 %% Check to ensure that the light collector is not inside the cuboid
 if useLightCollector
@@ -128,21 +121,29 @@ if useLightCollector
     end    
 end
 
-%% Call Monte Carlo C script (MEX file) to get fluence rate (intensity) distribution
+%% Check for preexisting files
+if(~silentMode && ~deleteDataFiles(name)); return; end
+
+%% Prepare structs
 G.M = G.M - 1; % The medium matrix has to be converted from MATLAB's 1-based indexing to C's 0-based indexing
-MCinput = struct('silentMode',silentMode,'dontMaxCPU',dontMaxCPU,'G',G,'simulationTime',simulationTime,...
-    'beamtypeFlag',beamtypeFlag,'xFocus',xFocus,'yFocus',yFocus,'zFocus',zFocus,'thetaBeam',thetaBeam,...
-    'phiBeam',phiBeam,'waist',waist,'divergence',divergence,'useLightCollector',useLightCollector,...
-    'xFPC_LC',xFPC_LC,'yFPC_LC',yFPC_LC,'zFPC_LC',zFPC_LC,'theta_LC',theta_LC,'phi_LC',phi_LC,'f_LC',f_LC,...
+Beam = struct('beamType',beamType,'xFocus',xFocus,'yFocus',yFocus,'zFocus',zFocus,'thetaBeam',thetaBeam,...
+    'phiBeam',phiBeam,'waist',waist,'divergence',divergence);
+LightCollector = struct('xFPC_LC',xFPC_LC,'yFPC_LC',yFPC_LC,'zFPC_LC',zFPC_LC,'theta_LC',theta_LC,'phi_LC',phi_LC,'f_LC',f_LC,...
     'diam_LC',diam_LC,'FieldSize_LC',FieldSize_LC,'NA_LC',NA_LC,'resX_LC',resX_LC,'resY_LC',resY_LC);
+MCinput = struct('silentMode',silentMode,'dontMaxCPU',dontMaxCPU,'simulationTime',simulationTime,...
+    'useLightCollector',useLightCollector,'G',G,'Beam',Beam,'LightCollector',LightCollector);
+clear G Beam LightCollector
+
+%% Call Monte Carlo C script (MEX file) to get fluence rate (intensity) distribution
 MCoutput = MCmatlab(MCinput);
+clear MCmatlab; % Unload MCmatlab MEX file so it can be modified externally again
 
 %% Save output and clear memory
 save(['./Data/' name '_MCoutput.mat'],'MCoutput','MCinput');
 if(~silentMode) fprintf('./Data/%s_MCoutput.mat saved\n',name); end
-clear MCoutput
+clear MCinput MCoutput
 
 %% Make plots
-if(~silentMode) lookMCmatlab(name); end
+if(~silentMode) plotMCmatlab(name); end
 
 end
