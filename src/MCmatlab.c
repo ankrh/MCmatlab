@@ -23,7 +23,6 @@
  * 1. Install XCode from the App Store
  * 2. Type "mex -setup" in the MATLAB command window
  ********************************************/
-#include <windows.h>
 
 #include "mex.h"
 #include <math.h>
@@ -53,7 +52,7 @@ struct geometry { // Struct type for the constant geometry definitions
     long           n[3];
     int            boundaryFlag;
     double         *muav,*musv,*gv;
-    unsigned char  *v;
+    unsigned char  *M;
     double         *RI;    // Refractive index of each z slice
 };
 
@@ -314,15 +313,15 @@ void checkEscape(struct photon * const P, struct geometry const * const G, struc
 }
 
 void getNewVoxelProperties(struct photon * const P, struct geometry const * const G) {
-    /* Get tissue voxel properties of current position.
+    /* Get optical properties of current voxel.
      * If photon is outside cuboid, properties are those of
      * the closest defined voxel. */
     P->j = ((P->i[2] < 0)? 0: ((P->i[2] >= G->n[2])? G->n[2]-1: floor(P->i[2])))*G->n[0]*G->n[1] +
            ((P->i[1] < 0)? 0: ((P->i[1] >= G->n[1])? G->n[1]-1: floor(P->i[1])))*G->n[0]         +
            ((P->i[0] < 0)? 0: ((P->i[0] >= G->n[0])? G->n[0]-1: floor(P->i[0]))); // Index values are restrained to integers in the interval [0,n-1]
-    P->mua = G->muav[G->v[P->j]];
-    P->mus = G->musv[G->v[P->j]];
-    P->g   = G->gv  [G->v[P->j]];
+    P->mua = G->muav[G->M[P->j]];
+    P->mus = G->musv[G->M[P->j]];
+    P->g   = G->gv  [G->M[P->j]];
 }
 
 void propagatePhoton(struct photon * const P, struct geometry const * const G, double * const F) {
@@ -445,20 +444,20 @@ void normalizeDeposition(struct beam const * const B, struct geometry const * co
     long L_LC = LC->res[0]*LC->res[1]; // Total number of pixels in light collector planes
     // Normalize deposition to yield either absolute or relative fluence rate (F).
     if(B->S) { // For a 3D source distribution (e.g., fluorescence)
-		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->v[j]]/B->power; // Absolute fluence rate [W/cm^2].
+		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]/B->power; // Absolute fluence rate [W/cm^2].
         if(Image) {
             if(L_LC > 1) for(j=0;j<L_LC;j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/B->power; // Absolute fluence rate [W/cm^2]
             else Image[0] /= nPhotons/B->power; // Absolute power [W]
         }
         mxFree(B->S);
     } else if(B->beamtypeFlag == 3 && G->boundaryFlag != 1) { // For infinite plane wave launched into volume without absorbing walls
-		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->v[j]]/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
+		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
         if(Image) {
             if(L_LC > 1) for(j=0;j<L_LC;j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
             else Image[0] /= nPhotons/(KILLRANGE*KILLRANGE); // Normalized power [W/W.incident]
         }
 	} else {
-		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->v[j]]; // Normalized fluence rate [W/cm^2/W.incident]
+		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]; // Normalized fluence rate [W/cm^2/W.incident]
         if(Image) {
             if(L_LC > 1) for(j=0;j<L_LC;j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons; // Normalized fluence rate [W/cm^2/W.incident]
             else Image[0] /= nPhotons; // Normalized power [W/W.incident]
@@ -467,10 +466,15 @@ void normalizeDeposition(struct beam const * const B, struct geometry const * co
 }
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
-    long      idx;                  // General-purpose non-thread-specific index variable
-	int       pctProgress = 0;      // Simulation progress in percent
-    int       newPctProgress;    
-    bool      ctrlc_caught = false; // Has a ctrl+c been passed from MATLAB?
+    long idx;                  // General-purpose non-thread-specific index variable
+	int  pctProgress = 0;      // Simulation progress in percent
+    int  newPctProgress;    
+    bool ctrlc_caught = false; // Has a ctrl+c been passed from MATLAB?
+    bool silentMode = *mxGetPr(mxGetField(prhs[0],0,"silentMode"));
+    bool dontMaxCPU = *mxGetPr(mxGetField(prhs[0],0,"dontMaxCPU"));
+
+    // To know if we are simulating fluorescence, we check if a "sourceDistribution" field exists. If so, we will use it later in the beam definition.
+    double *S_PDF       = mxGetData(mxGetField(prhs[0],0,"sourceDistribution")); // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
     
     // Timekeeping variables
     double          simulationTimeRequested = *mxGetPr(mxGetField(prhs[0],0,"simulationTime"));
@@ -478,36 +482,36 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 	struct timespec simulationTimeStart, simulationTimeCurrent;
 	
     // Geometry struct definition
-    mxArray *tissueList = mxGetField(prhs[0],0,"tissueList");
-    int     nT = mxGetN(tissueList);
-    double 	muav[nT];            // muav[0:nT-1], absorption coefficient of ith tissue type
-	double 	musv[nT];            // scattering coeff. 
-	double 	gv[nT];              // anisotropy of scattering
-    for(idx=0;idx<nT;idx++) {
-        muav[idx] = *mxGetPr(mxGetField(tissueList,idx,"mua"));
-        musv[idx] = *mxGetPr(mxGetField(tissueList,idx,"mus"));
-        gv[idx]   = *mxGetPr(mxGetField(tissueList,idx,"g"));
+    mxArray *Gmatlab         = mxGetField(prhs[0],0,"G");
+    mxArray *mediaProperties = mxGetField(Gmatlab,0,S_PDF? "mediaProperties": "mediaProperties_fluorescence"); // If S_PDF is NULL then there was no sourceDistribution field, so we are not simulating fluorescence
+    int     nM = mxGetN(mediaProperties);
+    double 	muav[nM];            // muav[0:nM-1], absorption coefficient of ith medium
+	double 	musv[nM];            // scattering coeff. 
+	double 	gv[nM];              // anisotropy of scattering
+    for(idx=0;idx<nM;idx++) {
+        muav[idx] = *mxGetPr(mxGetField(mediaProperties,idx,"mua"));
+        musv[idx] = *mxGetPr(mxGetField(mediaProperties,idx,"mus"));
+        gv[idx]   = *mxGetPr(mxGetField(mediaProperties,idx,"g"));
     }
     
-    mwSize const  *dimPtr = mxGetDimensions(mxGetField(prhs[0],0,"T"));
+    mwSize const  *dimPtr = mxGetDimensions(mxGetField(Gmatlab,0,"M"));
     struct geometry const G_var = (struct geometry) {
-        .d = {*mxGetPr(mxGetField(prhs[0],0,"dx")),
-              *mxGetPr(mxGetField(prhs[0],0,"dy")),
-              *mxGetPr(mxGetField(prhs[0],0,"dz"))},
+        .d = {*mxGetPr(mxGetField(Gmatlab,0,"dx")),
+              *mxGetPr(mxGetField(Gmatlab,0,"dy")),
+              *mxGetPr(mxGetField(Gmatlab,0,"dz"))},
         .n = {dimPtr[0], dimPtr[1], dimPtr[2]},
-        .boundaryFlag = *mxGetPr(mxGetField(prhs[0],0,"boundaryFlag")),
+        .boundaryFlag = *mxGetPr(mxGetField(Gmatlab,0,"boundaryFlag")),
         .muav = muav,
         .musv = musv,
         .gv = gv,
-        .v = mxGetData(mxGetField(prhs[0],0,"T")),
-        .RI = mxGetData(mxGetField(prhs[0],0,"RI"))
+        .M = mxGetData(mxGetField(Gmatlab,0,"M")),
+        .RI = mxGetData(mxGetField(Gmatlab,0,"RI"))
     };
     struct geometry const *G = &G_var;
     
     long L = G->n[0]*G->n[1]*G->n[2]; // Total number of voxels in cuboid
     
 	// Beam struct definition
-    double *S_PDF       = mxGetData(mxGetField(prhs[0],0,"sourceDistribution")); // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
     double power        = 0;
     double *S           = NULL; // Cumulative distribution function
 	if(S_PDF) {
@@ -579,57 +583,58 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     double *nPhotonsPtr = mxGetPr(mxGetField(plhs[0],0,"nPhotons"));
     double *nThreadsPtr = mxGetPr(mxGetField(plhs[0],0,"nThreads"));
     
-    // Display parameters
-    printf("---------------------------------------------------------\n");
-    printf("(nx,ny,nz) = (%d,%d,%d), (dx,dy,dz) = (%0.1e,%0.1e,%0.1e) cm\n",G->n[0],G->n[1],G->n[2],G->d[0],G->d[1],G->d[2]);
-    
-    if(B->S) printf("Using isotropically emitting 3D distribution as light source\n");
-    else {
-        switch(B->beamtypeFlag) {
-            case 0:
-                printf("Using pencil beam\n");
-                break;
-            case 1:
-                printf("Using isotropically emitting point source\n");
-                break;
-            case 2:
-                printf("Using infinite plane wave\n");
-                break;
-            case 3:
-                printf("Using Gaussian focus, Gaussian far field beam\n");
-                break;
-            case 4:
-                printf("Using Gaussian focus, top-hat far field beam\n");
-                break;
-            case 5:
-                printf("Using top-hat focus, Gaussian far field beam\n");
-                break;
-            case 6:
-                printf("Using top-hat focus, top-hat far field beam\n");
-                break;
-            case 7:
-                printf("Using Laguerre-Gaussian LG01 beam\n");
-                break;
+    if(!silentMode) {
+        // Display parameters
+        printf("---------------------------------------------------------\n");
+        printf("(nx,ny,nz) = (%d,%d,%d), (dx,dy,dz) = (%0.1e,%0.1e,%0.1e) cm\n",G->n[0],G->n[1],G->n[2],G->d[0],G->d[1],G->d[2]);
+
+        if(B->S) printf("Using isotropically emitting 3D distribution as light source\n");
+        else {
+            switch(B->beamtypeFlag) {
+                case 0:
+                    printf("Using pencil beam\n");
+                    break;
+                case 1:
+                    printf("Using isotropically emitting point source\n");
+                    break;
+                case 2:
+                    printf("Using infinite plane wave\n");
+                    break;
+                case 3:
+                    printf("Using Gaussian focus, Gaussian far field beam\n");
+                    break;
+                case 4:
+                    printf("Using Gaussian focus, top-hat far field beam\n");
+                    break;
+                case 5:
+                    printf("Using top-hat focus, Gaussian far field beam\n");
+                    break;
+                case 6:
+                    printf("Using top-hat focus, top-hat far field beam\n");
+                    break;
+                case 7:
+                    printf("Using Laguerre-Gaussian LG01 beam\n");
+                    break;
+            }
+
+            if(B->beamtypeFlag!=2) printf("Focus location = (%0.1e,%0.1e,%0.1e) cm\n",B->focus[0],B->focus[1],B->focus[2]);
+            if(B->beamtypeFlag!=1) printf("Beam direction = (%0.3f,%0.3f,%0.3f)\n",B->u[0],B->u[1],B->u[2]);
+            if(B->beamtypeFlag >2) printf("Beam waist = %0.1e cm, divergence = %0.1e rad\n",B->waist,B->divergence);
         }
 
-        if(B->beamtypeFlag!=2) printf("Focus location = (%0.1e,%0.1e,%0.1e) cm\n",B->focus[0],B->focus[1],B->focus[2]);
-        if(B->beamtypeFlag!=1) printf("Beam direction = (%0.3f,%0.3f,%0.3f)\n",B->u[0],B->u[1],B->u[2]);
-        if(B->beamtypeFlag >2) printf("Beam waist = %0.1e cm, divergence = %0.1e rad\n",B->waist,B->divergence);
+        if(G->boundaryFlag==0) printf("boundaryFlag = 0, so no boundaries\n");
+        else if(G->boundaryFlag==1) printf("boundaryFlag = 1, so escape at all boundaries\n");    
+        else if(G->boundaryFlag==2) printf("boundaryFlag = 2, so escape at surface only\n");    
+
+        printf("Simulation duration = %0.2f min\n\n",simulationTimeRequested);
+        printf("Calculating...   0%% done");
+        mexEvalString("drawnow;");
     }
-    
-    if(G->boundaryFlag==0) printf("boundaryFlag = 0, so no boundaries\n");
-    else if(G->boundaryFlag==1) printf("boundaryFlag = 1, so escape at all boundaries\n");    
-	else if(G->boundaryFlag==2) printf("boundaryFlag = 2, so escape at surface only\n");    
-    
-    printf("Simulation duration = %0.2f min\n\n",simulationTimeRequested);
-	printf("Calculating...   0%% done");
-    mexEvalString("drawnow;");
-	
     // ============================ MAJOR CYCLE ========================
 	clock_gettime(CLOCK_MONOTONIC, &simulationTimeStart);
 	
     #ifdef _WIN32
-    *nThreadsPtr = omp_get_num_procs();
+    *nThreadsPtr = dontMaxCPU? fmax(omp_get_num_procs()-1,1): omp_get_num_procs();
     #pragma omp parallel num_threads((long)*nThreadsPtr)
     #else
     *nThreadsPtr = 1;
@@ -680,8 +685,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                                      (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1e9) / (simulationTimeRequested*60);
 				if((newPctProgress != pctProgress) && !ctrlc_caught) {
 					pctProgress = newPctProgress;
-                    printf("\b\b\b\b\b\b\b\b\b%3.i%% done", pctProgress);
-                    mexEvalString("drawnow;");
+                    if(!silentMode) {
+                        printf("\b\b\b\b\b\b\b\b\b%3.i%% done", pctProgress);
+                        mexEvalString("drawnow;");
+                    }
 				}
 			}
 		}
@@ -694,8 +701,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 	clock_gettime(CLOCK_MONOTONIC, &simulationTimeCurrent);
 	simulationTimeSpent = simulationTimeCurrent.tv_sec  - simulationTimeStart.tv_sec +
                          (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1e9;
-	printf("\nSimulated %0.2e photons at a rate of %0.2e photons per minute\n",*nPhotonsPtr, *nPhotonsPtr*60/simulationTimeSpent);
-    printf("---------------------------------------------------------\n");
-    mexEvalString("drawnow;");
+    if(!silentMode) {
+        printf("\nSimulated %0.2e photons at a rate of %0.2e photons per minute\n",*nPhotonsPtr, *nPhotonsPtr*60/simulationTimeSpent);
+        printf("---------------------------------------------------------\n");
+        mexEvalString("drawnow;");
+    }
     normalizeDeposition(B,G,LC,F,Image,*nPhotonsPtr); // Convert data to either relative or absolute fluence rate
 }

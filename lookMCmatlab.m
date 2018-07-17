@@ -1,72 +1,71 @@
 function lookMCmatlab(name)
 %
-%   Displays the tissue cuboid, an overview over the known optical, thermal
-%   and flourescence properties of the tissue types and the output of any
+%   Displays the geometry cuboid, an overview over the known optical, thermal
+%   and flourescence properties of the media and the output of any
 %   completed Monte Carlo simulations (excitation and/or fluorescence).
 %
 %   Input
 %       name
-%           the basename of the files as specified in makeTissue
+%           the basename of the data files
 %
 %   Displays
-%       Tissue cuboid
-%       Tissue optical, thermal and fluorescence properties
+%       Geometry cuboid
+%       Media optical, thermal and fluorescence properties
 %   If Monte Carlo output data exists, displays
 %       Fluence rate
 %       Absorbed power
 %   And, if fluorescence Monte Carlo output data exists, displays
-%       Tissue optical and thermal properties at the fluorescence wavelength
+%       Media optical and thermal properties at the fluorescence wavelength
 %       Distribution of fluorescence emitters
 %       Fluorescence fluence rate
 %       Absorbed fluorescence power
 %
 %   Requires
 %       plotVolumetric.m
-%       plotTissueProperties.m
+%       plotMediaProperties.m
 %
 
 %% Acknowledgement
 %   This function was inspired by lookmcxyz of the mcxyz MC program hosted at omlc.org
 
-%% Load tissue definition
+%% Load geometry definition and media properties
 load(['./Data/' name '.mat']);
 
-%% Make tissue plot
+%% Make geometry plot
 if(~ishandle(1))
     h_f = figure(1);
     h_f.Position = [40 80 1100 650];
 else
     h_f = figure(1);
 end
-h_f.Name = 'Tissue type illustration';
-plotVolumetric(x,y,z,T,'MCmatlab_TissueIllustration',tissueList);
-title('Tissue type illustration');
+h_f.Name = 'Geometry illustration';
+plotVolumetric(G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties);
+title('Geometry illustration');
 
-%% Make tissue properties plot
+%% Make media properties plot
 if(~ishandle(2))
     h_f = figure(2);
     h_f.Position = [40 80 1100 650];
 else
     h_f = figure(2);
 end
-h_f.Name = 'Tissue properties';
-plotTissueProperties(tissueList);
+h_f.Name = 'Media properties';
+plotMediaProperties(G.mediaProperties);
 
-if(exist('tissueList_fluorescence','var'))
-    %% Make fluorescence tissue properties plot
+if(exist('mediaProperties_fluorescence','var'))
+    %% Make fluorescence media properties plot
     if(~ishandle(3))
         h_f = figure(3);
         h_f.Position = [40 80 1100 650];
     else
         h_f = figure(3);
     end
-    h_f.Name = 'Fluorescence tissue properties';
-    plotTissueProperties(tissueList_fluorescence);
+    h_f.Name = 'Fluorescence media properties';
+    plotMediaProperties(G.mediaProperties_fluorescence);
 end
 
 if(exist(['./Data/' name '_MCoutput.mat'],'file'))
     load(['./Data/' name '_MCoutput.mat'],'MCoutput','MCinput');
-    dx = x(2)-x(1); dy = y(2)-y(1); dz = z(2)-z(1);
     
     %% Make fluence rate plot
     if(~ishandle(4))
@@ -76,7 +75,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
         h_f = figure(4);
     end
     h_f.Name = 'Normalized fluence rate';
-    plotVolumetric(x,y,z,MCoutput.F,'MCmatlab_fromZero');
+    plotVolumetric(G.x,G.y,G.z,MCoutput.F,'MCmatlab_fromZero');
     title('Normalized fluence rate (Intensity) [W/cm^2/W.incident] ')
     
     %% Make power absorption plot
@@ -87,11 +86,11 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
         h_f = figure(8);
     end
     h_f.Name = 'Normalized power absorption';
-    mua_vec = [tissueList.mua];
-    plotVolumetric(x,y,z,mua_vec(T).*MCoutput.F,'MCmatlab_fromZero');
+    mua_vec = [G.mediaProperties.mua];
+    plotVolumetric(G.x,G.y,G.z,mua_vec(G.M).*MCoutput.F,'MCmatlab_fromZero');
     title('Normalized absorbed power per unit volume [W/cm^3/W.incident] ')
     
-    fprintf('\n%.3g%% of the input light was absorbed within the volume.\n',100*dx*dy*dz*sum(sum(sum(mua_vec(T).*MCoutput.F))));
+    fprintf('\n%.3g%% of the input light was absorbed within the cuboid.\n',100*G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*MCoutput.F))));
 
     if(MCinput.useLightCollector)
         %% If there's a light collector, show its orientation and the detected light
@@ -102,11 +101,11 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
             h_f = figure(7);
         end
         h_f.Name = 'Light collector illustration';
-        plotVolumetric(x,y,z,T,'MCmatlab_TissueIllustration',tissueList);
+        plotVolumetric(G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties);
         title('Light collector illustration');
         box on;grid on;grid minor;
 
-        arrowlength = sqrt((nx*dx)^2+(ny*dy)^2+(nz*dz)^2)/5;
+        arrowlength = sqrt((G.nx*G.dx)^2+(G.ny*G.dy)^2+(G.nz*G.dz)^2)/5;
         Zvec = [sin(MCinput.theta_LC)*cos(MCinput.phi_LC) , sin(MCinput.theta_LC)*sin(MCinput.phi_LC) , cos(MCinput.theta_LC)];
         Xvec = [sin(MCinput.phi_LC) , -cos(MCinput.phi_LC) , 0];
         Yvec = cross(Zvec,Xvec);
@@ -161,7 +160,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
         %% Remind the user what the input power was and plot emitter distribution
         fprintf('\nFluorescence was simulated for %.2g W of input excitation power.\n',P);
         
-        fprintf('Out of this, %.3g W was absorbed within the volume.\n',dx*dy*dz*sum(sum(sum(mua_vec(T).*P.*MCoutput.F))));
+        fprintf('Out of this, %.3g W was absorbed within the cuboid.\n',G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*P.*MCoutput.F))));
         
         if(~ishandle(9))
             h_f = figure(9);
@@ -170,13 +169,13 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
             h_f = figure(9);
         end
         h_f.Name = 'Fluorescence emitters';
-        Y_vec = [tissueList.Y]; % The tissues' fluorescence power efficiencies
-        sat_vec = [tissueList.sat]; % The tissues' fluorescence saturation fluence rates (intensity)
-        FluorescenceEmitters = Y_vec(T).*mua_vec(T)*P.*MCoutput.F./(1 + P*MCoutput.F./sat_vec(T)); % [W/cm^3]
-        plotVolumetric(x,y,z,FluorescenceEmitters,'MCmatlab_fromZero');
+        Y_vec = [G.mediaProperties.Y]; % The media's fluorescence power efficiencies
+        sat_vec = [G.mediaProperties.sat]; % The media's fluorescence saturation fluence rates (intensity)
+        FluorescenceEmitters = Y_vec(G.M).*mua_vec(G.M)*P.*MCoutput.F./(1 + P*MCoutput.F./sat_vec(G.M)); % [W/cm^3]
+        plotVolumetric(G.x,G.y,G.z,FluorescenceEmitters,'MCmatlab_fromZero');
         title('Fluorescence emitter distribution [W/cm^3] ')
 
-        fprintf('Out of this, %.3g W was re-emitted as fluorescence.\n',dx*dy*dz*sum(sum(sum(FluorescenceEmitters))));
+        fprintf('Out of this, %.3g W was re-emitted as fluorescence.\n',G.dx*G.dy*G.dz*sum(sum(sum(FluorescenceEmitters))));
         
         %% Make fluence rate plot
         if(~ishandle(10))
@@ -186,7 +185,7 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
             h_f = figure(10);
         end
         h_f.Name = 'Fluorescence fluence rate';
-        plotVolumetric(x,y,z,MCoutput_fluorescence.F,'MCmatlab_fromZero');
+        plotVolumetric(G.x,G.y,G.z,MCoutput_fluorescence.F,'MCmatlab_fromZero');
         title('Fluorescence fluence rate (Intensity) [W/cm^2] ')
         
         %% Make power absorption plot
@@ -197,11 +196,11 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
             h_f = figure(11);
         end
         h_f.Name = 'Fluorescence power absorption';
-        mua_vec = [tissueList_fluorescence.mua];
-        plotVolumetric(x,y,z,mua_vec(T).*MCoutput_fluorescence.F,'MCmatlab_fromZero');
+        mua_vec = [G.mediaProperties_fluorescence.mua];
+        plotVolumetric(G.x,G.y,G.z,mua_vec(G.M).*MCoutput_fluorescence.F,'MCmatlab_fromZero');
         title('Absorbed fluorescence power per unit volume [W/cm^3] ')
 
-        fprintf('Out of this, %.3g W was re-absorbed within the volume.\n\n',dx*dy*dz*sum(sum(sum(mua_vec(T).*MCoutput_fluorescence.F))));
+        fprintf('Out of this, %.3g W was re-absorbed within the cuboid.\n\n',G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*MCoutput_fluorescence.F))));
         
         if(MCinput_fluorescence.useLightCollector)
             %% If there's a fluorescence light collector, show its orientation and the detected light
@@ -212,11 +211,11 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
                 h_f = figure(12);
             end
             h_f.Name = 'Fluorescence light collector illustration';
-            plotVolumetric(x,y,z,T,'MCmatlab_TissueIllustration',tissueList_fluorescence);
+            plotVolumetric(G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_fluorescence);
             title('Fluorescence light collector illustration');
             box on;grid on;grid minor;
 
-            arrowlength = sqrt((nx*dx)^2+(ny*dy)^2+(nz*dz)^2)/5;
+            arrowlength = sqrt((G.nx*G.dx)^2+(G.ny*G.dy)^2+(G.nz*G.dz)^2)/5;
             Zvec = [sin(MCinput_fluorescence.theta_LC)*cos(MCinput_fluorescence.phi_LC) , sin(MCinput_fluorescence.theta_LC)*sin(MCinput_fluorescence.phi_LC) , cos(MCinput_fluorescence.theta_LC)];
             Xvec = [sin(MCinput_fluorescence.phi_LC) , -cos(MCinput_fluorescence.phi_LC) , 0];
             Yvec = cross(Zvec,Xvec);
