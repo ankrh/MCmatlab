@@ -86,6 +86,7 @@ mua_vec = [G.mediaProperties.mua]; % The media's excitation absorption coefficie
 Y_vec = [G.mediaProperties.Y]; % The media's fluorescence power yields
 sat_vec = [G.mediaProperties.sat]; % The media's fluorescence saturation fluence rates (intensity)
 sourceDistribution = Y_vec(G.M).*mua_vec(G.M)*P_excitation.*MCoutput.F./(1 + P_excitation*MCoutput.F./sat_vec(G.M)); % [W/cm^3]
+if(max(sourceDistribution(:)) == 0) error('Error: No fluorescence emitters'); end
 
 %% Check to ensure that the light collector is not inside the cuboid
 if useLightCollector

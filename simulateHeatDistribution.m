@@ -60,9 +60,9 @@ dontMaxCPU = 0; % 1 for true, 0 for false
 makemovie  = 1; % 1 for true, 0 for false
 
 %% USER SPECIFIED: Define parameters
-P                = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
-onduration       = 0.5; % [s] Pulse on-duration
-offduration      = 0; % [s] Pulse off-duration
+P                = 1; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
+onduration       = 0.05; % [s] Pulse on-duration
+offduration      = 0.05; % [s] Pulse off-duration
 Temp             = 37*ones(size(G.M)); % [deg C] Initial temperature distribution
 n_pulses         = 1; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
 
@@ -305,7 +305,7 @@ if(~silentMode)
         end
         clf;
         illumFigure.Name = 'Temperature after illumination';
-        plotVolumetric(x,y,z,Temp_illum,'MCmatlab');
+        plotVolumetric(G.x,G.y,G.z,Temp_illum,'MCmatlab');
         title('Temperature after illumination');
         caxis(plotTempLimits); % User-defined color scale limits
     else
