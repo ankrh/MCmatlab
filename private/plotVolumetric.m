@@ -35,14 +35,14 @@ colormap(GPBGYRcolormap); % Assume we want to use the GPBGYR (Grey-Purple-Blue-G
 colorbar;
 if ~isempty(varargin)
     plottype = varargin{1};
-    if strcmp(plottype,'MCmatlab_TissueIllustration')
+    if strcmp(plottype,'MCmatlab_GeometryIllustration')
         xyzaxes = true;
         reverseZ = true;
-        tissueList = varargin{2};
+        mediaProperties = varargin{2};
         checkboxvisible = false;
         directmapping = true;
-        colormap(lines(length(tissueList)));
-        colorbar('TickLabels',{tissueList.name},'Ticks',(1:length(tissueList))+0.5);
+        colormap(lines(length(mediaProperties)));
+        colorbar('TickLabels',{mediaProperties.name},'Ticks',(1:length(mediaProperties))+0.5);
     elseif strcmp(plottype,'MCmatlab_fromZero')
         xyzaxes = true;
         reverseZ = true;

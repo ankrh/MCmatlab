@@ -2,7 +2,9 @@
  *
  *  MCmatlab.c,	in the C programming language, written for MATLAB MEX function generation
  *  Compliant with the ISO C11 standard
- *
+ *  
+ *  Created 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
+ * 
  *  Heavily inspired by mcxyz.c by Steven Jacques, Ting Li, Scott Prahl at the Oregon Health & Science University
  *
  ** COMPILING ON WINDOWS
@@ -50,13 +52,14 @@ extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing th
 struct geometry { // Struct type for the constant geometry definitions
     double         d[3];
     long           n[3];
-    int            boundaryFlag;
+    int            boundaryType;
     double         *muav,*musv,*gv;
-    unsigned char  *v;
+    unsigned char  *M;
+    double         *RI;    // Refractive index of each z slice
 };
 
 struct beam { // Struct type for the constant beam definitions
-    int            beamtypeFlag;
+    int            beamType;
     double         *S;
     double         power;
     double         waist,divergence;
@@ -72,7 +75,7 @@ struct lightcollector { // Struct type for the constant light collector definiti
     double         f; // Focal length of the objective. If the light collector is a fiber tip, this will be INFINITY.
     double         diam; // Diameter of the objective aperture or core diameter of the fiber. For an ideal thin lens objective, this is 2*tan(arcsin(lensNA/f)).
     double         FSorNA; // For an objective lens: Field Size of the imaging system (diameter of area in object plane that gets imaged). For a fiber tip: The fiber's NA.
-    long           res[2]; // Resolution of light collector planes in pixels along X and Y axes
+    long           res[2]; // For an objective lens: Resolution of image plane in pixels along X and Y axes
 };
 
 struct photon { // Struct type for parameters describing the thread-specific current state of a photon
@@ -143,13 +146,13 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->u[0] = sintheta*cos(phi);
         P->u[1] = sintheta*sin(phi);
         P->u[2] = costheta;
-    } else switch (B->beamtypeFlag) {
+    } else switch (B->beamType) {
         case 0: // pencil beam
             P->i[0] = (B->focus[0] - B->focus[2]*B->u[0]/B->u[2])/G->d[0] + G->n[0]/2.0;
             P->i[1] = (B->focus[1] - B->focus[2]*B->u[1]/B->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
             for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
-        break;
+            break;
         case 1: // isotropically emitting point source
             P->i[0] = B->focus[0]/G->d[0] + G->n[0]/2.0;
             P->i[1] = B->focus[1]/G->d[1] + G->n[1]/2.0;
@@ -160,13 +163,13 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
             P->u[0] = sintheta*cos(phi);
             P->u[1] = sintheta*sin(phi);
             P->u[2] = costheta;
-        break;
+            break;
         case 2: // infinite plane wave
-            P->i[0] = ((G->boundaryFlag==1)? 1: KILLRANGE)*G->n[0]*(RandomNum-0.5) + G->n[0]/2.0; // Generates a random ix coordinate within the cuboid
-            P->i[1] = ((G->boundaryFlag==1)? 1: KILLRANGE)*G->n[1]*(RandomNum-0.5) + G->n[1]/2.0; // Generates a random iy coordinate within the cuboid
+            P->i[0] = ((G->boundaryType==1)? 1: KILLRANGE)*G->n[0]*(RandomNum-0.5) + G->n[0]/2.0; // Generates a random ix coordinate within the cuboid
+            P->i[1] = ((G->boundaryType==1)? 1: KILLRANGE)*G->n[1]*(RandomNum-0.5) + G->n[1]/2.0; // Generates a random iy coordinate within the cuboid
             P->i[2] = 0;
             for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
-        break;
+            break;
         case 3: // Gaussian focus, Gaussian far field beam
             phi     = RandomNum*2*PI;
             axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
@@ -179,7 +182,7 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
             P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
             P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
-        break;
+            break;
         case 4: // Gaussian focus, top-hat far field beam
             phi     = RandomNum*2*PI;
             axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
@@ -192,7 +195,7 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
             P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
             P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
-        break;
+            break;
         case 5: // top-hat focus, Gaussian far field beam
             phi     = RandomNum*2*PI;
             axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
@@ -205,7 +208,7 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
             P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
             P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
-        break;
+            break;
         case 6: // top-hat focus, top-hat far field beam
             phi  	= RandomNum*2*PI;
             axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
@@ -218,7 +221,7 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
             P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
             P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
-        break;
+            break;
         case 7: // Laguerre-Gaussian LG01 beam
             phi     = RandomNum*2*PI;
             axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
@@ -229,7 +232,7 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
             P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
             P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
-        break;
+            break;
     }
     
     // Calculate distances to next voxel boundary planes
@@ -289,7 +292,7 @@ void checkEscape(struct photon * const P, struct geometry const * const G, struc
                       P->i[1] < G->n[1] && P->i[1] >= 0 &&
                       P->i[2] < G->n[2] && P->i[2] >= 0;
 
-    switch (G->boundaryFlag) {
+    switch (G->boundaryType) {
         case 0:
             P->alive = (fabs(P->i[0]/G->n[0] - 1.0/2) <  KILLRANGE/2 &&
                         fabs(P->i[1]/G->n[1] - 1.0/2) <  KILLRANGE/2 &&
@@ -312,15 +315,15 @@ void checkEscape(struct photon * const P, struct geometry const * const G, struc
 }
 
 void getNewVoxelProperties(struct photon * const P, struct geometry const * const G) {
-    /* Get tissue voxel properties of current position.
+    /* Get optical properties of current voxel.
      * If photon is outside cuboid, properties are those of
      * the closest defined voxel. */
     P->j = ((P->i[2] < 0)? 0: ((P->i[2] >= G->n[2])? G->n[2]-1: floor(P->i[2])))*G->n[0]*G->n[1] +
            ((P->i[1] < 0)? 0: ((P->i[1] >= G->n[1])? G->n[1]-1: floor(P->i[1])))*G->n[0]         +
            ((P->i[0] < 0)? 0: ((P->i[0] >= G->n[0])? G->n[0]-1: floor(P->i[0]))); // Index values are restrained to integers in the interval [0,n-1]
-    P->mua = G->muav[G->v[P->j]];
-    P->mus = G->musv[G->v[P->j]];
-    P->g   = G->gv  [G->v[P->j]];
+    P->mua = G->muav[G->M[P->j]];
+    P->mus = G->musv[G->M[P->j]];
+    P->g   = G->gv  [G->M[P->j]];
 }
 
 void propagatePhoton(struct photon * const P, struct geometry const * const G, double * const F) {
@@ -333,11 +336,55 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, d
     
     for(idx=0;idx<3;idx++) {
         long i_old = floor(P->i[idx]);
-        if(s == P->D[idx]) { // If we're supposed to go to the next voxel along this dimension
-            P->i[idx] = (P->u[idx] > 0)? i_old + 1: i_old - DBL_EPSILON*(labs(i_old)+1);
-            P->sameVoxel = false;
-            P->D[idx] = G->d[idx]/fabs(P->u[idx]); // Reset voxel boundary distance
-        } else { // If we were supposed to remain in the same voxel along this dimension
+        long i_new = i_old + SIGN(P->u[idx]);
+        if(s == P->D[idx]) { // If we're supposed to go to the voxel boundary along this dimension
+            int photondeflection = 0; // Switch that can be 0, 1 or 2. 0 means photon travels straight, 1 means photon is refracted at the voxel boundary, 2 means reflected
+            double cos_new = 0;
+            if(!isnan(G->RI[0]) && idx == 2) { // If we're simulating refraction/reflection and we're entering a new z slice
+                double RI_ratio = G->RI[i_old>=0? (i_old<G->n[2]? i_old:G->n[2]-1):0]/
+                                  G->RI[i_new>=0? (i_new<G->n[2]? i_new:G->n[2]-1):0];
+                if(RI_ratio != 1) { // If there's a refractive index change
+                    double sin_newsq = (P->u[0]*P->u[0] + P->u[1]*P->u[1])*RI_ratio*RI_ratio;
+                    if(sin_newsq < 1) { // If we don't experience total internal reflection
+                        cos_new = SIGN(P->u[2])*sqrt(1 - sin_newsq);
+                        double R = pow((RI_ratio*P->u[2] - cos_new)/
+                                       (RI_ratio*P->u[2] + cos_new),2)/2 +
+                                   pow((RI_ratio*cos_new - P->u[2])/
+                                       (RI_ratio*cos_new + P->u[2]),2)/2; // R is the reflectivity assuming equal probability of p or s polarization (unpolarized light at all times)
+                        
+                        photondeflection = RandomNum > R? (fabs(P->u[2]) == 1? 0: 1):2;
+                    } else photondeflection = 2;
+                }
+            }
+            
+            switch(photondeflection) {
+                case 0: // Travel straight
+                    P->i[idx] = (P->u[idx] > 0)? i_old + 1: i_old - DBL_EPSILON*(labs(i_old)+1);
+                    P->sameVoxel = false;
+                    P->D[idx] = G->d[idx]/fabs(P->u[idx]); // Reset voxel boundary distance
+                    break;
+                case 1: // Refract, can only happen for idx = 2
+                    P->i[2] = (P->u[2] > 0)? i_old + 1: i_old - DBL_EPSILON*(labs(i_old)+1);
+                    P->sameVoxel = false;
+                    double scalefactor = sqrt((1 - cos_new*cos_new)/(1 - P->u[2]*P->u[2])); // Here we already know that P->u[2] is not +-1
+                    if(P->u[0]) {
+                        P->u[0] *= scalefactor;
+                        P->D[0] = (floor(P->i[0]) + (P->u[0]>0) - P->i[0])*G->d[0]/P->u[0]; // Recalculate voxel boundary distance for x
+                    }
+                    if(P->u[1]) {
+                        P->u[1] *= scalefactor;
+                        P->D[1] = (floor(P->i[1]) + (P->u[1]>0) - P->i[1])*G->d[1]/P->u[1]; // Recalculate voxel boundary distance for y
+                    }
+                    P->u[2] = cos_new;
+                    P->D[2] = G->d[2]/fabs(P->u[2]); // Reset voxel boundary distance for z. Note that here it is important that x and y propagations have already been applied before we here modify their D during the z propagation.
+                    break;
+                case 2: // Reflect, can only happen for idx = 2
+                    P->i[2] = (P->u[2] > 0)? i_old + 1 - DBL_EPSILON*(labs(i_old)+1): i_old;
+                    P->u[2] *= -1;
+                    P->D[2] = G->d[2]/fabs(P->u[2]); // Reset voxel boundary distance
+                    break;
+            }
+        } else { // We're supposed to remain in the same voxel along this dimension
             P->i[idx] += s*P->u[idx]/G->d[idx]; // First take the expected step (including various rounding errors)
             if(floor(P->i[idx]) != i_old) P->i[idx] = (P->u[idx] > 0)? i_old + 1 - DBL_EPSILON*(labs(i_old)+1): i_old ; // If photon due to rounding errors actually crossed the border, set it to be barely in the original voxel
             P->D[idx] -= s;
@@ -399,20 +446,20 @@ void normalizeDeposition(struct beam const * const B, struct geometry const * co
     long L_LC = LC->res[0]*LC->res[1]; // Total number of pixels in light collector planes
     // Normalize deposition to yield either absolute or relative fluence rate (F).
     if(B->S) { // For a 3D source distribution (e.g., fluorescence)
-		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->v[j]]/B->power; // Absolute fluence rate [W/cm^2].
+		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]/B->power; // Absolute fluence rate [W/cm^2].
         if(Image) {
             if(L_LC > 1) for(j=0;j<L_LC;j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/B->power; // Absolute fluence rate [W/cm^2]
             else Image[0] /= nPhotons/B->power; // Absolute power [W]
         }
         mxFree(B->S);
-    } else if(B->beamtypeFlag == 3 && G->boundaryFlag != 1) { // For infinite plane wave launched into volume without absorbing walls
-		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->v[j]]/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
+    } else if(B->beamType == 3 && G->boundaryType != 1) { // For infinite plane wave launched into volume without absorbing walls
+		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
         if(Image) {
             if(L_LC > 1) for(j=0;j<L_LC;j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
             else Image[0] /= nPhotons/(KILLRANGE*KILLRANGE); // Normalized power [W/W.incident]
         }
 	} else {
-		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->v[j]]; // Normalized fluence rate [W/cm^2/W.incident]
+		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]; // Normalized fluence rate [W/cm^2/W.incident]
         if(Image) {
             if(L_LC > 1) for(j=0;j<L_LC;j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons; // Normalized fluence rate [W/cm^2/W.incident]
             else Image[0] /= nPhotons; // Normalized power [W/W.incident]
@@ -421,10 +468,17 @@ void normalizeDeposition(struct beam const * const B, struct geometry const * co
 }
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
-    long      idx;                  // General-purpose non-thread-specific index variable
-	int       pctProgress = 0;      // Simulation progress in percent
-    int       newPctProgress;    
-    bool      ctrlc_caught = false; // Has a ctrl+c been passed from MATLAB?
+    long idx;                  // General-purpose non-thread-specific index variable
+	int  pctProgress = 0;      // Simulation progress in percent
+    int  newPctProgress;    
+    bool ctrlc_caught = false; // Has a ctrl+c been passed from MATLAB?
+    bool silentMode = *mxGetPr(mxGetField(prhs[0],0,"silentMode"));
+    bool dontMaxCPU = *mxGetPr(mxGetField(prhs[0],0,"dontMaxCPU"));
+
+    
+    // To know if we are simulating fluorescence, we check if a "sourceDistribution" field exists. If so, we will use it later in the beam definition.
+    mxArray *MatlabBeam = mxGetField(prhs[0],0,"Beam");
+    double *S_PDF       = mxGetData(mxGetField(MatlabBeam,0,"sourceDistribution")); // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
     
     // Timekeeping variables
     double          simulationTimeRequested = *mxGetPr(mxGetField(prhs[0],0,"simulationTime"));
@@ -432,88 +486,89 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 	struct timespec simulationTimeStart, simulationTimeCurrent;
 	
     // Geometry struct definition
-    mxArray *tissueList = mxGetField(prhs[0],0,"tissueList");
-    int     nT = mxGetN(tissueList);
-    double 	muav[nT];            // muav[0:nT-1], absorption coefficient of ith tissue type
-	double 	musv[nT];            // scattering coeff. 
-	double 	gv[nT];              // anisotropy of scattering
-    for(idx=0;idx<nT;idx++) {
-        muav[idx] = *mxGetPr(mxGetField(tissueList,idx,"mua"));
-        musv[idx] = *mxGetPr(mxGetField(tissueList,idx,"mus"));
-        gv[idx]   = *mxGetPr(mxGetField(tissueList,idx,"g"));
+    mxArray *MatlabG         = mxGetField(prhs[0],0,"G");
+    mxArray *mediaProperties = mxGetField(MatlabG,0,S_PDF? "mediaProperties_f": "mediaProperties"); // If S_PDF is NULL then there was no sourceDistribution field, so we are not simulating fluorescence
+    int     nM = mxGetN(mediaProperties);
+    double 	muav[nM];            // muav[0:nM-1], absorption coefficient of ith medium
+	double 	musv[nM];            // scattering coeff. 
+	double 	gv[nM];              // anisotropy of scattering
+    for(idx=0;idx<nM;idx++) {
+        muav[idx] = *mxGetPr(mxGetField(mediaProperties,idx,"mua"));
+        musv[idx] = *mxGetPr(mxGetField(mediaProperties,idx,"mus"));
+        gv[idx]   = *mxGetPr(mxGetField(mediaProperties,idx,"g"));
     }
     
-    mwSize const  *dimPtr = mxGetDimensions(mxGetField(prhs[0],0,"T"));
+    mwSize const  *dimPtr = mxGetDimensions(mxGetField(MatlabG,0,"M"));
     struct geometry const G_var = (struct geometry) {
-        .d = {*mxGetPr(mxGetField(prhs[0],0,"dx")),
-              *mxGetPr(mxGetField(prhs[0],0,"dy")),
-              *mxGetPr(mxGetField(prhs[0],0,"dz"))},
+        .d = {*mxGetPr(mxGetField(MatlabG,0,"dx")),
+              *mxGetPr(mxGetField(MatlabG,0,"dy")),
+              *mxGetPr(mxGetField(MatlabG,0,"dz"))},
         .n = {dimPtr[0], dimPtr[1], dimPtr[2]},
-        .boundaryFlag = *mxGetPr(mxGetField(prhs[0],0,"boundaryFlag")),
+        .boundaryType = *mxGetPr(mxGetField(MatlabG,0,"boundaryType")),
         .muav = muav,
         .musv = musv,
         .gv = gv,
-        .v = mxGetData(mxGetField(prhs[0],0,"T"))
+        .M = mxGetData(mxGetField(MatlabG,0,"M")),
+        .RI = mxGetData(mxGetField(MatlabG,0,"RI"))
     };
     struct geometry const *G = &G_var;
     
     long L = G->n[0]*G->n[1]*G->n[2]; // Total number of voxels in cuboid
     
 	// Beam struct definition
-    double *S_PDF       = mxGetData(mxGetField(prhs[0],0,"sourceDistribution")); // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
     double power        = 0;
     double *S           = NULL; // Cumulative distribution function
 	if(S_PDF) {
         S = mxMalloc((L+1)*sizeof(double));
-        if(!S) {printf("Out of memory, returning...\n"); return;}
         S[0] = 0;
         for(idx=1;idx<(L+1);idx++) S[idx] = S[idx-1] + S_PDF[idx-1];
         power = S[L]*G->d[0]*G->d[1]*G->d[2];
         for(idx=1;idx<(L+1);idx++) S[idx] /= S[L];
     }
-    
-    double tb = *mxGetPr(mxGetField(prhs[0],0,"thetaBeam"));
-    double pb = *mxGetPr(mxGetField(prhs[0],0,"phiBeam"));
+
+    double tb = S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"thetaBeam"));
+    double pb = S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"phiBeam"));
 
     double u[3] = {sin(tb)*cos(pb),
                    sin(tb)*sin(pb),
                    cos(tb)}; // Temporary array
-    
+
     double v[3] = {1,0,0};
     if(u[2]!=1) unitcrossprod(u,(double[]){0,0,1},v);
-    
+
     struct beam const B_var = (struct beam) {
-        .beamtypeFlag =  *mxGetPr(mxGetField(prhs[0],0,"beamtypeFlag")),
+        .beamType     =  S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"beamType")),
         .S            =  S,
         .power        =  power,
-        .waist        =  *mxGetPr(mxGetField(prhs[0],0,"waist")),
-        .divergence   =  *mxGetPr(mxGetField(prhs[0],0,"divergence")),
-        .focus        = {*mxGetPr(mxGetField(prhs[0],0,"xFocus")),
-                         *mxGetPr(mxGetField(prhs[0],0,"yFocus")),
-                         *mxGetPr(mxGetField(prhs[0],0,"zFocus"))},
+        .waist        =  S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"waist")),
+        .divergence   =  S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"divergence")),
+        .focus        = {S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"xFocus")),
+                         S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"yFocus")),
+                         S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"zFocus"))},
         .u            = {u[0],u[1],u[2]},
         .v            = {v[0],v[1],v[2]} // normal vector to beam center axis
     };
     struct beam const *B = &B_var;
-    
-    // Detector struct definition
+
+    // Light Collector struct definition
+    mxArray *MatlabLC      = mxGetField(prhs[0],0,"LightCollector");
     bool useLightCollector = *mxGetPr(mxGetField(prhs[0],0,"useLightCollector"));
     
-    double theta = *mxGetPr(mxGetField(prhs[0],0,"theta_LC"));
-    double phi   = *mxGetPr(mxGetField(prhs[0],0,"phi_LC"));
-    double f     = *mxGetPr(mxGetField(prhs[0],0,"f_LC"));
+    double theta = *mxGetPr(mxGetField(MatlabLC,0,"theta_LC"));
+    double phi   = *mxGetPr(mxGetField(MatlabLC,0,"phi_LC"));
+    double f     = *mxGetPr(mxGetField(MatlabLC,0,"f_LC"));
 
     struct lightcollector const LC_var = (struct lightcollector) {
-        .r            = {*mxGetPr(mxGetField(prhs[0],0,"xFPC_LC")) - (isfinite(f)? f*sin(theta)*cos(phi):0), // xyz coordinates of center of light collector
-                         *mxGetPr(mxGetField(prhs[0],0,"yFPC_LC")) - (isfinite(f)? f*sin(theta)*sin(phi):0),
-                         *mxGetPr(mxGetField(prhs[0],0,"zFPC_LC")) - (isfinite(f)? f*cos(theta):0)},
+        .r            = {*mxGetPr(mxGetField(MatlabLC,0,"xFPC_LC")) - (isfinite(f)? f*sin(theta)*cos(phi):0), // xyz coordinates of center of light collector
+                         *mxGetPr(mxGetField(MatlabLC,0,"yFPC_LC")) - (isfinite(f)? f*sin(theta)*sin(phi):0),
+                         *mxGetPr(mxGetField(MatlabLC,0,"zFPC_LC")) - (isfinite(f)? f*cos(theta)         :0)},
         .theta        =  theta,
         .phi          =  phi,
         .f            =  f,
-        .diam         =  *mxGetPr(mxGetField(prhs[0],0,"diam_LC")),
-        .FSorNA       =  *mxGetPr(mxGetField(prhs[0],0,isfinite(f)?"FieldSize_LC":"NA_LC")),
-        .res          = {isfinite(f)?*mxGetPr(mxGetField(prhs[0],0,"resX_LC")):1,
-                         isfinite(f)?*mxGetPr(mxGetField(prhs[0],0,"resY_LC")):1}};
+        .diam         =  *mxGetPr(mxGetField(MatlabLC,0,"diam_LC")),
+        .FSorNA       =  *mxGetPr(mxGetField(MatlabLC,0,isfinite(f)?"FieldSize_LC":"NA_LC")),
+        .res          = {isfinite(f)? *mxGetPr(mxGetField(MatlabLC,0,"resX_LC")):1,
+                         isfinite(f)? *mxGetPr(mxGetField(MatlabLC,0,"resY_LC")):1}};
     struct lightcollector const *LC = &LC_var;
     
     // Prepare output MATLAB struct
@@ -533,57 +588,58 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     double *nPhotonsPtr = mxGetPr(mxGetField(plhs[0],0,"nPhotons"));
     double *nThreadsPtr = mxGetPr(mxGetField(plhs[0],0,"nThreads"));
     
-    // Display parameters
-    printf("---------------------------------------------------------\n");
-    printf("(nx,ny,nz) = (%d,%d,%d), (dx,dy,dz) = (%0.1e,%0.1e,%0.1e) cm\n",G->n[0],G->n[1],G->n[2],G->d[0],G->d[1],G->d[2]);
-    
-    if(B->S) printf("Using isotropically emitting 3D distribution as light source\n");
-    else {
-        switch(B->beamtypeFlag) {
-            case 0:
-                printf("Using pencil beam\n");
-                break;
-            case 1:
-                printf("Using isotropically emitting point source\n");
-                break;
-            case 2:
-                printf("Using infinite plane wave\n");
-                break;
-            case 3:
-                printf("Using Gaussian focus, Gaussian far field beam\n");
-                break;
-            case 4:
-                printf("Using Gaussian focus, top-hat far field beam\n");
-                break;
-            case 5:
-                printf("Using top-hat focus, Gaussian far field beam\n");
-                break;
-            case 6:
-                printf("Using top-hat focus, top-hat far field beam\n");
-                break;
-            case 7:
-                printf("Using Laguerre-Gaussian LG01 beam\n");
-                break;
+    if(!silentMode) {
+        // Display parameters
+        printf("---------------------------------------------------------\n");
+        printf("(nx,ny,nz) = (%d,%d,%d), (dx,dy,dz) = (%0.1e,%0.1e,%0.1e) cm\n",G->n[0],G->n[1],G->n[2],G->d[0],G->d[1],G->d[2]);
+
+        if(B->S) printf("Using isotropically emitting 3D distribution as light source\n");
+        else {
+            switch(B->beamType) {
+                case 0:
+                    printf("Using pencil beam\n");
+                    break;
+                case 1:
+                    printf("Using isotropically emitting point source\n");
+                    break;
+                case 2:
+                    printf("Using infinite plane wave\n");
+                    break;
+                case 3:
+                    printf("Using Gaussian focus, Gaussian far field beam\n");
+                    break;
+                case 4:
+                    printf("Using Gaussian focus, top-hat far field beam\n");
+                    break;
+                case 5:
+                    printf("Using top-hat focus, Gaussian far field beam\n");
+                    break;
+                case 6:
+                    printf("Using top-hat focus, top-hat far field beam\n");
+                    break;
+                case 7:
+                    printf("Using Laguerre-Gaussian LG01 beam\n");
+                    break;
+            }
+
+            if(B->beamType!=2) printf("Focus location = (%0.1e,%0.1e,%0.1e) cm\n",B->focus[0],B->focus[1],B->focus[2]);
+            if(B->beamType!=1) printf("Beam direction = (%0.3f,%0.3f,%0.3f)\n",B->u[0],B->u[1],B->u[2]);
+            if(B->beamType >2) printf("Beam waist = %0.1e cm, divergence = %0.1e rad\n",B->waist,B->divergence);
         }
 
-        if(B->beamtypeFlag!=2) printf("Focus location = (%0.1e,%0.1e,%0.1e) cm\n",B->focus[0],B->focus[1],B->focus[2]);
-        if(B->beamtypeFlag!=1) printf("Beam direction = (%0.3f,%0.3f,%0.3f)\n",B->u[0],B->u[1],B->u[2]);
-        if(B->beamtypeFlag >2) printf("Beam waist = %0.1e cm, divergence = %0.1e rad\n",B->waist,B->divergence);
+        if(G->boundaryType==0) printf("boundaryType = 0, so no boundaries\n");
+        else if(G->boundaryType==1) printf("boundaryType = 1, so escape at all boundaries\n");    
+        else if(G->boundaryType==2) printf("boundaryType = 2, so escape at surface only\n");    
+
+        printf("Simulation duration = %0.2f min\n\n",simulationTimeRequested);
+        printf("Calculating...   0%% done");
+        mexEvalString("drawnow;");
     }
-    
-    if(G->boundaryFlag==0) printf("boundaryFlag = 0, so no boundaries\n");
-    else if(G->boundaryFlag==1) printf("boundaryFlag = 1, so escape at all boundaries\n");    
-	else if(G->boundaryFlag==2) printf("boundaryFlag = 2, so escape at surface only\n");    
-    
-    printf("Simulation duration = %0.2f min\n\n",simulationTimeRequested);
-	printf("Calculating...   0%% done");
-    mexEvalString("drawnow;");
-	
     // ============================ MAJOR CYCLE ========================
 	clock_gettime(CLOCK_MONOTONIC, &simulationTimeStart);
 	
     #ifdef _WIN32
-    *nThreadsPtr = omp_get_num_procs();
+    *nThreadsPtr = dontMaxCPU? fmax(omp_get_num_procs()-1,1): omp_get_num_procs();
     #pragma omp parallel num_threads((long)*nThreadsPtr)
     #else
     *nThreadsPtr = 1;
@@ -634,8 +690,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                                      (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1e9) / (simulationTimeRequested*60);
 				if((newPctProgress != pctProgress) && !ctrlc_caught) {
 					pctProgress = newPctProgress;
-                    printf("\b\b\b\b\b\b\b\b\b%3.i%% done", pctProgress);
-                    mexEvalString("drawnow;");
+                    if(!silentMode) {
+                        printf("\b\b\b\b\b\b\b\b\b%3.i%% done", pctProgress);
+                        mexEvalString("drawnow;");
+                    }
 				}
 			}
 		}
@@ -648,8 +706,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 	clock_gettime(CLOCK_MONOTONIC, &simulationTimeCurrent);
 	simulationTimeSpent = simulationTimeCurrent.tv_sec  - simulationTimeStart.tv_sec +
                          (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1e9;
-	printf("\nSimulated %0.2e photons at a rate of %0.2e photons per minute\n",*nPhotonsPtr, *nPhotonsPtr*60/simulationTimeSpent);
-    printf("---------------------------------------------------------\n");
-    mexEvalString("drawnow;");
+    if(!silentMode) {
+        printf("\nSimulated %0.2e photons at a rate of %0.2e photons per minute\n",*nPhotonsPtr, *nPhotonsPtr*60/simulationTimeSpent);
+        printf("---------------------------------------------------------\n");
+        mexEvalString("drawnow;");
+    }
     normalizeDeposition(B,G,LC,F,Image,*nPhotonsPtr); // Convert data to either relative or absolute fluence rate
 }

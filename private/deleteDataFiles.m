@@ -11,7 +11,7 @@ fileNames = {...
 caller = dbstack(1);
 
 switch caller(1).name
-    case 'makeTissue'
+    case 'defineGeometry'
         % fileNames = fileNames;
     case 'runMonteCarlo'
         fileNames = fileNames(2:end);
@@ -31,7 +31,7 @@ if(~any(existingFiles))
     return;
 end
 
-overwrite = strcmp(questdlg('Tissue definition and/or computation results by this name already exist. Delete existing files?','Overwrite prompt','Yes','No, abort','Yes'),'Yes');
+overwrite = strcmp(questdlg('Geometry definition and/or computation results by this name already exist. Delete existing files?','Overwrite prompt','Yes','No, abort','Yes'),'Yes');
 
 if ~overwrite
     fprintf('Aborted without saving data.\n');

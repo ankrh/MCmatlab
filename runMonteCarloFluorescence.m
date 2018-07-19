@@ -1,26 +1,18 @@
 function runMonteCarloFluorescence(name)
+%   Created 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
+%
 %   Script for simulating distribution and magnitude of fluorescence
 %   based on the output of runMonteCarlo.m
 %
 %   Prepares and runs the Monte Carlo simulation.
-%   After finishing, calls lookMCmatlab for the display of the result.
+%   After finishing, calls plotMCmatlab for the display of the result.
 %
-%   Define the time requested for simulating photons.
-%   Define the power of the excitation beam (used to take saturation into
-%   account).
-%   Define the behaviour of photons that stray outside the tissue cuboid:
-%       0 = no boundaries: photons wander freely also outside the tissue
-%       cuboid and get killed only if they wander too far (6 times the cuboid
-%       size).
-%       1 = escape at boundaries: photons that stray outside the tissue
-%       cuboid get killed immediately.
-%       2 = escape at surface only: photons that hit the top surface get
-%       killed immediately, photons hitting other surfaces can wander up to
-%       6 times the cuboid size.
+%	Pay attention to the sections with headers that say "USER SPECIFIED:"
+%	In those sections, you must fill in the parameters relevant for your simulation.
 %
 %   Input
 %       name
-%           the basename of the file as specified in makeTissue.m
+%           the basename of the files saved by defineGeometry.m and runMonteCarlo.m
 %
 %   Output
 %       ./Data/[name]_MCoutput_fluorescence.mat
@@ -29,104 +21,111 @@ function runMonteCarloFluorescence(name)
 %   Requires
 %       deleteDataFiles.m
 %       MCmatlab.mex (architecture specific)
-%       lookMCmatlab.m
+%       plotMCmatlab.m
 %
 
-%% Updates
-% Created 2018-04-19 by Anders K. Hansen, DTU Fotonik
-
-%% Check for preexisting files
-if(~deleteDataFiles(name)); return; end
-
-%% Load data from makeTissue.m and runMonteCarlo.m
+%% Load data from defineGeometry.m and runMonteCarlo.m
 load(['./Data/' name '.mat']);
-load(['./Data/' name '_MCoutput.mat']);
+load(['./Data/' name '_MCoutput.mat'],'MCoutput');
 
-MCinput_fluorescence = MCinput;
+%% USER SPECIFIED: Define simulation behavior
+% Silent mode (disables overwrite prompt, command window text, progress
+% indication and plot generation)
+silentMode = 0;
 
-%% Define parameters (user-specified)
+% Should MCmatlab leave one processor unused? Useful for doing other work
+% on the PC while simulations are running.
+dontMaxCPU = 0;
+
 % Simulation duration
-MCinput_fluorescence.simulationTime = 0.1;      % [min] time duration of the simulation
+simulationTime = 0.1;      % [min] time duration of the simulation
 
+%% USER SPECIFIED: Define power of excitation beam
 % Incident excitation power, for taking fluorescence saturations into account
-P = 2; % [W]
+P_excitation = 2; % [W]
 
-% Boundary type
-% 0 = no boundaries
-% 1 = escape at boundaries
-% 2 = escape at surface only. No x, y, bottom z boundaries
-MCinput_fluorescence.boundaryFlag = 1;
-
-%% Optional light collector properties (user-specified)
-MCinput_fluorescence.useLightCollector = 1; % Set to 1 for true, 0 for false
+%% USER SPECIFIED: Optional light collector properties
+% A "light collector" in this context can be either an objective lens or a fiber tip
+useLightCollector = 0; % Set to 1 for true, 0 for false
 
 % Position of either the center of the objective lens focal plane or the fiber tip
-MCinput_fluorescence.xFPC_LC = 0; % [cm]
-MCinput_fluorescence.yFPC_LC = 0; % [cm]
-MCinput_fluorescence.zFPC_LC = nz*dz/2; % [cm] negative values correspond to a location above the volume
+xFPC_LC = 0; % [cm]
+yFPC_LC = 0; % [cm]
+zFPC_LC = 0.03; % [cm] negative values correspond to a location above the volume
 
 % Direction that the light collector is facing, defined in the same way as the beam direction using
 % ISO spherical coordinates.
 % For above the surface (negative z), you'll want to satisfy 0<=theta<=pi/2.
 % For below the surface (positive z), such as measuring in transmission, you'll want pi/2<=theta<=pi
-% If theta = 0 or pi, phi serves only to rotate the view of the tissue. If you want the light collector X axis 
-% to coincide with the tissue cuboid x axis, use phi = pi/2.
-MCinput_fluorescence.theta_LC = 0; % [rad]
-MCinput_fluorescence.phi_LC   = pi/2; % [rad]
+% If theta = 0 or pi, phi serves only to rotate the view. If you want the light collector X axis 
+% to coincide with the cuboid x axis, use phi = pi/2.
+theta_LC = 0; % [rad]
+phi_LC   = pi/2; % [rad]
 
-% Focal length of the objective lens (if light collector is a fiber, set this to inf).
-MCinput_fluorescence.f_LC = 1; % [cm]
+% Focal length of the objective lens (if light collector is a fiber, set this to Inf).
+f_LC = 1; % [cm]
 
 % Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(lensNA)).
-MCinput_fluorescence.diam_LC = 2; % [cm]
+diam_LC = 2; % [cm]
 
 % Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f_LC.
-MCinput_fluorescence.FieldSize_LC = 2; % [cm]
+FieldSize_LC = 2; % [cm]
 
 % Fiber NA. Only used for infinite f_LC.
-MCinput_fluorescence.NA_LC = 0.22; % [-]
+NA_LC = 0.22; % [-]
 
 % Resolution of light collector in pixels
-MCinput_fluorescence.resX_LC = 200;
-MCinput_fluorescence.resY_LC = 200;
+resX_LC = 200;
+resY_LC = 200;
 
-%% Set remaining parameters
-MCinput_fluorescence.tissueList = tissueList_fluorescence;
+%% Check for preexisting files
+if(~silentMode && ~deleteDataFiles(name)); return; end
 
 %% Calculate 3D fluorescence source distribution, including saturation
-mua_vec = [tissueList.mua]; % The tissues' excitation absorption coefficients
-Y_vec = [tissueList.Y]; % The tissues' fluorescence power yields
-sat_vec = [tissueList.sat]; % The tissues' fluorescence saturation fluence rates (intensity)
-MCinput_fluorescence.sourceDistribution = Y_vec(T).*mua_vec(T)*P.*MCoutput.F./(1 + P*MCoutput.F./sat_vec(T)); % [W/cm^3]
+mua_vec = [G.mediaProperties.mua]; % The media's excitation absorption coefficients
+Y_vec = [G.mediaProperties.Y]; % The media's fluorescence power yields
+sat_vec = [G.mediaProperties.sat]; % The media's fluorescence saturation fluence rates (intensity)
+sourceDistribution = Y_vec(G.M).*mua_vec(G.M)*P_excitation.*MCoutput.F./(1 + P_excitation*MCoutput.F./sat_vec(G.M)); % [W/cm^3]
+if(max(sourceDistribution(:)) == 0) error('Error: No fluorescence emitters'); end
 
 %% Check to ensure that the light collector is not inside the cuboid
-if MCinput_fluorescence.useLightCollector
-    if isfinite(MCinput_fluorescence.f_LC)
-        xLCC = MCinput_fluorescence.xFPC_LC - MCinput_fluorescence.f_LC*sin(MCinput_fluorescence.theta_LC)*cos(MCinput_fluorescence.phi_LC); % x position of Light Collector Center
-        yLCC = MCinput_fluorescence.yFPC_LC - MCinput_fluorescence.f_LC*sin(MCinput_fluorescence.theta_LC)*sin(MCinput_fluorescence.phi_LC); % y position
-        zLCC = MCinput_fluorescence.zFPC_LC - MCinput_fluorescence.f_LC*cos(MCinput_fluorescence.theta_LC);
+if useLightCollector
+    if isfinite(f_LC)
+        xLCC = xFPC_LC - f_LC*sin(theta_LC)*cos(phi_LC); % x position of Light Collector Center
+        yLCC = yFPC_LC - f_LC*sin(theta_LC)*sin(phi_LC); % y position
+        zLCC = zFPC_LC - f_LC*cos(theta_LC);             % z position
     else
-        xLCC = MCinput_fluorescence.xFPC_LC;
-        yLCC = MCinput_fluorescence.yFPC_LC;
-        zLCC = MCinput_fluorescence.zFPC_LC;
+        xLCC = xFPC_LC;
+        yLCC = yFPC_LC;
+        zLCC = zFPC_LC;
     end
 
-    if (abs(xLCC)           < nx*dx/2 && ...
-        abs(yLCC)           < ny*dy/2 && ...
-        abs(zLCC - nz*dz/2) < nz*dz/2)
+    if (abs(xLCC)               < G.nx*G.dx/2 && ...
+        abs(yLCC)               < G.ny*G.dy/2 && ...
+        abs(zLCC - G.nz*G.dz/2) < G.nz*G.dz/2)
         error('Error: Light collector center (%.4f,%.4f,%.4f) is inside cuboid',xLCC,yLCC,zLCC);
     end    
 end
 
-%% Call Monte Carlo C script to get fluorescence distribution
-MCoutput_fluorescence = MCmatlab(MCinput_fluorescence); % MCoutput_fluorescence.F is an absolute fluence rate (intensity) quantity, unlike the non-fluorescence MCoutput.F which are actually fluence rates normalized to the incident power
+%% Prepare structs
+G.M = G.M - 1; % The medium matrix has to be converted from MATLAB's 1-based indexing to C's 0-based indexing
+Beam = struct('P_excitation',P_excitation,'sourceDistribution',sourceDistribution);
+LightCollector = struct('xFPC_LC',xFPC_LC,'yFPC_LC',yFPC_LC,'zFPC_LC',zFPC_LC,'theta_LC',theta_LC,'phi_LC',phi_LC,'f_LC',f_LC,...
+    'diam_LC',diam_LC,'FieldSize_LC',FieldSize_LC,'NA_LC',NA_LC,'resX_LC',resX_LC,'resY_LC',resY_LC);
+MCinput_f = struct('silentMode',silentMode,'dontMaxCPU',dontMaxCPU,'simulationTime',simulationTime,...
+    'useLightCollector',useLightCollector,'G',G,'Beam',Beam,'LightCollector',LightCollector);
+clear G Beam LightCollector
+
+%% Call Monte Carlo C script (MEX file) to get fluorescence fluence rate (intensity) distribution
+MCoutput_f = MCmatlab(MCinput_f); % MCoutput_f.F is an absolute fluence rate (intensity) quantity, unlike the non-fluorescence MCoutput.F which are actually fluence rates normalized to the incident power
+clear MCmatlab; % Unload MCmatlab MEX file so it can be modified externally again
 
 %% Save output and clear memory
-save(['./Data/' name '_MCoutput_fluorescence.mat'],'MCoutput_fluorescence','MCinput_fluorescence','P');
-fprintf('./Data/%s_MCoutput_fluorescence.mat saved\n',name);
-clear MCoutput_fluorescence MCinput_fluorescence
+save(['./Data/' name '_MCoutput_fluorescence.mat'],'MCoutput_f','MCinput_f');
+if(~silentMode) fprintf('./Data/%s_MCoutput_fluorescence.mat saved\n',name); end
+clear MCinput_f MCoutput_f
 
 %% Make plots
-lookMCmatlab(name);
+if(~silentMode) plotMCmatlab(name); end
 
 end

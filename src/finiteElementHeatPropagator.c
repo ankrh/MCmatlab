@@ -34,21 +34,9 @@
 extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing the mex function
 #endif
 
-void mexFunction( int nlhs, mxArray *plhs[],
-        int nrhs, mxArray const *prhs[] ) {
-    
+void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     bool ctrlc_caught = false;           // Has a ctrl+c been passed from MATLAB?
-    
     int nx,ny,nz,nT;
-    /* Check for proper number of arguments */
-    
-    if (nrhs != 5) {
-        mexErrMsgIdAndTxt( "MATLAB:heatSim:invalidNumInputs",
-                "Five input arguments required (nt,[[[Temp]]],[[[T]]],[[[dTperdeltaT]]],[[[dT_abs]]]");
-    } else if (nlhs > 1) {
-        mexErrMsgIdAndTxt( "MATLAB:heatSim:maxlhs",
-                "Too many output arguments.");
-    }
     
     mwSize const *dimPtr = mxGetDimensions(prhs[1]);
     nx = dimPtr[0];
@@ -64,6 +52,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
     unsigned char *T    = mxGetData(prhs[2]); // T is a nx*ny*nz array of uint8 (unsigned char) containing values from 0..nT-1
     double *dTperdeltaT = mxGetPr(prhs[3]); // dTperdeltaT is an nT*nT*3 array of doubles
     double *dT_abs      = mxGetPr(prhs[4]); // dT_abs is an nx*ny*nz array of doubles
+    bool dontMaxCPU     = *mxGetPr(prhs[5]);
     
     double *tempTemp = mxMalloc(nx*ny*nz*sizeof(double)); // Temporary temperature matrix
     
@@ -73,7 +62,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
     tgtTemp = (nt%2)? &outputTemp: &tempTemp; // If nt is odd then we can start by writing to the output temperature matrix (pointed to by plhs[0]), otherwise we start by writing to the temporary temperature matrix
     
     #ifdef _WIN32
-    #pragma omp parallel num_threads(omp_get_num_procs())
+    #pragma omp parallel num_threads(!dontMaxCPU || omp_get_num_procs() == 1? omp_get_num_procs(): omp_get_num_procs()-1)
     #endif
     {
         int ix,iy,iz;
