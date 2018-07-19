@@ -164,6 +164,7 @@ if(~assumeMatchedInterfaces)
     end
     RI = n_vec(M(1,1,:));
 else
+    [mediaProperties.n] = deal(NaN);
     RI = NaN;
 end
 

@@ -45,7 +45,7 @@ set(gca,'XTick',1:nM,'XTickLabel',{mediaProperties.name},'XTickLabelRotation',45
 title('g');
 subplotIndex = subplotIndex + 1;
 
-if isfield(mediaProperties,'n')
+if isfield(mediaProperties,'n') && ~isnan(mediaProperties(1).n)
     subplot(rows,columns,subplotIndex);
     hold on;
     for i=1:nM
@@ -53,6 +53,13 @@ if isfield(mediaProperties,'n')
     end
     set(gca,'XTick',1:nM,'XTickLabel',{mediaProperties.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
     title('n');
+else
+    subplot(rows,columns,subplotIndex);
+    ax = gca;
+    ax.XAxis.Visible = 'off';
+    ax.YAxis.Visible = 'off';
+    str = {'Assuming','matched','interfaces'};
+    text(0.5,0.5,str,'FontSize',18,'HorizontalAlignment','center');
 end
 subplotIndex = subplotIndex + 1;
 
