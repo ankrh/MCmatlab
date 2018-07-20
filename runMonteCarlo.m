@@ -25,13 +25,14 @@ function runMonteCarlo(name)
 load(['./Data/' name '.mat']);
 
 %% USER SPECIFIED: Define simulation behavior
-% Silent mode (disables overwrite prompt, command window text, progress
-% indication and plot generation)
-silentMode = 0;
+% Should the script run in silent mode? (disables overwrite prompt,
+% command window text, progress indication and plot generation)
+silentMode = false;
 
-% Should MCmatlab leave one processor unused? Useful for doing other work
-% on the PC while simulations are running.
-dontMaxCPU = 0;
+% Should MCmatlab use all available processors on Windows? Otherwise,
+% one will be left unused. Useful for doing other work on the PC
+% while simulations are running.
+useAllCPUs = true;
 
 % Simulation duration
 simulationTime = .1;      % [min] time duration of the simulation
@@ -70,7 +71,7 @@ divergence = 0/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
 
 %% USER SPECIFIED: Optional light collector properties
 % A "light collector" in this context can be either an objective lens or a fiber tip
-useLightCollector = 0; % Set to 1 for true, 0 for false
+useLightCollector = false;
 
 % Position of either the center of the objective lens focal plane or the fiber tip
 xFPC_LC = 0;% [cm]
@@ -130,7 +131,7 @@ Beam = struct('beamType',beamType,'xFocus',xFocus,'yFocus',yFocus,'zFocus',zFocu
     'phiBeam',phiBeam,'waist',waist,'divergence',divergence);
 LightCollector = struct('xFPC_LC',xFPC_LC,'yFPC_LC',yFPC_LC,'zFPC_LC',zFPC_LC,'theta_LC',theta_LC,'phi_LC',phi_LC,'f_LC',f_LC,...
     'diam_LC',diam_LC,'FieldSize_LC',FieldSize_LC,'NA_LC',NA_LC,'resX_LC',resX_LC,'resY_LC',resY_LC);
-MCinput = struct('silentMode',silentMode,'dontMaxCPU',dontMaxCPU,'simulationTime',simulationTime,...
+MCinput = struct('silentMode',silentMode,'useAllCPUs',useAllCPUs,'simulationTime',simulationTime,...
     'useLightCollector',useLightCollector,'G',G,'Beam',Beam,'LightCollector',LightCollector);
 clear G Beam LightCollector
 

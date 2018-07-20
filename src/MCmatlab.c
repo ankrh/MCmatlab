@@ -472,8 +472,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 	int  pctProgress = 0;      // Simulation progress in percent
     int  newPctProgress;    
     bool ctrlc_caught = false; // Has a ctrl+c been passed from MATLAB?
-    bool silentMode = *mxGetPr(mxGetField(prhs[0],0,"silentMode"));
-    bool dontMaxCPU = *mxGetPr(mxGetField(prhs[0],0,"dontMaxCPU"));
+    bool silentMode = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"silentMode"));
+    bool useAllCPUs = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"useAllCPUs"));
 
     
     // To know if we are simulating fluorescence, we check if a "sourceDistribution" field exists. If so, we will use it later in the beam definition.
@@ -552,7 +552,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 
     // Light Collector struct definition
     mxArray *MatlabLC      = mxGetField(prhs[0],0,"LightCollector");
-    bool useLightCollector = *mxGetPr(mxGetField(prhs[0],0,"useLightCollector"));
+    bool useLightCollector = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"useLightCollector"));
     
     double theta = *mxGetPr(mxGetField(MatlabLC,0,"theta_LC"));
     double phi   = *mxGetPr(mxGetField(MatlabLC,0,"phi_LC"));
@@ -639,7 +639,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 	clock_gettime(CLOCK_MONOTONIC, &simulationTimeStart);
 	
     #ifdef _WIN32
-    *nThreadsPtr = dontMaxCPU? fmax(omp_get_num_procs()-1,1): omp_get_num_procs();
+    *nThreadsPtr = useAllCPUs? omp_get_num_procs(): fmax(omp_get_num_procs()-1,1);
     #pragma omp parallel num_threads((long)*nThreadsPtr)
     #else
     *nThreadsPtr = 1;

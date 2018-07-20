@@ -1,7 +1,6 @@
 /********************************************
  *
  * C script for heat propagation based on Monte Carlo input
- * arguments: (nt,[[[Temp]]],[[[T]]],[[[dTperdeltaT]]],[[[dT_abs]]])
  *
  * Log:
  *  2014-01-30: Written by Rasmus L. Pedersen & Mathias Christensen, DTU Fotonik
@@ -52,7 +51,7 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     unsigned char *T    = mxGetData(prhs[2]); // T is a nx*ny*nz array of uint8 (unsigned char) containing values from 0..nT-1
     double *dTperdeltaT = mxGetPr(prhs[3]); // dTperdeltaT is an nT*nT*3 array of doubles
     double *dT_abs      = mxGetPr(prhs[4]); // dT_abs is an nx*ny*nz array of doubles
-    bool dontMaxCPU     = *mxGetPr(prhs[5]);
+    bool useAllCPUs     = mxIsLogicalScalarTrue(prhs[5]);
     
     double *tempTemp = mxMalloc(nx*ny*nz*sizeof(double)); // Temporary temperature matrix
     
@@ -62,7 +61,7 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     tgtTemp = (nt%2)? &outputTemp: &tempTemp; // If nt is odd then we can start by writing to the output temperature matrix (pointed to by plhs[0]), otherwise we start by writing to the temporary temperature matrix
     
     #ifdef _WIN32
-    #pragma omp parallel num_threads(!dontMaxCPU || omp_get_num_procs() == 1? omp_get_num_procs(): omp_get_num_procs()-1)
+    #pragma omp parallel num_threads(useAllCPUs || omp_get_num_procs() == 1? omp_get_num_procs(): omp_get_num_procs()-1)
     #endif
     {
         int ix,iy,iz;

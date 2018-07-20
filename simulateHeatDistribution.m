@@ -48,16 +48,17 @@ load(['./Data/' name '.mat']);
 load(['./Data/' name '_MCoutput.mat'],'MCoutput');
 
 %% USER SPECIFIED: Define simulation behavior
-% Silent mode (disables overwrite prompt, command window text, progress
-% indication and plot generation)
-silentMode = 0; % 1 for true, 0 for false
+% Should the script run in silent mode? (disables overwrite prompt,
+% command window text, progress indication and plot generation)
+silentMode = false;
 
-% Should MCmatlab leave one processor unused? Useful for doing other work
-% on the PC while simulations are running.
-dontMaxCPU = 0; % 1 for true, 0 for false
+% Should MCmatlab use all available processors on Windows? Otherwise,
+% one will be left unused. Useful for doing other work on the PC
+% while simulations are running.
+useAllCPUs = true;
 
-% Flag to specify whether a movie of the temperature evolution should be generated.
-makemovie  = 1; % 1 for true, 0 for false
+% Should a movie of the temperature evolution be generated? Requires silentMode = false.
+makemovie  = true;
 
 %% USER SPECIFIED: Define parameters
 P                = 1; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
@@ -241,7 +242,7 @@ for j=1:n_pulses
     end
     for i = 2:length(nt_vec)
         frameidx = i+(j-1)*(length(nt_vec)-1);
-        Temp = finiteElementHeatPropagator(nt_vec(i)-nt_vec(i-1),Temp,G.M-1,dTperdeltaT,(nt_vec(i) <= nt_on)*dT_abs,dontMaxCPU); % Contents of G.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
+        Temp = finiteElementHeatPropagator(nt_vec(i)-nt_vec(i-1),Temp,G.M-1,dTperdeltaT,(nt_vec(i) <= nt_on)*dT_abs,useAllCPUs); % Contents of G.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
         if calcDamage; Omega = Omega + (timeVector(frameidx)-timeVector(frameidx-1))*A(G.M).*exp(-E(G.M)./(R*(Temp + 273.15))); end
         
         if(nt_vec(i) == nt_on && n_pulses == 1)

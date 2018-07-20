@@ -29,15 +29,15 @@ function defineGeometry(name)
 %
 
 %% USER SPECIFIED: Define simulation behavior
-% Silent mode (disables overwrite prompt, command window text, progress
-% indication and plot generation)
-silentMode = 0; % 1 for true, 0 for false
+% Should the script run in silent mode? (disables overwrite prompt,
+% command window text, progress indication and plot generation)
+silentMode = false;
 
 % Do you want to assume matched interfaces? If so, there is no Fresnel
 % reflection or refraction. Otherwise, refractive indices from
 % getMediaProperties are used. Note that non-matched interfaces must be normal
 % to the z axis, so each xy-slice must have a constant refractive index.
-assumeMatchedInterfaces = 1; % 1 for true, 0 for false
+assumeMatchedInterfaces = true;
 
 % Boundary type
 % 0: No boundaries. Photons wander freely also outside the cuboid and
