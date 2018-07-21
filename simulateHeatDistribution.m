@@ -76,6 +76,11 @@ plotTempLimits   = [37 105]; % [deg C], the expected range of temperatures, used
 n_updates_on     = 30; % Number of times data is extracted for plots during each illumination phase . Must be at least 1.
 n_updates_off    = 120; % Number of times data is extracted for plots during each diffusion phase. Must be at least 1.
 
+% Set the starting relative slice positions (x,y,z) for the 3D plots.
+% Especially relevant for movie generation. As an example, [0 1 0.5]
+% puts slices at the lowest x value, the highest y value and the halfway z value. 
+slicePositions   = [1 0.5 1];
+
 %% Check for preexisting files
 if(~silentMode && ~deleteDataFiles(name)); return; end
 
@@ -140,19 +145,6 @@ dT_abs = mua_vec(G.M).*MCoutput.F*dt*G.dx*G.dy*G.dz*P./HC(G.M); % Temperature ch
 clear MCoutput
 
 if(~silentMode)
-    %% Prepare the temperature plot
-    if(~ishandle(21))
-        heatsimFigure = figure(21);
-        heatsimFigure.Position = [40 80 1100 650];
-    else
-        heatsimFigure = figure(21);
-    end
-    clf;
-    heatsimFigure.Name = 'Temperature evolution';
-    plotVolumetric(G.x,G.y,G.z,Temp,'MCmatlab');
-    h_title = title(['Temperature evolution, t = ' num2str(timeVector(1),'%#.2g') ' s']);
-    caxis(plotTempLimits); % User-defined color scale limits
-
     %% Plot the geometry to allow the user to select temperature sensor locations
     if(~ishandle(22))
         geometryFigure = figure(22);
@@ -162,13 +154,13 @@ if(~silentMode)
     end
     clf;
     geometryFigure.Name = 'Geometry illustration';
-    plotVolumetric(G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties);
+    plotVolumetric(G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',slicePositions);
     title('Geometry illustration');
 
     datacursormode on;
     dataCursorHandle = datacursormode(geometryFigure);
 
-    fprintf('Place one or more (shift+click) temperature sensor in the geometry,\n and hit (almost) any key to continue.\nYou can also resize the temperature figure now and position the slices,\n which is useful for movie generation.\n');
+    fprintf('Place one or more (shift+click) temperature sensor in the geometry,\n and hit (almost) any key to continue.\n');
     pause
     cursorInfo = getCursorInfo(dataCursorHandle);
     numTemperatureSensors = length(cursorInfo);
@@ -214,25 +206,25 @@ if(~silentMode)
 
     fprintf('[nx,ny,nz]=[%d,%d,%d]. Number of pulses is %d.\nIllumination on for %d steps and off for %d steps in each pulse. Step size is %0.2e s.\n',nx,ny,nz,n_pulses,nt_on,nt_off,dt);
 
-    if(makemovie) % Make a temporary figure showing the geometry illustration to put into the beginning of the movie
-        tempFigure = figure;
-        plotVolumetric(G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties);
-        title('Geometry illustration');
-        tempFigure.Position = heatsimFigure.Position; % Size has to be the same as the temperature plot
-        tempFigure.Children(6).Value = heatsimFigure.Children(6).Value; % Slices have to be set at the same positions
-        tempFigure.Children(7).Value = heatsimFigure.Children(7).Value;
-        tempFigure.Children(8).Value = heatsimFigure.Children(8).Value;
-        callbackfunc = tempFigure.Children(6).Callback{1};
-        vars = tempFigure.Children(6).Callback{2};
-        feval(callbackfunc,tempFigure.Children(6),[],vars); % To update the display of the slices we have to call the callback function
-        feval(callbackfunc,tempFigure.Children(7),[],vars);
-        feval(callbackfunc,tempFigure.Children(8),[],vars);
-        drawnow;
-        movieframes(1) = getframe(tempFigure);
-        delete(tempFigure);
-
-        movieframes(2) = getframe(heatsimFigure);
+    if(~ishandle(21))
+        heatsimFigure = figure(21);
+        heatsimFigure.Position = [40 80 1100 650];
+    else
+        heatsimFigure = figure(21);
     end
+    
+    if(makemovie) % Make a temporary figure showing the geometry illustration to put into the beginning of the movie
+        plotVolumetric(G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',slicePositions);
+        title('Geometry illustration');
+        drawnow;
+        movieframes(1) = getframe(heatsimFigure);
+    end
+    %% Prepare the temperature plot
+    heatsimFigure.Name = 'Temperature evolution';
+    plotVolumetric(G.x,G.y,G.z,Temp,'MCmatlab','slicePositions',slicePositions);
+    h_title = title(['Temperature evolution, t = ' num2str(timeVector(1),'%#.2g') ' s']);
+    caxis(plotTempLimits); % User-defined color scale limits
+    if(makemovie); movieframes(2) = getframe(heatsimFigure); end
 else
     temperatureSensor = [];
 end
@@ -314,7 +306,7 @@ if(~silentMode)
         end
         clf;
         illumFigure.Name = 'Temperature after illumination';
-        plotVolumetric(G.x,G.y,G.z,Temp_illum,'MCmatlab');
+        plotVolumetric(G.x,G.y,G.z,Temp_illum,'MCmatlab','slicePositions',slicePositions);
         title('Temperature after illumination');
         caxis(plotTempLimits); % User-defined color scale limits
     else
@@ -332,7 +324,7 @@ if(~silentMode)
         M_damage = G.M;
         M_damage(Omega > 1) = nM + 1;
         G.mediaProperties(nM + 1).name = 'damage';
-        plotVolumetric(G.x,G.y,G.z,M_damage,'MCmatlab_GeometryIllustration',G.mediaProperties);
+        plotVolumetric(G.x,G.y,G.z,M_damage,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',slicePositions);
         title('Thermal damage illustration');
         fprintf('%.2e cm^3 was thermally damaged.\n',G.dx*G.dy*G.dz*sum(sum(sum(Omega > 1))));
     end

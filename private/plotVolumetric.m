@@ -33,31 +33,47 @@ reverseZ = false; % Assume z axis is not inverted
 fromZero = false; % Assume that the minimum of the color scale should not necessarily be zero
 colormap(GPBGYRcolormap); % Assume we want to use the GPBGYR (Grey-Purple-Blue-Green-Yellow-Red) colormap
 colorbar;
-if ~isempty(varargin)
-    plottype = varargin{1};
-    if strcmp(plottype,'MCmatlab_GeometryIllustration')
-        xyzaxes = true;
-        reverseZ = true;
-        mediaProperties = varargin{2};
-        checkboxvisible = false;
-        directmapping = true;
-        colormap(lines(length(mediaProperties)));
-        colorbar('TickLabels',{mediaProperties.name},'Ticks',(1:length(mediaProperties))+0.5);
-    elseif strcmp(plottype,'MCmatlab_fromZero')
-        xyzaxes = true;
-        reverseZ = true;
-        fromZero = true;
-    elseif strcmp(plottype,'MCmatlab')
-        xyzaxes = true;
-        reverseZ = true;
-    end
+if(any(strcmp(varargin,'MCmatlab_GeometryIllustration')))
+    xyzaxes = true;
+    reverseZ = true;
+    mediaProperties = varargin{2};
+    checkboxvisible = false;
+    directmapping = true;
+    colormap(lines(length(mediaProperties)));
+    colorbar('TickLabels',{mediaProperties.name},'Ticks',(1:length(mediaProperties))+0.5);
+elseif(any(strcmp(varargin,'MCmatlab_fromZero')))
+    xyzaxes = true;
+    reverseZ = true;
+    fromZero = true;
+elseif(any(strcmp(varargin,'MCmatlab')))
+    xyzaxes = true;
+    reverseZ = true;
 end
 
-slider3start = 1; % Assume that slider 3 should start at the minimum value
-zback = zl; % Assume the back surface in the z direction is the one at high z
+slicePositionVarargin = find(strcmpi(varargin,'slicePositions'),1); % Empty array if no slicePositions
+if(~isempty(slicePositionVarargin))
+    slicePositions = varargin{slicePositionVarargin+1}; % A 1-by-3 array of relative (x,y,z) slice positions (0: slice made at lowest value, 1: slice made at highest value)
+    xsi = max(1,min(nx,round((nx-1)*slicePositions(1) + 1)));
+    ysi = max(1,min(ny,round((ny-1)*slicePositions(2) + 1)));
+    zsi = max(1,min(nz,round((nz-1)*slicePositions(3) + 1)));
+elseif reverseZ
+    xsi = round(nx/2);
+    ysi = ny;
+    zsi = nz;
+else
+    xsi = round(nx/2);
+    ysi = ny;
+    zsi = 1;
+end
+
+xs = x(xsi);
+ys = y(ysi);
+zs = z(zsi);
+
 if reverseZ
-    slider3start = nz;
     zback = zh;
+else
+    zback = zl;
 end
 
 if ~directmapping
@@ -74,11 +90,11 @@ end
 
 warning('off','MATLAB:hg:UIControlSliderStepValueDifference');
 h_slider1 = uicontrol('Parent',h_f,'Style','slider','Position',[30,20,200,20],...
-              'value',nx, 'min',1, 'max',nx,'SliderStep',[1/(nx-1) 0.1]);
+              'value',xsi, 'min',1, 'max',nx,'SliderStep',[1/(nx-1) 0.1]);
 h_slider2 = uicontrol('Parent',h_f,'Style','slider','Position',[30,40,200,20],...
-              'value',ny, 'min',1, 'max',ny,'SliderStep',[1/(ny-1) 0.1]);
+              'value',ysi, 'min',1, 'max',ny,'SliderStep',[1/(ny-1) 0.1]);
 h_slider3 = uicontrol('Parent',h_f,'Style','slider','Position',[30,60,200,20],...
-              'value',slider3start, 'min',1, 'max',nz,'SliderStep',[1/(nz-1) 0.1]);
+              'value',zsi, 'min',1, 'max',nz,'SliderStep',[1/(nz-1) 0.1]);
 warning('on','MATLAB:hg:UIControlSliderStepValueDifference');
 uicontrol('style','text','String','x','Position',[10,18,20,20])
 uicontrol('style','text','String','y','Position',[10,38,20,20])
@@ -93,9 +109,9 @@ end
 h_surfxback  = surface(repmat(xh,ny,nz),repmat(y', 1,nz),repmat(z    ,ny, 1),squeeze(h_f.UserData(end,:,:)),'LineStyle','none');
 h_surfyback  = surface(repmat(x', 1,nz),repmat(yh,nx,nz),repmat(z    ,nx, 1),squeeze(h_f.UserData(:,end,:)),'LineStyle','none');
 h_surfzback  = surface(repmat(x', 1,ny),repmat(y ,nx, 1),repmat(zback,nx,ny),squeeze(h_f.UserData(:,:,end)),'LineStyle','none');
-h_surfxslice = surface(repmat(xh,ny,nz),repmat(y', 1,nz),repmat(z    ,ny, 1),squeeze(h_f.UserData(end,:,:)),'LineStyle','none');
-h_surfyslice = surface(repmat(x', 1,nz),repmat(yh,nx,nz),repmat(z    ,nx, 1),squeeze(h_f.UserData(:,end,:)),'LineStyle','none');
-h_surfzslice = surface(repmat(x', 1,ny),repmat(y ,nx, 1),repmat(zback,nx,ny),squeeze(h_f.UserData(:,:,end)),'LineStyle','none');
+h_surfxslice = surface(repmat(xs,ny,nz),repmat(y', 1,nz),repmat(z ,ny, 1),squeeze(h_f.UserData(xsi,:,:)),'LineStyle','none');
+h_surfyslice = surface(repmat(x', 1,nz),repmat(ys,nx,nz),repmat(z ,nx, 1),squeeze(h_f.UserData(:,ysi,:)),'LineStyle','none');
+h_surfzslice = surface(repmat(x', 1,ny),repmat(y ,nx, 1),repmat(zs,nx,ny),squeeze(h_f.UserData(:,:,zsi)),'LineStyle','none');
 
 if directmapping
     set([h_surfxback h_surfyback h_surfzback h_surfxslice h_surfyslice h_surfzslice],'CDataMapping','direct');
@@ -104,9 +120,9 @@ end
 line([xh xh xh xh xh],[yl yh yh yl yl],[zh zh zl zl zh],'Color','k');
 line([xl xh xh xl xl],[yh yh yh yh yh],[zh zh zl zl zh],'Color','k');
 line([xl xl xh xh xl],[yl yh yh yl yl],[zback zback zback zback zback],'Color','k');
-h_xline = line([xh xh xh xh xh xh xh],[yh yh yh yl yl yh yh],[zl zl zh zh zl zl zh],'Color','k');
-h_yline = line([xl xl xh xh xl xl xh],[yh yh yh yh yh yh yh],[zh zh zh zl zl zh zh],'Color','k');
-h_zline = line([xh xh xh xl xl xh xh],[yl yl yh yh yl yl yh],[zback zback zback zback zback zback zback],'Color','k');
+h_xline = line([xs xs xs xs xs xs xs],[ys yh yh yl yl ys ys],[zl zl zh zh zl zl zh],'Color','k');
+h_yline = line([xl xl xh xh xl xl xh],[ys ys ys ys ys ys ys],[zs zh zh zl zl zs zs],'Color','k');
+h_zline = line([xs xh xh xl xl xs xs],[yl yl yh yh yl yl yh],[zs zs zs zs zs zs zs],'Color','k');
 
 axis tight
 if xyzaxes
