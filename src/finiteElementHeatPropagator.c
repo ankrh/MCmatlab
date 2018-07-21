@@ -58,6 +58,7 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     double *E           = mxGetPr(mxGetField(prhs[2],0,"E")); // E is a nM array of doubles
     bool useAllCPUs     = mxIsLogicalScalarTrue(mxGetField(prhs[2],0,"useAllCPUs"));
     bool lightsOn       = mxIsLogicalScalarTrue(mxGetField(prhs[2],0,"lightsOn"));
+    long heatBoundaryType = *mxGetPr(mxGetField(prhs[2],0,"heatBoundaryType")); // 0: Insulating boundaries, 1: Constant-temperature boundaries
     
     double *Omega       = mxGetPr(prhs[1]); // Omega is an nx*ny*nz array of doubles if we are supposed to calculate damage, a single NaN element otherwise
     bool calcDamage     = !mxIsNaN(Omega[0]); // If the Omega input is just one NaN element then we shouldn't bother with thermal damage calculation
@@ -90,13 +91,17 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
                     for(ix=0; ix<nx; ix++) {
                         i = ix + iy*nx + iz*nx*ny;
 
-                        dT = lightsOn? dT_abs[i]: 0;
-                        if(ix != 0   ) dT += ((*srcTemp)[i-1]     - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i-1    ]*nM          ];
-                        if(ix != nx-1) dT += ((*srcTemp)[i+1]     - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i+1    ]*nM          ];
-                        if(iy != 0   ) dT += ((*srcTemp)[i-nx]    - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i-nx   ]*nM +   nM*nM];
-                        if(iy != ny-1) dT += ((*srcTemp)[i+nx]    - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i+nx   ]*nM +   nM*nM];
-                        if(iz != 0   ) dT += ((*srcTemp)[i-nx*ny] - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i-nx*ny]*nM + 2*nM*nM];
-                        if(iz != nz-1) dT += ((*srcTemp)[i+nx*ny] - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i+nx*ny]*nM + 2*nM*nM];
+                        if(heatBoundaryType == 1 && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1)) {
+                            dT = 0; // Constant-temperature boundaries
+                        } else {
+                            dT = lightsOn? dT_abs[i]: 0;
+                            if(ix != 0   ) dT += ((*srcTemp)[i-1]     - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i-1    ]*nM          ];
+                            if(ix != nx-1) dT += ((*srcTemp)[i+1]     - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i+1    ]*nM          ];
+                            if(iy != 0   ) dT += ((*srcTemp)[i-nx]    - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i-nx   ]*nM +   nM*nM];
+                            if(iy != ny-1) dT += ((*srcTemp)[i+nx]    - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i+nx   ]*nM +   nM*nM];
+                            if(iz != 0   ) dT += ((*srcTemp)[i-nx*ny] - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i-nx*ny]*nM + 2*nM*nM];
+                            if(iz != nz-1) dT += ((*srcTemp)[i+nx*ny] - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i+nx*ny]*nM + 2*nM*nM];
+                        }
                         (*tgtTemp)[i] = (*srcTemp)[i] + dT;
                         if(calcDamage) {
                             if(n == 0) outputOmega[i] = Omega[i];

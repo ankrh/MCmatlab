@@ -60,6 +60,11 @@ useAllCPUs = true;
 % Should a movie of the temperature evolution be generated? Requires silentMode = false.
 makemovie  = false;
 
+% Would you like the cuboid boundaries to be insulated or heat-sinked?
+% 0: Insulating boundaries
+% 1: Constant-temperature boundaries (heat-sinked)
+heatBoundaryType = 0;
+
 %% USER SPECIFIED: Define parameters
 P                = 10; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
 onduration       = 0.001; % [s] Pulse on-duration
@@ -233,7 +238,7 @@ else
 end
 
 %% Put heatSim parameters into a struct
-heatSimParameters = struct('M',G.M-1,'Adt',A*dt,'E',E,'dTperdeltaT',dTperdeltaT,'dT_abs',dT_abs,'useAllCPUs',useAllCPUs); % Contents of G.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
+heatSimParameters = struct('M',G.M-1,'Adt',A*dt,'E',E,'dTperdeltaT',dTperdeltaT,'dT_abs',dT_abs,'useAllCPUs',useAllCPUs,'heatBoundaryType',heatBoundaryType); % Contents of G.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
 
 %% Simulate heat transfer
 if(~silentMode); tic; end
