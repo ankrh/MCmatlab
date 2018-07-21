@@ -47,16 +47,16 @@ assumeMatchedInterfaces = true;
 % 2: Escape at surface only. Photons that hit the top surface get killed
 %    immediately, photons hitting other surfaces can wander up to 6 times
 %    the cuboid size.
-boundaryType = 1;
+boundaryType = 2;
 
 
 %% USER SPECIFIED: Define parameters
-wavelength  = 450;		% [nm] set the wavelength of the Monte Carlo simulation
+wavelength  = 532;		% [nm] set the wavelength of the Monte Carlo simulation
 wavelength_f = NaN;		% [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
 
-nx = 100;				% number of bins in the x direction
-ny = 100;				% number of bins in the y direction
-nz = 100;				% number of bins in the z direction
+nx = 200;				% number of bins in the x direction
+ny = 200;				% number of bins in the y direction
+nz = 200;				% number of bins in the z direction
 Lx = .1;				% [cm] x size of simulation area
 Ly = .1;				% [cm] y size of simulation area
 Lz = .1;				% [cm] z size of simulation area
@@ -175,9 +175,9 @@ G = struct('boundaryType',boundaryType,'dx',dx,'dy',dy,'dz',dz,'nx',nx,'ny',ny,'
     'M',M,'RI',RI);
 
 save(['./Data/' name '.mat'],'G');
-if(~silentMode) fprintf('./Data/%s.mat saved\n',name); end
+if(~silentMode); fprintf('./Data/%s.mat saved\n',name); end
 
 %% Make plots
-if(~silentMode) plotMCmatlab(name); end
+if(~silentMode); plotMCmatlab(name); end
 
 end

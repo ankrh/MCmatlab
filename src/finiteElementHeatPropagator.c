@@ -33,25 +33,37 @@
 extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing the mex function
 #endif
 
+#define R 8.3144598 // Gas constant [J/mol/K]
+#define CELSIUSZERO 273.15
+
 void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     bool ctrlc_caught = false;           // Has a ctrl+c been passed from MATLAB?
-    int nx,ny,nz,nT;
+    long nx,ny,nz,nM;
     
-    mwSize const *dimPtr = mxGetDimensions(prhs[1]);
+    mwSize const *dimPtr = mxGetDimensions(prhs[0]);
     nx = dimPtr[0];
     ny = dimPtr[1];
     nz = dimPtr[2];
-    nT = mxGetM(prhs[3]); // Number of tissues in simulation
+    nM = mxGetM(mxGetField(prhs[2],0,"dTperdeltaT")); // Number of media in the simulation.
     
+    
+    double *Temp        = mxGetPr(prhs[0]); // Temp is an nx*ny*nz array of doubles
     plhs[0] = mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL);
-    
     double *outputTemp  = mxGetPr(plhs[0]); // outputTemp is an nx*ny*nz array of doubles
-    int nt              = *mxGetPr(prhs[0]); // nt is an integer (number of time steps to perform)
-    double *Temp        = mxGetPr(prhs[1]); // Temp is an nx*ny*nz array of doubles
-    unsigned char *T    = mxGetData(prhs[2]); // T is a nx*ny*nz array of uint8 (unsigned char) containing values from 0..nT-1
-    double *dTperdeltaT = mxGetPr(prhs[3]); // dTperdeltaT is an nT*nT*3 array of doubles
-    double *dT_abs      = mxGetPr(prhs[4]); // dT_abs is an nx*ny*nz array of doubles
-    bool useAllCPUs     = mxIsLogicalScalarTrue(prhs[5]);
+    long nt             = *mxGetPr(mxGetField(prhs[2],0,"steps")); // nt is an integer (number of time steps to perform)
+    unsigned char *M    = mxGetData(mxGetField(prhs[2],0,"M")); // M is a nx*ny*nz array of uint8 (unsigned char) containing values from 0..nM-1
+    double *dTperdeltaT = mxGetPr(mxGetField(prhs[2],0,"dTperdeltaT")); // dTperdeltaT is an nM*nM*3 array of doubles
+    double *dT_abs      = mxGetPr(mxGetField(prhs[2],0,"dT_abs")); // dT_abs is an nx*ny*nz array of doubles
+    double *Adt         = mxGetPr(mxGetField(prhs[2],0,"Adt")); // Adt is a nM array of doubles
+    double *E           = mxGetPr(mxGetField(prhs[2],0,"E")); // E is a nM array of doubles
+    bool useAllCPUs     = mxIsLogicalScalarTrue(mxGetField(prhs[2],0,"useAllCPUs"));
+    bool lightsOn       = mxIsLogicalScalarTrue(mxGetField(prhs[2],0,"lightsOn"));
+    
+    double *Omega       = mxGetPr(prhs[1]); // Omega is an nx*ny*nz array of doubles if we are supposed to calculate damage, a single NaN element otherwise
+    bool calcDamage     = !mxIsNaN(Omega[0]); // If the Omega input is just one NaN element then we shouldn't bother with thermal damage calculation
+    plhs[1] = calcDamage? mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL): mxCreateDoubleMatrix(1,1,mxREAL); // outputOmega is the same dimensions as Omega
+    double *outputOmega = mxGetPr(plhs[1]);
+    if(!calcDamage) outputOmega[0] = NAN;
     
     double *tempTemp = mxMalloc(nx*ny*nz*sizeof(double)); // Temporary temperature matrix
     
@@ -64,8 +76,8 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     #pragma omp parallel num_threads(useAllCPUs || omp_get_num_procs() == 1? omp_get_num_procs(): omp_get_num_procs()-1)
     #endif
     {
-        int ix,iy,iz;
-        int n,i;
+        long ix,iy,iz;
+        long n,i;
         double dT;
         
         for(n=0; n<nt; n++) {
@@ -78,14 +90,18 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
                     for(ix=0; ix<nx; ix++) {
                         i = ix + iy*nx + iz*nx*ny;
 
-                        dT = dT_abs[i];
-                        if(ix != 0   ) dT += ((*srcTemp)[i-1]     - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i-1    ]*nT          ];
-                        if(ix != nx-1) dT += ((*srcTemp)[i+1]     - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i+1    ]*nT          ];
-                        if(iy != 0   ) dT += ((*srcTemp)[i-nx]    - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i-nx   ]*nT +   nT*nT];
-                        if(iy != ny-1) dT += ((*srcTemp)[i+nx]    - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i+nx   ]*nT +   nT*nT];
-                        if(iz != 0   ) dT += ((*srcTemp)[i-nx*ny] - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i-nx*ny]*nT + 2*nT*nT];
-                        if(iz != nz-1) dT += ((*srcTemp)[i+nx*ny] - (*srcTemp)[i])*dTperdeltaT[T[i] + T[i+nx*ny]*nT + 2*nT*nT];
+                        dT = lightsOn? dT_abs[i]: 0;
+                        if(ix != 0   ) dT += ((*srcTemp)[i-1]     - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i-1    ]*nM          ];
+                        if(ix != nx-1) dT += ((*srcTemp)[i+1]     - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i+1    ]*nM          ];
+                        if(iy != 0   ) dT += ((*srcTemp)[i-nx]    - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i-nx   ]*nM +   nM*nM];
+                        if(iy != ny-1) dT += ((*srcTemp)[i+nx]    - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i+nx   ]*nM +   nM*nM];
+                        if(iz != 0   ) dT += ((*srcTemp)[i-nx*ny] - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i-nx*ny]*nM + 2*nM*nM];
+                        if(iz != nz-1) dT += ((*srcTemp)[i+nx*ny] - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i+nx*ny]*nM + 2*nM*nM];
                         (*tgtTemp)[i] = (*srcTemp)[i] + dT;
+                        if(calcDamage) {
+                            if(n == 0) outputOmega[i] = Omega[i];
+                            outputOmega[i] += Adt[M[i]]*exp(-E[M[i]]/(R*(((*tgtTemp)[i] + (*srcTemp)[i])/2 + CELSIUSZERO)));
+                        }
                     }
                 }
             }

@@ -25,7 +25,7 @@ function runMonteCarloFluorescence(name)
 %
 
 %% Load data from defineGeometry.m and runMonteCarlo.m
-load(['./Data/' name '.mat']);
+load(['./Data/' name '.mat'],'G');
 load(['./Data/' name '_MCoutput.mat'],'MCoutput');
 
 %% USER SPECIFIED: Define simulation behavior
@@ -87,7 +87,7 @@ mua_vec = [G.mediaProperties.mua]; % The media's excitation absorption coefficie
 Y_vec = [G.mediaProperties.Y]; % The media's fluorescence power yields
 sat_vec = [G.mediaProperties.sat]; % The media's fluorescence saturation fluence rates (intensity)
 sourceDistribution = Y_vec(G.M).*mua_vec(G.M)*P_excitation.*MCoutput.F./(1 + P_excitation*MCoutput.F./sat_vec(G.M)); % [W/cm^3]
-if(max(sourceDistribution(:)) == 0) error('Error: No fluorescence emitters'); end
+if(max(sourceDistribution(:)) == 0); error('Error: No fluorescence emitters'); end
 
 %% Check to ensure that the light collector is not inside the cuboid
 if useLightCollector
@@ -123,10 +123,10 @@ clear MCmatlab; % Unload MCmatlab MEX file so it can be modified externally agai
 
 %% Save output and clear memory
 save(['./Data/' name '_MCoutput_fluorescence.mat'],'MCoutput_f','MCinput_f');
-if(~silentMode) fprintf('./Data/%s_MCoutput_fluorescence.mat saved\n',name); end
+if(~silentMode); fprintf('./Data/%s_MCoutput_fluorescence.mat saved\n',name); end
 clear MCinput_f MCoutput_f
 
 %% Make plots
-if(~silentMode) plotMCmatlab(name); end
+if(~silentMode); plotMCmatlab(name); end
 
 end

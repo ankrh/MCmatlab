@@ -44,7 +44,7 @@ function [temperatureSensor, timeVector] = simulateHeatDistribution(name)
 %       finiteElementHeatPropagator.mex (architecture specific)
 %
 %% Load data from defineGeometry.m and runMonteCarlo.m
-load(['./Data/' name '.mat']);
+load(['./Data/' name '.mat'],'G');
 load(['./Data/' name '_MCoutput.mat'],'MCoutput');
 
 %% USER SPECIFIED: Define simulation behavior
@@ -58,28 +58,31 @@ silentMode = false;
 useAllCPUs = true;
 
 % Should a movie of the temperature evolution be generated? Requires silentMode = false.
-makemovie  = true;
+makemovie  = false;
 
 %% USER SPECIFIED: Define parameters
-P                = 1; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
-onduration       = 0.05; % [s] Pulse on-duration
-offduration      = 0.05; % [s] Pulse off-duration
+P                = 10; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
+onduration       = 0.001; % [s] Pulse on-duration
+offduration      = 0.004; % [s] Pulse off-duration
 Temp             = 37*ones(size(G.M)); % [deg C] Initial temperature distribution
 n_pulses         = 1; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
 
 plotTempLimits   = [37 105]; % [deg C], the expected range of temperatures, used only for setting the color scale in the plot
-n_updates_on     = 50; % Number of times data is extracted for plots during each illumination phase . Must be at least 1.
-n_updates_off    = 50; % Number of times data is extracted for plots during each diffusion phase. Must be at least 1.
+n_updates_on     = 30; % Number of times data is extracted for plots during each illumination phase . Must be at least 1.
+n_updates_off    = 120; % Number of times data is extracted for plots during each diffusion phase. Must be at least 1.
 
 %% Check for preexisting files
 if(~silentMode && ~deleteDataFiles(name)); return; end
 
 %% Determine remaining parameters
-R = 8.3144598; % Gas constant [J/mol/K]
-
 if n_pulses ~= 1 && (onduration == 0 || offduration == 0)
     n_pulses = 1; % If either pulse on-duration or off-duration is 0, it doesn't make sense to talk of multiple pulses
     fprintf('\nWarning: Number of pulses changed to 1 since either on-duration or off-duration is 0.\n\n');
+end
+
+if(silentMode)
+    n_updates_on  = 1;
+    n_updates_off = 1;
 end
 
 [nx,ny,nz] = size(G.M);
@@ -88,13 +91,13 @@ nM = length(G.mediaProperties); % Number of different media in simulation
 HC = G.dx*G.dy*G.dz*[G.mediaProperties.VHC]; % Heat capacity array. Element i is the HC of medium i in the reduced mediaProperties list.
 TC = [G.mediaProperties.TC]; % Thermal conductivity array. Element i is the TC of medium i in the reduced mediaProperties list.
 
-if(any([G.mediaProperties.A])) % If non-zero Arrhenius data exists, prepare to calculate thermal damage.
-    calcDamage = true;
-    A = [G.mediaProperties.A];
-    E = [G.mediaProperties.E];
+%% Prepare Arrhenius thermal damage parameters
+A = [G.mediaProperties.A];
+E = [G.mediaProperties.E];
+if(any(A)) % If non-zero Arrhenius data exists, prepare to calculate thermal damage.
     Omega = zeros(size(G.M));
 else
-    calcDamage = false;
+    Omega = NaN;
 end
 
 %% Calculate time step
@@ -229,8 +232,11 @@ else
     temperatureSensor = [];
 end
 
+%% Put heatSim parameters into a struct
+heatSimParameters = struct('M',G.M-1,'Adt',A*dt,'E',E,'dTperdeltaT',dTperdeltaT,'dT_abs',dT_abs,'useAllCPUs',useAllCPUs); % Contents of G.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
+
 %% Simulate heat transfer
-tic
+if(~silentMode); tic; end
 for j=1:n_pulses
     if(~silentMode)
         if nt_on
@@ -241,9 +247,10 @@ for j=1:n_pulses
         drawnow;
     end
     for i = 2:length(nt_vec)
+        heatSimParameters.lightsOn = (nt_vec(i) <= nt_on);
+        heatSimParameters.steps = nt_vec(i)-nt_vec(i-1);
         frameidx = i+(j-1)*(length(nt_vec)-1);
-        Temp = finiteElementHeatPropagator(nt_vec(i)-nt_vec(i-1),Temp,G.M-1,dTperdeltaT,(nt_vec(i) <= nt_on)*dT_abs,useAllCPUs); % Contents of G.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
-        if calcDamage; Omega = Omega + (timeVector(frameidx)-timeVector(frameidx-1))*A(G.M).*exp(-E(G.M)./(R*(Temp + 273.15))); end
+        [Temp,Omega] = finiteElementHeatPropagator(Temp,Omega,heatSimParameters);
         
         if(nt_vec(i) == nt_on && n_pulses == 1)
             Temp_illum = Temp;
@@ -273,18 +280,14 @@ for j=1:n_pulses
         end
     end
 end
-toc;
+if(~silentMode); toc; end
 clear finiteElementHeatPropagator; % Unload finiteElementHeatPropagator MEX file so it can be modified externally again
 
 %% Plot and save results
-save(['./Data/' name '_heatSimoutput.mat'],'temperatureSensor','timeVector','P','onduration','offduration','Temp','n_pulses');
+save(['./Data/' name '_heatSimoutput.mat'],'temperatureSensor','timeVector','P','onduration','offduration','Temp','Omega','n_pulses');
 
 if(nt_on && nt_off && n_pulses == 1)
     save(['./Data/' name '_heatSimoutput.mat'],'Temp_illum','-append');
-end
-
-if calcDamage
-    save(['./Data/' name '_heatSimoutput.mat'],'Omega','-append');
 end
 
 if(~silentMode)
@@ -313,7 +316,7 @@ if(~silentMode)
         title(['Temperature after ' num2str(n_pulses) ' pulses']);
     end
 
-    if calcDamage
+    if ~isnan(Omega(1))
         if(~ishandle(25))
             damageFigure = figure(25);
             damageFigure.Position = [40 80 1100 650];
@@ -326,6 +329,7 @@ if(~silentMode)
         G.mediaProperties(nM + 1).name = 'damage';
         plotVolumetric(G.x,G.y,G.z,M_damage,'MCmatlab_GeometryIllustration',G.mediaProperties);
         title('Thermal damage illustration');
+        fprintf('%.2e cm^3 was thermally damaged.\n',G.dx*G.dy*G.dz*sum(sum(sum(Omega > 1))));
     end
     fprintf('./Data/%s_heatSimoutput.mat saved\n',name);
 

@@ -22,7 +22,7 @@ function runMonteCarlo(name)
 %
 
 %% Load data from defineGeometry.m
-load(['./Data/' name '.mat']);
+load(['./Data/' name '.mat'],'G');
 
 %% USER SPECIFIED: Define simulation behavior
 % Should the script run in silent mode? (disables overwrite prompt,
@@ -141,10 +141,10 @@ clear MCmatlab; % Unload MCmatlab MEX file so it can be modified externally agai
 
 %% Save output and clear memory
 save(['./Data/' name '_MCoutput.mat'],'MCoutput','MCinput');
-if(~silentMode) fprintf('./Data/%s_MCoutput.mat saved\n',name); end
+if(~silentMode); fprintf('./Data/%s_MCoutput.mat saved\n',name); end
 clear MCinput MCoutput
 
 %% Make plots
-if(~silentMode) plotMCmatlab(name); end
+if(~silentMode); plotMCmatlab(name); end
 
 end
