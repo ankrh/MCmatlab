@@ -44,20 +44,21 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     nx = dimPtr[0];
     ny = dimPtr[1];
     nz = dimPtr[2];
-    nM = mxGetM(mxGetField(prhs[2],0,"dTperdeltaT")); // Number of media in the simulation.
+    nM = mxGetM(mxGetField(prhs[2],0,"dTdtperdeltaT")); // Number of media in the simulation.
     
     
-    double *Temp        = mxGetPr(prhs[0]); // Temp is an nx*ny*nz array of doubles
+    double *Temp          = mxGetPr(prhs[0]); // Temp is an nx*ny*nz array of doubles
     plhs[0] = mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL);
-    double *outputTemp  = mxGetPr(plhs[0]); // outputTemp is an nx*ny*nz array of doubles
-    long nt             = *mxGetPr(mxGetField(prhs[2],0,"steps")); // nt is an integer (number of time steps to perform)
-    unsigned char *M    = mxGetData(mxGetField(prhs[2],0,"M")); // M is a nx*ny*nz array of uint8 (unsigned char) containing values from 0..nM-1
-    double *dTperdeltaT = mxGetPr(mxGetField(prhs[2],0,"dTperdeltaT")); // dTperdeltaT is an nM*nM*3 array of doubles
-    double *dT_abs      = mxGetPr(mxGetField(prhs[2],0,"dT_abs")); // dT_abs is an nx*ny*nz array of doubles
-    double *Adt         = mxGetPr(mxGetField(prhs[2],0,"Adt")); // Adt is a nM array of doubles
-    double *E           = mxGetPr(mxGetField(prhs[2],0,"E")); // E is a nM array of doubles
-    bool useAllCPUs     = mxIsLogicalScalarTrue(mxGetField(prhs[2],0,"useAllCPUs"));
-    bool lightsOn       = mxIsLogicalScalarTrue(mxGetField(prhs[2],0,"lightsOn"));
+    double *outputTemp    = mxGetPr(plhs[0]); // outputTemp is an nx*ny*nz array of doubles
+    long nt               = *mxGetPr(mxGetField(prhs[2],0,"steps")); // nt is an integer (number of time steps to perform)
+    double dt             = *mxGetPr(mxGetField(prhs[2],0,"dt")); // dt is a double (duration of time step)
+    unsigned char *M      = mxGetData(mxGetField(prhs[2],0,"M")); // M is a nx*ny*nz array of uint8 (unsigned char) containing values from 0..nM-1
+    double *dTdtperdeltaT = mxGetPr(mxGetField(prhs[2],0,"dTdtperdeltaT")); // dTdtperdeltaT is an nM*nM*3 array of doubles
+    double *dTdt_abs      = mxGetPr(mxGetField(prhs[2],0,"dTdt_abs")); // dTdt_abs is an nx*ny*nz array of doubles
+    double *A             = mxGetPr(mxGetField(prhs[2],0,"A")); // A is a nM array of doubles
+    double *E             = mxGetPr(mxGetField(prhs[2],0,"E")); // E is a nM array of doubles
+    bool useAllCPUs       = mxIsLogicalScalarTrue(mxGetField(prhs[2],0,"useAllCPUs"));
+    bool lightsOn         = mxIsLogicalScalarTrue(mxGetField(prhs[2],0,"lightsOn"));
     long heatBoundaryType = *mxGetPr(mxGetField(prhs[2],0,"heatBoundaryType")); // 0: Insulating boundaries, 1: Constant-temperature boundaries
     
     double *Omega       = mxGetPr(prhs[1]); // Omega is an nx*ny*nz array of doubles if we are supposed to calculate damage, a single NaN element otherwise
@@ -66,6 +67,13 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     double *outputOmega = mxGetPr(plhs[1]);
     if(!calcDamage) outputOmega[0] = NAN;
     
+    double *tempSensorCornerIdxs = mxGetPr(mxGetField(prhs[2],0,"tempSensorCornerIdxs"));
+    long nSensors = mxGetM(mxGetField(prhs[2],0,"tempSensorCornerIdxs"));
+    double *tempSensorInterpWeights = mxGetPr(mxGetField(prhs[2],0,"tempSensorInterpWeights"));
+    
+    plhs[2] = nSensors? mxCreateDoubleMatrix(nSensors,nt+1,mxREAL): mxCreateDoubleMatrix(0,0,mxREAL);
+    double *sensorTemps = mxGetPr(plhs[2]);
+    
     double *tempTemp = mxMalloc(nx*ny*nz*sizeof(double)); // Temporary temperature matrix
     
     double **srcTemp = &Temp; // Pointer to the pointer to whichever temperature matrix is to be read from
@@ -73,13 +81,25 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     
     tgtTemp = (nt%2)? &outputTemp: &tempTemp; // If nt is odd then we can start by writing to the output temperature matrix (pointed to by plhs[0]), otherwise we start by writing to the temporary temperature matrix
     
+    for(long j=0;j<nSensors;j++) { // Interpolate to get the starting temperatures on the temperature sensors
+        long idx = tempSensorCornerIdxs[j];
+        double wx = tempSensorInterpWeights[j           ];
+        double wy = tempSensorInterpWeights[j+  nSensors];
+        double wz = tempSensorInterpWeights[j+2*nSensors];
+        sensorTemps[j] = (1-wx)*(1-wy)*(1-wz)*Temp[idx     ] + (1-wx)*(1-wy)*wz*Temp[idx     +nx*ny] +
+                         (1-wx)*   wy *(1-wz)*Temp[idx  +nx] + (1-wx)*   wy *wz*Temp[idx  +nx+nx*ny] +
+                            wx *(1-wy)*(1-wz)*Temp[idx+1   ] +    wx *(1-wy)*wz*Temp[idx+1   +nx*ny] +
+                            wx *   wy *(1-wz)*Temp[idx+1+nx] +    wx *   wy *wz*Temp[idx+1+nx+nx*ny];
+    }
+    
+    
     #ifdef _WIN32
     #pragma omp parallel num_threads(useAllCPUs || omp_get_num_procs() == 1? omp_get_num_procs(): omp_get_num_procs()-1)
     #endif
     {
         long ix,iy,iz;
         long n,i;
-        double dT;
+        double dTdt; // Time derivative of temperature
         
         for(n=0; n<nt; n++) {
             if(ctrlc_caught) break;
@@ -92,20 +112,20 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
                         i = ix + iy*nx + iz*nx*ny;
 
                         if(heatBoundaryType == 1 && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1)) {
-                            dT = 0; // Constant-temperature boundaries
+                            dTdt = 0; // Constant-temperature boundaries
                         } else {
-                            dT = lightsOn? dT_abs[i]: 0;
-                            if(ix != 0   ) dT += ((*srcTemp)[i-1]     - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i-1    ]*nM          ];
-                            if(ix != nx-1) dT += ((*srcTemp)[i+1]     - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i+1    ]*nM          ];
-                            if(iy != 0   ) dT += ((*srcTemp)[i-nx]    - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i-nx   ]*nM +   nM*nM];
-                            if(iy != ny-1) dT += ((*srcTemp)[i+nx]    - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i+nx   ]*nM +   nM*nM];
-                            if(iz != 0   ) dT += ((*srcTemp)[i-nx*ny] - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i-nx*ny]*nM + 2*nM*nM];
-                            if(iz != nz-1) dT += ((*srcTemp)[i+nx*ny] - (*srcTemp)[i])*dTperdeltaT[M[i] + M[i+nx*ny]*nM + 2*nM*nM];
+                            dTdt = lightsOn? dTdt_abs[i]: 0;
+                            if(ix != 0   ) dTdt += ((*srcTemp)[i-1]     - (*srcTemp)[i])*dTdtperdeltaT[M[i] + M[i-1    ]*nM          ];
+                            if(ix != nx-1) dTdt += ((*srcTemp)[i+1]     - (*srcTemp)[i])*dTdtperdeltaT[M[i] + M[i+1    ]*nM          ];
+                            if(iy != 0   ) dTdt += ((*srcTemp)[i-nx]    - (*srcTemp)[i])*dTdtperdeltaT[M[i] + M[i-nx   ]*nM +   nM*nM];
+                            if(iy != ny-1) dTdt += ((*srcTemp)[i+nx]    - (*srcTemp)[i])*dTdtperdeltaT[M[i] + M[i+nx   ]*nM +   nM*nM];
+                            if(iz != 0   ) dTdt += ((*srcTemp)[i-nx*ny] - (*srcTemp)[i])*dTdtperdeltaT[M[i] + M[i-nx*ny]*nM + 2*nM*nM];
+                            if(iz != nz-1) dTdt += ((*srcTemp)[i+nx*ny] - (*srcTemp)[i])*dTdtperdeltaT[M[i] + M[i+nx*ny]*nM + 2*nM*nM];
                         }
-                        (*tgtTemp)[i] = (*srcTemp)[i] + dT;
+                        (*tgtTemp)[i] = (*srcTemp)[i] + dt*dTdt;
                         if(calcDamage) {
                             if(n == 0) outputOmega[i] = Omega[i];
-                            outputOmega[i] += Adt[M[i]]*exp(-E[M[i]]/(R*(((*tgtTemp)[i] + (*srcTemp)[i])/2 + CELSIUSZERO)));
+                            outputOmega[i] += dt*A[M[i]]*exp(-E[M[i]]/(R*(((*tgtTemp)[i] + (*srcTemp)[i])/2 + CELSIUSZERO)));
                         }
                     }
                 }
@@ -120,6 +140,18 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
                     printf("\nCtrl+C detected, stopping.\n");
                 }
                 #endif
+                
+                for(long j=0;j<nSensors;j++) { // Interpolate to get the new temperatures on the temperature sensors
+                    long idx = tempSensorCornerIdxs[j];
+                    double wx = tempSensorInterpWeights[j           ];
+                    double wy = tempSensorInterpWeights[j+  nSensors];
+                    double wz = tempSensorInterpWeights[j+2*nSensors];
+                    sensorTemps[j+(n+1)*nSensors] = (1-wx)*(1-wy)*(1-wz)*(*tgtTemp)[idx     ] + (1-wx)*(1-wy)*wz*(*tgtTemp)[idx     +nx*ny] +
+                                                    (1-wx)*   wy *(1-wz)*(*tgtTemp)[idx  +nx] + (1-wx)*   wy *wz*(*tgtTemp)[idx  +nx+nx*ny] +
+                                                       wx *(1-wy)*(1-wz)*(*tgtTemp)[idx+1   ] +    wx *(1-wy)*wz*(*tgtTemp)[idx+1   +nx*ny] +
+                                                       wx *   wy *(1-wz)*(*tgtTemp)[idx+1+nx] +    wx *   wy *wz*(*tgtTemp)[idx+1+nx+nx*ny];
+                }
+                
 
                 if(tgtTemp == &outputTemp) {
                     tgtTemp = &tempTemp;

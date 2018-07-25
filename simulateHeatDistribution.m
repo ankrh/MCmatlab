@@ -1,4 +1,4 @@
-function [temperatureSensor, timeVector] = simulateHeatDistribution(name)
+function simulateHeatDistribution(name)
 %   Created 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
 %   Work on this heat solver was started by Rasmus L. Pedersen & Mathias Christensen, DTU Fotonik
 %   
@@ -14,23 +14,15 @@ function [temperatureSensor, timeVector] = simulateHeatDistribution(name)
 %           the basename of the files saved by defineGeometry.m and runMonteCarlo.m
 %
 %   Displays
-%       Geometry cuboid
+%       Geometry cuboid showing positions of specified temperature sensors
 %       3D temperature evolution during illumination and diffusion
 %       Temperature evolution for the individual temperature sensors (x-y-plot)
-%       3D temperature distributions after illumination and after diffusion
 %       Geometry cuboid showing any thermal damage
 %
 %   Output
-%       temperatureSensor
-%           array containing the temperatures of the temperature sensors at
-%           each timestep
-%       timeVector
-%           vector containing the times the temperatures were recorded
-%
 %       ./Data/[name]_heatSimOutput.mat
-%           file containing 3D temperature distribution after illumination
-%           and after diffusion as well as temperatureSensor, timeVector
-%           and other input values
+%           file containing the input values and the temperature sensor values at
+%           each timestep
 %
 %       ./Data/[name]_heatSimOutput.mp4
 %           movie file showing the temperature evolution. The geometry cuboid
@@ -39,6 +31,7 @@ function [temperatureSensor, timeVector] = simulateHeatDistribution(name)
 %   Requires
 %       deleteDataFiles.m
 %       calcdtmax.m
+%       convertTempSensorPos.m
 %       plotVolumetric.m
 %       updateVolumetric.m
 %       finiteElementHeatPropagator.mex (architecture specific)
@@ -58,7 +51,7 @@ silentMode = false;
 useAllCPUs = true;
 
 % Should a movie of the temperature evolution be generated? Requires silentMode = false.
-makemovie  = false;
+makemovie  = true;
 
 % Would you like the cuboid boundaries to be insulated or heat-sinked?
 % 0: Insulating boundaries
@@ -66,36 +59,43 @@ makemovie  = false;
 heatBoundaryType = 0;
 
 %% USER SPECIFIED: Define parameters
-P                = 10; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
-onduration       = 0.001; % [s] Pulse on-duration
-offduration      = 0.004; % [s] Pulse off-duration
+P                = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
+durationOn       = 0.001; % [s] Pulse on-duration
+durationOff      = 0.004; % [s] Pulse off-duration
 Temp             = 37*ones(size(G.M)); % [deg C] Initial temperature distribution
-n_pulses         = 1; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
+nPulses          = 5; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
 
 plotTempLimits   = [37 105]; % [deg C], the expected range of temperatures, used only for setting the color scale in the plot
-n_updates_on     = 30; % Number of times data is extracted for plots during each illumination phase . Must be at least 1.
-n_updates_off    = 120; % Number of times data is extracted for plots during each diffusion phase. Must be at least 1.
+nUpdates         = 100; % Number of times data is extracted for plots during each pulse. A minimum of 1 update is performed in each phase (2 for each pulse consisting of an illumination phase and a diffusion phase)
 
-% Set the starting relative slice positions (x,y,z) for the 3D plots.
-% Especially relevant for movie generation. As an example, [0 1 0.5]
-% puts slices at the lowest x value, the highest y value and the halfway z value. 
-slicePositions   = [1 0.5 1];
+% Set the starting relative slice positions [x y z] for the 3D plots on a
+% scale from 0 to 1. Especially relevant for movie generation. As an
+% example, [0 1 0.5] puts slices at the lowest x value, the highest y value
+% and the halfway z value.
+slicePositions   = [.5 0.6 1];
+
+% Programmatical temperature sensor positions, specified as a matrix where
+% each row shows a temperature sensor's absolute [x y z] coordinates. Leave
+% the matrix empty ([]) to disable temperature sensors.
+tempSensorPositions = [0 0 0.038
+                       0 0 0.04
+                       0 0 0.042
+                       0 0 0.044];
 
 %% Check for preexisting files
 if(~silentMode && ~deleteDataFiles(name)); return; end
 
 %% Determine remaining parameters
-if n_pulses ~= 1 && (onduration == 0 || offduration == 0)
-    n_pulses = 1; % If either pulse on-duration or off-duration is 0, it doesn't make sense to talk of multiple pulses
+if nPulses ~= 1 && (durationOn == 0 || durationOff == 0)
+    nPulses = 1; % If either pulse on-duration or off-duration is 0, it doesn't make sense to talk of multiple pulses
     fprintf('\nWarning: Number of pulses changed to 1 since either on-duration or off-duration is 0.\n\n');
 end
 
 if(silentMode)
-    n_updates_on  = 1;
-    n_updates_off = 1;
+    nUpdatesOn  = 1;
+    nUpdatesOff = 1;
 end
 
-[nx,ny,nz] = size(G.M);
 nM = length(G.mediaProperties); % Number of different media in simulation
 
 HC = G.dx*G.dy*G.dz*[G.mediaProperties.VHC]; % Heat capacity array. Element i is the HC of medium i in the reduced mediaProperties list.
@@ -113,99 +113,87 @@ end
 %% Calculate time step
 dtmax = calcdtmax(G.M,TC,HC,G.dx,G.dy,G.dz)/2;
 
-if onduration ~= 0
-    nt_on = max(n_updates_on,ceil(onduration/dtmax)); % Number of time steps with illumination
-    dt = onduration/nt_on; % Time step size
-    if offduration ~= 0
-        nt_off = max(n_updates_off,ceil(offduration/dt)); % Number of time steps without illumination
-    else
-        nt_off = 0;
-    end
+if durationOn ~= 0
+    nUpdatesOn = max(1,round(nUpdates*durationOn/(durationOn+durationOff)));
+    nTsPerUpdateOn = ceil(durationOn/nUpdatesOn/dtmax); % Number of time steps per update in illumination phase
+    dtOn = durationOn/nUpdatesOn/nTsPerUpdateOn; % Time step size during illumination
 else
-    nt_on = 0;
-    nt_off = max(n_updates_off,ceil(offduration/dtmax)); % Number of time steps without illumination
-    dt = offduration/nt_off; % Time step size
+    nUpdatesOn = 0;
+    nTsPerUpdateOn = 1;
+    dtOn = 1;
 end
 
-nt_vec = unique(floor([linspace(0,nt_on,n_updates_on+1) linspace(nt_on + nt_off/n_updates_off,nt_on + nt_off,n_updates_off)])); % Vector of nt's on which the plots should be updated
+if durationOff ~= 0
+    nUpdatesOff = max(1,nUpdates - nUpdatesOn);
+    nTsPerUpdateOff = ceil(durationOff/nUpdatesOff/dtmax); % Number of time steps per update in diffusion phase
+    dtOff = durationOff/nUpdatesOff/nTsPerUpdateOff; % Time step size during diffusion
+else
+    nUpdatesOff = 0;
+    nTsPerUpdateOff = 1;
+    dtOff = 1;
+end
 
-timeVector = [0 , repmat(nt_vec(2:end),1,n_pulses)+repelem(0:n_pulses-1,length(nt_vec)-1)*nt_vec(end)]*dt;
+updatesTimeVector = [0 , ((durationOn+durationOff)*repelem(0:(nPulses-1),nUpdatesOn+nUpdatesOff) + repmat([dtOn*nTsPerUpdateOn*(1:nUpdatesOn) , (durationOn + (dtOff*nTsPerUpdateOff*(1:nUpdatesOff)))],1,nPulses))];
+
+sensorsTimeVector = [0 , ((durationOn+durationOff)*repelem(0:(nPulses-1),nUpdatesOn*nTsPerUpdateOn+nUpdatesOff*nTsPerUpdateOff) + repmat([dtOn*(1:nUpdatesOn*nTsPerUpdateOn) , (durationOn + (dtOff*(1:nUpdatesOff*nTsPerUpdateOff)))],1,nPulses))];
 
 %% Calculate proportionality between voxel-to-voxel temperature difference DeltaT and time step temperature change dT
 TC_eff = 2*(TC'*TC)./(ones(length(TC))*diag(TC)+diag(TC)*ones(length(TC))); % Same as TC_eff(i,j) = 2*TC_red(i)*TC_red(j)/(TC_red(i)+TC_red(j)) but without for loops
 TC_eff(isnan(TC_eff)) = 0; % Neighboring insulating voxels return NaN but should just be 0
-dTperdeltaT = cat(3,dt/G.dx*G.dy*G.dz*TC_eff./(diag(HC)*ones(nM)),...
-                    dt*G.dx/G.dy*G.dz*TC_eff./(diag(HC)*ones(nM)),...
-                    dt*G.dx*G.dy/G.dz*TC_eff./(diag(HC)*ones(nM))); % Third dimension corresponds to the different directions of heat diffusion
+
+dTdtperdeltaT = cat(3,TC_eff./(diag(HC)*ones(nM))/G.dx*G.dy*G.dz,...
+                      TC_eff./(diag(HC)*ones(nM))*G.dx/G.dy*G.dz,...
+                      TC_eff./(diag(HC)*ones(nM))*G.dx*G.dy/G.dz); % [deg C /(s*deg C)] Time derivative of voxel temperature per voxel-to-voxel temperature difference. Third dimension corresponds to the different directions of heat diffusion (x, y and z)
 clear TC_eff
 
 %% Calculate temperature change due to absorbed heat per time step
 mua_vec = [G.mediaProperties.mua];
-dT_abs = mua_vec(G.M).*MCoutput.F*dt*G.dx*G.dy*G.dz*P./HC(G.M); % Temperature change from absorption per time step [deg C] (mua_vec(G.M).*F is a 3D matrix of normalized volumetric powers)
+dTdt_abs = mua_vec(G.M).*MCoutput.F*G.dx*G.dy*G.dz*P./HC(G.M); % [deg C/s] Time derivative of voxel temperature due to absorption. (mua_vec(G.M).*F is a 3D matrix of normalized volumetric powers)
 clear MCoutput
 
+%% Convert the temperature sensor positions to interpolation corner indices and weights used in the MEX function
+numTemperatureSensors = size(tempSensorPositions,1);
+if(numTemperatureSensors)
+    if(any(abs(tempSensorPositions(:,1))               > G.dx*G.nx/2) || ...
+       any(abs(tempSensorPositions(:,2))               > G.dy*G.ny/2) || ...
+       any(abs(tempSensorPositions(:,3)) - G.dz*G.nz/2 > G.dz*G.nz/2))
+        error('Error: A temperature sensor is outside the cuboid.');
+    end
+
+    [tempSensorCornerIdxs , tempSensorInterpWeights] = convertTempSensorPos(tempSensorPositions,G.x,G.y,G.z);
+else
+    tempSensorCornerIdxs = [];
+    tempSensorInterpWeights = [];
+end
+sensorTemps = [];
+
 if(~silentMode)
-    %% Plot the geometry to allow the user to select temperature sensor locations
-    if(~ishandle(22))
-        geometryFigure = figure(22);
-        geometryFigure.Position = [40 80 1100 650];
-    else
-        geometryFigure = figure(22);
-    end
-    clf;
-    geometryFigure.Name = 'Geometry illustration';
-    plotVolumetric(G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',slicePositions);
-    title('Geometry illustration');
-
-    datacursormode on;
-    dataCursorHandle = datacursormode(geometryFigure);
-
-    fprintf('Place one or more (shift+click) temperature sensor in the geometry,\n and hit (almost) any key to continue.\n');
-    pause
-    cursorInfo = getCursorInfo(dataCursorHandle);
-    numTemperatureSensors = length(cursorInfo);
-
-    if numTemperatureSensors
-        for temperatureSensorIndex = numTemperatureSensors:-1:1
-            dataCursorPosition = cursorInfo(temperatureSensorIndex).Position;
-            [~, dCPz] = min(abs(G.z-dataCursorPosition(3)));
-            [~, dCPy] = min(abs(G.y-dataCursorPosition(2)));
-            [~, dCPx] = min(abs(G.x-dataCursorPosition(1)));
-            temperatureSensorPosition(temperatureSensorIndex) = ...
-                sub2ind(size(G.M),dCPx,dCPy,dCPz);
-        end
-        temperatureSensorPosition = fliplr(temperatureSensorPosition); % Reverse array so the order of the sensors is the same as the order they were defined in.
-        temperatureSensor = NaN(numTemperatureSensors,length(timeVector));
-        temperatureSensor(:,1) = Temp(temperatureSensorPosition);
-
-        temperatureSensorMedia = {G.mediaProperties(G.M(temperatureSensorPosition)).name};
-
-        if(~ishandle(23))
-            temperatureSensorFigure = figure(23);
-            temperatureSensorFigure.Position = [40 80 1100 650];
+    if(numTemperatureSensors)
+        %% Plot the geometry showing the temperature sensor locations
+        if(~ishandle(22))
+            geometryFigure = figure(22);
+            geometryFigure.Position = [40 80 1100 650];
         else
-            temperatureSensorFigure = figure(23);
+            geometryFigure = figure(22);
         end
-        clf;
-        temperatureSensorFigure.Name = 'Temperature sensors';
-        temperaturePlot = axes('XLim',timeVector([1, end]));
-        xlabel('Time [sec]')
-        ylabel('Temperature [deg C]')
-        title('Temperature sensors')
-        hold on
-        temperatureSensorLinePlots = plot(temperaturePlot,timeVector,temperatureSensor);
-        for i=1:numTemperatureSensors
-            temperatureSensorLinePlots(i).YDataSource = sprintf('temperatureSensor(%d,:)',i);
+        geometryFigure.Name = 'Temperature sensor illustration';
+        plotVolumetric(G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',slicePositions);
+        title('Temperature sensor illustration');
+
+        for i=numTemperatureSensors:-1:1
+            sensorLabels{i,1} = num2str(i);
         end
-        legend(temperatureSensorMedia);
-    else
-        temperatureSensor = [];
+        text(tempSensorPositions(:,1),tempSensorPositions(:,2),tempSensorPositions(:,3),sensorLabels,'HorizontalAlignment','center','FontSize',18)
+        drawnow;
     end
 
-    if numTemperatureSensors; figure(temperatureSensorFigure); end
-
-    fprintf('[nx,ny,nz]=[%d,%d,%d]. Number of pulses is %d.\nIllumination on for %d steps and off for %d steps in each pulse. Step size is %0.2e s.\n',nx,ny,nz,n_pulses,nt_on,nt_off,dt);
-
+    if durationOn ~= 0
+        fprintf('Illumination phase consists of %d steps of %0.2e s.\n',nUpdatesOn*nTsPerUpdateOn,dtOn);
+    end
+    if durationOff ~= 0
+        fprintf('Diffusion phase consists of %d steps of %0.2e s.\n',nUpdatesOff*nTsPerUpdateOff,dtOff);
+    end
+    
     if(~ishandle(21))
         heatsimFigure = figure(21);
         heatsimFigure.Position = [40 80 1100 650];
@@ -222,95 +210,110 @@ if(~silentMode)
     %% Prepare the temperature plot
     heatsimFigure.Name = 'Temperature evolution';
     plotVolumetric(G.x,G.y,G.z,Temp,'MCmatlab','slicePositions',slicePositions);
-    h_title = title(['Temperature evolution, t = ' num2str(timeVector(1),'%#.2g') ' s']);
+    h_title = title('Temperature evolution, t = 0 s');
     caxis(plotTempLimits); % User-defined color scale limits
     if(makemovie); movieframes(2) = getframe(heatsimFigure); end
-else
-    temperatureSensor = [];
 end
 
 %% Put heatSim parameters into a struct
-heatSimParameters = struct('M',G.M-1,'Adt',A*dt,'E',E,'dTperdeltaT',dTperdeltaT,'dT_abs',dT_abs,'useAllCPUs',useAllCPUs,'heatBoundaryType',heatBoundaryType); % Contents of G.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
+heatSimParameters = struct('M',G.M-1,'A',A,'E',E,'dTdtperdeltaT',dTdtperdeltaT,'dTdt_abs',dTdt_abs,'useAllCPUs',useAllCPUs,'heatBoundaryType',heatBoundaryType,'tempSensorCornerIdxs',tempSensorCornerIdxs,'tempSensorInterpWeights',tempSensorInterpWeights); % Contents of G.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
+clear dTdtperdeltaT dTdt_abs % These 3D matrices are large and no longer needed since they have been copied to the struct, so they are cleared to conserve memory
 
 %% Simulate heat transfer
 if(~silentMode); tic; end
-for j=1:n_pulses
-    if(~silentMode)
-        if nt_on
-            fprintf(['Illuminating pulse #' num2str(j) '... \n' repmat('-',1,n_updates_on)]);
-        else
-            fprintf(['Diffusing heat... \n' repmat('-',1,n_updates_off)]);
-        end
-        drawnow;
-    end
-    for i = 2:length(nt_vec)
-        heatSimParameters.lightsOn = (nt_vec(i) <= nt_on);
-        heatSimParameters.steps = nt_vec(i)-nt_vec(i-1);
-        frameidx = i+(j-1)*(length(nt_vec)-1);
-        [Temp,Omega] = finiteElementHeatPropagator(Temp,Omega,heatSimParameters);
-        
-        if(nt_vec(i) == nt_on && n_pulses == 1)
-            Temp_illum = Temp;
-        end
-        
+for j=1:nPulses
+    if durationOn ~= 0
         if(~silentMode)
-            if numTemperatureSensors
-                temperatureSensor(:,frameidx) = Temp(temperatureSensorPosition);
-                refreshdata(temperatureSensorLinePlots,'caller');
-            end
+            fprintf(['Illuminating pulse #' num2str(j) '... \n' repmat('-',1,nUpdatesOn)]);
+            drawnow;
+        end
         
-            fprintf(1,'\b');
-            updateVolumetric(heatsimFigure,Temp);
-            h_title.String = ['Temperature evolution, t = ' num2str(timeVector(frameidx),'%#.2g') ' s'];
-
-            if(makemovie)
-                movieframes(frameidx+1) = getframe(heatsimFigure);
+        heatSimParameters.lightsOn = true;
+        heatSimParameters.steps = nTsPerUpdateOn;
+        heatSimParameters.dt = dtOn;
+        for i = 1:nUpdatesOn
+            [Temp,Omega,newSensorTemps] = finiteElementHeatPropagator(Temp,Omega,heatSimParameters);
+            
+            if isempty(sensorTemps)
+                sensorTemps = newSensorTemps;
+            else
+                sensorTemps = [sensorTemps(:,1:end-1) newSensorTemps];
             end
-            if nt_vec(i) == nt_on
-                fprintf('\b\b Done\n');
-                if nt_off
-                    fprintf(['Diffusing heat... \n' repmat('-',1,n_updates_off)]);
+            
+            if(~silentMode)
+                fprintf(1,'\b');
+                updateIdx = i+(j-1)*(nUpdatesOn+nUpdatesOff); % Index of the update
+                updateVolumetric(heatsimFigure,Temp);
+                h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
+                drawnow;
+                
+                if(makemovie)
+                    movieframes(updateIdx+2) = getframe(heatsimFigure);
                 end
-            elseif nt_vec(i) == nt_on + nt_off
-                fprintf('\b\b Done\n');
             end
         end
+        
+        if(~silentMode); fprintf('\b\b Done\n'); end
+    end
+    
+    if durationOff ~= 0
+        if(~silentMode)
+            fprintf(['Diffusing heat... \n' repmat('-',1,nUpdatesOff)]);
+            drawnow;
+        end
+        
+        heatSimParameters.lightsOn = false;
+        heatSimParameters.steps = nTsPerUpdateOff;
+        heatSimParameters.dt = dtOff;
+        for i = 1:nUpdatesOff
+            [Temp,Omega,newSensorTemps] = finiteElementHeatPropagator(Temp,Omega,heatSimParameters);
+            
+            if isempty(sensorTemps)
+                sensorTemps = newSensorTemps;
+            else
+                sensorTemps = [sensorTemps(:,1:end-1) newSensorTemps];
+            end
+            
+            if(~silentMode)
+                fprintf(1,'\b');
+                updateIdx = nUpdatesOn+i+(j-1)*(nUpdatesOn+nUpdatesOff); % Index of the update
+                updateVolumetric(heatsimFigure,Temp);
+                h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
+                drawnow;
+                
+                if(makemovie)
+                    movieframes(updateIdx+2) = getframe(heatsimFigure);
+                end
+            end
+        end
+        if(~silentMode); fprintf('\b\b Done\n'); end
     end
 end
 if(~silentMode); toc; end
 clear finiteElementHeatPropagator; % Unload finiteElementHeatPropagator MEX file so it can be modified externally again
+clear Temp heatSimParameters;
 
 %% Plot and save results
-save(['./Data/' name '_heatSimoutput.mat'],'temperatureSensor','timeVector','P','onduration','offduration','Temp','Omega','n_pulses');
-
-if(nt_on && nt_off && n_pulses == 1)
-    save(['./Data/' name '_heatSimoutput.mat'],'Temp_illum','-append');
-end
+save(['./Data/' name '_heatSimoutput.mat'],'sensorsTimeVector','sensorTemps','P','durationOn','durationOff','Omega','nPulses');
 
 if(~silentMode)
-    figure(heatsimFigure);
-    if ~nt_on
-        heatsimFigure.Name = 'Temperature after diffusion';
-        title('Temperature after diffusion');
-    elseif ~nt_off
-        heatsimFigure.Name = 'Temperature after illumination';
-        title('Temperature after illumination');
-    elseif n_pulses == 1
-        heatsimFigure.Name = 'Temperature after diffusion';
-        title('Temperature after diffusion')
-        if(~ishandle(24))
-            illumFigure = figure(24);
-            illumFigure.Position = [40 80 1100 650];
+    if(numTemperatureSensors)
+        if(~ishandle(23))
+            temperatureSensorFigure = figure(23);
+            temperatureSensorFigure.Position = [40 80 1100 650];
         else
-            illumFigure = figure(24);
+            temperatureSensorFigure = figure(23);
         end
         clf;
-        illumFigure.Name = 'Temperature after illumination';
-        plotVolumetric(G.x,G.y,G.z,Temp_illum,'MCmatlab','slicePositions',slicePositions);
-        title('Temperature after illumination');
-        caxis(plotTempLimits); % User-defined color scale limits
-    else
-        title(['Temperature after ' num2str(n_pulses) ' pulses']);
+        temperatureSensorFigure.Name = 'Temperature sensors';
+        plot(sensorsTimeVector,sensorTemps,'LineWidth',2);
+        set(gca,'FontSize',16);
+        xlabel('Time [sec]')
+        ylabel('Temperature [deg C]')
+        title('Temperature sensors')
+        xlim(sensorsTimeVector([1 end]));
+        legend(sensorLabels,'Location','best');
+        grid on;grid minor;
     end
 
     if ~isnan(Omega(1))
