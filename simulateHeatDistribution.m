@@ -91,11 +91,6 @@ if nPulses ~= 1 && (durationOn == 0 || durationOff == 0)
     fprintf('\nWarning: Number of pulses changed to 1 since either on-duration or off-duration is 0.\n\n');
 end
 
-if(silentMode)
-    nUpdatesOn  = 1;
-    nUpdatesOff = 1;
-end
-
 nM = length(G.mediaProperties); % Number of different media in simulation
 
 HC = G.dx*G.dy*G.dz*[G.mediaProperties.VHC]; % Heat capacity array. Element i is the HC of medium i in the reduced mediaProperties list.
@@ -111,6 +106,10 @@ else
 end
 
 %% Calculate time step
+if(silentMode)
+    nUpdates = 1;
+end
+
 dtmax = calcdtmax(G.M,TC,HC,G.dx,G.dy,G.dz)/2;
 
 if durationOn ~= 0
@@ -294,7 +293,7 @@ clear finiteElementHeatPropagator; % Unload finiteElementHeatPropagator MEX file
 clear Temp heatSimParameters;
 
 %% Plot and save results
-save(['./Data/' name '_heatSimoutput.mat'],'sensorsTimeVector','sensorTemps','P','durationOn','durationOff','Omega','nPulses');
+save(['./Data/' name '_heatSimoutput.mat'],'tempSensorPositions','sensorsTimeVector','sensorTemps','P','durationOn','durationOff','Omega','nPulses');
 
 if(~silentMode)
     if(numTemperatureSensors)
