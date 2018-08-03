@@ -31,76 +31,40 @@ function plotMCmatlab(name)
 load(['./Data/' name '.mat']);
 
 %% Make geometry plot
-if(~ishandle(1))
-    h_f = figure(1);
-    h_f.Position = [40 80 1100 650];
-else
-    h_f = figure(1);
-end
+h_f = plotVolumetric(1,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties);
 h_f.Name = 'Geometry illustration';
-plotVolumetric(G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties);
 title('Geometry illustration');
 
 %% Make media properties plot
-if(~ishandle(2))
-    h_f = figure(2);
-    h_f.Position = [40 80 1100 650];
-else
-    h_f = figure(2);
-end
+h_f = plotMediaProperties(2,G.mediaProperties);
 h_f.Name = 'Media properties';
-plotMediaProperties(G.mediaProperties);
 
 if(~isnan(G.wavelength_f))
     %% Make fluorescence media properties plot
-    if(~ishandle(3))
-        h_f = figure(3);
-        h_f.Position = [40 80 1100 650];
-    else
-        h_f = figure(3);
-    end
+    h_f = plotMediaProperties(3,G.mediaProperties_f);
     h_f.Name = 'Fluorescence media properties';
-    plotMediaProperties(G.mediaProperties_f);
 end
 
 if(exist(['./Data/' name '_MCoutput.mat'],'file'))
     load(['./Data/' name '_MCoutput.mat'],'MCoutput','MCinput');
     
     %% Make power absorption plot
-    if(~ishandle(4))
-        h_f = figure(4);
-        h_f.Position = [40 80 1100 650];
-    else
-        h_f = figure(4);
-    end
-    h_f.Name = 'Normalized power absorption';
     mua_vec = [G.mediaProperties.mua];
-    plotVolumetric(G.x,G.y,G.z,mua_vec(G.M).*MCoutput.F,'MCmatlab_fromZero');
+    h_f = plotVolumetric(4,G.x,G.y,G.z,mua_vec(G.M).*MCoutput.F,'MCmatlab_fromZero');
+    h_f.Name = 'Normalized power absorption';
     title('Normalized absorbed power per unit volume [W/cm^3/W.incident] ')
     
     %% Make fluence rate plot
-    if(~ishandle(5))
-        h_f = figure(5);
-        h_f.Position = [40 80 1100 650];
-    else
-        h_f = figure(5);
-    end
+    h_f = plotVolumetric(5,G.x,G.y,G.z,MCoutput.F,'MCmatlab_fromZero');
     h_f.Name = 'Normalized fluence rate';
-    plotVolumetric(G.x,G.y,G.z,MCoutput.F,'MCmatlab_fromZero');
     title('Normalized fluence rate (Intensity) [W/cm^2/W.incident] ')
     
     fprintf('\n%.3g%% of the input light was absorbed within the cuboid.\n',100*G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*MCoutput.F))));
 
     if(MCinput.useLightCollector)
         %% If there's a light collector, show its orientation and the detected light
-        if(~ishandle(6))
-            h_f = figure(6);
-            h_f.Position = [40 80 1100 650];
-        else
-            h_f = figure(6);
-        end
+        h_f = plotVolumetric(6,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties);
         h_f.Name = 'Light collector illustration';
-        plotVolumetric(G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties);
         title('Light collector illustration');
         box on;grid on;grid minor;
 
@@ -163,56 +127,32 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
         
         fprintf('Out of this, %.3g W was absorbed within the cuboid.\n',G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*P.*MCoutput.F))));
         
-        if(~ishandle(8))
-            h_f = figure(8);
-            h_f.Position = [40 80 1100 650];
-        else
-            h_f = figure(8);
-        end
-        h_f.Name = 'Fluorescence emitters';
         Y_vec = [G.mediaProperties.Y]; % The media's fluorescence power efficiencies
         sat_vec = [G.mediaProperties.sat]; % The media's fluorescence saturation fluence rates (intensity)
         FluorescenceEmitters = Y_vec(G.M).*mua_vec(G.M)*P.*MCoutput.F./(1 + P*MCoutput.F./sat_vec(G.M)); % [W/cm^3]
-        plotVolumetric(G.x,G.y,G.z,FluorescenceEmitters,'MCmatlab_fromZero');
+        h_f = plotVolumetric(8,G.x,G.y,G.z,FluorescenceEmitters,'MCmatlab_fromZero');
+        h_f.Name = 'Fluorescence emitters';
         title('Fluorescence emitter distribution [W/cm^3] ')
 
         fprintf('Out of this, %.3g W was re-emitted as fluorescence.\n',G.dx*G.dy*G.dz*sum(sum(sum(FluorescenceEmitters))));
         
         %% Make power absorption plot
-        if(~ishandle(9))
-            h_f = figure(9);
-            h_f.Position = [40 80 1100 650];
-        else
-            h_f = figure(9);
-        end
-        h_f.Name = 'Fluorescence power absorption';
         mua_vec = [G.mediaProperties_f.mua];
-        plotVolumetric(G.x,G.y,G.z,mua_vec(G.M).*MCoutput_f.F,'MCmatlab_fromZero');
+        h_f = plotVolumetric(9,G.x,G.y,G.z,mua_vec(G.M).*MCoutput_f.F,'MCmatlab_fromZero');
+        h_f.Name = 'Fluorescence power absorption';
         title('Absorbed fluorescence power per unit volume [W/cm^3] ')
 
         %% Make fluence rate plot
-        if(~ishandle(10))
-            h_f = figure(10);
-            h_f.Position = [40 80 1100 650];
-        else
-            h_f = figure(10);
-        end
+        h_f = plotVolumetric(10,G.x,G.y,G.z,MCoutput_f.F,'MCmatlab_fromZero');
         h_f.Name = 'Fluorescence fluence rate';
-        plotVolumetric(G.x,G.y,G.z,MCoutput_f.F,'MCmatlab_fromZero');
         title('Fluorescence fluence rate (Intensity) [W/cm^2] ')
         
         fprintf('Out of this, %.3g W was re-absorbed within the cuboid.\n\n',G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*MCoutput_f.F))));
         
         if(MCinput_f.useLightCollector)
             %% If there's a fluorescence light collector, show its orientation and the detected light
-            if(~ishandle(11))
-                h_f = figure(11);
-                h_f.Position = [40 80 1100 650];
-            else
-                h_f = figure(11);
-            end
+            h_f = plotVolumetric(11,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_f);
             h_f.Name = 'Fluorescence light collector illustration';
-            plotVolumetric(G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_f);
             title('Fluorescence light collector illustration');
             box on;grid on;grid minor;
 

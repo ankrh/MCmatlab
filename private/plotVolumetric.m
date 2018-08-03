@@ -1,7 +1,13 @@
-function plotVolumetric(xraw,yraw,zraw,Mraw,varargin)
+function h_f = plotVolumetric(nFig,xraw,yraw,zraw,Mraw,varargin)
+
+if(~ishandle(nFig))
+    h_f = figure(nFig);
+    h_f.Position = [40 80 1100 650];
+else
+    h_f = figure(nFig);
+end
 
 clf;
-h_f = gcf;
 
 axes
 

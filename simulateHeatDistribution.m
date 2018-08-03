@@ -74,9 +74,9 @@ nUpdates         = 100; % Number of times data is extracted for plots during eac
 % and the halfway z value.
 slicePositions   = [.5 0.6 1];
 
-% Programmatical temperature sensor positions, specified as a matrix where
-% each row shows a temperature sensor's absolute [x y z] coordinates. Leave
-% the matrix empty ([]) to disable temperature sensors.
+% Temperature sensor positions, specified as a matrix where each row shows
+% a temperature sensor's absolute [x y z] coordinates. Leave the matrix
+% empty ([]) to disable temperature sensors.
 tempSensorPositions = [0 0 0.038
                        0 0 0.04
                        0 0 0.042
@@ -132,9 +132,9 @@ else
     dtOff = 1;
 end
 
-updatesTimeVector = [0 , ((durationOn+durationOff)*repelem(0:(nPulses-1),nUpdatesOn+nUpdatesOff) + repmat([dtOn*nTsPerUpdateOn*(1:nUpdatesOn) , (durationOn + (dtOff*nTsPerUpdateOff*(1:nUpdatesOff)))],1,nPulses))];
+updatesTimeVector = [0 , ((durationOn+durationOff)*repelem(0:(nPulses-1),nUpdatesOn                + nUpdatesOff                ) + repmat([(1:nUpdatesOn)*nTsPerUpdateOn*dtOn , (durationOn + ((1:nUpdatesOff)*nTsPerUpdateOff*dtOff))],1,nPulses))];
 
-sensorsTimeVector = [0 , ((durationOn+durationOff)*repelem(0:(nPulses-1),nUpdatesOn*nTsPerUpdateOn+nUpdatesOff*nTsPerUpdateOff) + repmat([dtOn*(1:nUpdatesOn*nTsPerUpdateOn) , (durationOn + (dtOff*(1:nUpdatesOff*nTsPerUpdateOff)))],1,nPulses))];
+sensorsTimeVector = [0 , ((durationOn+durationOff)*repelem(0:(nPulses-1),nUpdatesOn*nTsPerUpdateOn + nUpdatesOff*nTsPerUpdateOff) + repmat([(1:nUpdatesOn*nTsPerUpdateOn)*dtOn , (durationOn + ((1:nUpdatesOff*nTsPerUpdateOff)*dtOff))],1,nPulses))];
 
 %% Calculate proportionality between voxel-to-voxel temperature difference DeltaT and time step temperature change dT
 TC_eff = 2*(TC'*TC)./(ones(length(TC))*diag(TC)+diag(TC)*ones(length(TC))); % Same as TC_eff(i,j) = 2*TC_red(i)*TC_red(j)/(TC_red(i)+TC_red(j)) but without for loops
@@ -169,14 +169,8 @@ sensorTemps = [];
 if(~silentMode)
     if(numTemperatureSensors)
         %% Plot the geometry showing the temperature sensor locations
-        if(~ishandle(22))
-            geometryFigure = figure(22);
-            geometryFigure.Position = [40 80 1100 650];
-        else
-            geometryFigure = figure(22);
-        end
+        geometryFigure = plotVolumetric(22,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',slicePositions);
         geometryFigure.Name = 'Temperature sensor illustration';
-        plotVolumetric(G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',slicePositions);
         title('Temperature sensor illustration');
 
         for i=numTemperatureSensors:-1:1
@@ -193,22 +187,15 @@ if(~silentMode)
         fprintf('Diffusion phase consists of %d steps of %0.2e s.\n',nUpdatesOff*nTsPerUpdateOff,dtOff);
     end
     
-    if(~ishandle(21))
-        heatsimFigure = figure(21);
-        heatsimFigure.Position = [40 80 1100 650];
-    else
-        heatsimFigure = figure(21);
-    end
-    
     if(makemovie) % Make a temporary figure showing the geometry illustration to put into the beginning of the movie
-        plotVolumetric(G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',slicePositions);
+        heatsimFigure = plotVolumetric(21,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',slicePositions);
         title('Geometry illustration');
         drawnow;
         movieframes(1) = getframe(heatsimFigure);
     end
     %% Prepare the temperature plot
+    heatsimFigure = plotVolumetric(21,G.x,G.y,G.z,Temp,'MCmatlab','slicePositions',slicePositions);
     heatsimFigure.Name = 'Temperature evolution';
-    plotVolumetric(G.x,G.y,G.z,Temp,'MCmatlab','slicePositions',slicePositions);
     h_title = title('Temperature evolution, t = 0 s');
     caxis(plotTempLimits); % User-defined color scale limits
     if(makemovie); movieframes(2) = getframe(heatsimFigure); end
@@ -316,17 +303,11 @@ if(~silentMode)
     end
 
     if ~isnan(Omega(1))
-        if(~ishandle(25))
-            damageFigure = figure(25);
-            damageFigure.Position = [40 80 1100 650];
-        else
-            damageFigure = figure(25);
-        end
-        damageFigure.Name = 'Thermal damage illustration';
         M_damage = G.M;
         M_damage(Omega > 1) = nM + 1;
         G.mediaProperties(nM + 1).name = 'damage';
-        plotVolumetric(G.x,G.y,G.z,M_damage,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',slicePositions);
+        damageFigure = plotVolumetric(25,G.x,G.y,G.z,M_damage,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',slicePositions);
+        damageFigure.Name = 'Thermal damage illustration';
         title('Thermal damage illustration');
         fprintf('%.2e cm^3 was thermally damaged.\n',G.dx*G.dy*G.dz*sum(sum(sum(Omega > 1))));
     end
