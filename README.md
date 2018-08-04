@@ -30,7 +30,7 @@ getMediaProperties.m
 
 INSTRUCTIONS:
 1. Compilation
-The folders include all the executables necessary, so you don't need to compile anything. If, however, you want to change the routine in either the MCmatlab.c source code or the finiteElementHeatPropagator.c source code (both located in the folder "src"), you will need to recompile the respective mex-files. Check out those two source-files on how to do so.
+ - The folders include all the executables necessary, so you don't need to compile anything. If, however, you want to change the routine in either the MCmatlab.c source code or the finiteElementHeatPropagator.c source code (both located in the folder "src"), you will need to recompile the respective mex-files. Check out those two source-files on how to do so.
 
 2. Build geometry
  - Modify getMediaProperties.m to include the definitions of the media you're interested in. You may optionally include thermal and/or fluorescence properties.
