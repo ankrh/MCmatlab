@@ -90,19 +90,24 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
             legend([h1 h2],'Imaged area','Lens aperture','Location','northeast');
 
             if LC.resX_LC*LC.resY_LC > 1
-                if(~ishandle(7))
-                    h_f = figure(7);
-                    h_f.Position = [40 80 1100 650];
+                if LC.nTimeBins_LC == 0
+                    if(~ishandle(7))
+                        h_f = figure(7);
+                        h_f.Position = [40 80 1100 650];
+                    else
+                        h_f = figure(7);
+                    end
+                    clf;
+                    h_f.Name = 'Image';
+                    imagesc([-LC.FieldSize_LC LC.FieldSize_LC]/2,[-LC.FieldSize_LC LC.FieldSize_LC]/2,MCoutput.Image.');
+                    title('Normalized fluence rate in the image plane at 1x magnification [W/cm^2/W.incident]');axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
+                    set(gca,'FontSize',18);
+                    colormap(GPBGYRcolormap);
+                    colorbar;
                 else
-                    h_f = figure(7);
+                    timevector = (-1/2:(LC.nTimeBins_LC+1/2))*(LC.tEnd_LC-LC.tStart_LC)/LC.nTimeBins_LC;
+                    plotVolumetric(7,)
                 end
-                clf;
-                h_f.Name = 'Image';
-                imagesc([-LC.FieldSize_LC LC.FieldSize_LC]/2,[-LC.FieldSize_LC LC.FieldSize_LC]/2,MCoutput.Image.');
-                title('Normalized fluence rate in the image plane at 1x magnification [W/cm^2/W.incident]');axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
-                set(gca,'FontSize',18);
-                colormap(GPBGYRcolormap);
-                colorbar;
             end
         else
             LCC = FPC;

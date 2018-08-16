@@ -42,21 +42,27 @@ assumeMatchedInterfaces = true;
 % Boundary type
 % 0: No boundaries. Photons wander freely also outside the cuboid and
 %    get killed only if they wander too far (6 times the cuboid size).
-% 1: Escape at boundaries. Photons that stray outside the cuboid get
-%    killed immediately.
-% 2: Escape at surface only. Photons that hit the top surface get killed
-%    immediately, photons hitting other surfaces can wander up to 6 times
-%    the cuboid size.
-boundaryType = 2;
+% 1: Escape at boundaries. Photons that stray outside the cuboid "escape",
+%    that is, are no longer simulated except for potentially propagating to
+%    and contributing to the light collector signal.
+% 2: Escape at surface only. Photons that hit the top surface (z = 0)
+%    escape, but photons hitting other surfaces can wander up to 6 times the
+%    cuboid size before getting killed.
+% "Escaped" photons can be detected by a light collector (objective lens or
+% fiber tip), but "killed" photons cannot. Note that it is assumed that
+% there are no scattering, absorption, refraction or reflection events from
+% the point of escape to the light collector. It is your responsibility to
+% ensure that your geometry definition ensures this.
+boundaryType = 1;
 
 
 %% USER SPECIFIED: Define parameters
 wavelength  = 532;		% [nm] set the wavelength of the Monte Carlo simulation
 wavelength_f = NaN;		% [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
 
-nx = 200;				% number of bins in the x direction
-ny = 200;				% number of bins in the y direction
-nz = 200;				% number of bins in the z direction
+nx = 20;				% number of bins in the x direction
+ny = 20;				% number of bins in the y direction
+nz = 20;				% number of bins in the z direction
 Lx = .1;				% [cm] x size of simulation area
 Ly = .1;				% [cm] y size of simulation area
 Lz = .1;				% [cm] z size of simulation area
@@ -82,14 +88,14 @@ z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 % M = 3*ones(nx,ny,nz,'uint8'); % "standard" tissue
 
 %% Blood vessel example:
-zsurf = 0.01;
-epd_thick = 0.006;
-vesselradius  = 0.0100;
-vesseldepth = 0.04;
-M = 2*ones(nx,ny,nz,'uint8'); % fill background with water (gel)
-M(Z > zsurf) = 4; % epidermis
-M(Z > zsurf + epd_thick) = 5; % dermis
-M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 6; % blood
+% zsurf = 0.01;
+% epd_thick = 0.006;
+% vesselradius  = 0.0100;
+% vesseldepth = 0.04;
+% M = 2*ones(nx,ny,nz,'uint8'); % fill background with water (gel)
+% M(Z > zsurf) = 4; % epidermis
+% M(Z > zsurf + epd_thick) = 5; % dermis
+% M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 6; % blood
 
 %% Fluorescing cylinder example:
 % cylinderradius  = 0.0100;
@@ -128,9 +134,9 @@ M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 6; % blood
 % M(X.^2 + Y.^2 < fibre_radius^2) = 11; % fibre
 
 %% Imaging example:
-% M = 1*ones(nx,ny,nz,'uint8'); % Air background
-% M(1:(nx*(ny+1)+1):end) = 18; % Set xyz diagonal positions to testscatterer
-% M(1:(nx*(ny+1)):end) = 18; % Set yz diagonal positions to testscatterer
+M = 1*ones(nx,ny,nz,'uint8'); % Air background
+M(1:(nx*(ny+1)+1):end) = 18; % Set xyz diagonal positions to testscatterer
+M(1:(nx*(ny+1)):end) = 18; % Set yz diagonal positions to testscatterer
 
 %% Refraction and reflection example:
 % M = ones(nx,ny,nz,'uint8'); % Air background
