@@ -77,9 +77,11 @@ ys = y(ysi);
 zs = z(zsi);
 
 if reverseZ
-    zback = zh;
+    zb = zh; % "z back"
+	zbi = nz; % z back index
 else
-    zback = zl;
+    zb = zl;
+	zbi = 1;
 end
 
 if ~directmapping
@@ -112,9 +114,9 @@ if ~checkboxvisible
     set(h_checkbox1text,'Visible','off');
 end
 
-h_surfxback  = surface(repmat(xh,ny,nz),repmat(y', 1,nz),repmat(z    ,ny, 1),squeeze(h_f.UserData(end,:,:)),'LineStyle','none');
-h_surfyback  = surface(repmat(x', 1,nz),repmat(yh,nx,nz),repmat(z    ,nx, 1),squeeze(h_f.UserData(:,end,:)),'LineStyle','none');
-h_surfzback  = surface(repmat(x', 1,ny),repmat(y ,nx, 1),repmat(zback,nx,ny),squeeze(h_f.UserData(:,:,end)),'LineStyle','none');
+h_surfxback  = surface(repmat(xh,ny,nz),repmat(y', 1,nz),repmat(z ,ny, 1),squeeze(h_f.UserData(end,:,:)),'LineStyle','none');
+h_surfyback  = surface(repmat(x', 1,nz),repmat(yh,nx,nz),repmat(z ,nx, 1),squeeze(h_f.UserData(:,end,:)),'LineStyle','none');
+h_surfzback  = surface(repmat(x', 1,ny),repmat(y ,nx, 1),repmat(zb,nx,ny),squeeze(h_f.UserData(:,:,zbi)),'LineStyle','none');
 h_surfxslice = surface(repmat(xs,ny,nz),repmat(y', 1,nz),repmat(z ,ny, 1),squeeze(h_f.UserData(xsi,:,:)),'LineStyle','none');
 h_surfyslice = surface(repmat(x', 1,nz),repmat(ys,nx,nz),repmat(z ,nx, 1),squeeze(h_f.UserData(:,ysi,:)),'LineStyle','none');
 h_surfzslice = surface(repmat(x', 1,ny),repmat(y ,nx, 1),repmat(zs,nx,ny),squeeze(h_f.UserData(:,:,zsi)),'LineStyle','none');
@@ -125,7 +127,7 @@ end
 
 line([xh xh xh xh xh],[yl yh yh yl yl],[zh zh zl zl zh],'Color','k');
 line([xl xh xh xl xl],[yh yh yh yh yh],[zh zh zl zl zh],'Color','k');
-line([xl xl xh xh xl],[yl yh yh yl yl],[zback zback zback zback zback],'Color','k');
+line([xl xl xh xh xl],[yl yh yh yl yl],[zb zb zb zb zb],'Color','k');
 h_xline = line([xs xs xs xs xs xs xs],[ys yh yh yl yl ys ys],[zl zl zh zh zl zl zh],'Color','k');
 h_yline = line([xl xl xh xh xl xl xh],[ys ys ys ys ys ys ys],[zs zh zh zl zl zs zs],'Color','k');
 h_zline = line([xs xh xh xl xl xs xs],[yl yl yh yh yl yl yh],[zs zs zs zs zs zs zs],'Color','k');
