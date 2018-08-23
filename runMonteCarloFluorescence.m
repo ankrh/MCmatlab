@@ -75,9 +75,8 @@ FieldSize_LC = 2; % [cm]
 % Fiber NA. Only used for infinite f_LC.
 NA_LC = 0.22; % [-]
 
-% Resolution of light collector in pixels
-resX_LC = 200;
-resY_LC = 200;
+% X and Y resolution of light collector in pixels
+res_LC = 200;
 
 %% Check for preexisting files
 if(~silentMode && ~deleteDataFiles(name)); return; end
@@ -89,7 +88,7 @@ sat_vec = [G.mediaProperties.sat]; % The media's fluorescence saturation fluence
 sourceDistribution = Y_vec(G.M).*mua_vec(G.M)*P_excitation.*MCoutput.F./(1 + P_excitation*MCoutput.F./sat_vec(G.M)); % [W/cm^3]
 if(max(sourceDistribution(:)) == 0); error('Error: No fluorescence emitters'); end
 
-%% Check to ensure that the light collector is not inside the cuboid
+%% Check to ensure that the light collector is not inside the cuboid and set res_LC to 1 if using fiber
 if useLightCollector
     if isfinite(f_LC)
         xLCC = xFPC_LC - f_LC*sin(theta_LC)*cos(phi_LC); % x position of Light Collector Center
@@ -99,6 +98,7 @@ if useLightCollector
         xLCC = xFPC_LC;
         yLCC = yFPC_LC;
         zLCC = zFPC_LC;
+        res_LC = 1;
     end
 
     if (abs(xLCC)               < G.nx*G.dx/2 && ...
@@ -112,7 +112,7 @@ end
 G.M = G.M - 1; % The medium matrix has to be converted from MATLAB's 1-based indexing to C's 0-based indexing
 Beam = struct('P_excitation',P_excitation,'sourceDistribution',sourceDistribution);
 LightCollector = struct('xFPC_LC',xFPC_LC,'yFPC_LC',yFPC_LC,'zFPC_LC',zFPC_LC,'theta_LC',theta_LC,'phi_LC',phi_LC,'f_LC',f_LC,...
-    'diam_LC',diam_LC,'FieldSize_LC',FieldSize_LC,'NA_LC',NA_LC,'resX_LC',resX_LC,'resY_LC',resY_LC);
+    'diam_LC',diam_LC,'FieldSize_LC',FieldSize_LC,'NA_LC',NA_LC,'res_LC',res_LC);
 MCinput_f = struct('silentMode',silentMode,'useAllCPUs',useAllCPUs,'simulationTime',simulationTime,...
     'useLightCollector',useLightCollector,'G',G,'Beam',Beam,'LightCollector',LightCollector);
 clear G Beam LightCollector

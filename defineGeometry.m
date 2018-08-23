@@ -33,26 +33,25 @@ function defineGeometry(name)
 % command window text, progress indication and plot generation)
 silentMode = false;
 
-% Do you want to assume matched interfaces? If so, there is no Fresnel
-% reflection or refraction. Otherwise, refractive indices from
-% getMediaProperties are used. Note that non-matched interfaces must be normal
-% to the z axis, so each xy-slice must have a constant refractive index.
+% Do you want to assume matched interfaces? If so, all refractive indices
+% are assumed to be 1 and there is no Fresnel reflection or refraction.
+% Otherwise, refractive indices from getMediaProperties are used. Note that
+% non-matched interfaces must be normal to the z axis, so each xy-slice
+% must have a constant refractive index. 
 assumeMatchedInterfaces = true;
 
 % Boundary type
-% 0: No boundaries. Photons wander freely also outside the cuboid and
-%    get killed only if they wander too far (6 times the cuboid size).
-% 1: Escape at boundaries. Photons that stray outside the cuboid "escape",
-%    that is, are no longer simulated except for potentially propagating to
-%    and contributing to the light collector signal.
-% 2: Escape at surface only. Photons that hit the top surface (z = 0)
-%    escape, but photons hitting other surfaces can wander up to 6 times the
-%    cuboid size before getting killed.
-% "Escaped" photons can be detected by a light collector (objective lens or
-% fiber tip), but "killed" photons cannot. Note that it is assumed that
-% there are no scattering, absorption, refraction or reflection events from
-% the point of escape to the light collector. It is your responsibility to
-% ensure that your geometry definition ensures this.
+% 0: No boundaries. Photons are allowed to leave the cuboid and are still
+%    tracked outside, including absorption and scattering events. They get
+%    terminated only if they wander too far (6 times the cuboid size).
+% 1: Cuboid boundaries. All 6 cuboid surfaces are considered photon boundaries.
+% 2: Top boundary only. Only the top surface (z = 0) is a photon boundary.
+% Regardless of the boundary type, photons that wander 6 times the cuboid
+% size will be terminated. When a photon hits a photon boundary at a position
+% where the refractive index is 1, it escapes and may contribute to the
+% signal of the light collector depending on its trajectory. Otherwise, the
+% photon is just terminated, meaning that it cannot contribute to the light
+% collector.
 boundaryType = 1;
 
 
@@ -170,8 +169,8 @@ if(~assumeMatchedInterfaces)
     end
     RI = n_vec(M(1,1,:));
 else
-    [mediaProperties.n] = deal(NaN);
-    RI = NaN;
+    [mediaProperties.n] = deal(1);
+    RI = ones(nz,1);
 end
 
 %% Collect variables into a struct and save

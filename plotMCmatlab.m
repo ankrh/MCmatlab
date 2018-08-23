@@ -88,38 +88,63 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
             detectoraperture = LC.diam_LC/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
             h2 = line(detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
             legend([h1 h2],'Imaged area','Lens aperture','Location','northeast');
-
-            if LC.resX_LC*LC.resY_LC > 1
-                if LC.nTimeBins_LC == 0
-                    if(~ishandle(7))
-                        h_f = figure(7);
-                        h_f.Position = [40 80 1100 650];
-                    else
-                        h_f = figure(7);
-                    end
-                    clf;
-                    h_f.Name = 'Image';
-                    imagesc([-LC.FieldSize_LC LC.FieldSize_LC]/2,[-LC.FieldSize_LC LC.FieldSize_LC]/2,MCoutput.Image.');
-                    title('Normalized fluence rate in the image plane at 1x magnification [W/cm^2/W.incident]');axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
-                    set(gca,'FontSize',18);
-                    colormap(GPBGYRcolormap);
-                    colorbar;
-                else
-                    timevector = (-1/2:(LC.nTimeBins_LC+1/2))*(LC.tEnd_LC-LC.tStart_LC)/LC.nTimeBins_LC;
-                    plotVolumetric(7,)
-                end
-            end
         else
             LCC = FPC;
             detectoraperture = LC.diam_LC/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
             h2 = line(detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
             legend(h2,'Fiber aperture','Location','northeast');
         end
-
-        if length(MCoutput.Image) > 1
-            fprintf('%.3g%% of input power ends up on the detector.\n',100*mean(mean(MCoutput.Image))*LC.FieldSize_LC^2);
+        
+        if LC.res_LC > 1
+            Xcenters = linspace(LC.FieldSize_LC*(1/LC.res_LC-1),LC.FieldSize_LC*(1-1/LC.res_LC),LC.res_LC)/2;
+            Ycenters = linspace(LC.FieldSize_LC*(1/LC.res_LC-1),LC.FieldSize_LC*(1-1/LC.res_LC),LC.res_LC)/2;
+            fprintf('%.3g%% of input power ends up on the detector.\n',100*mean(mean(sum(MCoutput.Image,3)))*LC.FieldSize_LC^2);
         else
-            fprintf('%.3g%% of input power ends up on the detector.\n',100*MCoutput.Image);
+            fprintf('%.3g%% of input power ends up on the detector.\n',100*sum(MCoutput.Image,3));
+        end
+        
+        if LC.nTimeBins_LC > 0
+            timevector = (-1/2:(LC.nTimeBins_LC+1/2))*(LC.tEnd_LC-LC.tStart_LC)/LC.nTimeBins_LC + LC.tStart_LC;
+        end
+        
+        if LC.res_LC > 1 && LC.nTimeBins_LC > 0
+            h_f = plotVolumetric(7,Xcenters,Ycenters,timevector,MCoutput.Image,'slicePositions',[1 1 0]);
+            h_f.Name = 'Image';
+            xlabel('X [cm]');
+            ylabel('Y [cm]');
+            zlabel('Time [s]');
+            title({'Normalized time-resolved fluence rate in the image plane','at 1x magnification [W/cm^2/W.incident]'});
+            fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
+        elseif LC.res_LC > 1
+            if(~ishandle(7))
+                h_f = figure(7);
+                h_f.Position = [40 80 1100 650];
+            else
+                h_f = figure(7);
+            end
+            clf;
+            h_f.Name = 'Image';
+            imagesc(Xcenters,Ycenters,MCoutput.Image.');
+            title('Normalized fluence rate in the image plane at 1x magnification [W/cm^2/W.incident]');
+            axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
+            set(gca,'FontSize',18);
+            colormap(GPBGYRcolormap);
+            colorbar;
+        elseif LC.nTimeBins_LC > 0
+            if(~ishandle(7))
+                h_f = figure(7);
+                h_f.Position = [40 80 1100 650];
+            else
+                h_f = figure(7);
+            end
+            clf;
+            h_b = bar(timevector,squeeze(MCoutput.Image),1,'FaceColor','flat');
+            h_b.CData(1  ,:) = [.5 0 .5];
+            h_b.CData(end,:) = [.5 0 .5];
+            title('Normalized time-resolved power on the detector');
+            xlabel('Time [s]'); ylabel('Normalized power [W/W.incident]'); grid on; grid minor;
+            set(gca,'FontSize',18);
+            fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
         end
     end
 
@@ -181,33 +206,35 @@ if(exist(['./Data/' name '_MCoutput.mat'],'file'))
                 detectoraperture = LC_f.diam_LC/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
                 h2 = line(detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
                 legend([h1 h2],'Imaged area','Lens aperture','Location','northeast');
-
-                if LC_f.resX_LC*LC_f.resY_LC > 1
-                    if(~ishandle(12))
-                        h_f = figure(12);
-                        h_f.Position = [40 80 1100 650];
-                    else
-                        h_f = figure(12);
-                    end
-                    clf;
-                    h_f.Name = 'Fluorescence image';
-                    imagesc([-LC_f.FieldSize_LC LC_f.FieldSize_LC]/2,[-LC_f.FieldSize_LC LC_f.FieldSize_LC]/2,MCoutput_f.Image.');
-                    title('Fluence rate in the fluorescence image plane at 1x magnification [W/cm^2]');axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
-                    set(gca,'FontSize',18);
-                    colormap(GPBGYRcolormap);
-                    colorbar;
-                end
             else
                 LCC = FPC;
                 detectoraperture = LC_f.diam_LC/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
                 h2 = line(detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
                 legend(h2,'Fiber aperture','Location','northeast');
             end
-
-            if length(MCoutput_f.Image) > 1
+            
+            if LC_f.res_LC > 1
+                Xcenters_f = linspace(LC_f.FieldSize_LC*(1/LC_f.res_LC-1),LC_f.FieldSize_LC*(1-1/LC_f.res_LC),LC_f.res_LC)/2;
+                Ycenters_f = linspace(LC_f.FieldSize_LC*(1/LC_f.res_LC-1),LC_f.FieldSize_LC*(1-1/LC_f.res_LC),LC_f.res_LC)/2;
                 fprintf('%.3g%% of fluorescence ends up on the detector.\n',100*mean(mean(MCoutput_f.Image))*LC_f.FieldSize_LC^2);
             else
                 fprintf('%.3g%% of fluorescence ends up on the detector.\n',100*MCoutput_f.Image);
+            end
+            
+            if LC_f.res_LC > 1
+                if(~ishandle(12))
+                    h_f = figure(12);
+                    h_f.Position = [40 80 1100 650];
+                else
+                    h_f = figure(12);
+                end
+                clf;
+                h_f.Name = 'Fluorescence image';
+                imagesc(Xcenters_f,Ycenters_f,MCoutput_f.Image.');
+                title('Fluence rate in the fluorescence image plane at 1x magnification [W/cm^2]');axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
+                set(gca,'FontSize',18);
+                colormap(GPBGYRcolormap);
+                colorbar;
             end
         end
     end

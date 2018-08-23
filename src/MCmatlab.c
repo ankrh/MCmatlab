@@ -76,7 +76,7 @@ struct lightcollector { // Struct type for the constant light collector definiti
     double         f; // Focal length of the objective. If the light collector is a fiber tip, this will be INFINITY.
     double         diam; // Diameter of the objective aperture or core diameter of the fiber. For an ideal thin lens objective, this is 2*tan(arcsin(lensNA/f)).
     double         FSorNA; // For an objective lens: Field Size of the imaging system (diameter of area in object plane that gets imaged). For a fiber tip: The fiber's NA.
-    mwSize         res[3]; // Resolution of image plane in pixels along X, Y and time axes. For a fiber, X and Y resolution is 1.
+    mwSize         res[2]; // Resolution of image plane in pixels along the spatial and time axes. For a fiber, spatial resolution is 1.
     double         tStart; // Start time for the interval used for binned time-resolved detection
     double         tEnd; // End time for the interval used for binned time-resolved detection
 };
@@ -156,9 +156,9 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
             P->i[1] = (B->focus[1] - B->focus[2]*B->u[1]/B->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
             for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
-            P->time = -G->RIv[0]*sqrt(pow(B->focus[0] - B->focus[2]*B->u[0]/B->u[2],2) + 
-                                      pow(B->focus[1] - B->focus[2]*B->u[1]/B->u[2],2) + 
-                                      pow(B->focus[2]                              ,2)); // Starting time is set so that photons will reach focus at time = 0 if there are no refractive index changes relative to the value at z = 0
+            P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - B->focus[0],2) + 
+                                        pow((P->i[1] - G->n[1]/2.0)*G->d[1] - B->focus[1],2) +
+                                        pow((P->i[2]              )*G->d[2] - B->focus[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
             break;
         case 1: // isotropically emitting point source
             P->i[0] = B->focus[0]/G->d[0] + G->n[0]/2.0;
@@ -177,9 +177,9 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
             P->i[1] = ((G->boundaryType==1)? 1: KILLRANGE)*G->n[1]*(RandomNum-0.5) + G->n[1]/2.0; // Generates a random iy coordinate within the cuboid
             P->i[2] = 0;
             for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
-            P->time = -G->RIv[0]*((P->i[0] - G->n[0]/2.0)*G->d[0]*B->u[0] + 
-                                  (P->i[1] - G->n[1]/2.0)*G->d[1]*B->u[1] +
-                                  (P->i[2]              )*G->d[2]*B->u[2]); // Starting time is set so that the wave crosses (x=0,y=0,z=0) at time = 0
+            P->time = G->RIv[0]/C*((P->i[0] - G->n[0]/2.0)*G->d[0]*B->u[0] + 
+                                   (P->i[1] - G->n[1]/2.0)*G->d[1]*B->u[1] +
+                                   (P->i[2]              )*G->d[2]*B->u[2]); // Starting time is set so that the wave crosses (x=0,y=0,z=0) at time = 0
             break;
         case 3: // Gaussian focus, Gaussian far field beam
             phi     = RandomNum*2*PI;
@@ -193,7 +193,9 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
             P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
             P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
-            P->time = 0; // PLACEHOLDER
+            P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) + 
+                                        pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
+                                        pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
             break;
         case 4: // Gaussian focus, top-hat far field beam
             phi     = RandomNum*2*PI;
@@ -207,7 +209,9 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
             P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
             P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
-            P->time = 0; // PLACEHOLDER
+            P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) + 
+                                        pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
+                                        pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
             break;
         case 5: // top-hat focus, Gaussian far field beam
             phi     = RandomNum*2*PI;
@@ -221,7 +225,9 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
             P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
             P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
-            P->time = 0; // PLACEHOLDER
+            P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) + 
+                                        pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
+                                        pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
             break;
         case 6: // top-hat focus, top-hat far field beam
             phi  	= RandomNum*2*PI;
@@ -235,7 +241,9 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
             P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
             P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
-            P->time = 0; // PLACEHOLDER
+            P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) + 
+                                        pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
+                                        pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
             break;
         case 7: // Laguerre-Gaussian LG01 beam
             phi     = RandomNum*2*PI;
@@ -247,7 +255,9 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
             P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
             P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
             P->i[2] = 0;
-            P->time = 0; // PLACEHOLDER
+            P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) + 
+                                        pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
+                                        pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
             break;
     }
     
@@ -284,19 +294,19 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
                 double distImP = sqrt(RImP[0]*RImP[0] + RImP[1]*RImP[1]);
                 if(distImP < LC->FSorNA/2) { // If the photon is coming from the area within the Field Size
                     long Xindex = LC->res[0]*(RImP[0]/LC->FSorNA + 1.0/2);
-                    long Yindex = LC->res[1]*(RImP[1]/LC->FSorNA + 1.0/2);
-                    long timeindex = fmin(LC->res[2]-1,fmax(0,1+(LC->res[2]-2)*(P->time - (Resc[2] - LC->f)/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)));
+                    long Yindex = LC->res[0]*(RImP[1]/LC->FSorNA + 1.0/2);
+                    long timeindex = fmin(LC->res[1]-1,fmax(0,1+(LC->res[1]-2)*(P->time - (Resc[2] - LC->f)/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)));
                     #ifdef _WIN32
                     #pragma omp atomic
                     #endif
                     Image[Xindex               + 
                           Yindex   *LC->res[0] +
-                          timeindex*LC->res[0]*LC->res[1]] += P->weight;
+                          timeindex*LC->res[0]*LC->res[0]] += P->weight;
                 }
             } else { // If the light collector is a fiber tip
                 double thetaLCFF = atan(-sqrt(U[0]*U[0] + U[1]*U[1])/U[2]); // Light collector far field polar angle
                 if(thetaLCFF < asin(fmin(1,LC->FSorNA))) { // If the photon has an angle within the fiber's NA acceptance
-                    long timeindex = fmin(LC->res[2]-1,fmax(0,1+(LC->res[2]-2)*(P->time - Resc[2]/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)));
+                    long timeindex = fmin(LC->res[1]-1,fmax(0,1+(LC->res[1]-2)*(P->time - Resc[2]/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)));
                     #ifdef _WIN32
                     #pragma omp atomic
                     #endif
@@ -321,14 +331,14 @@ void checkEscape(struct photon * const P, struct geometry const * const G, struc
             break;
         case 1:
             P->alive = P->insideVolume;
-            escaped = !P->insideVolume;
+            escaped = !P->insideVolume && P->RI == 1;
             break;
         case 2:
             P->alive = (fabs(P->i[0]/G->n[0] - 1.0/2) <  KILLRANGE/2 &&
                         fabs(P->i[1]/G->n[1] - 1.0/2) <  KILLRANGE/2 &&
                              P->i[2]/G->n[2] - 1.0/2  <  KILLRANGE/2 &&
                              P->i[2]                  >= 0);
-            escaped = (P->i[2] < 0);
+            escaped = (P->i[2] < 0) && P->RI == 1;
             break;
     }
     
@@ -465,26 +475,26 @@ void normalizeDeposition(struct beam const * const B, struct geometry const * co
     long j;
     double V = G->d[0]*G->d[1]*G->d[2]; // Voxel volume
     long L = G->n[0]*G->n[1]*G->n[2]; // Total number of voxels in cuboid
-    long L_LC = LC->res[0]*LC->res[1]; // Total number of pixels in light collector planes
+    long L_LC = LC->res[0]*LC->res[0]; // Total number of spatial pixels in light collector planes
     // Normalize deposition to yield either absolute or relative fluence rate (F).
     if(B->S) { // For a 3D source distribution (e.g., fluorescence)
 		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]/B->power; // Absolute fluence rate [W/cm^2].
         if(Image) {
-            if(L_LC > 1) for(j=0;j<L_LC;j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/B->power; // Absolute fluence rate [W/cm^2]
-            else Image[0] /= nPhotons/B->power; // Absolute power [W]
+            if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/B->power; // Absolute fluence rate [W/cm^2]
+            else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons/B->power; // Absolute power [W]
         }
         mxFree(B->S);
     } else if(B->beamType == 3 && G->boundaryType != 1) { // For infinite plane wave launched into volume without absorbing walls
 		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
         if(Image) {
-            if(L_LC > 1) for(j=0;j<L_LC;j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
-            else Image[0] /= nPhotons/(KILLRANGE*KILLRANGE); // Normalized power [W/W.incident]
+            if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
+            else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons/(KILLRANGE*KILLRANGE); // Normalized power [W/W.incident]
         }
 	} else {
 		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]; // Normalized fluence rate [W/cm^2/W.incident]
         if(Image) {
-            if(L_LC > 1) for(j=0;j<L_LC;j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons; // Normalized fluence rate [W/cm^2/W.incident]
-            else Image[0] /= nPhotons; // Normalized power [W/W.incident]
+            if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons; // Normalized fluence rate [W/cm^2/W.incident]
+            else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons; // Normalized power [W/W.incident]
         }
 	}
 }
@@ -579,7 +589,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     double theta     = *mxGetPr(mxGetField(MatlabLC,0,"theta_LC"));
     double phi       = *mxGetPr(mxGetField(MatlabLC,0,"phi_LC"));
     double f         = *mxGetPr(mxGetField(MatlabLC,0,"f_LC"));
-    long   nTimeBins = *mxGetPr(mxGetField(MatlabLC,0,"nTimeBins_LC"));
+    long   nTimeBins = S? 0: *mxGetPr(mxGetField(MatlabLC,0,"nTimeBins_LC"));
 
     struct lightcollector const LC_var = (struct lightcollector) {
         .r            = {*mxGetPr(mxGetField(MatlabLC,0,"xFPC_LC")) - (isfinite(f)? f*sin(theta)*cos(phi):0), // xyz coordinates of center of light collector
@@ -590,8 +600,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         .f            =  f,
         .diam         =  *mxGetPr(mxGetField(MatlabLC,0,"diam_LC")),
         .FSorNA       =  *mxGetPr(mxGetField(MatlabLC,0,isfinite(f)?"FieldSize_LC":"NA_LC")),
-        .res          = {isfinite(f)? *mxGetPr(mxGetField(MatlabLC,0,"resX_LC")):1,
-                         isfinite(f)? *mxGetPr(mxGetField(MatlabLC,0,"resY_LC")):1,
+        .res          = {*mxGetPr(mxGetField(MatlabLC,0,"res_LC")),
                          nTimeBins? nTimeBins+2: 1},
         .tStart       =  *mxGetPr(mxGetField(MatlabLC,0,"tStart_LC")),
         .tEnd         =  *mxGetPr(mxGetField(MatlabLC,0,"tEnd_LC"))};
@@ -602,7 +611,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     
     if(useLightCollector) {
         plhs[0] = mxCreateStructMatrix(1,1,4,(const char *[]){"F","Image","nPhotons","nThreads"});
-        mxSetField(plhs[0],0,"Image", mxCreateNumericArray(3,LC->res,mxDOUBLE_CLASS,mxREAL));
+        mxSetField(plhs[0],0,"Image", mxCreateNumericArray(3,(mwSize[]){LC->res[0],LC->res[0],LC->res[1]},mxDOUBLE_CLASS,mxREAL));
         Image  = mxGetPr(mxGetField(plhs[0],0,"Image"));
     } else {
         plhs[0] = mxCreateStructMatrix(1,1,3,(const char *[]){"F","nPhotons","nThreads"});
