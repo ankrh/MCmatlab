@@ -60,13 +60,14 @@ heatBoundaryType = 0;
 
 %% USER SPECIFIED: Define parameters
 P                = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
-durationOn       = 0.001; % [s] Pulse on-duration
-durationOff      = 0.004; % [s] Pulse off-duration
+durationOn       = 0.002; % [s] Pulse on-duration
+durationOff      = 0.002; % [s] Pulse off-duration
+durationEnd      = 0.01; % [s] Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train
 Temp             = 37*ones(size(G.M)); % [deg C] Initial temperature distribution
-nPulses          = 5; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
+nPulses          = 3; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
 
 plotTempLimits   = [37 105]; % [deg C], the expected range of temperatures, used only for setting the color scale in the plot
-nUpdates         = 100; % Number of times data is extracted for plots during each pulse. A minimum of 1 update is performed in each phase (2 for each pulse consisting of an illumination phase and a diffusion phase)
+nUpdates         = 0; % Number of times data is extracted for plots during each pulse. A minimum of 1 update is performed in each phase (2 for each pulse consisting of an illumination phase and a diffusion phase)
 
 % Set the starting relative slice positions [x y z] for the 3D plots on a
 % scale from 0 to 1. Especially relevant for movie generation. As an
@@ -132,9 +133,19 @@ else
     dtOff = 1;
 end
 
-updatesTimeVector = [0 , ((durationOn+durationOff)*repelem(0:(nPulses-1),nUpdatesOn                + nUpdatesOff                ) + repmat([(1:nUpdatesOn)*nTsPerUpdateOn*dtOn , (durationOn + ((1:nUpdatesOff)*nTsPerUpdateOff*dtOff))],1,nPulses))];
+if durationEnd ~= 0
+    nUpdatesEnd = max(1,round(nUpdates*durationEnd/(durationOn+durationOff)));
+    nTsPerUpdateEnd = ceil(durationEnd/nUpdatesEnd/dtmax); % Number of time steps per update in end relaxation phase
+    dtEnd = durationEnd/nUpdatesEnd/nTsPerUpdateEnd; % Time step size during end relaxation phase
+else
+    nUpdatesEnd = 0;
+    nTsPerUpdateEnd = 1;
+    dtEnd = 1;
+end
 
-sensorsTimeVector = [0 , ((durationOn+durationOff)*repelem(0:(nPulses-1),nUpdatesOn*nTsPerUpdateOn + nUpdatesOff*nTsPerUpdateOff) + repmat([(1:nUpdatesOn*nTsPerUpdateOn)*dtOn , (durationOn + ((1:nUpdatesOff*nTsPerUpdateOff)*dtOff))],1,nPulses))];
+updatesTimeVector = [0 , ((durationOn+durationOff)*repelem(0:(nPulses-1),nUpdatesOn                + nUpdatesOff                ) + repmat([(1:nUpdatesOn)*nTsPerUpdateOn*dtOn , (durationOn + ((1:nUpdatesOff)*nTsPerUpdateOff*dtOff))],1,nPulses)) , (durationOn + durationOff)*nPulses + (1:nUpdatesEnd)*nTsPerUpdateEnd*dtEnd];
+
+sensorsTimeVector = [0 , ((durationOn+durationOff)*repelem(0:(nPulses-1),nUpdatesOn*nTsPerUpdateOn + nUpdatesOff*nTsPerUpdateOff) + repmat([(1:nUpdatesOn*nTsPerUpdateOn)*dtOn , (durationOn + ((1:nUpdatesOff*nTsPerUpdateOff)*dtOff))],1,nPulses)) , (durationOn + durationOff)*nPulses + (1:nUpdatesEnd*nTsPerUpdateEnd)*dtEnd];
 
 %% Calculate proportionality between voxel-to-voxel temperature difference DeltaT and time step temperature change dT
 TC_eff = 2*(TC'*TC)./(ones(length(TC))*diag(TC)+diag(TC)*ones(length(TC))); % Same as TC_eff(i,j) = 2*TC_red(i)*TC_red(j)/(TC_red(i)+TC_red(j)) but without for loops
@@ -186,6 +197,9 @@ if(~silentMode)
     if durationOff ~= 0
         fprintf('Diffusion phase consists of %d steps of %0.2e s.\n',nUpdatesOff*nTsPerUpdateOff,dtOff);
     end
+    if durationEnd ~= 0
+        fprintf('End phase consists of %d steps of %0.2e s.\n',nUpdatesEnd*nTsPerUpdateEnd,dtEnd);
+    end
     
     if(makemovie) % Make a temporary figure showing the geometry illustration to put into the beginning of the movie
         heatsimFigure = plotVolumetric(21,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',slicePositions);
@@ -208,6 +222,7 @@ clear dTdtperdeltaT dTdt_abs % These 3D matrices are large and no longer needed 
 %% Simulate heat transfer
 if(~silentMode); tic; end
 for j=1:nPulses
+	%% Illumination phase
     if durationOn ~= 0
         if(~silentMode)
             fprintf(['Illuminating pulse #' num2str(j) '... \n' repmat('-',1,nUpdatesOn)]);
@@ -242,6 +257,7 @@ for j=1:nPulses
         if(~silentMode); fprintf('\b\b Done\n'); end
     end
     
+	%% Diffusion phase
     if durationOff ~= 0
         if(~silentMode)
             fprintf(['Diffusing heat... \n' repmat('-',1,nUpdatesOff)]);
@@ -275,6 +291,39 @@ for j=1:nPulses
         if(~silentMode); fprintf('\b\b Done\n'); end
     end
 end
+
+%% End relaxation phase
+if(~silentMode)
+	fprintf(['Diffusing heat in end relaxation phase... \n' repmat('-',1,nUpdatesEnd)]);
+	drawnow;
+end
+
+heatSimParameters.lightsOn = false;
+heatSimParameters.steps = nTsPerUpdateEnd;
+heatSimParameters.dt = dtEnd;
+for i = 1:nUpdatesEnd
+	[Temp,Omega,newSensorTemps] = finiteElementHeatPropagator(Temp,Omega,heatSimParameters);
+
+	if isempty(sensorTemps)
+		sensorTemps = newSensorTemps;
+	else
+		sensorTemps = [sensorTemps(:,1:end-1) newSensorTemps];
+	end
+
+	if(~silentMode)
+		fprintf(1,'\b');
+		updateIdx = i + nPulses*(nUpdatesOn+nUpdatesOff); % Index of the update
+		updateVolumetric(heatsimFigure,Temp);
+		h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
+		drawnow;
+
+		if(makemovie)
+			movieframes(updateIdx+2) = getframe(heatsimFigure);
+		end
+	end
+end
+if(~silentMode); fprintf('\b\b Done\n'); end
+
 if(~silentMode); toc; end
 clear finiteElementHeatPropagator; % Unload finiteElementHeatPropagator MEX file so it can be modified externally again
 clear Temp heatSimParameters;
