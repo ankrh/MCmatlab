@@ -33,20 +33,25 @@ function defineGeometry(name)
 % command window text, progress indication and plot generation)
 silentMode = false;
 
-% Do you want to assume matched interfaces? If so, there is no Fresnel
-% reflection or refraction. Otherwise, refractive indices from
-% getMediaProperties are used. Note that non-matched interfaces must be normal
-% to the z axis, so each xy-slice must have a constant refractive index.
+% Do you want to assume matched interfaces? If so, all refractive indices
+% are assumed to be 1 and there is no Fresnel reflection or refraction.
+% Otherwise, refractive indices from getMediaProperties are used. Note that
+% non-matched interfaces must be normal to the z axis, so each xy-slice
+% must have a constant refractive index. 
 assumeMatchedInterfaces = true;
 
 % Boundary type
-% 0: No boundaries. Photons wander freely also outside the cuboid and
-%    get killed only if they wander too far (6 times the cuboid size).
-% 1: Escape at boundaries. Photons that stray outside the cuboid get
-%    killed immediately.
-% 2: Escape at surface only. Photons that hit the top surface get killed
-%    immediately, photons hitting other surfaces can wander up to 6 times
-%    the cuboid size.
+% 0: No boundaries. Photons are allowed to leave the cuboid and are still
+%    tracked outside, including absorption and scattering events. They get
+%    terminated only if they wander too far (6 times the cuboid size).
+% 1: Cuboid boundaries. All 6 cuboid surfaces are considered photon boundaries.
+% 2: Top boundary only. Only the top surface (z = 0) is a photon boundary.
+% Regardless of the boundary type, photons that wander 6 times the cuboid
+% size will be terminated. When a photon hits a photon boundary at a position
+% where the refractive index is 1, it escapes and may contribute to the
+% signal of the light collector depending on its trajectory. Otherwise, the
+% photon is just terminated, meaning that it cannot contribute to the light
+% collector.
 boundaryType = 1;
 
 
@@ -54,9 +59,9 @@ boundaryType = 1;
 wavelength  = 532;		% [nm] set the wavelength of the Monte Carlo simulation
 wavelength_f = NaN;		% [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
 
-nx = 200;				% number of bins in the x direction
-ny = 200;				% number of bins in the y direction
-nz = 200;				% number of bins in the z direction
+nx = 20;				% number of bins in the x direction
+ny = 20;				% number of bins in the y direction
+nz = 20;				% number of bins in the z direction
 Lx = .1;				% [cm] x size of simulation area
 Ly = .1;				% [cm] y size of simulation area
 Lz = .1;				% [cm] z size of simulation area
@@ -83,19 +88,19 @@ z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 % M(Z < 0.03) = 1; % Air
 
 %% STL "dragon head" example
-M = ones(nx,ny,nz,'uint8');
-[STLvoxels,xSTL,zSTL,ySTL] = VOXELISE(nx,nz,ny,'Dragon_Head.stl'); % y and z dimensions intentionally swapped because we want to susequently rotate the object
-M(flip(flip(permute(STLvoxels,[1 3 2]),3),2)) = 3; % A few dimensions are rearranged to reorient the object and then "standard" tissue is assigned to the voxels inside the object
-
-scalefactor = 1/500; % Factor to scale size of object by compared to the x, y, z data in the .stl file
-
-% The voxel edge sizes and center positions have to be recalculated to fit the .stl voxelization
-dx = (xSTL(2)-xSTL(1))*scalefactor;
-dy = (ySTL(2)-ySTL(1))*scalefactor;
-dz = (zSTL(2)-zSTL(1))*scalefactor;
-x  = ((0:nx-1)-(nx-1)/2)*dx; % [cm] x position of centers of voxels
-y  = ((0:ny-1)-(ny-1)/2)*dy; % [cm] y position of centers of voxels
-z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
+% M = ones(nx,ny,nz,'uint8');
+% [STLvoxels,xSTL,zSTL,ySTL] = VOXELISE(nx,nz,ny,'Dragon_Head.stl'); % y and z dimensions intentionally swapped because we want to susequently rotate the object
+% M(flip(flip(permute(STLvoxels,[1 3 2]),3),2)) = 3; % A few dimensions are rearranged to reorient the object and then "standard" tissue is assigned to the voxels inside the object
+% 
+% scalefactor = 1/500; % Factor to scale size of object by compared to the x, y, z data in the .stl file
+% 
+% % The voxel edge sizes and center positions have to be recalculated to fit the .stl voxelization
+% dx = (xSTL(2)-xSTL(1))*scalefactor;
+% dy = (ySTL(2)-ySTL(1))*scalefactor;
+% dz = (zSTL(2)-zSTL(1))*scalefactor;
+% x  = ((0:nx-1)-(nx-1)/2)*dx; % [cm] x position of centers of voxels
+% y  = ((0:ny-1)-(ny-1)/2)*dy; % [cm] y position of centers of voxels
+% z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 
 %% Blood vessel example:
 % zsurf = 0.01;
@@ -144,9 +149,9 @@ z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 % M(X.^2 + Y.^2 < fibre_radius^2) = 11; % fibre
 
 %% Imaging example:
-% M = 1*ones(nx,ny,nz,'uint8'); % Air background
-% M(1:(nx*(ny+1)+1):end) = 18; % Set xyz diagonal positions to testscatterer
-% M(1:(nx*(ny+1)):end) = 18; % Set yz diagonal positions to testscatterer
+M = 1*ones(nx,ny,nz,'uint8'); % Air background
+M(1:(nx*(ny+1)+1):end) = 18; % Set xyz diagonal positions to testscatterer
+M(1:(nx*(ny+1)):end) = 18; % Set yz diagonal positions to testscatterer
 
 %% Refraction and reflection example:
 % M = ones(nx,ny,nz,'uint8'); % Air background
@@ -180,8 +185,8 @@ if(~assumeMatchedInterfaces)
     end
     RI = n_vec(M(1,1,:));
 else
-    [mediaProperties.n] = deal(NaN);
-    RI = NaN;
+    [mediaProperties.n] = deal(1);
+    RI = ones(nz,1);
 end
 
 %% Collect variables into a struct and save

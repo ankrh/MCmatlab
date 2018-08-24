@@ -1,4 +1,4 @@
-function runMonteCarlo(name)
+function MCoutput = runMonteCarlo(name)
 %   Created 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
 %
 %   Prepares the illumination beam and runs the Monte Carlo simulation.
@@ -47,9 +47,9 @@ simulationTime = .1;      % [min] time duration of the simulation
 % 5: Top-hat focus, Gaussian far field beam
 % 6: Top-hat focus, top-hat far field beam
 % 7: Laguerre-Gaussian LG01 beam
-beamType = 3;
+beamType = 2;
 
-% Position of focus, only used for beamType ~=2 (if beamType == 1 this is the source position)
+% Position of focus in the absence of any refraction, only used for beamType ~=2 (if beamType == 1 this is the source position)
 xFocus = 0;                % [cm] x position of focus
 yFocus = 0;                % [cm] y position of focus
 zFocus = G.dz*G.nz/2;      % [cm] z position of focus
@@ -70,13 +70,14 @@ waist = 0.005;                  % [cm] focus waist 1/e^2 radius
 divergence = 5/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
 
 %% USER SPECIFIED: Optional light collector properties
-% A "light collector" in this context can be either an objective lens or a fiber tip
-useLightCollector = false;
+% A "light collector" in this context can be either an objective lens or a
+% fiber tip.
+useLightCollector = true;
 
 % Position of either the center of the objective lens focal plane or the fiber tip
 xFPC_LC = 0;% [cm]
 yFPC_LC = 0;% [cm]
-zFPC_LC = 0.03;% [cm] negative values correspond to a location above the volume
+zFPC_LC = G.nz*G.dz/2;% [cm] negative values correspond to a location above the volume
 
 % Direction that the light collector is facing, defined in the same way as the beam direction using
 % ISO spherical coordinates.
@@ -84,14 +85,14 @@ zFPC_LC = 0.03;% [cm] negative values correspond to a location above the volume
 % For below the surface (positive z), such as measuring in transmission, you'll want pi/2<=theta<=pi
 % If theta = 0 or pi, phi serves only to rotate the view. If you want the light collector X axis 
 % to coincide with the cuboid x axis, use phi = pi/2.
-theta_LC = 0;%atan(1/sqrt(2)); % [rad]
-phi_LC   = pi/2;%-3*pi/4; % [rad]
+theta_LC = atan(1/sqrt(2)); % [rad]
+phi_LC   = -3*pi/4; % [rad]
 
 % Focal length of the objective lens (if light collector is a fiber, set this to Inf).
-f_LC = 1; % [cm]
+f_LC = .2; % [cm]
 
 % Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(lensNA)).
-diam_LC = 2; % [cm]
+diam_LC = .2; % [cm]
 
 % Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f_LC.
 FieldSize_LC = .2; % [cm]
@@ -99,11 +100,26 @@ FieldSize_LC = .2; % [cm]
 % Fiber NA. Only used for infinite f_LC.
 NA_LC = 0.22; % [-]
 
-% Resolution of light collector in pixels
-resX_LC = 200;
-resY_LC = 200;
+% X and Y resolution of light collector in pixels, only used for finite f
+res_LC = 200;
 
-%% Check to ensure that the light collector is not inside the cuboid
+% For time-resolved detection, the results are stored in a number of time
+% bins. Specify here the start time, end time and number of bins.
+% If you specify nTimeBins_LC = 0, detection is not time-resolved and the light
+% collector image output is simply a 2D res_LC by res_LC matrix if the light
+% collector is a lens, or a scalar if the light collector is a fiber.
+% If you specify nTimeBins_LC > 0, detection is time-resolved and the light
+% collector "image" output is a 3D res_LC by res_LC by (nTimeBins_LC+2) matrix if
+% the light collector is a lens and a 1D (nTimeBins_LC+2) array if the light
+% collector is a fiber. The first time bin stores all photons arriving
+% before tStart_LC, the last time bin stores all photons arriving after tEnd_LC,
+% and the 2:end-1 time bins equidistantly store the photons arriving
+% between tStart_LC and tEnd_LC.
+tStart_LC = -1e-13; % [s] Start of the detection time interval
+tEnd_LC   = 5e-12; % [s] End of the detection time interval
+nTimeBins_LC = 30; % Number of bins between tStart and tEnd
+
+%% Check to ensure that the light collector is not inside the cuboid and set res_LC to 1 if using fiber
 if useLightCollector
     if isfinite(f_LC)
         xLCC = xFPC_LC - f_LC*sin(theta_LC)*cos(phi_LC); % x position of Light Collector Center
@@ -113,6 +129,7 @@ if useLightCollector
         xLCC = xFPC_LC;
         yLCC = yFPC_LC;
         zLCC = zFPC_LC;
+        res_LC = 1;
     end
 
     if (abs(xLCC)               < G.nx*G.dx/2 && ...
@@ -130,7 +147,7 @@ G.M = G.M - 1; % The medium matrix has to be converted from MATLAB's 1-based ind
 Beam = struct('beamType',beamType,'xFocus',xFocus,'yFocus',yFocus,'zFocus',zFocus,'thetaBeam',thetaBeam,...
     'phiBeam',phiBeam,'waist',waist,'divergence',divergence);
 LightCollector = struct('xFPC_LC',xFPC_LC,'yFPC_LC',yFPC_LC,'zFPC_LC',zFPC_LC,'theta_LC',theta_LC,'phi_LC',phi_LC,'f_LC',f_LC,...
-    'diam_LC',diam_LC,'FieldSize_LC',FieldSize_LC,'NA_LC',NA_LC,'resX_LC',resX_LC,'resY_LC',resY_LC);
+    'diam_LC',diam_LC,'FieldSize_LC',FieldSize_LC,'NA_LC',NA_LC,'res_LC',res_LC,'tStart_LC',tStart_LC,'tEnd_LC',tEnd_LC,'nTimeBins_LC',nTimeBins_LC);
 MCinput = struct('silentMode',silentMode,'useAllCPUs',useAllCPUs,'simulationTime',simulationTime,...
     'useLightCollector',useLightCollector,'G',G,'Beam',Beam,'LightCollector',LightCollector);
 clear G Beam LightCollector
