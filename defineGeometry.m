@@ -47,7 +47,7 @@ assumeMatchedInterfaces = true;
 % 2: Escape at surface only. Photons that hit the top surface get killed
 %    immediately, photons hitting other surfaces can wander up to 6 times
 %    the cuboid size.
-boundaryType = 2;
+boundaryType = 1;
 
 
 %% USER SPECIFIED: Define parameters
@@ -80,16 +80,32 @@ z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 
 %% Standard tissue example:
 % M = 3*ones(nx,ny,nz,'uint8'); % "standard" tissue
+% M(Z < 0.03) = 1; % Air
+
+%% STL "dragon head" example
+M = ones(nx,ny,nz,'uint8');
+[STLvoxels,xSTL,zSTL,ySTL] = VOXELISE(nx,nz,ny,'Dragon_Head.stl'); % y and z dimensions intentionally swapped because we want to susequently rotate the object
+M(flip(flip(permute(STLvoxels,[1 3 2]),3),2)) = 3; % A few dimensions are rearranged to reorient the object and then "standard" tissue is assigned to the voxels inside the object
+
+scalefactor = 1/500; % Factor to scale size of object by compared to the x, y, z data in the .stl file
+
+% The voxel edge sizes and center positions have to be recalculated to fit the .stl voxelization
+dx = (xSTL(2)-xSTL(1))*scalefactor;
+dy = (ySTL(2)-ySTL(1))*scalefactor;
+dz = (zSTL(2)-zSTL(1))*scalefactor;
+x  = ((0:nx-1)-(nx-1)/2)*dx; % [cm] x position of centers of voxels
+y  = ((0:ny-1)-(ny-1)/2)*dy; % [cm] y position of centers of voxels
+z  = ((0:nz-1)+1/2)*dz;      % [cm] z position of centers of voxels
 
 %% Blood vessel example:
-zsurf = 0.01;
-epd_thick = 0.006;
-vesselradius  = 0.0100;
-vesseldepth = 0.04;
-M = 2*ones(nx,ny,nz,'uint8'); % fill background with water (gel)
-M(Z > zsurf) = 4; % epidermis
-M(Z > zsurf + epd_thick) = 5; % dermis
-M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 6; % blood
+% zsurf = 0.01;
+% epd_thick = 0.006;
+% vesselradius  = 0.0100;
+% vesseldepth = 0.04;
+% M = 2*ones(nx,ny,nz,'uint8'); % fill background with water (gel)
+% M(Z > zsurf) = 4; % epidermis
+% M(Z > zsurf + epd_thick) = 5; % dermis
+% M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 6; % blood
 
 %% Fluorescing cylinder example:
 % cylinderradius  = 0.0100;

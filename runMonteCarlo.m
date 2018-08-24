@@ -47,12 +47,12 @@ simulationTime = .1;      % [min] time duration of the simulation
 % 5: Top-hat focus, Gaussian far field beam
 % 6: Top-hat focus, top-hat far field beam
 % 7: Laguerre-Gaussian LG01 beam
-beamType = 6;
+beamType = 3;
 
 % Position of focus, only used for beamType ~=2 (if beamType == 1 this is the source position)
 xFocus = 0;                % [cm] x position of focus
 yFocus = 0;                % [cm] y position of focus
-zFocus = 0.04;          % [cm] z position of focus
+zFocus = G.dz*G.nz/2;      % [cm] z position of focus
 
 % Direction of beam center axis, only used if beamtypeflag ~= 1:
 % Given in terms of the spherical coordinates theta and phi measured in radians, using the ISO
@@ -65,9 +65,9 @@ thetaBeam = 0; % [rad]
 phiBeam   = 0; % [rad]
 
 % Focus properties and divergence angles, only used if beamtypeflag > 2
-waist = 0.03;                  % [cm] focus waist 1/e^2 radius
+waist = 0.005;                  % [cm] focus waist 1/e^2 radius
 % divergence = G.wavelength*1e-9/(pi*waist*1e-2); % [rad] Diffraction limited divergence angle for Gaussian beam
-divergence = 0/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
+divergence = 5/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
 
 %% USER SPECIFIED: Optional light collector properties
 % A "light collector" in this context can be either an objective lens or a fiber tip
