@@ -505,7 +505,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     int  newPctProgress;    
     bool ctrlc_caught = false; // Has a ctrl+c been passed from MATLAB?
     bool silentMode = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"silentMode"));
-    bool useAllCPUs = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"useAllCPUs"));
 
     
     // To know if we are simulating fluorescence, we check if a "sourceDistribution" field exists. If so, we will use it later in the beam definition.
@@ -674,7 +673,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 	clock_gettime(CLOCK_MONOTONIC, &simulationTimeStart);
 	
     #ifdef _WIN32
-    *nThreadsPtr = useAllCPUs? omp_get_num_procs(): fmax(omp_get_num_procs()-1,1);
+	bool useAllCPUs = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"useAllCPUs"));
+	*nThreadsPtr = useAllCPUs? omp_get_num_procs(): fmax(omp_get_num_procs()-1,1);
     #pragma omp parallel num_threads((long)*nThreadsPtr)
     #else
     *nThreadsPtr = 1;
