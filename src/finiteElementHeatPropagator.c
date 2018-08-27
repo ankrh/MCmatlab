@@ -1,11 +1,24 @@
 /********************************************
  *
+ * finiteElementHeatPropagator.c, in the C programming language, written for MATLAB MEX function generation
  * C script for heat propagation based on Monte Carlo input
  *
- * Log:
- *  2014-01-30: Written by Rasmus L. Pedersen & Mathias Christensen, DTU Fotonik
- *  2017-04-10: Overhauled by Anders K. Hansen, DTU Fotonik. Fundamental method remained unchanged.
- *  2017-06-07: Adapted to MATLAB mex file generation by Anders K. Hansen, DTU Fotonik
+ * Copyright 2017, 2018 by Anders K. Hansen, DTU Fotonik
+ *
+ * This file is part of MCmatlab.
+ *
+ * MCmatlab is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * MCmatlab is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
  *
  ** COMPILING ON WINDOWS
  * Can be compiled using "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' -outdir private .\src\finiteElementHeatPropagator.c ".\src\libut.lib""

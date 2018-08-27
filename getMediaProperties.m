@@ -1,6 +1,23 @@
 function [M, mediaProperties] = getMediaProperties(M,wavelength)
-%   Created 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
+%%%%%
+%   Copyright 2017, 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
 %   
+%   This file is part of MCmatlab.
+%
+%   MCmatlab is free software: you can redistribute it and/or modify
+%   it under the terms of the GNU General Public License as published by
+%   the Free Software Foundation, either version 3 of the License, or
+%   (at your option) any later version.
+%
+%   MCmatlab is distributed in the hope that it will be useful,
+%   but WITHOUT ANY WARRANTY; without even the implied warranty of
+%   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%   GNU General Public License for more details.
+%
+%   You should have received a copy of the GNU General Public License
+%   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
+%%%%%
+%
 %   This function was inspired by makeTissueList.m of the mcxyz program hosted at omlc.org
 %   Many parameters, formulas and the spectralLIB library is from mcxyz and
 %   other work by Steven Jacques and collaborators.
@@ -27,7 +44,7 @@ function [M, mediaProperties] = getMediaProperties(M,wavelength)
 %   and parameters for fluorescence properties;
 %       Y is fluorescence power yield (watts of emitted fluorescence light per watt of absorbed pump light) [-]
 %       sat is saturation excitation intensity [W/cm^2]
-
+%
 %   Requires
 %       SpectralLIB.mat
 

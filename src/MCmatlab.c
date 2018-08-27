@@ -1,11 +1,25 @@
 /********************************************
  *
- *  MCmatlab.c,	in the C programming language, written for MATLAB MEX function generation
- *  Compliant with the ISO C11 standard
- *  
- *  Created 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
+ * MCmatlab.c, in the C programming language, written for MATLAB MEX function generation
+ * C script for Monte Carlo Simulation of Photon Transport in 3D
  * 
- *  Heavily inspired by mcxyz.c by Steven Jacques, Ting Li, Scott Prahl at the Oregon Health & Science University
+ * Copyright 2017, 2018 by Anders K. Hansen, DTU Fotonik
+ * inspired by mcxyz.c by Steven Jacques, Ting Li, Scott Prahl at the Oregon Health & Science University
+ *
+ * This file is part of MCmatlab.
+ *
+ * MCmatlab is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * MCmatlab is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
  *
  ** COMPILING ON WINDOWS
  * Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -O3 -fopenmp -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -O3 -fopenmp -std=c11 -Wall -pedantic' -outdir private .\src\MCmatlab.c ".\src\libut.lib""
