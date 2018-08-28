@@ -99,3 +99,4 @@ if  plotFluorescenceProperties
     set(gca,'XTick',1:nM,'XTickLabel',{mediaProperties.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
     title('Fluor. sat. [W/cm^2]');
 end
+end
