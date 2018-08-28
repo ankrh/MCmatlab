@@ -30,6 +30,7 @@ function [M, mediaProperties] = getMediaProperties(M,wavelength)
 %   Requires
 %       SpectralLIB.mat
 %
+%	See also defineGeometry
 
 %%%%%
 %   Copyright 2017, 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik

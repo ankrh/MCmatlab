@@ -23,6 +23,7 @@ function plotMCmatlab(name)
 %       plotVolumetric.m
 %       plotMediaProperties.m
 %
+%	See also runMonteCarlo
 
 %%%%%
 %   Copyright 2017, 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik

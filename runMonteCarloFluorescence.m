@@ -22,6 +22,7 @@ function runMonteCarloFluorescence(name)
 %       MCmatlab.mex (architecture specific)
 %       plotMCmatlab.m
 %
+%	See also runMonteCarlo
 
 %%%%%
 %   Copyright 2018 by Anders K. Hansen, DTU Fotonik

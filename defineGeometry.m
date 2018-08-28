@@ -24,6 +24,7 @@ function defineGeometry(name)
 %       getMediaProperties.m
 %       plotMCmatlab.m
 %
+%	See also getMediaProperties, runMonteCarlo
 
 %%%%%
 %   Copyright 2017, 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik

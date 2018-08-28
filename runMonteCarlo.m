@@ -19,6 +19,7 @@ function MCoutput = runMonteCarlo(name)
 %       MCmatlab.mex (architecture specific)
 %       plotMCmatlab.m
 %
+%	See also defineGeometry, plotMCmatlab, runMonteCarloFluorescence, simulateHeatDistribution
 
 %%%%%
 %   Copyright 2017, 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik

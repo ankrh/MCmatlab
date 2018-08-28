@@ -34,6 +34,7 @@ function simulateHeatDistribution(name)
 %       updateVolumetric.m
 %       finiteElementHeatPropagator.mex (architecture specific)
 %
+%	See also runMonteCarlo
 
 %%%%%
 %   Copyright 2017, 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
