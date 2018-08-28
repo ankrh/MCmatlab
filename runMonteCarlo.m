@@ -61,7 +61,6 @@ else
 	MCinput.LightCollector.tStart = 0;
 	MCinput.LightCollector.tEnd = 0;
 	MCinput.LightCollector.nTimeBins = 0;
-
 end
 
 %% Call Monte Carlo C script (MEX file) to get fluence rate (intensity) distribution

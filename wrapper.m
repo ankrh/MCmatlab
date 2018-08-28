@@ -1,27 +1,25 @@
-clear Ginput MCinput
-
 %% Geometry definition
-Ginput.silentMode = false;
+Ginput.silentMode = true;
 Ginput.assumeMatchedInterfaces = true;
 Ginput.boundaryType = 1;
 
-Ginput.wavelength  = 532;		% [nm] Wavelength of the Monte Carlo simulation
-% Ginput.wavelength_f = NaN;		% [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
+Ginput.wavelength  = 450;		% [nm] Wavelength of the Monte Carlo simulation
+Ginput.wavelength_f = 550;		% [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
 
-Ginput.nx = 20;				% number of bins in the x direction
-Ginput.ny = 20;				% number of bins in the y direction
-Ginput.nz = 20;				% number of bins in the z direction
+Ginput.nx = 100;				% number of bins in the x direction
+Ginput.ny = 100;				% number of bins in the y direction
+Ginput.nz = 100;				% number of bins in the z direction
 Ginput.Lx = .1;				% [cm] x size of simulation area
 Ginput.Ly = .1;				% [cm] y size of simulation area
 Ginput.Lz = .1;				% [cm] z size of simulation area
 
-Ginput.GeomFunc = @GeometryDefinition_ImagingExample; % Specify which function (defined at the end of this m file) to use for defining the distribution of media in the cuboid
+Ginput.GeomFunc = @GeometryDefinition_FluorescingCylinder; % Specify which function (defined at the end of this m file) to use for defining the distribution of media in the cuboid
 % Ginput.GeomFuncParams = {0.03}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
 
 %% Monte Carlo simulation
-MCinput.silentMode = false;
+MCinput.silentMode = true;
 MCinput.useAllCPUs = true;
-MCinput.simulationTime = 1;      % [min] time duration of the simulation
+MCinput.simulationTime = .5;      % [min] time duration of the simulation
 
 MCinput.Beam.beamType = 2;
 MCinput.Beam.xFocus = 0;                % [cm] x position of focus
@@ -34,27 +32,50 @@ MCinput.Beam.divergence = 5/180*pi;         % [rad] divergence 1/e^2 half-angle 
 
 MCinput.LightCollector.xFPC = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
 MCinput.LightCollector.yFPC = 0; % [cm]
-MCinput.LightCollector.zFPC = Ginput.Lz/2; % [cm]
+MCinput.LightCollector.zFPC = 0.03; % [cm]
 
-MCinput.LightCollector.theta = atan(1/sqrt(2)); % [rad]
-MCinput.LightCollector.phi   = -3*pi/4; % [rad]
+MCinput.LightCollector.theta = 0; % [rad]
+MCinput.LightCollector.phi   = pi/2; % [rad]
 
 MCinput.LightCollector.f = .2; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
-MCinput.LightCollector.diam = .2; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(lensNA)).
-MCinput.LightCollector.FieldSize = .2; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
+MCinput.LightCollector.diam = .1; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(lensNA)).
+MCinput.LightCollector.FieldSize = .1; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
 MCinput.LightCollector.NA = 0.22; % [-] Fiber NA. Only used for infinite f.
 
-MCinput.LightCollector.res = 1; % X and Y resolution of light collector in pixels, only used for finite f
+MCinput.LightCollector.res = 50; % X and Y resolution of light collector in pixels, only used for finite f
 
-MCinput.LightCollector.tStart = -1e-13; % [s] Start of the detection time interval
-MCinput.LightCollector.tEnd   = 5e-12; % [s] End of the detection time interval
-MCinput.LightCollector.nTimeBins = 30; % Number of bins between tStart and tEnd
+% MCinput.LightCollector.tStart = -1e-13; % [s] Start of the detection time interval
+% MCinput.LightCollector.tEnd   = 5e-12; % [s] End of the detection time interval
+% MCinput.LightCollector.nTimeBins = 30; % Number of bins between tStart and tEnd
 
+%% Fluorescence Monte Carlo
+FMCinput.silentMode = false;
+FMCinput.useAllCPUs = true;
+FMCinput.simulationTime = .5;      % [min] time duration of the simulation
 
+FMCinput.Beam.P_excitation = 2; % [W]
+
+FMCinput.LightCollector.xFPC = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
+FMCinput.LightCollector.yFPC = 0; % [cm]
+FMCinput.LightCollector.zFPC = 0.03; % [cm]
+
+FMCinput.LightCollector.theta = 0; % [rad]
+FMCinput.LightCollector.phi   = pi/2; % [rad]
+
+FMCinput.LightCollector.f = .2; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
+FMCinput.LightCollector.diam = .1; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(lensNA)).
+FMCinput.LightCollector.FieldSize = .1; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
+FMCinput.LightCollector.NA = 0.22; % [-] Fiber NA. Only used for infinite f.
+
+FMCinput.LightCollector.res = 50; % X and Y resolution of light collector in pixels, only used for finite f
 
 %% Execution, do not modify this
 MCinput.G = defineGeometry(Ginput);
-MCoutput = runMonteCarlo(MCinput);
+clear Ginput
+FMCinput.MCoutput = runMonteCarlo(MCinput);
+FMCinput.G = MCinput.G;
+clear MCinput
+FMCoutput = runMonteCarloFluorescence(FMCinput);
 
 %% Post-processing
 
