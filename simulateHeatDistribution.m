@@ -1,22 +1,4 @@
 function simulateHeatDistribution(name)
-%%%%%
-%   Copyright 2017, 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
-%
-%   This file is part of MCmatlab.
-%
-%   MCmatlab is free software: you can redistribute it and/or modify
-%   it under the terms of the GNU General Public License as published by
-%   the Free Software Foundation, either version 3 of the License, or
-%   (at your option) any later version.
-%
-%   MCmatlab is distributed in the hope that it will be useful,
-%   but WITHOUT ANY WARRANTY; without even the implied warranty of
-%   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-%   GNU General Public License for more details.
-%
-%   You should have received a copy of the GNU General Public License
-%   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
-%%%%%
 %   
 %   Simulates temperature evolution due to absorption of light and 
 %   diffusion of heat through the cuboid based on output of runMonteCarlo.m.
@@ -52,6 +34,25 @@ function simulateHeatDistribution(name)
 %       updateVolumetric.m
 %       finiteElementHeatPropagator.mex (architecture specific)
 %
+
+%%%%%
+%   Copyright 2017, 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
+%
+%   This file is part of MCmatlab.
+%
+%   MCmatlab is free software: you can redistribute it and/or modify
+%   it under the terms of the GNU General Public License as published by
+%   the Free Software Foundation, either version 3 of the License, or
+%   (at your option) any later version.
+%
+%   MCmatlab is distributed in the hope that it will be useful,
+%   but WITHOUT ANY WARRANTY; without even the implied warranty of
+%   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%   GNU General Public License for more details.
+%
+%   You should have received a copy of the GNU General Public License
+%   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
+%%%%%
 
 %% Load data from defineGeometry.m and runMonteCarlo.m
 load(['./Data/' name '.mat'],'G');
