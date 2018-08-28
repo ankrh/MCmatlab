@@ -51,10 +51,10 @@ if(MCinput.useLightCollector)
 
     LC = MCinput.LightCollector;
     arrowlength = sqrt((G.nx*G.dx)^2+(G.ny*G.dy)^2+(G.nz*G.dz)^2)/5;
-    Zvec = [sin(LC.theta_LC)*cos(LC.phi_LC) , sin(LC.theta_LC)*sin(LC.phi_LC) , cos(LC.theta_LC)];
-    Xvec = [sin(LC.phi_LC) , -cos(LC.phi_LC) , 0];
+    Zvec = [sin(LC.theta)*cos(LC.phi) , sin(LC.theta)*sin(LC.phi) , cos(LC.theta)];
+    Xvec = [sin(LC.phi) , -cos(LC.phi) , 0];
     Yvec = cross(Zvec,Xvec);
-    FPC = [LC.xFPC_LC , LC.yFPC_LC , LC.zFPC_LC]; % Focal Plane Center
+    FPC = [LC.xFPC , LC.yFPC , LC.zFPC]; % Focal Plane Center
     FPC_X = FPC + arrowlength*Xvec;
     line([FPC(1) FPC_X(1)],[FPC(2) FPC_X(2)],[FPC(3) FPC_X(3)],'Linewidth',2,'Color','r')
     text(FPC_X(1),FPC_X(2),FPC_X(3),'X','HorizontalAlignment','center','FontSize',18)
@@ -62,33 +62,33 @@ if(MCinput.useLightCollector)
     line([FPC(1) FPC_Y(1)],[FPC(2) FPC_Y(2)],[FPC(3) FPC_Y(3)],'Linewidth',2,'Color','r')
     text(FPC_Y(1),FPC_Y(2),FPC_Y(3),'Y','HorizontalAlignment','center','FontSize',18)
 
-    if isfinite(LC.f_LC)
-        fieldperimeter = LC.FieldSize_LC/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + FPC;
+    if isfinite(LC.f)
+        fieldperimeter = LC.FieldSize/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + FPC;
         h1 = line(fieldperimeter(:,1),fieldperimeter(:,2),fieldperimeter(:,3),'Color','b','LineWidth',2);
-        LCC = FPC - Zvec*LC.f_LC; % Light Collector Center
-        detectoraperture = LC.diam_LC/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
+        LCC = FPC - Zvec*LC.f; % Light Collector Center
+        detectoraperture = LC.diam/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
         h2 = line(detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
         legend([h1 h2],'Imaged area','Lens aperture','Location','northeast');
     else
         LCC = FPC;
-        detectoraperture = LC.diam_LC/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
+        detectoraperture = LC.diam/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
         h2 = line(detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
         legend(h2,'Fiber aperture','Location','northeast');
     end
 
-    if LC.res_LC > 1
-        Xcenters = linspace(LC.FieldSize_LC*(1/LC.res_LC-1),LC.FieldSize_LC*(1-1/LC.res_LC),LC.res_LC)/2;
-        Ycenters = linspace(LC.FieldSize_LC*(1/LC.res_LC-1),LC.FieldSize_LC*(1-1/LC.res_LC),LC.res_LC)/2;
-        fprintf('%.3g%% of input power ends up on the detector.\n',100*mean(mean(sum(MCoutput.Image,3)))*LC.FieldSize_LC^2);
+    if LC.res > 1
+        Xcenters = linspace(LC.FieldSize*(1/LC.res-1),LC.FieldSize*(1-1/LC.res),LC.res)/2;
+        Ycenters = linspace(LC.FieldSize*(1/LC.res-1),LC.FieldSize*(1-1/LC.res),LC.res)/2;
+        fprintf('%.3g%% of input power ends up on the detector.\n',100*mean(mean(sum(MCoutput.Image,3)))*LC.FieldSize^2);
     else
         fprintf('%.3g%% of input power ends up on the detector.\n',100*sum(MCoutput.Image,3));
     end
 
-    if LC.nTimeBins_LC > 0
-        timevector = (-1/2:(LC.nTimeBins_LC+1/2))*(LC.tEnd_LC-LC.tStart_LC)/LC.nTimeBins_LC + LC.tStart_LC;
+    if LC.nTimeBins > 0
+        timevector = (-1/2:(LC.nTimeBins+1/2))*(LC.tEnd-LC.tStart)/LC.nTimeBins + LC.tStart;
     end
 
-    if LC.res_LC > 1 && LC.nTimeBins_LC > 0
+    if LC.res > 1 && LC.nTimeBins > 0
         h_f = plotVolumetric(7,Xcenters,Ycenters,timevector,MCoutput.Image,'slicePositions',[1 1 0]);
         h_f.Name = 'Image';
         xlabel('X [cm]');
@@ -96,7 +96,7 @@ if(MCinput.useLightCollector)
         zlabel('Time [s]');
         title({'Normalized time-resolved fluence rate in the image plane','at 1x magnification [W/cm^2/W.incident]'});
         fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
-    elseif LC.res_LC > 1
+    elseif LC.res > 1
         if(~ishandle(7))
             h_f = figure(7);
             h_f.Position = [40 80 1100 650];
@@ -111,7 +111,7 @@ if(MCinput.useLightCollector)
         set(gca,'FontSize',18);
         colormap(GPBGYRcolormap);
         colorbar;
-    elseif LC.nTimeBins_LC > 0
+    elseif LC.nTimeBins > 0
         if(~ishandle(7))
             h_f = figure(7);
             h_f.Position = [40 80 1100 650];
@@ -128,5 +128,6 @@ if(MCinput.useLightCollector)
         fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
     end
 end
+drawnow;
 end
 

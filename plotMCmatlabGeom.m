@@ -41,5 +41,5 @@ if(~isnan(G.wavelength_f))
     h_f = plotMediaProperties(3,G.mediaProperties_f);
     h_f.Name = 'Fluorescence media properties';
 end
-
+drawnow;
 end

@@ -1,67 +1,63 @@
+clear Ginput MCinput
+
 %% Geometry definition
 Ginput.silentMode = false;
 Ginput.assumeMatchedInterfaces = true;
 Ginput.boundaryType = 1;
 
 Ginput.wavelength  = 532;		% [nm] Wavelength of the Monte Carlo simulation
-Ginput.wavelength_f = NaN;		% [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
+% Ginput.wavelength_f = NaN;		% [nm] Fluorescence wavelength (set this to NaN for simulations without fluorescence)
 
-Ginput.nx = 101;				% number of bins in the x direction
-Ginput.ny = 101;				% number of bins in the y direction
-Ginput.nz = 101;				% number of bins in the z direction
-Ginput.Lx = .2;				% [cm] x size of simulation area
-Ginput.Ly = .2;				% [cm] y size of simulation area
-Ginput.Lz = .2;				% [cm] z size of simulation area
+Ginput.nx = 20;				% number of bins in the x direction
+Ginput.ny = 20;				% number of bins in the y direction
+Ginput.nz = 20;				% number of bins in the z direction
+Ginput.Lx = .1;				% [cm] x size of simulation area
+Ginput.Ly = .1;				% [cm] y size of simulation area
+Ginput.Lz = .1;				% [cm] z size of simulation area
 
-Ginput.GeomFunc = @GeometryDefinition_StandardTissue;
+Ginput.GeomFunc = @GeometryDefinition_ImagingExample; % Specify which function (defined at the end of this m file) to use for defining the distribution of media in the cuboid
+% Ginput.GeomFuncParams = {0.03}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
 
 %% Monte Carlo simulation
-MCinput.G = defineGeometry(Ginput);
-plotMCmatlabGeom(MCinput.G);
-
 MCinput.silentMode = false;
-
 MCinput.useAllCPUs = true;
+MCinput.simulationTime = 1;      % [min] time duration of the simulation
 
-MCinput.simulationTime = .1;      % [min] time duration of the simulation
-
-MCinput.Beam.beamType = 0;
-
+MCinput.Beam.beamType = 2;
 MCinput.Beam.xFocus = 0;                % [cm] x position of focus
 MCinput.Beam.yFocus = 0;                % [cm] y position of focus
 MCinput.Beam.zFocus = Ginput.Lz/2;      % [cm] z position of focus
-
-MCinput.Beam.thetaBeam = 0; % [rad]
-MCinput.Beam.phiBeam   = 0; % [rad]
-
+MCinput.Beam.theta = 0; % [rad]
+MCinput.Beam.phi   = 0; % [rad]
 MCinput.Beam.waist = 0.005;                  % [cm] focus waist 1/e^2 radius
-% MCinput.Beam.divergence = G.wavelength*1e-9/(pi*MCinput.Beam.waist*1e-2); % [rad] Diffraction limited divergence angle for Gaussian beam
-MCinput.Beam.divergence = 5/180*pi;         % [rad] divergence 1/e^2 half-angle of beam
+MCinput.Beam.divergence = 5/180*pi;         % [rad] divergence 1/e^2 half-angle of beam (for a diffraction limited Gaussian beam, this is G.wavelength*1e-9/(pi*MCinput.Beam.waist*1e-2))
+
+MCinput.LightCollector.xFPC = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
+MCinput.LightCollector.yFPC = 0; % [cm]
+MCinput.LightCollector.zFPC = Ginput.Lz/2; % [cm]
+
+MCinput.LightCollector.theta = atan(1/sqrt(2)); % [rad]
+MCinput.LightCollector.phi   = -3*pi/4; % [rad]
+
+MCinput.LightCollector.f = .2; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
+MCinput.LightCollector.diam = .2; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(lensNA)).
+MCinput.LightCollector.FieldSize = .2; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
+MCinput.LightCollector.NA = 0.22; % [-] Fiber NA. Only used for infinite f.
+
+MCinput.LightCollector.res = 1; % X and Y resolution of light collector in pixels, only used for finite f
+
+MCinput.LightCollector.tStart = -1e-13; % [s] Start of the detection time interval
+MCinput.LightCollector.tEnd   = 5e-12; % [s] End of the detection time interval
+MCinput.LightCollector.nTimeBins = 30; % Number of bins between tStart and tEnd
 
 
-MCinput.useLightCollector = false;
 
-MCinput.LightCollector.xFPC_LC = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
-MCinput.LightCollector.yFPC_LC = 0; % [cm]
-MCinput.LightCollector.zFPC_LC = Ginput.Lz/2; % [cm]
-
-MCinput.LightCollector.theta_LC = atan(1/sqrt(2)); % [rad]
-MCinput.LightCollector.phi_LC   = -3*pi/4; % [rad]
-
-MCinput.LightCollector.f_LC = .2; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
-MCinput.LightCollector.diam_LC = .2; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(lensNA)).
-MCinput.LightCollector.FieldSize_LC = .2; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f_LC.
-MCinput.LightCollector.NA_LC = 0.22; % [-] Fiber NA. Only used for infinite f_LC.
-
-MCinput.LightCollector.res_LC = 200; % X and Y resolution of light collector in pixels, only used for finite f
-
-MCinput.LightCollector.tStart_LC = -1e-13; % [s] Start of the detection time interval
-MCinput.LightCollector.tEnd_LC   = 5e-12; % [s] End of the detection time interval
-MCinput.LightCollector.nTimeBins_LC = 30; % Number of bins between tStart and tEnd
-
+%% Execution, do not modify this
+MCinput.G = defineGeometry(Ginput);
 MCoutput = runMonteCarlo(MCinput);
 
-plotMCmatlab(MCinput,MCoutput);
+%% Post-processing
+
 
 %% Explanations
 % silentMode = true disables overwrite prompt,
@@ -112,7 +108,7 @@ plotMCmatlab(MCinput,MCoutput);
 
 % A "light collector" can be either an objective lens or a fiber tip.
 
-% theta_LC and phi_LC define the direction that the light collector is facing, defined in the same way as the beam direction using
+% theta and phi define the direction that the light collector is facing, defined in the same way as the beam direction using
 % ISO spherical coordinates.
 % For above the surface (negative z), you'll want to satisfy 0<=theta<=pi/2.
 % For below the surface (positive z), such as measuring in transmission, you'll want pi/2<=theta<=pi
@@ -121,23 +117,24 @@ plotMCmatlab(MCinput,MCoutput);
 
 % For time-resolved detection, the results are stored in a number of time
 % bins. Specify here the start time, end time and number of bins.
-% If you specify nTimeBins_LC = 0, detection is not time-resolved and the light
-% collector image output is simply a 2D res_LC by res_LC matrix if the light
+% If you specify nTimeBins = 0, detection is not time-resolved and the light
+% collector image output is simply a 2D res by res matrix if the light
 % collector is a lens, or a scalar if the light collector is a fiber.
-% If you specify nTimeBins_LC > 0, detection is time-resolved and the light
-% collector "image" output is a 3D res_LC by res_LC by (nTimeBins_LC+2) matrix if
-% the light collector is a lens and a 1D (nTimeBins_LC+2) array if the light
+% If you specify nTimeBins > 0, detection is time-resolved and the light
+% collector "image" output is a 3D res by res by (nTimeBins+2) matrix if
+% the light collector is a lens and a 1D (nTimeBins+2) array if the light
 % collector is a fiber. The first time bin stores all photons arriving
-% before tStart_LC, the last time bin stores all photons arriving after tEnd_LC,
+% before tStart, the last time bin stores all photons arriving after tEnd,
 % and the 2:end-1 time bins equidistantly store the photons arriving
-% between tStart_LC and tEnd_LC.
+% between tStart and tEnd.
 
-function M = GeometryDefinition_StandardTissue(X,Y,Z)
-M = 3*ones(size(X)); % "standard" tissue
-M(Z < 0.03) = 1; % Air
+function M = GeometryDefinition_StandardTissue(X,Y,Z,parameters)
+tissuedepth = parameters{1};
+M = ones(size(X)); % Air
+M(Z > tissuedepth) = 3; % "Standard" tissue
 end
 
-function M = GeometryDefinition_BloodVessel(X,Y,Z)
+function M = GeometryDefinition_BloodVessel(X,Y,Z,parameters)
 % Blood vessel example:
 zsurf = 0.01;
 epd_thick = 0.006;
@@ -149,13 +146,13 @@ M(Z > zsurf + epd_thick) = 5; % dermis
 M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 6; % blood
 end
 
-function M = GeometryDefinition_FluorescingCylinder(X,Y,Z)
+function M = GeometryDefinition_FluorescingCylinder(X,Y,Z,parameters)
 cylinderradius  = 0.0100;
 M = 17*ones(size(X)); % fill background with fluorescence absorber
 M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 16; % fluorescer
 end
 
-function M = GeometryDefinition_HairExample(X,Y,Z)
+function M = GeometryDefinition_HairExample(X,Y,Z,parameters)
 zsurf = 0.02;  % position of gel/skin surface[cm]
 epd_thick = 0.01; % thickness of the epidermis [cm]
 hair_radius = 0.0075/2; % diameter varies from 17 - 180 micrometers, should increase with colouring and age
@@ -173,7 +170,7 @@ M((X/hair_bulb_semiminor).^2 + (Y/hair_bulb_semiminor).^2 + ((Z-(zsurf+hair_dept
 M((X/papilla_semiminor).^2 + (Y/papilla_semiminor).^2 + ((Z-(zsurf+hair_depth+hair_bulb_semimajor-papilla_semimajor))/papilla_semimajor).^2 < 1) = 5; % dermis (papilla)
 end
 
-function M = GeometryDefinition_SolderPatchExample(X,Y,Z)
+function M = GeometryDefinition_SolderPatchExample(X,Y,Z,parameters)
 patch_radius        = 0.218;   	% [cm], cylinder radius
 patch_zi_start      = 1;
 patch_zi_end        = 5;
@@ -188,19 +185,20 @@ M(X.^2 + Y.^2 < water_radius^2) = 2; % water
 M(X.^2 + Y.^2 < fibre_radius^2) = 11; % fibre
 end
 
-function M = GeometryDefinition_ImagingExample(X,Y,Z)
+function M = GeometryDefinition_ImagingExample(X,Y,Z,parameters)
+[nx,ny,~] = size(X);
 M = ones(size(X)); % Air background
 M(1:(nx*(ny+1)+1):end) = 18; % Set xyz diagonal positions to testscatterer
 M(1:(nx*(ny+1)):end) = 18; % Set yz diagonal positions to testscatterer
 end
 
-function M = GeometryDefinition_RefractionReflectionExample(X,Y,Z)
+function M = GeometryDefinition_RefractionReflectionExample(X,Y,Z,parameters)
 M = ones(size(X)); % Air background
 M(Z>0.03) = 2; % Water
 M(Z>0.09) = 20; % Reflector
 end
 
-function M = GeometryDefinition_stlExample(X,Y,Z)
+function M = GeometryDefinition_stlExample(X,Y,Z,parameters)
 xvec = squeeze(X(:,1,1));
 yvec = squeeze(Y(1,:,1));
 zvec = squeeze(Z(1,1,:));

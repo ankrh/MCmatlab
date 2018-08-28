@@ -557,8 +557,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         for(idx=1;idx<(L+1);idx++) S[idx] /= S[L];
     }
 
-    double tb = S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"thetaBeam"));
-    double pb = S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"phiBeam"));
+    double tb = S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"theta"));
+    double pb = S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"phi"));
 
     double u[3] = {sin(tb)*cos(pb),
                    sin(tb)*sin(pb),
@@ -585,24 +585,24 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     mxArray *MatlabLC      = mxGetField(prhs[0],0,"LightCollector");
     bool useLightCollector = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"useLightCollector"));
     
-    double theta     = *mxGetPr(mxGetField(MatlabLC,0,"theta_LC"));
-    double phi       = *mxGetPr(mxGetField(MatlabLC,0,"phi_LC"));
-    double f         = *mxGetPr(mxGetField(MatlabLC,0,"f_LC"));
-    long   nTimeBins = S? 0: *mxGetPr(mxGetField(MatlabLC,0,"nTimeBins_LC"));
+    double theta     = *mxGetPr(mxGetField(MatlabLC,0,"theta"));
+    double phi       = *mxGetPr(mxGetField(MatlabLC,0,"phi"));
+    double f         = *mxGetPr(mxGetField(MatlabLC,0,"f"));
+    long   nTimeBins = S? 0: *mxGetPr(mxGetField(MatlabLC,0,"nTimeBins"));
 
     struct lightcollector const LC_var = (struct lightcollector) {
-        .r            = {*mxGetPr(mxGetField(MatlabLC,0,"xFPC_LC")) - (isfinite(f)? f*sin(theta)*cos(phi):0), // xyz coordinates of center of light collector
-                         *mxGetPr(mxGetField(MatlabLC,0,"yFPC_LC")) - (isfinite(f)? f*sin(theta)*sin(phi):0),
-                         *mxGetPr(mxGetField(MatlabLC,0,"zFPC_LC")) - (isfinite(f)? f*cos(theta)         :0)},
+        .r            = {*mxGetPr(mxGetField(MatlabLC,0,"xFPC")) - (isfinite(f)? f*sin(theta)*cos(phi):0), // xyz coordinates of center of light collector
+                         *mxGetPr(mxGetField(MatlabLC,0,"yFPC")) - (isfinite(f)? f*sin(theta)*sin(phi):0),
+                         *mxGetPr(mxGetField(MatlabLC,0,"zFPC")) - (isfinite(f)? f*cos(theta)         :0)},
         .theta        =  theta,
         .phi          =  phi,
         .f            =  f,
-        .diam         =  *mxGetPr(mxGetField(MatlabLC,0,"diam_LC")),
-        .FSorNA       =  *mxGetPr(mxGetField(MatlabLC,0,isfinite(f)?"FieldSize_LC":"NA_LC")),
-        .res          = {*mxGetPr(mxGetField(MatlabLC,0,"res_LC")),
+        .diam         =  *mxGetPr(mxGetField(MatlabLC,0,"diam")),
+        .FSorNA       =  *mxGetPr(mxGetField(MatlabLC,0,isfinite(f)?"FieldSize":"NA")),
+        .res          = {*mxGetPr(mxGetField(MatlabLC,0,"res")),
                          nTimeBins? nTimeBins+2: 1},
-        .tStart       =  *mxGetPr(mxGetField(MatlabLC,0,"tStart_LC")),
-        .tEnd         =  *mxGetPr(mxGetField(MatlabLC,0,"tEnd_LC"))};
+        .tStart       =  *mxGetPr(mxGetField(MatlabLC,0,"tStart")),
+        .tEnd         =  *mxGetPr(mxGetField(MatlabLC,0,"tEnd"))};
     struct lightcollector const *LC = &LC_var;
     
     // Prepare output MATLAB struct
