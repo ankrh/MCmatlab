@@ -37,8 +37,9 @@ checkboxvisible = true; % Assume the log10 checkbox should be visible
 directmapping = false; % Assume CDataMapping should not be set to direct
 reverseZ = false; % Assume z axis is not inverted
 fromZero = false; % Assume that the minimum of the color scale should not necessarily be zero
-colormap(GPBGYRcolormap); % Assume we want to use the GPBGYR (Grey-Purple-Blue-Green-Yellow-Red) colormap
+colormap(inferno); % Assume we want to use the inferno colormap
 colorbar;
+linecolor = [0.5 0.5 0.5]; % Assume gray lines around all slices
 if(any(strcmp(varargin,'MCmatlab_GeometryIllustration')))
     xyzaxes = true;
     reverseZ = true;
@@ -47,13 +48,16 @@ if(any(strcmp(varargin,'MCmatlab_GeometryIllustration')))
     directmapping = true;
     colormap(lines(length(mediaProperties)));
     colorbar('TickLabels',{mediaProperties.name},'Ticks',(1:length(mediaProperties))+0.5);
+    linecolor = [0 0 0]; % Black lines around slices
 elseif(any(strcmp(varargin,'MCmatlab_fromZero')))
-    xyzaxes = true;
+	xyzaxes = true;
     reverseZ = true;
     fromZero = true;
 elseif(any(strcmp(varargin,'MCmatlab')))
     xyzaxes = true;
     reverseZ = true;
+	colormap(plasma);
+    linecolor = [0 0 0]; % Black lines around slices
 end
 
 slicePositionVarargin = find(strcmpi(varargin,'slicePositions'),1); % Empty array if no slicePositions
@@ -125,12 +129,12 @@ if directmapping
     set([h_surfxback h_surfyback h_surfzback h_surfxslice h_surfyslice h_surfzslice],'CDataMapping','direct');
 end
 
-line([xh xh xh xh xh],[yl yh yh yl yl],[zh zh zl zl zh],'Color','k');
-line([xl xh xh xl xl],[yh yh yh yh yh],[zh zh zl zl zh],'Color','k');
-line([xl xl xh xh xl],[yl yh yh yl yl],[zb zb zb zb zb],'Color','k');
-h_xline = line([xs xs xs xs xs xs xs],[ys yh yh yl yl ys ys],[zl zl zh zh zl zl zh],'Color','k');
-h_yline = line([xl xl xh xh xl xl xh],[ys ys ys ys ys ys ys],[zs zh zh zl zl zs zs],'Color','k');
-h_zline = line([xs xh xh xl xl xs xs],[yl yl yh yh yl yl yh],[zs zs zs zs zs zs zs],'Color','k');
+line([xh xh xh xh xh],[yl yh yh yl yl],[zh zh zl zl zh],'Color',linecolor);
+line([xl xh xh xl xl],[yh yh yh yh yh],[zh zh zl zl zh],'Color',linecolor);
+line([xl xl xh xh xl],[yl yh yh yl yl],[zb zb zb zb zb],'Color',linecolor);
+h_xline = line([xs xs xs xs xs xs xs],[ys yh yh yl yl ys ys],[zl zl zh zh zl zl zh],'Color',linecolor);
+h_yline = line([xl xl xh xh xl xl xh],[ys ys ys ys ys ys ys],[zs zh zh zl zl zs zs],'Color',linecolor);
+h_zline = line([xs xh xh xl xl xs xs],[yl yl yh yh yl yl yh],[zs zs zs zs zs zs zs],'Color',linecolor);
 
 axis tight
 if xyzaxes

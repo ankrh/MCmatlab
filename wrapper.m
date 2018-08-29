@@ -1,5 +1,5 @@
 %% Geometry definition
-Ginput.silentMode = true;
+Ginput.silentMode = false;
 Ginput.assumeMatchedInterfaces = true;
 Ginput.boundaryType = 1;
 
@@ -16,10 +16,13 @@ Ginput.Lz = .1;				% [cm] z size of simulation area
 Ginput.GeomFunc = @GeometryDefinition_FluorescingCylinder; % Specify which function (defined at the end of this m file) to use for defining the distribution of media in the cuboid
 % Ginput.GeomFuncParams = {0.03}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
 
+% Execution, do not modify the next line:
+G = defineGeometry(Ginput);
+
 %% Monte Carlo simulation
-MCinput.silentMode = true;
+MCinput.silentMode = false;
 MCinput.useAllCPUs = true;
-MCinput.simulationTime = .5;      % [min] time duration of the simulation
+MCinput.simulationTime = .1;      % [min] time duration of the simulation
 
 MCinput.Beam.beamType = 2;
 MCinput.Beam.xFocus = 0;                % [cm] x position of focus
@@ -48,10 +51,14 @@ MCinput.LightCollector.res = 50; % X and Y resolution of light collector in pixe
 % MCinput.LightCollector.tEnd   = 5e-12; % [s] End of the detection time interval
 % MCinput.LightCollector.nTimeBins = 30; % Number of bins between tStart and tEnd
 
+% Execution, do not modify the next two lines:
+MCinput.G = G;
+MCoutput = runMonteCarlo(MCinput);
+
 %% Fluorescence Monte Carlo
 FMCinput.silentMode = false;
 FMCinput.useAllCPUs = true;
-FMCinput.simulationTime = .5;      % [min] time duration of the simulation
+FMCinput.simulationTime = .1;      % [min] time duration of the simulation
 
 FMCinput.Beam.P_excitation = 2; % [W]
 
@@ -69,12 +76,9 @@ FMCinput.LightCollector.NA = 0.22; % [-] Fiber NA. Only used for infinite f.
 
 FMCinput.LightCollector.res = 50; % X and Y resolution of light collector in pixels, only used for finite f
 
-%% Execution, do not modify this
-MCinput.G = defineGeometry(Ginput);
-clear Ginput
-FMCinput.MCoutput = runMonteCarlo(MCinput);
-FMCinput.G = MCinput.G;
-clear MCinput
+% Execution, do not modify the next three lines:
+FMCinput.G = G;
+FMCinput.MCoutput = MCoutput;
 FMCoutput = runMonteCarloFluorescence(FMCinput);
 
 %% Post-processing
