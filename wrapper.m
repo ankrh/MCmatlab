@@ -1,4 +1,7 @@
+addpath('./helperfuncs'); % Enables running each section individually for the rest of the MATLAB session using the "Run Section" button or ctrl+enter
+
 %% Geometry definition
+clear Ginput
 Ginput.silentMode = false;
 Ginput.assumeMatchedInterfaces = true;
 Ginput.boundaryType = 1;
@@ -17,9 +20,10 @@ Ginput.GeomFunc = @GeometryDefinition_FluorescingCylinder; % Specify which funct
 % Ginput.GeomFuncParams = {0.03}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
 
 % Execution, do not modify the next line:
-G = defineGeometry(Ginput);
+Goutput = defineGeometry(Ginput);
 
 %% Monte Carlo simulation
+clear MCinput
 MCinput.silentMode = false;
 MCinput.useAllCPUs = true;
 MCinput.simulationTime = .1;      % [min] time duration of the simulation
@@ -52,10 +56,11 @@ MCinput.LightCollector.res = 50; % X and Y resolution of light collector in pixe
 % MCinput.LightCollector.nTimeBins = 30; % Number of bins between tStart and tEnd
 
 % Execution, do not modify the next two lines:
-MCinput.G = G;
+MCinput.G = Goutput;
 MCoutput = runMonteCarlo(MCinput);
 
 %% Fluorescence Monte Carlo
+clear FMCinput
 FMCinput.silentMode = false;
 FMCinput.useAllCPUs = true;
 FMCinput.simulationTime = .1;      % [min] time duration of the simulation
@@ -77,7 +82,7 @@ FMCinput.LightCollector.NA = 0.22; % [-] Fiber NA. Only used for infinite f.
 FMCinput.LightCollector.res = 50; % X and Y resolution of light collector in pixels, only used for finite f
 
 % Execution, do not modify the next three lines:
-FMCinput.G = G;
+FMCinput.G = Goutput;
 FMCinput.MCoutput = MCoutput;
 FMCoutput = runMonteCarloFluorescence(FMCinput);
 

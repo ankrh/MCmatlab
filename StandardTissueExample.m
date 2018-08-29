@@ -2,71 +2,42 @@ addpath('./helperfuncs'); % Enables running each section individually for the re
 
 %% Geometry definition
 clear Ginput
-Ginput.silentMode = true;
+Ginput.silentMode = false;
 Ginput.assumeMatchedInterfaces = true;
 Ginput.boundaryType = 1;
 
 Ginput.wavelength  = 532;		% [nm] Wavelength of the Monte Carlo simulation
 
-Ginput.nx = 100;				% number of bins in the x direction
-Ginput.ny = 100;				% number of bins in the y direction
-Ginput.nz = 100;				% number of bins in the z direction
+Ginput.nx = 101;				% number of bins in the x direction
+Ginput.ny = 101;				% number of bins in the y direction
+Ginput.nz = 150;				% number of bins in the z direction
 Ginput.Lx = .1;				% [cm] x size of simulation area
 Ginput.Ly = .1;				% [cm] y size of simulation area
-Ginput.Lz = .1;				% [cm] z size of simulation area
+Ginput.Lz = .15;				% [cm] z size of simulation area
 
-Ginput.GeomFunc = @GeometryDefinition_BloodVessel; % Specify which function (defined at the end of this m file) to use for defining the distribution of media in the cuboid
+Ginput.GeomFunc = @GeometryDefinition_StandardTissue; % Specify which function (defined at the end of this m file) to use for defining the distribution of media in the cuboid
 
 % Execution, do not modify the next line:
 Goutput = defineGeometry(Ginput);
 
 %% Monte Carlo simulation
 clear MCinput
-MCinput.silentMode = true;
+MCinput.silentMode = false;
 MCinput.useAllCPUs = true;
 MCinput.simulationTime = .1;      % [min] time duration of the simulation
 
-MCinput.Beam.beamType = 6;
+MCinput.Beam.beamType = 0;
 MCinput.Beam.xFocus = 0;                % [cm] x position of focus
 MCinput.Beam.yFocus = 0;                % [cm] y position of focus
 MCinput.Beam.zFocus = Ginput.Lz/2;      % [cm] z position of focus
 MCinput.Beam.theta = 0; % [rad]
 MCinput.Beam.phi   = 0; % [rad]
-MCinput.Beam.waist = 0.03;                  % [cm] focus waist 1/e^2 radius
-MCinput.Beam.divergence = 0/180*pi;         % [rad] divergence 1/e^2 half-angle of beam (for a diffraction limited Gaussian beam, this is G.wavelength*1e-9/(pi*MCinput.Beam.waist*1e-2))
+MCinput.Beam.waist = 0.005;                  % [cm] focus waist 1/e^2 radius
+MCinput.Beam.divergence = 5/180*pi;         % [rad] divergence 1/e^2 half-angle of beam (for a diffraction limited Gaussian beam, this is G.wavelength*1e-9/(pi*MCinput.Beam.waist*1e-2))
 
 % Execution, do not modify the next two lines:
 MCinput.G = Goutput;
 MCoutput = runMonteCarlo(MCinput);
-
-%% Heat simulation
-HSinput.silentMode = false;
-HSinput.useAllCPUs = true;
-HSinput.makemovie  = true; % Requires silentMode = false.
-
-HSinput.heatBoundaryType = 0; % 0: Insulating boundaries, 1: Constant-temperature boundaries (heat-sinked)
-HSinput.P                = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
-HSinput.durationOn       = 0.001; % [s] Pulse on-duration
-HSinput.durationOff      = 0.004; % [s] Pulse off-duration
-HSinput.durationEnd      = 0.02; % [s] Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train
-HSinput.initialTemp      = 37; % [deg C] Initial temperature
-
-HSinput.nPulses          = 5; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
-
-HSinput.plotTempLimits   = [37 100]; % [deg C], the expected range of temperatures, used only for setting the color scale in the plot
-HSinput.nUpdates         = 100; % Number of times data is extracted for plots during each pulse. A minimum of 1 update is performed in each phase (2 for each pulse consisting of an illumination phase and a diffusion phase)
-HSinput.slicePositions   = [.5 0.6 1];
-HSinput.tempSensorPositions = [0 0 0.038
-                              0 0 0.04
-                              0 0 0.042
-                              0 0 0.044];
-
-% Execution, do not modify the next three lines:
-HSinput.G = Goutput;
-HSinput.MCoutput = MCoutput;
-HSoutput = simulateHeatDistribution(HSinput);
-
-%% Post-processing
 
 %% Explanations
 % silentMode = true disables overwrite prompt,
@@ -115,23 +86,10 @@ HSoutput = simulateHeatDistribution(HSinput);
 %           theta = pi/4, phi = 0 means a beam going halfway between the positive x and positive z directions.
 %           theta = pi/4, phi = -pi/2 means a beam going halfway between the negative y and positive z directions
 
-% For the thermal simulations, slicePositions sets the starting relative slice positions [x y z] for the 3D plots on a
-% scale from 0 to 1. Especially relevant for movie generation. As an
-% example, [0 1 0.5] puts slices at the lowest x value, the highest y value
-% and the halfway z value.
 
-% tempSensorPositions is a matrix where each row shows
-% a temperature sensor's absolute [x y z] coordinates. Leave the matrix
-% empty ([]) to disable temperature sensors.
 
-function M = GeometryDefinition_BloodVessel(X,Y,Z,parameters)
-% Blood vessel example:
-zsurf = 0.01;
-epd_thick = 0.006;
-vesselradius  = 0.0100;
-vesseldepth = 0.04;
-M = 2*ones(size(X)); % fill background with water (gel)
-M(Z > zsurf) = 4; % epidermis
-M(Z > zsurf + epd_thick) = 5; % dermis
-M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 6; % blood
+function M = GeometryDefinition_StandardTissue(X,Y,Z,parameters)
+tissuedepth = 0.03;
+M = ones(size(X)); % Air
+M(Z > tissuedepth) = 3; % "Standard" tissue
 end

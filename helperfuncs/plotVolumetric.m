@@ -53,11 +53,10 @@ elseif(any(strcmp(varargin,'MCmatlab_fromZero')))
 	xyzaxes = true;
     reverseZ = true;
     fromZero = true;
-elseif(any(strcmp(varargin,'MCmatlab')))
+elseif(any(strcmp(varargin,'MCmatlab_heat')))
     xyzaxes = true;
     reverseZ = true;
-	colormap(plasma);
-    linecolor = [0 0 0]; % Black lines around slices
+    colormap(hot);
 end
 
 slicePositionVarargin = find(strcmpi(varargin,'slicePositions'),1); % Empty array if no slicePositions
