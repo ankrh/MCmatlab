@@ -57,16 +57,16 @@ else
 end
 
 %% Extract the refractive indices 
-if(~G.assumeMatchedInterfaces)
+if(~G.matchedInterfaces)
     for j=1:length(G.mediaProperties) % Check that all media have a refractive index defined
         if(~isfield(G.mediaProperties,'n') || any(isempty(G.mediaProperties(j).n)))
-            error('assumeMatchedInterfaces is false, but refractive index isn''t defined for all media');
+            error('matchedInterfaces is false, but refractive index isn''t defined for all media');
         end
     end
-    n_vec = [mediaProperties.n];
+    n_vec = [G.mediaProperties.n];
     for j=1:G.nz % Check that each xy slice has constant refractive index, so refractive index is only a function of z
         if(length(unique(n_vec(G.M(:,:,j)))) > 1)
-            error('assumeMatchedInterfaces is false, but refractive index isn''t constant for z index %d (z = %f).\nEach xy slice must have constant refractive index.',j,z(j));
+            error('matchedInterfaces is false, but refractive index isn''t constant for z index %d (z = %f).\nEach xy slice must have constant refractive index.',j,z(j));
         end
     end
     G.RI = n_vec(G.M(1,1,:));

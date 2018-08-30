@@ -54,7 +54,7 @@ if(MCinput.useLightCollector)
     Zvec = [sin(LC.theta)*cos(LC.phi) , sin(LC.theta)*sin(LC.phi) , cos(LC.theta)];
     Xvec = [sin(LC.phi) , -cos(LC.phi) , 0];
     Yvec = cross(Zvec,Xvec);
-    FPC = [LC.xFPC , LC.yFPC , LC.zFPC]; % Focal Plane Center
+    FPC = [LC.x , LC.y , LC.z]; % Focal Plane Center
     FPC_X = FPC + arrowlength*Xvec;
     line([FPC(1) FPC_X(1)],[FPC(2) FPC_X(2)],[FPC(3) FPC_X(3)],'Linewidth',2,'Color','r')
     text(FPC_X(1),FPC_X(2),FPC_X(3),'X','HorizontalAlignment','center','FontSize',18)

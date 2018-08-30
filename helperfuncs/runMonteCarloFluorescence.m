@@ -35,13 +35,13 @@ if(max(FMCinput.Beam.sourceDistribution(:)) == 0); error('Error: No fluorescence
 if isfield(FMCinput,'LightCollector')
 	FMCinput.useLightCollector = true;
     if isfinite(FMCinput.LightCollector.f)
-        xLCC = FMCinput.LightCollector.xFPC - FMCinput.LightCollector.f*sin(FMCinput.LightCollector.theta)*cos(FMCinput.LightCollector.phi); % x position of Light Collector Center
-        yLCC = FMCinput.LightCollector.yFPC - FMCinput.LightCollector.f*sin(FMCinput.LightCollector.theta)*sin(FMCinput.LightCollector.phi); % y position
-        zLCC = FMCinput.LightCollector.zFPC - FMCinput.LightCollector.f*cos(FMCinput.LightCollector.theta);             % z position
+        xLCC = FMCinput.LightCollector.x - FMCinput.LightCollector.f*sin(FMCinput.LightCollector.theta)*cos(FMCinput.LightCollector.phi); % x position of Light Collector Center
+        yLCC = FMCinput.LightCollector.y - FMCinput.LightCollector.f*sin(FMCinput.LightCollector.theta)*sin(FMCinput.LightCollector.phi); % y position
+        zLCC = FMCinput.LightCollector.z - FMCinput.LightCollector.f*cos(FMCinput.LightCollector.theta);             % z position
     else
-        xLCC = FMCinput.LightCollector.xFPC;
-        yLCC = FMCinput.LightCollector.yFPC;
-        zLCC = FMCinput.LightCollector.zFPC;
+        xLCC = FMCinput.LightCollector.x;
+        yLCC = FMCinput.LightCollector.y;
+        zLCC = FMCinput.LightCollector.z;
         FMCinput.LightCollector.res = 1;
     end
 
@@ -58,9 +58,9 @@ if isfield(FMCinput,'LightCollector')
 	end
 else
 	FMCinput.useLightCollector = false;
-	FMCinput.LightCollector.xFPC = 0;
-	FMCinput.LightCollector.yFPC = 0;
-	FMCinput.LightCollector.zFPC = 0;
+	FMCinput.LightCollector.x = 0;
+	FMCinput.LightCollector.y = 0;
+	FMCinput.LightCollector.z = 0;
 	FMCinput.LightCollector.theta = 0;
 	FMCinput.LightCollector.phi = 0;
 	FMCinput.LightCollector.f = 0;

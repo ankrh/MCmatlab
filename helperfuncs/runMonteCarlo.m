@@ -25,13 +25,13 @@ function MCoutput = runMonteCarlo(MCinput)
 if isfield(MCinput,'LightCollector')
 	MCinput.useLightCollector = true;
     if isfinite(MCinput.LightCollector.f)
-        xLCC = MCinput.LightCollector.xFPC - MCinput.LightCollector.f*sin(MCinput.LightCollector.theta)*cos(MCinput.LightCollector.phi); % x position of Light Collector Center
-        yLCC = MCinput.LightCollector.yFPC - MCinput.LightCollector.f*sin(MCinput.LightCollector.theta)*sin(MCinput.LightCollector.phi); % y position
-        zLCC = MCinput.LightCollector.zFPC - MCinput.LightCollector.f*cos(MCinput.LightCollector.theta);             % z position
+        xLCC = MCinput.LightCollector.x - MCinput.LightCollector.f*sin(MCinput.LightCollector.theta)*cos(MCinput.LightCollector.phi); % x position of Light Collector Center
+        yLCC = MCinput.LightCollector.y - MCinput.LightCollector.f*sin(MCinput.LightCollector.theta)*sin(MCinput.LightCollector.phi); % y position
+        zLCC = MCinput.LightCollector.z - MCinput.LightCollector.f*cos(MCinput.LightCollector.theta);             % z position
     else
-        xLCC = MCinput.LightCollector.xFPC;
-        yLCC = MCinput.LightCollector.yFPC;
-        zLCC = MCinput.LightCollector.zFPC;
+        xLCC = MCinput.LightCollector.x;
+        yLCC = MCinput.LightCollector.y;
+        zLCC = MCinput.LightCollector.z;
         MCinput.LightCollector.res = 1;
     end
 
@@ -48,9 +48,9 @@ if isfield(MCinput,'LightCollector')
 	end
 else
 	MCinput.useLightCollector = false;
-	MCinput.LightCollector.xFPC = 0;
-	MCinput.LightCollector.yFPC = 0;
-	MCinput.LightCollector.zFPC = 0;
+	MCinput.LightCollector.x = 0;
+	MCinput.LightCollector.y = 0;
+	MCinput.LightCollector.z = 0;
 	MCinput.LightCollector.theta = 0;
 	MCinput.LightCollector.phi = 0;
 	MCinput.LightCollector.f = 0;
