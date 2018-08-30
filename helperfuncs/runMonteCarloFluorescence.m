@@ -76,9 +76,4 @@ end
 FMCinput.G.M = FMCinput.G.M - 1; % Convert to C-style indexing
 FMCoutput = MCmatlab(FMCinput); % FMCoutput.F is an absolute fluence rate (intensity) quantity, unlike the non-fluorescence MCoutput.F which are actually fluence rates normalized to the incident power
 clear MCmatlab; % Unload MCmatlab MEX file so it can be modified externally again
-
-if(~FMCinput.silentMode)
-    FMCinput.G.M = FMCinput.G.M + 1; % Convert back to MATLAB-style indexing
-    plotMCmatlabFluorescence(FMCinput,FMCoutput);
-end
 end

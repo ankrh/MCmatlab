@@ -3,28 +3,16 @@ function plotMCmatlabFluorescence(FMCinput,FMCoutput)
 %
 %   This function was inspired by lookmcxyz.m of the mcxyz MC program hosted at omlc.org
 %
-%   Input
-%       name
-%           the basename of the data files
-%
 %   Displays
-%       Geometry cuboid
-%       Media optical, thermal and fluorescence properties
-%   If Monte Carlo output data exists, displays
-%       Absorbed power
-%       Fluence rate
-%   And, if fluorescence Monte Carlo output data exists, displays
-%       Media optical and thermal properties at the fluorescence wavelength
 %       Distribution of fluorescence emitters
 %       Absorbed fluorescence power
 %       Fluorescence fluence rate
-%	And, if light collectors were defined, displays
+%	And, if a light collector was defined, displays
 %		An illustration of the light collector angle and placement
 %		Image generated
 %
 %   Requires
 %       plotVolumetric.m
-%       plotMediaProperties.m
 %
 
 G = FMCinput.G;
@@ -58,7 +46,7 @@ title('Fluorescence fluence rate (Intensity) [W/cm^2] ')
 
 fprintf('Out of this, %.3g W was re-absorbed within the cuboid.\n\n',G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*FMCoutput.F))));
 
-if(FMCinput.useLightCollector)
+if(isfield(FMCinput,'LightCollector'))
     %% If there's a fluorescence light collector, show its orientation and the detected light
     h_f = plotVolumetric(11,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_f);
     h_f.Name = 'Fluorescence light collector illustration';

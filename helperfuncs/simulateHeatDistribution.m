@@ -6,30 +6,12 @@ function HSoutput = simulateHeatDistribution(HSinput)
 %   diffusion of heat through the cuboid based on output of runMonteCarlo.m.
 %   Also calculates Arrhenius-based thermal damage.
 %
-%	Pay attention to the sections with headers that say "USER SPECIFIED:"
-%	In those sections, you must fill in the parameters relevant for your simulation.
-%
-%   Input
-%       name
-%           the basename of the files saved by defineGeometry.m and runMonteCarlo.m
-%
-%   Displays
-%       Geometry cuboid showing positions of specified temperature sensors
-%       3D temperature evolution during illumination and diffusion
-%       Temperature evolution for the individual temperature sensors (x-y-plot)
-%       Geometry cuboid showing any thermal damage
-%
 %   Output
-%       ./Data/[name]_heatSimOutput.mat
-%           file containing the input values and the temperature sensor values at
-%           each timestep
-%
 %       ./Data/[name]_heatSimOutput.mp4
 %           movie file showing the temperature evolution. The geometry cuboid
 %           is shown in the beginning of the video.
 %
 %   Requires
-%       deleteDataFiles.m
 %       calcdtmax.m
 %       convertTempSensorPos.m
 %       plotVolumetric.m
@@ -39,11 +21,7 @@ function HSoutput = simulateHeatDistribution(HSinput)
 
 G = HSinput.G;
 
-if HSinput.nPulses ~= 1 && (HSinput.durationOn == 0 || HSinput.durationOff == 0)
-    HSinput.nPulses = 1; % If either pulse on-duration or off-duration is 0, it doesn't make sense to talk of multiple pulses
-    fprintf('\nWarning: Number of pulses changed to 1 since either on-duration or off-duration is 0.\n\n');
-end
-
+Temp = HSinput.initialTemp*ones(size(G.M)); % Initial temperature distribution
 nM = length(G.mediaProperties); % Number of different media in simulation
 
 HC = G.dx*G.dy*G.dz*[G.mediaProperties.VHC]; % Heat capacity array. Element i is the HC of medium i in the reduced mediaProperties list.
@@ -58,12 +36,18 @@ else
     HSoutput.Omega = NaN;
 end
 
-%% Calculate time step
+%% Calculate amount and duration of time steps in each phase
+% If either pulse on-duration or off-duration is 0, it doesn't make sense to talk of multiple pulses
+if HSinput.nPulses ~= 1 && (HSinput.durationOn == 0 || HSinput.durationOff == 0)
+    HSinput.nPulses = 1;
+    fprintf('\nWarning: Number of pulses changed to 1 since either on-duration or off-duration is 0.\n\n');
+end
+
 if(HSinput.silentMode)
     HSinput.nUpdates = 1;
 end
 
-dtmax = calcdtmax(G.M,TC,HC,G.dx,G.dy,G.dz)/2;
+dtmax = calcdtmax(G.M,TC,HC,G.dx,G.dy,G.dz)/2; % Highest allowable time step duration
 
 if HSinput.durationOn ~= 0
     nUpdatesOn = max(1,round(HSinput.nUpdates*HSinput.durationOn/(HSinput.durationOn+HSinput.durationOff)));
@@ -95,8 +79,10 @@ else
     dtEnd = 1;
 end
 
+% Array of times associated with the updates
 updatesTimeVector = [0 , ((HSinput.durationOn+HSinput.durationOff)*repelem(0:(HSinput.nPulses-1),nUpdatesOn                + nUpdatesOff                ) + repmat([(1:nUpdatesOn)*nTsPerUpdateOn*dtOn , (HSinput.durationOn + ((1:nUpdatesOff)*nTsPerUpdateOff*dtOff))],1,HSinput.nPulses)) , (HSinput.durationOn + HSinput.durationOff)*HSinput.nPulses + (1:nUpdatesEnd)*nTsPerUpdateEnd*dtEnd];
 
+% Array of times associated with the steps
 HSoutput.sensorsTimeVector = [0 , ((HSinput.durationOn+HSinput.durationOff)*repelem(0:(HSinput.nPulses-1),nUpdatesOn*nTsPerUpdateOn + nUpdatesOff*nTsPerUpdateOff) + repmat([(1:nUpdatesOn*nTsPerUpdateOn)*dtOn , (HSinput.durationOn + ((1:nUpdatesOff*nTsPerUpdateOff)*dtOff))],1,HSinput.nPulses)) , (HSinput.durationOn + HSinput.durationOff)*HSinput.nPulses + (1:nUpdatesEnd*nTsPerUpdateEnd)*dtEnd];
 
 %% Calculate proportionality between voxel-to-voxel temperature difference DeltaT and time step temperature change dT
@@ -128,22 +114,8 @@ else
 end
 HSoutput.sensorTemps = [];
 
-%% Initialize temperature distribution and make some plots
-Temp = HSinput.initialTemp*ones(size(G.M));
+%% Output some diagnostics info and prepare the temperature evolution plot. If making a movie, put a geometry illustration into the beginning of the movie.
 if(~HSinput.silentMode)
-    if(numTemperatureSensors)
-        %% Plot the geometry showing the temperature sensor locations
-        geometryFigure = plotVolumetric(22,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',HSinput.slicePositions);
-        geometryFigure.Name = 'Temperature sensor illustration';
-        title('Temperature sensor illustration');
-
-        for i=numTemperatureSensors:-1:1
-            sensorLabels{i,1} = num2str(i);
-        end
-        text(HSinput.tempSensorPositions(:,1),HSinput.tempSensorPositions(:,2),HSinput.tempSensorPositions(:,3),sensorLabels,'HorizontalAlignment','center','FontSize',18)
-        drawnow;
-    end
-
     if HSinput.durationOn ~= 0
         fprintf('Illumination phase consists of %d steps of %0.2e s.\n',nUpdatesOn*nTsPerUpdateOn,dtOn);
     end
@@ -160,7 +132,7 @@ if(~HSinput.silentMode)
         drawnow;
         movieframes(1) = getframe(heatsimFigure);
     end
-    %% Prepare the temperature plot
+    
     heatsimFigure = plotVolumetric(21,G.x,G.y,G.z,Temp,'MCmatlab_heat','slicePositions',HSinput.slicePositions);
     heatsimFigure.Name = 'Temperature evolution';
     h_title = title('Temperature evolution, t = 0 s');
@@ -169,8 +141,9 @@ if(~HSinput.silentMode)
 end
 
 %% Put heatSim parameters into a struct
-heatSimParameters = struct('M',G.M-1,'A',A,'E',E,'dTdtperdeltaT',dTdtperdeltaT,'dTdt_abs',dTdt_abs,'useAllCPUs',HSinput.useAllCPUs,'heatBoundaryType',HSinput.heatBoundaryType,'tempSensorCornerIdxs',tempSensorCornerIdxs,'tempSensorInterpWeights',tempSensorInterpWeights); % Contents of G.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
-clear dTdtperdeltaT dTdt_abs % These 3D matrices are large and no longer needed since they have been copied to the struct, so they are cleared to conserve memory
+heatSimParameters = struct('M',G.M-1,'A',A,'E',E,'dTdtperdeltaT',dTdtperdeltaT,'dTdt_abs',dTdt_abs,...
+                'useAllCPUs',HSinput.useAllCPUs,'heatBoundaryType',HSinput.heatBoundaryType,...
+                'tempSensorCornerIdxs',tempSensorCornerIdxs,'tempSensorInterpWeights',tempSensorInterpWeights); % Contents of G.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
 
 %% Simulate heat transfer
 if(~HSinput.silentMode); tic; end
@@ -275,53 +248,25 @@ for i = 1:nUpdatesEnd
 		end
 	end
 end
-if(~HSinput.silentMode); fprintf('\b\b Done\n'); end
 
-if(~HSinput.silentMode); toc; end
+if(~HSinput.silentMode)
+    fprintf('\b\b Done\n');
+    toc;
+end
+
 clear finiteElementHeatPropagator; % Unload finiteElementHeatPropagator MEX file so it can be modified externally again
 clear Temp heatSimParameters;
 
-%% Plot and results
-if(~HSinput.silentMode)
-    if(numTemperatureSensors)
-        if(~ishandle(23))
-            temperatureSensorFigure = figure(23);
-            temperatureSensorFigure.Position = [40 80 1100 650];
-        else
-            temperatureSensorFigure = figure(23);
-        end
-        clf;
-        temperatureSensorFigure.Name = 'Temperature sensors';
-        plot(HSoutput.sensorsTimeVector,HSoutput.sensorTemps,'LineWidth',2);
-        set(gca,'FontSize',16);
-        xlabel('Time [sec]')
-        ylabel('Temperature [deg C]')
-        title('Temperature sensors')
-        xlim(HSoutput.sensorsTimeVector([1 end]));
-        legend(sensorLabels,'Location','best');
-        grid on;grid minor;
-    end
-
-    if ~isnan(HSoutput.Omega(1))
-        M_damage = G.M;
-        M_damage(HSoutput.Omega > 1) = nM + 1;
-        G.mediaProperties(nM + 1).name = 'damage';
-        damageFigure = plotVolumetric(25,G.x,G.y,G.z,M_damage,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',HSinput.slicePositions);
-        damageFigure.Name = 'Thermal damage illustration';
-        title('Thermal damage illustration');
-        fprintf('%.2e cm^3 was thermally damaged.\n',G.dx*G.dy*G.dz*sum(sum(sum(HSoutput.Omega > 1))));
-    end
-
-    if(HSinput.makemovie)
-        movieframes = [repmat(movieframes(1),1,30) movieframes(1:end) repmat(movieframes(end),1,30)];
-        writerObj = VideoWriter(['./Data/heatSimoutput.mp4'],'MPEG-4');
-        writerObj.Quality = 100;
-        open(writerObj);
-        warning('off','MATLAB:audiovideo:VideoWriter:mp4FramePadded');
-        writeVideo(writerObj,movieframes);
-        warning('on','MATLAB:audiovideo:VideoWriter:mp4FramePadded');
-        close(writerObj);
-        fprintf('./Data/heatSimoutput.mp4 saved\n');
-    end
+%% Finalize and write movie
+if(~HSinput.silentMode && HSinput.makemovie)
+    movieframes = [repmat(movieframes(1),1,30) movieframes(1:end) repmat(movieframes(end),1,30)];
+    writerObj = VideoWriter(['./Data/heatSimoutput.mp4'],'MPEG-4');
+    writerObj.Quality = 100;
+    open(writerObj);
+    warning('off','MATLAB:audiovideo:VideoWriter:mp4FramePadded');
+    writeVideo(writerObj,movieframes);
+    warning('on','MATLAB:audiovideo:VideoWriter:mp4FramePadded');
+    close(writerObj);
+    fprintf('./Data/heatSimoutput.mp4 saved\n');
 end
 end

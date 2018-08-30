@@ -1,28 +1,12 @@
 function MCoutput = runMonteCarlo(MCinput)
 %   Created 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
 %
-%   Prepares the illumination beam and runs the Monte Carlo simulation.
-%   After finishing, calls plotMCmatlab for the display of the result.
-%
-%	Pay attention to the sections with headers that say "USER SPECIFIED:"
-%	In those sections, you must fill in the parameters relevant for your simulation.
-%
-%   Input
-%       name
-%           the basename of the file saved by defineGeometry.m
-%
-%   Output
-%       ./Data/[name]_MCoutput.mat
-%           file containing the 3D fluence rate distribution
-%
 %   Requires
-%       deleteDataFiles.m
 %       MCmatlab.mex (architecture specific)
-%       plotMCmatlab.m
 %
 
-%% Check to ensure that the light collector is not inside the cuboid and set res to 1 if using fiber
 if isfield(MCinput,'LightCollector')
+    %% Check to ensure that the light collector is not inside the cuboid and set res to 1 if using fiber
 	MCinput.useLightCollector = true;
     if isfinite(MCinput.LightCollector.f)
         xLCC = MCinput.LightCollector.x - MCinput.LightCollector.f*sin(MCinput.LightCollector.theta)*cos(MCinput.LightCollector.phi); % x position of Light Collector Center
@@ -41,12 +25,14 @@ if isfield(MCinput,'LightCollector')
         error('Error: Light collector center (%.4f,%.4f,%.4f) is inside cuboid',xLCC,yLCC,zLCC);
     end
 
+    %% If no time tagging start value was defined, assume no time tagging is to be performed
 	if ~isfield(MCinput.LightCollector,'tStart')
 		MCinput.LightCollector.tStart = 0;
 		MCinput.LightCollector.tEnd = 0;
 		MCinput.LightCollector.nTimeBins = 0;
 	end
 else
+    %% Assume no light collector is present
 	MCinput.useLightCollector = false;
 	MCinput.LightCollector.x = 0;
 	MCinput.LightCollector.y = 0;
@@ -67,9 +53,4 @@ end
 MCinput.G.M = MCinput.G.M-1; % Convert to C-style indexing
 MCoutput = MCmatlab(MCinput);
 clear MCmatlab; % Unload MCmatlab MEX file so it can be modified externally again
-
-if(~MCinput.silentMode)
-	MCinput.G.M = MCinput.G.M+1; % Convert back to MATLAB-style indexing
-	plotMCmatlab(MCinput,MCoutput);
-end
 end

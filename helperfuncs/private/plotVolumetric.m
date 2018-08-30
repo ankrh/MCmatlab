@@ -157,7 +157,7 @@ vars = struct('h_checkbox1',h_checkbox1,...
     'x',x,'y',y,'z',z,...
     'h_surfxback',h_surfxback,'h_surfyback',h_surfyback,'h_surfzback',h_surfzback,...
     'h_surfxslice',h_surfxslice,'h_surfyslice',h_surfyslice,'h_surfzslice',h_surfzslice,...
-    'h_xline',h_xline,'h_yline',h_yline,'h_zline',h_zline,'fromZero',fromZero);
+    'h_xline',h_xline,'h_yline',h_yline,'h_zline',h_zline,'fromZero',fromZero,'zbi',zbi);
 
 set(h_checkbox1,'Callback',{@callback,vars});
 set(h_slider1,'Callback',{@callback,vars});
@@ -182,6 +182,7 @@ yl = vars.y(1); % y low
 yh = vars.y(end); % y high
 zl = vars.z(1); % z low
 zh = vars.z(end); % z high
+zbi = vars.zbi; % z back index
 
 h_f = get(vars.h_checkbox1,'Parent');
 
@@ -190,7 +191,7 @@ switch src
         if plotLog
             set(vars.h_surfxback ,'CData',squeeze(log10(h_f.UserData(end,:,:))));
             set(vars.h_surfyback ,'CData',squeeze(log10(h_f.UserData(:,end,:))));
-            set(vars.h_surfzback ,'CData',squeeze(log10(h_f.UserData(:,:,end))));
+            set(vars.h_surfzback ,'CData',squeeze(log10(h_f.UserData(:,:,zbi))));
             set(vars.h_surfxslice,'CData',squeeze(log10(h_f.UserData(xsi,:,:))));
             set(vars.h_surfyslice,'CData',squeeze(log10(h_f.UserData(:,ysi,:))));
             set(vars.h_surfzslice,'CData',squeeze(log10(h_f.UserData(:,:,zsi))));
@@ -205,7 +206,7 @@ switch src
         else
             set(vars.h_surfxback ,'CData',squeeze(h_f.UserData(end,:,:)));
             set(vars.h_surfyback ,'CData',squeeze(h_f.UserData(:,end,:)));
-            set(vars.h_surfzback ,'CData',squeeze(h_f.UserData(:,:,end)));
+            set(vars.h_surfzback ,'CData',squeeze(h_f.UserData(:,:,zbi)));
             set(vars.h_surfxslice,'CData',squeeze(h_f.UserData(xsi,:,:)));
             set(vars.h_surfyslice,'CData',squeeze(h_f.UserData(:,ysi,:)));
             set(vars.h_surfzslice,'CData',squeeze(h_f.UserData(:,:,zsi)));

@@ -3,28 +3,15 @@ function plotMCmatlab(MCinput,MCoutput)
 %
 %   This function was inspired by lookmcxyz.m of the mcxyz MC program hosted at omlc.org
 %
-%   Input
-%       name
-%           the basename of the data files
-%
 %   Displays
-%       Geometry cuboid
-%       Media optical, thermal and fluorescence properties
-%   If Monte Carlo output data exists, displays
 %       Absorbed power
 %       Fluence rate
-%   And, if fluorescence Monte Carlo output data exists, displays
-%       Media optical and thermal properties at the fluorescence wavelength
-%       Distribution of fluorescence emitters
-%       Absorbed fluorescence power
-%       Fluorescence fluence rate
-%	And, if light collectors were defined, displays
+%	And, if a light collector was defined, displays
 %		An illustration of the light collector angle and placement
-%		Image generated
+%		Image generated (which might be time-resolved)
 %
 %   Requires
 %       plotVolumetric.m
-%       plotMediaProperties.m
 %
 
 G = MCinput.G;
@@ -42,7 +29,7 @@ title('Normalized fluence rate (Intensity) [W/cm^2/W.incident] ')
 
 fprintf('\n%.3g%% of the input light was absorbed within the cuboid.\n',100*G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*MCoutput.F))));
 
-if(MCinput.useLightCollector)
+if(isfield(MCinput,'LightCollector'))
     %% If there's a light collector, show its orientation and the detected light
     h_f = plotVolumetric(6,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties);
     h_f.Name = 'Light collector illustration';
@@ -84,6 +71,10 @@ if(MCinput.useLightCollector)
         fprintf('%.3g%% of input power ends up on the detector.\n',100*sum(MCoutput.Image,3));
     end
 
+    if(~isfield(LC,'nTimeBins'))
+        LC.nTimeBins = 0;
+    end
+    
     if LC.nTimeBins > 0
         timevector = (-1/2:(LC.nTimeBins+1/2))*(LC.tEnd-LC.tStart)/LC.nTimeBins + LC.tStart;
     end

@@ -2,7 +2,7 @@ addpath('./helperfuncs'); % The helperfuncs folder is added to the path for the 
 
 %% Geometry definition
 clear Ginput
-Ginput.silentMode        = false; % Disables command window text, progress indication and plot generation
+Ginput.silentMode        = false; % Disables command window text and progress indication
 Ginput.matchedInterfaces = true; % Assumes all refractive indices are 1
 Ginput.boundaryType      = 1; % 0: No boundaries, 1: All cuboid boundaries, 2: Top cuboid boundary only
 
@@ -19,12 +19,13 @@ Ginput.Lz                = .1; % [cm] z size of simulation cuboid
 Ginput.GeomFunc          = @GeometryDefinition_FluorescingCylinder; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 % Ginput.GeomFuncParams    = {0.03}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
 
-% Execution, do not modify the next line:
+% Execution, do not modify the next two lines:
 Goutput = defineGeometry(Ginput);
+plotMCmatlabGeom(Goutput);
 
 %% Monte Carlo simulation
 % clear MCinput
-% MCinput.silentMode               = false; % Disables command window text, progress indication and plot generation
+% MCinput.silentMode               = false; % Disables command window text and progress indication
 % MCinput.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 % MCinput.simulationTime           = .1; % [min] Time duration of the simulation
 % 
@@ -55,13 +56,14 @@ Goutput = defineGeometry(Ginput);
 % % % MCinput.LightCollector.tEnd      = 5e-12; % [s] End of the detection time interval
 % % % MCinput.LightCollector.nTimeBins = 30; % Number of bins between tStart and tEnd. If zero, the measurement is not time-resolved.
 % 
-% % Execution, do not modify the next two lines:
+% % Execution, do not modify the next three lines:
 % MCinput.G = Goutput;
 % MCoutput = runMonteCarlo(MCinput);
+% plotMCmatlab(MCinput,MCoutput);
 
 %% Fluorescence Monte Carlo
 % clear FMCinput
-% FMCinput.silentMode               = false; % Disables command window text, progress indication and plot generation
+% FMCinput.silentMode               = false; % Disables command window text and progress indication
 % FMCinput.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 % FMCinput.simulationTime           = .1; % [min] Time duration of the simulation
 % 
@@ -81,13 +83,14 @@ Goutput = defineGeometry(Ginput);
 % % 
 % % FMCinput.LightCollector.res       = 50; % X and Y resolution of light collector in pixels, only used for finite f
 % 
-% % Execution, do not modify the next three lines:
+% % Execution, do not modify the next four lines:
 % FMCinput.G = Goutput;
 % FMCinput.MCoutput = MCoutput;
 % FMCoutput = runMonteCarloFluorescence(FMCinput);
+% plotMCmatlabFluorescence(FMCinput,FMCoutput);
 
 %% Heat simulation
-% HSinput.silentMode          = false; % Disables command window text, progress indication and plot generation
+% HSinput.silentMode          = false; % Disables command window text and progress indication
 % HSinput.useAllCPUs          = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 % HSinput.makemovie           = true; % Requires silentMode = false.
 % 
@@ -108,10 +111,11 @@ Goutput = defineGeometry(Ginput);
 %                               0 0 0.042
 %                               0 0 0.044]; % Each row is a temperature sensor's absolute [x y z] coordinates. Leave the matrix empty ([]) to disable temperature sensors.
 % 
-% % Execution, do not modify the next three lines:
+% % Execution, do not modify the next four lines:
 % HSinput.G = Goutput;
 % HSinput.MCoutput = MCoutput;
 % HSoutput = simulateHeatDistribution(HSinput);
+% plotMCmatlabHeat(HSinput,HSoutput);
 
 %% Post-processing
 
@@ -178,7 +182,7 @@ M(X.^2 + Y.^2 < water_radius^2) = 2; % water
 M(X.^2 + Y.^2 < fibre_radius^2) = 11; % fibre
 end
 
-function M = GeometryDefinition_ImagingExample(X,Y,Z,parameters)
+function M = GeometryDefinition_TimeTaggingExample(X,Y,Z,parameters)
 [nx,ny,~] = size(X);
 M = ones(size(X)); % Air background
 M(1:(nx*(ny+1)+1):end) = 18; % Set xyz diagonal positions to testscatterer

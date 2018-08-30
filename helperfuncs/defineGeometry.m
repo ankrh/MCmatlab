@@ -7,27 +7,11 @@ function G = defineGeometry(G)
 %   optical media it contains in a rectangular cuboid voxel mesh.
 %   The media properties are loaded from getMediaProperties.m.
 %
-%	Pay attention to the sections with headers that say "USER SPECIFIED:"
-%	In those sections, you must fill in the parameters relevant for your simulation.
-%	
-%   Input
-%       name
-%           the basename of the file you want to store the geometry in
-%
-%   Displays
-%       Geometry cuboid
-%       Media optical, thermal and fluorescence properties
-%
-%   Output
-%       ./Data/[name].mat
-%           file containing the 3D geometry cuboid definition (voxels)
-%
 %   Requires
-%       deleteDataFiles.m
 %       getMediaProperties.m
-%       plotMCmatlab.m
 %
 
+%% Use default values for unspecified fields
 if ~isfield(G,'wavelength_f')
 	G.wavelength_f = NaN;
 end
@@ -35,6 +19,7 @@ if ~isfield(G,'GeomFuncParams')
 	G.GeomFuncParams = {};
 end
 
+%% Calculate basic cuboid variables and call geometry function to create the media matrix M
 G.dx = G.Lx/G.nx;                  % [cm] size of x bins
 G.dy = G.Ly/G.ny;                  % [cm] size of y bins
 G.dz = G.Lz/G.nz;                  % [cm] size of z bins
@@ -56,7 +41,7 @@ else
     [G.M, G.mediaProperties] = getMediaProperties(G.M,G.wavelength);
 end
 
-%% Extract the refractive indices 
+%% Extract the refractive indices if not assuming matched interfaces, otherwise assume all 1's
 if(~G.matchedInterfaces)
     for j=1:length(G.mediaProperties) % Check that all media have a refractive index defined
         if(~isfield(G.mediaProperties,'n') || any(isempty(G.mediaProperties(j).n)))
@@ -74,6 +59,4 @@ else
     [G.mediaProperties.n] = deal(1);
     G.RI = ones(G.nz,1);
 end
-
-if(~G.silentMode); plotMCmatlabGeom(G); end
 end
