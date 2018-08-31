@@ -21,7 +21,7 @@
  * along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
  *
  ** COMPILING ON WINDOWS
- * Can be compiled using "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' -outdir private .\src\finiteElementHeatPropagator.c ".\src\libut.lib""
+ * Can be compiled using "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' -outdir helperfuncs\private .\src\finiteElementHeatPropagator.c ".\src\libut.lib""
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Go to MATLAB's addon manager and tell it to install the "Support for MinGW-w64 compiler"
@@ -32,7 +32,7 @@
  ** COMPILING ON MAC
  * As of June 2017, the macOS compiler doesn't support libut (for ctrl+c 
  * breaking) or openmp (for multithreading).
- * This file can then be compiled with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -std=c11 -Wall -pedantic' -outdir private ./src/finiteElementHeatPropagator.c"
+ * This file can then be compiled with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -std=c11 -Wall -pedantic' -outdir helperfuncs/private ./src/finiteElementHeatPropagator.c"
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Install XCode from the App Store
