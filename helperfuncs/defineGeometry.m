@@ -18,6 +18,9 @@ end
 if ~isfield(G,'GeomFuncParams')
 	G.GeomFuncParams = {};
 end
+if ~isfield(G,'mediaPropParams')
+	G.mediaPropParams = {};
+end
 
 %% Calculate basic cuboid variables and call geometry function to create the media matrix M
 G.dx = G.Lx/G.nx;                  % [cm] size of x bins
@@ -31,14 +34,14 @@ G.M = uint8(G.GeomFunc(X,Y,Z,G.GeomFuncParams));
 
 %% Get the mediaProperties and the reduced M matrix
 if(~isnan(G.wavelength_f))
-    [~,G.mediaProperties_f] = getMediaProperties(G.M,G.wavelength_f);
-    [G.M, G.mediaProperties] = getMediaProperties(G.M,G.wavelength);
+    [~,G.mediaProperties_f] = getMediaProperties(G.M,G.wavelength_f,G.mediaPropParams);
+    [G.M, G.mediaProperties] = getMediaProperties(G.M,G.wavelength,G.mediaPropParams);
     if(~any([G.mediaProperties.Y]>0))
         error('Fluorescence wavelength isn''t NaN, but none of the media have Y > 0');
     end
 else
     G.mediaProperties_f = NaN;
-    [G.M, G.mediaProperties] = getMediaProperties(G.M,G.wavelength);
+    [G.M, G.mediaProperties] = getMediaProperties(G.M,G.wavelength,G.mediaPropParams);
 end
 
 %% Extract the refractive indices if not assuming matched interfaces, otherwise assume all 1's

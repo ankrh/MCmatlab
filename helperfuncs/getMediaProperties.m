@@ -1,4 +1,4 @@
-function [M, mediaProperties] = getMediaProperties(M,wavelength)
+function [M, mediaProperties] = getMediaProperties(M,wavelength,parameters)
 %   Created 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
 %   
 %   This function was inspired by makeTissueList.m of the mcxyz program hosted at omlc.org
@@ -294,6 +294,16 @@ mediaProperties(j).mua   = 1;
 mediaProperties(j).mus   = 1;
 mediaProperties(j).g     = 0;
 mediaProperties(j).n     = Inf;
+
+j=21;
+mediaProperties(j).name  = 'variable g medium';
+mediaProperties(j).mua   = 10;
+mediaProperties(j).mus   = 100;
+if ~isempty(parameters)
+	mediaProperties(j).g = parameters{1};
+else
+	mediaProperties(j).g = 0;
+end
 
 %% Trim mediaProperties down to use only the media included in the input matrix M, and reduce M accordingly
 mediumMap = zeros(1,length(mediaProperties),'uint8');

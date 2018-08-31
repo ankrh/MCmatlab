@@ -8,6 +8,7 @@ Ginput.boundaryType      = 1; % 0: No boundaries, 1: All cuboid boundaries, 2: T
 
 Ginput.wavelength        = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 % Ginput.wavelength_f      = 550; % [nm] Fluorescence wavelength, used for determination of optical properties for fluorescence light
+% Ginput.mediaPropParams   = {0.6}; % Cell array containing any additional parameters to be passed to the getMediaProperties function
 
 Ginput.nx                = 100; % Number of bins in the x direction
 Ginput.ny                = 100; % Number of bins in the y direction
