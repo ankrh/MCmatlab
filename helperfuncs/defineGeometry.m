@@ -29,6 +29,9 @@ function G = defineGeometry(G)
 %%%%%
 
 %% Use default values for unspecified fields
+if ~isfield(G,'silentMode')
+	G.silentMode = false;
+end
 if ~isfield(G,'wavelength_f')
 	G.wavelength_f = NaN;
 end

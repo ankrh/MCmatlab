@@ -2,7 +2,7 @@ addpath('./helperfuncs'); % The helperfuncs folder is added to the path for the 
 
 %% Geometry definition
 clear Ginput
-Ginput.silentMode        = false; % Disables command window text and progress indication
+Ginput.silentMode        = false; % (Default: false) Disables command window text and progress indication
 Ginput.matchedInterfaces = true; % Assumes all refractive indices are 1
 Ginput.boundaryType      = 1; % 0: No boundaries, 1: All cuboid boundaries, 2: Top cuboid boundary only
 
@@ -26,8 +26,8 @@ plotMCmatlabGeom(Goutput);
 
 %% Monte Carlo simulation
 % clear MCinput
-% MCinput.silentMode               = false; % Disables command window text and progress indication
-% MCinput.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
+% MCinput.silentMode               = false; % (Default: false) Disables command window text and progress indication
+% MCinput.useAllCPUs               = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 % MCinput.simulationTime           = .1; % [min] Time duration of the simulation
 % 
 % MCinput.Beam.beamType            = 2; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
@@ -55,7 +55,7 @@ plotMCmatlabGeom(Goutput);
 % % 
 % % % MCinput.LightCollector.tStart    = -1e-13; % [s] Start of the detection time interval
 % % % MCinput.LightCollector.tEnd      = 5e-12; % [s] End of the detection time interval
-% % % MCinput.LightCollector.nTimeBins = 30; % Number of bins between tStart and tEnd. If zero, the measurement is not time-resolved.
+% % % MCinput.LightCollector.nTimeBins = 30; % (Default: 0) Number of bins between tStart and tEnd. If zero, the measurement is not time-resolved.
 % 
 % % Execution, do not modify the next three lines:
 % MCinput.G = Goutput;
@@ -64,8 +64,8 @@ plotMCmatlabGeom(Goutput);
 
 %% Fluorescence Monte Carlo
 % clear FMCinput
-% FMCinput.silentMode               = false; % Disables command window text and progress indication
-% FMCinput.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
+% FMCinput.silentMode               = false; % (Default: false) Disables command window text and progress indication
+% FMCinput.useAllCPUs               = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 % FMCinput.simulationTime           = .1; % [min] Time duration of the simulation
 % 
 % FMCinput.Beam.P_excitation        = 2; % [W] Power of excitation beam
@@ -91,9 +91,9 @@ plotMCmatlabGeom(Goutput);
 % plotMCmatlabFluorescence(FMCinput,FMCoutput);
 
 %% Heat simulation
-% HSinput.silentMode          = false; % Disables command window text and progress indication
-% HSinput.useAllCPUs          = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
-% HSinput.makemovie           = true; % Requires silentMode = false.
+% HSinput.silentMode          = false; % (Default: false) Disables command window text and progress indication
+% HSinput.useAllCPUs          = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
+% HSinput.makeMovie           = true; % (Default: false) Requires silentMode = false.
 % 
 % HSinput.heatBoundaryType    = 0; % 0: Insulating boundaries, 1: Constant-temperature boundaries (heat-sinked)
 % HSinput.P                   = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
@@ -106,11 +106,11 @@ plotMCmatlabGeom(Goutput);
 % 
 % HSinput.plotTempLimits      = [37 100]; % [deg C] Expected range of temperatures, used only for setting the color scale in the plot
 % HSinput.nUpdates            = 100; % Number of times data is extracted for plots during each pulse. A minimum of 1 update is performed in each phase (2 for each pulse consisting of an illumination phase and a diffusion phase)
-% HSinput.slicePositions      = [.5 0.6 1]; % Relative slice positions [x y z] for the 3D plots on a scale from 0 to 1
+% HSinput.slicePositions      = [.5 0.6 1]; % (Default: [0.5 1 1]) Relative slice positions [x y z] for the 3D plots on a scale from 0 to 1
 % HSinput.tempSensorPositions = [0 0 0.038
 %                               0 0 0.04
 %                               0 0 0.042
-%                               0 0 0.044]; % Each row is a temperature sensor's absolute [x y z] coordinates. Leave the matrix empty ([]) to disable temperature sensors.
+%                               0 0 0.044]; % (Default: []) Each row is a temperature sensor's absolute [x y z] coordinates. Leave the matrix empty ([]) to disable temperature sensors.
 % 
 % % Execution, do not modify the next four lines:
 % HSinput.G = Goutput;

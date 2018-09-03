@@ -23,6 +23,13 @@ function MCoutput = runMonteCarlo(MCinput)
 %   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
 %%%%%
 
+if ~isfield(MCinput,'silentMode')
+	MCinput.silentMode = false;
+end
+if ~isfield(MCinput,'useAllCPUs')
+	MCinput.useAllCPUs = false;
+end
+
 if isfield(MCinput,'LightCollector')
     %% Check to ensure that the light collector is not inside the cuboid and set res to 1 if using fiber
 	MCinput.useLightCollector = true;
@@ -70,5 +77,4 @@ end
 %% Call Monte Carlo C script (MEX file) to get fluence rate (intensity) distribution
 MCinput.G.M = MCinput.G.M-1; % Convert to C-style indexing
 MCoutput = MCmatlab(MCinput);
-clear MCmatlab; % Unload MCmatlab MEX file so it can be modified externally again
 end

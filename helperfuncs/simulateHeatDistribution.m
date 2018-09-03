@@ -37,6 +37,22 @@ function HSoutput = simulateHeatDistribution(HSinput)
 %   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
 %%%%%
 
+if ~isfield(HSinput,'silentMode')
+	HSinput.silentMode = false;
+end
+if ~isfield(HSinput,'useAllCPUs')
+	HSinput.useAllCPUs = false;
+end
+if ~isfield(HSinput,'makeMovie')
+	HSinput.makeMovie = false;
+end
+if ~isfield(HSinput,'slicePositions')
+	HSinput.slicePositions = [0.5 1 1];
+end
+if ~isfield(HSinput,'tempSensorPositions')
+	HSinput.tempSensorPositions = [];
+end
+
 G = HSinput.G;
 
 Temp = HSinput.initialTemp*ones(size(G.M)); % Initial temperature distribution
@@ -144,7 +160,7 @@ if(~HSinput.silentMode)
         fprintf('End phase consists of %d steps of %0.2e s.\n',nUpdatesEnd*nTsPerUpdateEnd,dtEnd);
     end
     
-    if(HSinput.makemovie) % Make a temporary figure showing the geometry illustration to put into the beginning of the movie
+    if(HSinput.makeMovie) % Make a temporary figure showing the geometry illustration to put into the beginning of the movie
         heatsimFigure = plotVolumetric(21,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',HSinput.slicePositions);
         title('Geometry illustration');
         drawnow;
@@ -155,7 +171,7 @@ if(~HSinput.silentMode)
     heatsimFigure.Name = 'Temperature evolution';
     h_title = title('Temperature evolution, t = 0 s');
     caxis(HSinput.plotTempLimits); % User-defined color scale limits
-    if(HSinput.makemovie); movieframes(2) = getframe(heatsimFigure); end
+    if(HSinput.makeMovie); movieframes(2) = getframe(heatsimFigure); end
 end
 
 %% Put heatSim parameters into a struct
@@ -192,7 +208,7 @@ for j=1:HSinput.nPulses
                 h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
                 drawnow;
                 
-                if(HSinput.makemovie)
+                if(HSinput.makeMovie)
                     movieframes(updateIdx+2) = getframe(heatsimFigure);
                 end
             end
@@ -227,7 +243,7 @@ for j=1:HSinput.nPulses
                 h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
                 drawnow;
                 
-                if(HSinput.makemovie)
+                if(HSinput.makeMovie)
                     movieframes(updateIdx+2) = getframe(heatsimFigure);
                 end
             end
@@ -261,7 +277,7 @@ for i = 1:nUpdatesEnd
 		h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
 		drawnow;
 
-		if(HSinput.makemovie)
+		if(HSinput.makeMovie)
 			movieframes(updateIdx+2) = getframe(heatsimFigure);
 		end
 	end
@@ -272,11 +288,10 @@ if(~HSinput.silentMode)
     toc;
 end
 
-clear finiteElementHeatPropagator; % Unload finiteElementHeatPropagator MEX file so it can be modified externally again
 clear Temp heatSimParameters;
 
 %% Finalize and write movie
-if(~HSinput.silentMode && HSinput.makemovie)
+if(~HSinput.silentMode && HSinput.makeMovie)
     movieframes = [repmat(movieframes(1),1,30) movieframes(1:end) repmat(movieframes(end),1,30)];
     writerObj = VideoWriter(['./Data/heatSimoutput.mp4'],'MPEG-4');
     writerObj.Quality = 100;

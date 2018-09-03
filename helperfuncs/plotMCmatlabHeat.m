@@ -23,6 +23,13 @@ function plotMCmatlabHeat(HSinput,HSoutput)
 %   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
 %%%%%
 
+if ~isfield(HSinput,'slicePositions')
+	HSinput.slicePositions = [0.5 1 1];
+end
+if ~isfield(HSinput,'tempSensorPositions')
+	HSinput.tempSensorPositions = [];
+end
+
 G = HSinput.G;
 nM = length(G.mediaProperties); % Number of different media in simulation
 numTemperatureSensors = size(HSinput.tempSensorPositions,1);

@@ -2,7 +2,6 @@ addpath('./helperfuncs'); % The helperfuncs folder is added to the path for the 
 
 %% Geometry definition
 clear Ginput
-Ginput.silentMode        = false; % Disables command window text and progress indication
 Ginput.matchedInterfaces = true; % Assumes all refractive indices are 1
 Ginput.boundaryType      = 1; % 0: No boundaries, 1: All cuboid boundaries, 2: Top cuboid boundary only
 
@@ -23,8 +22,6 @@ plotMCmatlabGeom(Goutput);
 
 %% Monte Carlo simulation
 clear MCinput
-MCinput.silentMode               = false; % Disables command window text and progress indication
-MCinput.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 MCinput.simulationTime           = .1; % [min] Time duration of the simulation
 
 MCinput.Beam.beamType            = 0; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam

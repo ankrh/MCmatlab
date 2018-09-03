@@ -28,6 +28,13 @@ function FMCoutput = runMonteCarloFluorescence(FMCinput)
 %   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
 %%%%%
 
+if ~isfield(FMCinput,'silentMode')
+	FMCinput.silentMode = false;
+end
+if ~isfield(FMCinput,'useAllCPUs')
+	FMCinput.useAllCPUs = false;
+end
+
 %% Calculate 3D fluorescence source distribution, including saturation
 mua_vec = [FMCinput.G.mediaProperties.mua]; % The media's excitation absorption coefficients
 Y_vec = [FMCinput.G.mediaProperties.Y]; % The media's fluorescence power yields
@@ -79,5 +86,4 @@ end
 
 FMCinput.G.M = FMCinput.G.M - 1; % Convert to C-style indexing
 FMCoutput = MCmatlab(FMCinput); % FMCoutput.F is an absolute fluence rate (intensity) quantity, unlike the non-fluorescence MCoutput.F which are actually fluence rates normalized to the incident power
-clear MCmatlab; % Unload MCmatlab MEX file so it can be modified externally again
 end

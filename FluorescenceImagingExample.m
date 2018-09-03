@@ -2,7 +2,6 @@ addpath('./helperfuncs'); % The helperfuncs folder is added to the path for the 
 
 %% Geometry definition
 clear Ginput
-Ginput.silentMode        = false; % Disables command window text and progress indication
 Ginput.matchedInterfaces = true; % Assumes all refractive indices are 1
 Ginput.boundaryType      = 1; % 0: No boundaries, 1: All cuboid boundaries, 2: Top cuboid boundary only
 
@@ -24,7 +23,6 @@ plotMCmatlabGeom(Goutput);
 
 %% Monte Carlo simulation
 clear MCinput
-MCinput.silentMode               = false; % Disables command window text and progress indication
 MCinput.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 MCinput.simulationTime           = .1; % [min] Time duration of the simulation
 
@@ -58,7 +56,6 @@ plotMCmatlab(MCinput,MCoutput);
 
 %% Fluorescence Monte Carlo
 clear FMCinput
-FMCinput.silentMode               = false; % Disables command window text and progress indication
 FMCinput.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 FMCinput.simulationTime           = .1; % [min] Time duration of the simulation
 
