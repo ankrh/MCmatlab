@@ -293,13 +293,15 @@ clear Temp heatSimParameters;
 %% Finalize and write movie
 if(~HSinput.silentMode && HSinput.makeMovie)
     movieframes = [repmat(movieframes(1),1,30) movieframes(1:end) repmat(movieframes(end),1,30)];
-    writerObj = VideoWriter(['./Data/heatSimoutput.mp4'],'MPEG-4');
+	caller = dbstack(1,'-completenames');
+	writerObj = VideoWriter([fileparts(caller(1).file) '/' caller(1).name '_heatSimoutput.mp4'],'MPEG-4');
     writerObj.Quality = 100;
+	fprintf('Writing video...\n');
     open(writerObj);
     warning('off','MATLAB:audiovideo:VideoWriter:mp4FramePadded');
     writeVideo(writerObj,movieframes);
     warning('on','MATLAB:audiovideo:VideoWriter:mp4FramePadded');
     close(writerObj);
-    fprintf('./Data/heatSimoutput.mp4 saved\n');
+    fprintf('\b Done\n');
 end
 end

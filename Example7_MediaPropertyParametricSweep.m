@@ -1,12 +1,12 @@
-addpath('./helperfuncs'); % The helperfuncs folder is added to the path for the duration of this MATLAB session
+addpath([fileparts(mfilename('fullpath')) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
 
-% This example simulates light incident on a slab of "standard" tissue with variable thickness.
-% Light is collected in transmission at a 45° angle in a fiber. At the end of the script, collected power as a function of thickness is plotted.
-t_vec = linspace(0,0.1,21); % Thicknesses to simulate
-power_vec = zeros(1,length(t_vec));
-fprintf('%2d/%2d\n',0,length(t_vec));
-for i=1:length(t_vec)
-fprintf('\b\b\b\b\b\b%2d/%2d\n',i,length(t_vec)); % Simple progress indicator
+% This example simulates light incident on a 100µm slab of scattering medium with a variable scattering anisotropy g.
+% Light is collected in transmission at a 45° angle in a fiber. At the end of the script, collected power as a function of g is plotted.
+g_vec = linspace(-1,1,21); % g values to simulate
+power_vec = zeros(1,length(g_vec));
+fprintf('%2d/%2d\n',0,length(g_vec));
+for i=1:length(g_vec)
+fprintf('\b\b\b\b\b\b%2d/%2d\n',i,length(g_vec)); % Simple progress indicator
 %% Geometry definition
 clear Ginput
 Ginput.silentMode        = true; % Disables command window text and progress indication
@@ -14,16 +14,16 @@ Ginput.matchedInterfaces = true; % Assumes all refractive indices are 1
 Ginput.boundaryType      = 1; % 0: No boundaries, 1: All cuboid boundaries, 2: Top cuboid boundary only
 
 Ginput.wavelength        = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
+Ginput.mediaPropParams   = {g_vec(i)}; % Cell array containing any additional parameters to be passed to the getMediaProperties function
 
 Ginput.nx                = 21; % Number of bins in the x direction
 Ginput.ny                = 21; % Number of bins in the y direction
-Ginput.nz                = 20; % Number of bins in the z direction
+Ginput.nz                = 21; % Number of bins in the z direction
 Ginput.Lx                = .1; % [cm] x size of simulation cuboid
 Ginput.Ly                = .1; % [cm] y size of simulation cuboid
-Ginput.Lz                = .1; % [cm] z size of simulation cuboid
+Ginput.Lz                = .01; % [cm] z size of simulation cuboid
 
-Ginput.GeomFunc          = @GeometryDefinition_VariableThicknessStandardTissue; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
-Ginput.GeomFuncParams    = {Ginput.Lz-t_vec(i)}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
+Ginput.GeomFunc          = @GeometryDefinition_MediaPropertyParametricSweep; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
 % Execution, do not modify the next two lines:
 Goutput = defineGeometry(Ginput);
@@ -46,7 +46,7 @@ MCinput.Beam.divergence          = 5/180*pi; % [rad] Beam divergence 1/e^2 half-
 
 MCinput.LightCollector.x         = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
 MCinput.LightCollector.y         = -0.05; % [cm] y position
-MCinput.LightCollector.z         = 0.15; % [cm] z position
+MCinput.LightCollector.z         = 0.06; % [cm] z position
 
 MCinput.LightCollector.theta     = 3*pi/4; % [rad] Polar angle of direction the light collector is facing
 MCinput.LightCollector.phi       = pi/2; % [rad] Azimuthal angle of direction the light collector is facing
@@ -68,9 +68,9 @@ power_vec(i) = MCoutput.Image; % "Image" is in this case just a scalar, the norm
 end
 
 figure;clf;
-plot(t_vec,power_vec,'Linewidth',2);
+plot(g_vec,power_vec,'Linewidth',2);
 set(gcf,'Position',[40 80 1100 650]);
-xlabel('Slab thickness [cm]');
+xlabel('Scattering anisotropy g');
 ylabel('Normalized power collected by fiber');
 set(gca,'FontSize',18);grid on; grid minor;
 
@@ -80,7 +80,6 @@ set(gca,'FontSize',18);grid on; grid minor;
 % provided in the definition of Ginput. It returns the media matrix M,
 % containing numerical values indicating the media type (as defined in
 % getMediaProperties) at each voxel location.
-function M = GeometryDefinition_VariableThicknessStandardTissue(X,Y,Z,parameters)
-M = ones(size(X)); % Air
-M(Z > parameters{1}) = 3; % "Standard" tissue
+function M = GeometryDefinition_MediaPropertyParametricSweep(X,Y,Z,parameters)
+M = 21*ones(size(X)); % Variable g medium
 end

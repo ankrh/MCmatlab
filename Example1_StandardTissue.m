@@ -1,4 +1,4 @@
-addpath('./helperfuncs'); % The helperfuncs folder is added to the path for the duration of this MATLAB session
+addpath([fileparts(mfilename('fullpath')) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
 
 %% Geometry definition
 clear Ginput
