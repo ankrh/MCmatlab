@@ -4,7 +4,7 @@ function HSoutput = simulateHeatDistribution(HSinput)
 %   Also calculates Arrhenius-based thermal damage.
 %
 %   Output
-%       ./Data/[name]_heatSimOutput.mp4
+%       ./Data/[name]_heatSimOutput.mkv
 %           movie file showing the temperature evolution. The geometry cuboid
 %           is shown in the beginning of the video.
 %
@@ -292,16 +292,19 @@ clear Temp heatSimParameters;
 
 %% Finalize and write movie
 if(~HSinput.silentMode && HSinput.makeMovie)
+    [resy,resx,~] = size(movieframes(1).cdata);
+    for idx = 1:length(movieframes)
+        movieframes(idx).cdata = movieframes(idx).cdata(1:end-rem(resy,2),1:end-rem(resx,2),:); % Crop frames by one pixel if x or y size is odd
+    end
     movieframes = [repmat(movieframes(1),1,30) movieframes(1:end) repmat(movieframes(end),1,30)];
 	caller = dbstack(1,'-completenames');
-	writerObj = VideoWriter([fileparts(caller(1).file) '/' caller(1).name '_heatSimoutput.mp4'],'MPEG-4');
-    writerObj.Quality = 100;
+	writerObj = VideoWriter([fileparts(caller(1).file) '/temp.avi'],'Uncompressed AVI');
 	fprintf('Writing video...\n');
     open(writerObj);
-    warning('off','MATLAB:audiovideo:VideoWriter:mp4FramePadded');
     writeVideo(writerObj,movieframes);
-    warning('on','MATLAB:audiovideo:VideoWriter:mp4FramePadded');
     close(writerObj);
+    [~,~] = system(['.\helperfuncs\x264_win64.exe -o ' fileparts(caller(1).file) '\' caller(1).name '_heatSimoutput.mkv ' fileparts(caller(1).file) '\temp.avi']);
+    delete([fileparts(caller(1).file) '/temp.avi']);
     fprintf('\b Done\n');
 end
 end
