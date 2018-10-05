@@ -76,7 +76,7 @@ mediaProperties(j).TC    = 0; % Real value is 2.6e-4, but we set it to zero to n
 
 j=2;
 mediaProperties(j).name  = 'water';
-mediaProperties(j).mua   = 0.001;
+mediaProperties(j).mua   = 0.00036;
 mediaProperties(j).mus   = 10;
 mediaProperties(j).g     = 1.0;
 mediaProperties(j).n     = 1.3;

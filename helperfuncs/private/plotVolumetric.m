@@ -3,6 +3,7 @@ function h_f = plotVolumetric(nFig,xraw,yraw,zraw,Mraw,varargin)
 if(~ishandle(nFig))
     h_f = figure(nFig);
     h_f.Position = [40 80 1100 650];
+	h_f.Color = 'w';
 else
     h_f = figure(nFig);
 end
@@ -107,11 +108,11 @@ h_slider2 = uicontrol('Parent',h_f,'Style','slider','Position',[30,40,200,20],..
 h_slider3 = uicontrol('Parent',h_f,'Style','slider','Position',[30,60,200,20],...
               'value',zsi, 'min',1, 'max',nz,'SliderStep',[1/(nz-1) 0.1]);
 warning('on','MATLAB:hg:UIControlSliderStepValueDifference');
-uicontrol('style','text','String','x','Position',[10,18,20,20])
-uicontrol('style','text','String','y','Position',[10,38,20,20])
-uicontrol('style','text','String','z','Position',[10,58,20,20])
-h_checkbox1 = uicontrol('Parent',h_f,'Style','checkbox','Position',[70,90,20,20]);
-h_checkbox1text = uicontrol('style','text','String','log10 plot','Position',[16,87,50,20]);
+uicontrol('style','text','String','x','BackgroundColor','w','Position',[10,18,20,20])
+uicontrol('style','text','String','y','BackgroundColor','w','Position',[10,38,20,20])
+uicontrol('style','text','String','z','BackgroundColor','w','Position',[10,58,20,20])
+h_checkbox1 = uicontrol('Parent',h_f,'Style','checkbox','BackgroundColor','w','Position',[70,90,20,20]);
+h_checkbox1text = uicontrol('style','text','String','log10 plot','BackgroundColor','w','Position',[16,87,50,20]);
 if ~checkboxvisible
     set(h_checkbox1,'Visible','off');
     set(h_checkbox1text,'Visible','off');

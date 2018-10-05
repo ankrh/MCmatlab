@@ -303,7 +303,7 @@ if(~HSinput.silentMode && HSinput.makeMovie)
     open(writerObj);
     writeVideo(writerObj,movieframes);
     close(writerObj);
-    [~,~] = system(['.\helperfuncs\x264_win64.exe -o ' fileparts(caller(1).file) '\' caller(1).name '_heatSimoutput.mkv ' fileparts(caller(1).file) '\temp.avi']);
+    [~,~] = system(['.\helperfuncs\x264_win64.exe -o "' fileparts(caller(1).file) '\' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '\temp.avi"']);
     delete([fileparts(caller(1).file) '/temp.avi']);
     fprintf('\b Done\n');
 end
