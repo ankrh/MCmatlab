@@ -112,6 +112,7 @@ if(isfield(FMCinput,'LightCollector'))
         else
             h_f = figure(12);
         end
+		h_f.Color = 'w';
         clf;
         h_f.Name = 'Fluorescence image';
         imagesc(Xcenters,Ycenters,FMCoutput.Image.');

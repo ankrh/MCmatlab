@@ -51,6 +51,7 @@ if(numTemperatureSensors)
     else
         temperatureSensorFigure = figure(23);
     end
+	temperatureSensorFigure.Color = 'w';
     clf;
     temperatureSensorFigure.Name = 'Temperature sensors';
     plot(HSoutput.sensorsTimeVector,HSoutput.sensorTemps,'LineWidth',2);

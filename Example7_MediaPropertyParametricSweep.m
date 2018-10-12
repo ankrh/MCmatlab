@@ -1,7 +1,19 @@
 addpath([fileparts(mfilename('fullpath')) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
 
-% This example simulates light incident on a 100µm slab of scattering medium with a variable scattering anisotropy g.
-% Light is collected in transmission at a 45° angle in a fiber. At the end of the script, collected power as a function of g is plotted.
+%% Description
+% This example is another illustration of MC simulations inside a for loop,
+% this time simulating a pencil beam incident on a 100µm slab of scattering
+% medium with a variable (parametrically sweeped) scattering anisotropy g.
+% g is passed in through the mediaPropParams field and used within
+% getMediaProperties. Light is collected in transmission at a 45° angle in
+% a fiber, similar to example 6. At the end of the script, collected power
+% as a function of g is plotted. The power is seen to be zero for g = +- 1,
+% which is because then the light can only be scattered exactly forward or
+% backward. The max is at about 0.6, fitting well with a single scattering
+% event at 45°. There is a secondary hump around -0.7, which fits with
+% photons experiencing two scattering events at a scattering angle of
+% 157.5°.
+
 g_vec = linspace(-1,1,21); % g values to simulate
 power_vec = zeros(1,length(g_vec));
 fprintf('%2d/%2d\n',0,length(g_vec));

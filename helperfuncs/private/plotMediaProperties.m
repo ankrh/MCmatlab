@@ -6,6 +6,7 @@ if(~ishandle(nFig))
 else
     h_f = figure(nFig);
 end
+h_f.Color = 'w';
 
 clf;
 

@@ -1,5 +1,19 @@
 addpath([fileparts(mfilename('fullpath')) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
 
+%% Description
+% In this example, simulation of fluorescence (luminescence) is shown. The
+% test geometry is a fluorescing cylinder in which excitation light is
+% predominantly absorbed embedded in a block of medium in which
+% fluorescence light is predominantly absorbed. The geometry is illuminated
+% with an infinite plane wave, for which the xFocus, yFocus, zFocus, waist
+% and divergence quantities are not used.
+
+% This example also shows detection of the light exiting the cuboid,
+% separately for excitation light and for fluorescence light. Although most
+% of the fluorescence light is absorbed in the medium surrounding the
+% cylinder, some of it escapes to the detector, showing a slightly blurred
+% shape of the cylinder.
+
 %% Geometry definition
 clear Ginput
 Ginput.matchedInterfaces = true; % Assumes all refractive indices are 1

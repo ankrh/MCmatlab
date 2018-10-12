@@ -111,6 +111,7 @@ if(isfield(MCinput,'LightCollector'))
         else
             h_f = figure(7);
         end
+		h_f.Color = 'w';
         clf;
         h_f.Name = 'Image';
         imagesc(Xcenters,Ycenters,MCoutput.Image.');
@@ -126,6 +127,7 @@ if(isfield(MCinput,'LightCollector'))
         else
             h_f = figure(7);
         end
+		h_f.Color = 'w';
         clf;
         h_b = bar(timevector,squeeze(MCoutput.Image),1,'FaceColor','flat');
         h_b.CData(1  ,:) = [.5 0 .5];

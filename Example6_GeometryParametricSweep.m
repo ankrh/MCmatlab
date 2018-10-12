@@ -1,7 +1,28 @@
 addpath([fileparts(mfilename('fullpath')) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
 
-% This example simulates light incident on a slab of "standard" tissue with variable thickness.
-% Light is collected in transmission at a 45° angle in a fiber. At the end of the script, collected power as a function of thickness is plotted.
+%% Description
+% This example shows how to execute MC simulations in a for loop, in this
+% case simulating a pencil beam incident on a slab of "standard tissue" with
+% variable (parametrically sweeped) thickness. Lz minus the slab thickness
+% is passed in as a part of the GeomFuncParams field and used in the
+% geometry function to get the correct thickness. Light is collected in
+% transmission at a 45° angle in a fiber. At the end of the script,
+% collected power as a function of thickness is plotted. The fiber-coupled
+% power is seen to be zero for zero slab thickness, since there is nothing
+% to scatter the light over into the fiber, and the power starts to drop
+% off when the slab thickness passes 0.05 cm because then much of the light
+% is either absorbed or scattered backwards rather than into the fiber.
+
+% Lz and nz have been carefully chosen so that the slab interfaces always
+% coincide with voxel boundaries, so we get exactly correct slab
+% thicknesses in all the iterations of the for loop. Otherwise, the
+% simulated slab thickness would deviate from the specified slab thickness
+% because of the voxel rounding during the geometry definition.
+
+% The silentMode flags are used here, which suppress the outputs to the
+% command line, which is especially useful to avoid excessive text if
+% simulating in a for- or while-loop like this.
+
 t_vec = linspace(0,0.1,21); % Thicknesses to simulate
 power_vec = zeros(1,length(t_vec));
 fprintf('%2d/%2d\n',0,length(t_vec));

@@ -3,10 +3,10 @@ function h_f = plotVolumetric(nFig,xraw,yraw,zraw,Mraw,varargin)
 if(~ishandle(nFig))
     h_f = figure(nFig);
     h_f.Position = [40 80 1100 650];
-	h_f.Color = 'w';
 else
     h_f = figure(nFig);
 end
+h_f.Color = 'w';
 
 clf;
 

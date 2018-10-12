@@ -1,5 +1,19 @@
 addpath([fileparts(mfilename('fullpath')) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
 
+%% Decription
+% This example simulates a collimated top hat beam of radius 300 µm
+% incident on skin, with some gel (water) on the top. This example is
+% constructed identically to that on the mcxyz website, except that photons
+% are killed on all boundaries and the voxel grid is only 100x100x100:
+% https://omlc.org/software/mc/mcxyz/
+
+% The found absorption distribution is then passed into the heat simulator,
+% assuming the light is on for 5 pulses of 1 ms on time and 4 ms off time
+% each, with 4 W of peak power. Some demonstration values of the Arrhenius
+% E and A parameters for blood coagulation exist in getMediaProperties and
+% are used to calculate the distribution of coagulated blood. Temperature
+% sensors outputs and movie generation is also demonstrated.
+
 %% Geometry definition
 clear Ginput
 Ginput.matchedInterfaces = true; % Assumes all refractive indices are 1
@@ -39,7 +53,6 @@ MCoutput = runMonteCarlo(MCinput);
 plotMCmatlab(MCinput,MCoutput);
 
 %% Heat simulation
-HSinput.silentMode          = false; % Disables command window text and progress indication
 HSinput.useAllCPUs          = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 HSinput.makeMovie           = true; % Requires silentMode = false.
 

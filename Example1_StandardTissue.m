@@ -1,5 +1,17 @@
 addpath([fileparts(mfilename('fullpath')) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
 
+%% Description
+% In this introductory example, a block of "standard tissue" (mu_a = 1,
+% mu_s = 100, g = 0.9) is illuminated by a pencil beam (infinitely thin
+% beam). A small slice of air is present in the top of the simulation
+% volume. nx and ny are set to odd values so that when the pencil beam is
+% launched at x = y = 0 and travels straight down, it travels along a
+% well-defined center column of voxels (the middle of the 51st column). Use
+% the log10 plot checkbox in the visualizations to better see the fluence
+% rate and absorption distribution in the MC result.
+
+% For a pencil beam, the "waist" and "divergence" quantities are not used.
+
 %% Geometry definition
 clear Ginput
 Ginput.matchedInterfaces = true; % Assumes all refractive indices are 1

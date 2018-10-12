@@ -1,5 +1,19 @@
 addpath([fileparts(mfilename('fullpath')) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
 
+%% Description
+% This example is concerned with time-tagging of the photons. The time of
+% arrival is registered and binned when(if) the photon hits the detector,
+% which in this demonstration is spatially-resolved in addition to
+% time-resolved. Therefore, the output "image" is 3D, with two spatial
+% dimensions and one time dimension. The geometry consists of big
+% scattering voxels placed diagonally along the xyz direction and along the
+% yz direction, illuminated with an infinite plane wave. The xyz-diagonally
+% placed voxels are all in the focal plane of the detection lens, so they
+% all appear sharp in the time-resolved image, while the yz-diagonally
+% placed voxels are not all in the focal plane and some of them are
+% therefore blurred out in the image. Scattering from voxels at larger z
+% depths are seen to arrive at later times.
+
 %% Geometry definition
 clear Ginput
 Ginput.matchedInterfaces = true; % Assumes all refractive indices are 1

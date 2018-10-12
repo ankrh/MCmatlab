@@ -1,5 +1,22 @@
 addpath([fileparts(mfilename('fullpath')) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
 
+%% Description
+% This example illustrates simulation of refraction and reflection
+% according to Fresnel's equations. This requires the mathedInterfaces flag
+% to be set to false. The geometry consists of three layers: At the bottom
+% is a reflector such as metal (n = infinity), at the top is air (n = 1)
+% and in between is water (n = 1.3). The light source is an isotropically
+% emitting (equally emitting in all directions) source located inside the
+% water layer. The rays can be seen to be reflected from the bottom
+% interface and also to an extent from the top interface, although some
+% light is also refracted out of the water.
+
+% This example also shown the optional "useAllCPUs" flag that can be set on
+% the MC simulations to slightly increase speed. Default is false, which
+% means the solver leaves one CPU unused, making it easier to perform other
+% work on the PC while simulations are running. Note that multithreading is
+% anyway only supported on Windows. On Mac, useAllCPUs is ignored.
+
 %% Geometry definition
 clear Ginput
 Ginput.matchedInterfaces = false; % Assumes all refractive indices are 1
