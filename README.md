@@ -1,13 +1,13 @@
 # MCmatlab #
 
-### What is this repository for? ###
+## What is this repository for? ##
 
 A Monte Carlo simulation for modeling light propagation in a 3D voxel space.
 Fluorescence can optionally be simulated after simulation of the excitation light.
 Included is also a finite element simulation for temperature increase and heat diffusion in the same voxel space.
 Primarily targeted for tissue optics, but can be used in any environment.
 
-### LICENSE ###
+## LICENSE ##
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,52 +22,59 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-### How do I get set up? ###
+## How do I get set up? ##
 
 Requirements:
 - Windows 7 or later, or macOS 10.12 (Sierra) or later (this software is not compatible with macOS 10.11 El Capitan)
-- MATLAB R2014B or later (if you want to use the pre-compiled mex-files, you need to update MATLAB to the most recent version)
+- MATLAB R2014B or later (if you want to use the pre-compiled mex-files, you might need to update MATLAB to R2018B, but compiling the mex-files for your system is straight forward)
  - Image Processing Toolbox for MATLAB
 
-MATLAB PROGRAMS:
-defineGeometry.m
-runMonteCarlo.m
-runMonteCarloFluorescence.m
-plotMCmatlab.m
-simulateHeatDistribution.m
+MODEL FILES:
+In MCmatlab, you set up your model in a single m-file. You can find a few examples to get you started in the root folder of MCmatlab. Once you're familiar with those, you can check the model file "Template.m" for all the possible switches you might use, but it is itself not a valid model file, as it also contains some mutually exclusive switches.
 
-HELPERFILE:
-getMediaProperties.m
+MEDIA PROPERTIES:
+The optical properties of all media are defined in the file "getMediaProperties.m" in the folder "helperfuncs". Many media are already defined therein, and you can either modify the properties of those, or add more media types to this file. Make sure that each media has its distinct "j"-number, as this is the number you will refer to when building your model.
 
-INSTRUCTIONS:
-1. Compilation
- - The folders include all the executables necessary, so you don't need to compile anything. If, however, you want to change the routine in either the MCmatlab.c source code or the finiteElementHeatPropagator.c source code (both located in the folder "src"), you will need to recompile the respective mex-files. Check out those two source-files on how to do so.
+HELPER FILES:
+All the helper functions needed for running MCmatlab are located in the folder "helperfuncs", which therefore has to be on your MATLAB path. You will not need to modify any of these files (except for "getMediaProperties.m" as mentioned above). The example model files automatically add "helperfuncs" to the MATLAB path as the first command, and you should keep that practice also in your own model files.
 
-2. Build geometry
- - Modify getMediaProperties.m to include the definitions of the media you're interested in. You may optionally include thermal and/or fluorescence properties.
- - Modify defineGeometry.m, to build up your geometry from the media defined in getMediaProperties in the voxel space.
- - Run defineGeometry.m in MATLAB. This yields a .mat file named as defined in defineGeometry.m (in the folder "Data"), containing the geometry definition.
+## How do I use MCmatlab? ##
+### Compilation ###
+- The folders include all the executables necessary, so you don't need to compile anything. If, however, you want to change the routine in either the MCmatlab.c source code or the finiteElementHeatPropagator.c source code (both located in the folder "src"), you will need to recompile the respective mex-files. Check out those two source-files on how to do so.
+ 
+### Building the model ###
+You build a model in a seperate m-file. Each model requires the first two and optionally more of the following steps:
+1. Build geometry (check out "Example1_StandardTissue.m", section "%% Geometry definition")
+ - Modify or add to "helperfuncs/getMediaProperties.m" to include the definitions of the media you're interested in. You may optionally include thermal and/or fluorescence properties.
+ - In your model file, specify the geometry of your model.
+ - The "GeomFunc" you define in the model file simply defines a 3D-matrix containing the media definition for each voxel in the model cube. The media are referred to by a number, corresponding to the "j" defined in "helperfuncs/getMediaProperties.m".
+ - After this step, you will be shown two figures with the geometry you defined and an overview of the optical properties.
 
-3. Calculate light distribution
- - Modify runMonteCarlo.m to include the beam type you're interested in, as well as the time you want to simulate photons. 0.1 minute should be sufficient for testing purposes. Find more instructions on how to define the beam in the file directly.
- - Type "runMonteCarlo('[name]')" in the command prompt, with [name] being the name defined in defineGeometry.m in step 2. This command will simulate photons for the requested time. The output is "name_MCoutput.mat" in the folder "Data", holding a struct containing the relative fluence rate F(x,y,z).
+2. Calculate light distribution (check out "Example1_StandardTissue.m", section "%% Monte Carlo simulation")
+ - This section in the model file contains the definitions for the Monte Carlo simulation.
+ - After this step, you will be shown two figures with the normalized fluence rate and the absorbed light in the cube.
+ 
+3. (Optional) Include Fresnel reflection and refraction
+ - Check out "Example2_RefractionReflection.m" on how to implement changing refractive indices in your model.
+ 
+4. (Optional) Simulate heat distribution (check out "Example3_BloodVessel.m", section "%% Heat simulation")
+ - To simulate the heat diffusion, all media involved in the simulation must have the thermal properties volumetric heat capacity (VHC) and thermal conductivity (TC) defined in "helperfuncs/getMediaProperties.m".
+ - If you want to model chemical changes such as tissue damage, the media that might undergo such change need to have the Arrhenius activation energy (E) and the Arrhenius pre-exponential factor (A) defined.
+ - During the heat simulation, you will see an illustration of the temperature in your modelled cube.
+ - After this step, you will be shown three figures with the position of virtual temperature sensors in the cube, the temperature evolution at these positions, and whether there was some chemical change (based on the Arrhenius integral) in your cube.
 
-4. Look at results using MATLAB:
- - plotMCmatlab('[name]') will be automatically called after runMonteCarlo, but can also be called independently to inspect the outcome of earlier Monte Carlo runs.
+5. (Optional) Calculate fluorescence light distribution (check out "Example4_FluorescenceAndImaging.m", section "%% Fluorescence Monte Carlo")
+ - To be able to run this step, your geometry definitions needs to include the fluorescence wavelength, "wavelength_f".
+ - "Example4_FluorescenceAndImaging.m" also contains the definitions for a "LightCollector" for both the incident light Monte Carlo and the fluorescence Monte Carlo. This enables simulating a light collection and imaging system, presented in a figure after this step. This is not required if you are only interested in the fluorescence light distribution in the cube.
+ - After this step, you will be shown three figures with the fluorescence emitters distribution, the fluorescent light fluence rate and absorption within the cube. If you have chosen to use the LightCollector, you will additionally see an illustration of the geometry of your imaging system and the image of the fluorescent light.
+  - You can also choose to show the light impinging on the LightCollector in a time-resolved manner. Check out "Example5_TimeTaggin.m" on how to do so.
+  
+6. (Optional) Programmatically assign values to the parameters
+ - See "Example6_GeometryParametricSweep.m" and "Example7_MediaPropertyParametricSweep.m" on how to implement sweeps of the parameters.
 
-5. (Optional) Calculate fluorescence light distribution
- - Modify runMonteCarloFluorescence.m to model fluorescence for a given input power.
- - Type "runMonteCarloFluorescence('[name]')" in the command prompt, with [name] being the name defined in defineGeometry.m in step 2. This command will simulate photons for the requested time. The output is "name_MCoutput_fluorescence.mat" in the folder "Data", holding a struct containing the absolute fluorescence fluence rate I(x,y,z).
+## Contribution guidelines ##
 
-6. (Optional, does not include fluorescence) Simulate heat distribution
- - Modify simulateHeatDistribution.m to specify the illumination time (where energy is deposited as well as diffused) and dark time (where the lights are off, and the heat is just diffused). You can also specify how often you want a visual update of the simulation. You can also tell the script to generate a video (.mp4 format) of the temperature evolution. Also, you can specify (x,y,z) locations for virtual temperature sensors in order to record, show and store the temperature as a function of time at those positions. If the simulations are very slow, go back to defineGeometry.m and try defining your voxel space with a smaller cuboid and/or lower resolution. 
- - Type "simulateHeatDistribution('[name]')" in the command prompt. The simulation will run, updating the temperature distribution visualisation as often as you requested.
-
-7. Look at all the results and start playing around.
-
-### Contribution guidelines ###
-
-This software is in productive use. When coding, make sure you don't break the existing code (or, even better, fix the wreck), comment in the files what you changed, and commit.
+If you want to report a bug or are missing a feature, report that as an issue on gitlab.gbar.dtu.dk/biophotonics/MCmatlab.
 
 ### Who do I talk to? ###
 
