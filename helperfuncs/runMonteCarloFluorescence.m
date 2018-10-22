@@ -84,6 +84,14 @@ else
 	FMCinput.LightCollector.nTimeBins = 0;
 end
 
+%% Call Monte Carlo C script (MEX file) to get fluence rate (intensity) distribution
 FMCinput.G.M = FMCinput.G.M - 1; % Convert to C-style indexing
 FMCoutput = MCmatlab(FMCinput); % FMCoutput.F is an absolute fluence rate (intensity) quantity, unlike the non-fluorescence MCoutput.F which are actually fluence rates normalized to the incident power
+
+% Add positions of the centers of the pixels in the light collector image
+if FMCinput.useLightCollector && FMCinput.LightCollector.res > 1
+	FMCoutput.X = linspace(FMCinput.LightCollector.FieldSize*(1/FMCinput.LightCollector.res-1),FMCinput.LightCollector.FieldSize*(1-1/FMCinput.LightCollector.res),FMCinput.LightCollector.res)/2;
+    FMCoutput.Y = FMCoutput.X;
+end
+
 end

@@ -77,4 +77,11 @@ end
 %% Call Monte Carlo C script (MEX file) to get fluence rate (intensity) distribution
 MCinput.G.M = MCinput.G.M-1; % Convert to C-style indexing
 MCoutput = MCmatlab(MCinput);
+
+% Add positions of the centers of the pixels in the light collector image
+if MCinput.useLightCollector && MCinput.LightCollector.res > 1
+	MCoutput.X = linspace(MCinput.LightCollector.FieldSize*(1/MCinput.LightCollector.res-1),MCinput.LightCollector.FieldSize*(1-1/MCinput.LightCollector.res),MCinput.LightCollector.res)/2;
+    MCoutput.Y = MCoutput.X;
+end
+
 end

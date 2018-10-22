@@ -81,8 +81,6 @@ if(isfield(MCinput,'LightCollector'))
     end
 
     if LC.res > 1
-        Xcenters = linspace(LC.FieldSize*(1/LC.res-1),LC.FieldSize*(1-1/LC.res),LC.res)/2;
-        Ycenters = linspace(LC.FieldSize*(1/LC.res-1),LC.FieldSize*(1-1/LC.res),LC.res)/2;
         fprintf('%.3g%% of input power ends up on the detector.\n',100*mean(mean(sum(MCoutput.Image,3)))*LC.FieldSize^2);
     else
         fprintf('%.3g%% of input power ends up on the detector.\n',100*sum(MCoutput.Image,3));
@@ -97,7 +95,7 @@ if(isfield(MCinput,'LightCollector'))
     end
 
     if LC.res > 1 && LC.nTimeBins > 0
-        h_f = plotVolumetric(7,Xcenters,Ycenters,timevector,MCoutput.Image,'slicePositions',[1 1 0]);
+        h_f = plotVolumetric(7,MCoutput.X,MCoutput.Y,timevector,MCoutput.Image,'slicePositions',[1 1 0]);
         h_f.Name = 'Image';
         xlabel('X [cm]');
         ylabel('Y [cm]');
@@ -114,7 +112,7 @@ if(isfield(MCinput,'LightCollector'))
 		h_f.Color = 'w';
         clf;
         h_f.Name = 'Image';
-        imagesc(Xcenters,Ycenters,MCoutput.Image.');
+        imagesc(MCoutput.X,MCoutput.Y,MCoutput.Image.');
         title('Normalized fluence rate in the image plane at 1x magnification [W/cm^2/W.incident]');
         axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
         set(gca,'FontSize',18);

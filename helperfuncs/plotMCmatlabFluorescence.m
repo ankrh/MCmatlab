@@ -98,8 +98,6 @@ if(isfield(FMCinput,'LightCollector'))
     end
 
     if LC.res > 1
-        Xcenters = linspace(LC.FieldSize*(1/LC.res-1),LC.FieldSize*(1-1/LC.res),LC.res)/2;
-        Ycenters = linspace(LC.FieldSize*(1/LC.res-1),LC.FieldSize*(1-1/LC.res),LC.res)/2;
         fprintf('%.3g%% of fluorescence ends up on the detector.\n',100*mean(mean(FMCoutput.Image))*LC.FieldSize^2);
     else
         fprintf('%.3g%% of fluorescence ends up on the detector.\n',100*FMCoutput.Image);
@@ -115,7 +113,7 @@ if(isfield(FMCinput,'LightCollector'))
 		h_f.Color = 'w';
         clf;
         h_f.Name = 'Fluorescence image';
-        imagesc(Xcenters,Ycenters,FMCoutput.Image.');
+        imagesc(FMCoutput.X,FMCoutput.Y,FMCoutput.Image.');
         title('Fluence rate in the fluorescence image plane at 1x magnification [W/cm^2]');axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
         set(gca,'FontSize',18);
         colormap(inferno);
