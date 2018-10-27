@@ -38,8 +38,7 @@ end
 %% Calculate 3D fluorescence source distribution, including saturation
 mua_vec = [FMCinput.G.mediaProperties.mua]; % The media's excitation absorption coefficients
 Y_vec = [FMCinput.G.mediaProperties.Y]; % The media's fluorescence power yields
-sat_vec = [FMCinput.G.mediaProperties.sat]; % The media's fluorescence saturation fluence rates (intensity)
-FMCinput.Beam.sourceDistribution = Y_vec(FMCinput.G.M).*mua_vec(FMCinput.G.M)*FMCinput.Beam.P_excitation.*FMCinput.MCoutput.F./(1 + FMCinput.Beam.P_excitation*FMCinput.MCoutput.F./sat_vec(FMCinput.G.M)); % [W/cm^3]
+FMCinput.Beam.sourceDistribution = Y_vec(FMCinput.G.M).*mua_vec(FMCinput.G.M).*FMCinput.MCoutput.F; % [W/cm^3]
 if(max(FMCinput.Beam.sourceDistribution(:)) == 0); error('Error: No fluorescence emitters'); end
 
 %% Check to ensure that the light collector is not inside the cuboid and set res_LC to 1 if using fiber
@@ -86,7 +85,7 @@ end
 
 %% Call Monte Carlo C script (MEX file) to get fluence rate (intensity) distribution
 FMCinput.G.M = FMCinput.G.M - 1; % Convert to C-style indexing
-FMCoutput = MCmatlab(FMCinput); % FMCoutput.F is an absolute fluence rate (intensity) quantity, unlike the non-fluorescence MCoutput.F which are actually fluence rates normalized to the incident power
+FMCoutput = MCmatlab(FMCinput); % FMCoutput.F is the fluence rate normalized to the incident excitation power (not the emitted fluorescence power)
 
 % Add positions of the centers of the pixels in the light collector image
 if FMCinput.useLightCollector && FMCinput.LightCollector.res > 1

@@ -21,9 +21,8 @@ function [M, mediaProperties] = getMediaProperties(M,wavelength,parameters)
 %   and parameters to calculate thermal damage;
 %       E is the Arrhenius activation energy [J/mol]
 %       A is the Arrhenius pre-exponential factor [1/s]
-%   and parameters for fluorescence properties;
+%   and the fluorescence power yield;
 %       Y is fluorescence power yield (watts of emitted fluorescence light per watt of absorbed pump light) [-]
-%       sat is saturation excitation intensity [W/cm^2]
 %
 %   Requires
 %       SpectralLIB.mat
@@ -274,7 +273,6 @@ if(wavelength<500)
     mediaProperties(j).g   = 0.9;
 
     mediaProperties(j).Y   = 0.5;
-    mediaProperties(j).sat = 500;
 else
     mediaProperties(j).mua = 1;
     mediaProperties(j).mus = 100;
@@ -345,9 +343,6 @@ for j=1:length(mediaProperties)
     if(~isfield(mediaProperties,'A') || isempty(mediaProperties(j).A))
         mediaProperties(j).A = 0;
     end
-    if(~isfield(mediaProperties,'sat') || isempty(mediaProperties(j).sat))
-        mediaProperties(j).sat = Inf;
-    end
 end
 
 %% Throw an error if a variable doesn't conform to its required interval
@@ -366,8 +361,6 @@ for j=1:length(mediaProperties)
         error('Medium %s has TC < 0',mediaProperties(j).name);
     elseif(mediaProperties(j).Y < 0)
         error('Medium %s has Y < 0',mediaProperties(j).name);
-    elseif(mediaProperties(j).sat <= 0)
-        error('Medium %s has sat <= 0',mediaProperties(j).name);
     elseif(mediaProperties(j).E < 0)
         error('Medium %s has E < 0',mediaProperties(j).name);
     elseif(mediaProperties(j).A < 0)

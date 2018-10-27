@@ -91,13 +91,5 @@ if  plotFluorescenceProperties
     set(gca,'XTick',1:nM,'XTickLabel',{mediaProperties.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
     title('Y');
     subplotIndex = subplotIndex + 1;
-
-    subplot(rows,columns,subplotIndex);
-    hold on;
-    for i=1:nM
-        bar(i,mediaProperties(i).sat,'FaceColor',cmap(i,:));
-    end
-    set(gca,'XTick',1:nM,'XTickLabel',{mediaProperties.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
-    title('Fluor. sat. [W/cm^2]');
 end
 end

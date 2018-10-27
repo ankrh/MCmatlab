@@ -35,33 +35,30 @@ function plotMCmatlabFluorescence(FMCinput,FMCoutput)
 G = FMCinput.G;
 mua_vec = [G.mediaProperties.mua];
 
-%% Remind the user what the input power was and plot emitter distribution
-P = FMCinput.Beam.P_excitation;
-fprintf('\nFluorescence was simulated for %.2g W of input excitation power.\n',P);
-
-fprintf('Out of this, %.3g W was absorbed within the cuboid.\n',G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*P.*FMCinput.MCoutput.F))));
-
+%% Plot emitter distribution
 Y_vec = [G.mediaProperties.Y]; % The media's fluorescence power efficiencies
-sat_vec = [G.mediaProperties.sat]; % The media's fluorescence saturation fluence rates (intensity)
-FluorescenceEmitters = Y_vec(G.M).*mua_vec(G.M)*P.*FMCinput.MCoutput.F./(1 + P*FMCinput.MCoutput.F./sat_vec(G.M)); % [W/cm^3]
+FluorescenceEmitters = Y_vec(G.M).*mua_vec(G.M).*FMCinput.MCoutput.F; % [W/cm^3]
 h_f = plotVolumetric(8,G.x,G.y,G.z,FluorescenceEmitters,'MCmatlab_fromZero');
 h_f.Name = 'Fluorescence emitters';
-title('Fluorescence emitter distribution [W/cm^3] ')
+title('Fluorescence emitter distribution [W/cm^3/W.incident] ')
 
-fprintf('Out of this, %.3g W was re-emitted as fluorescence.\n',G.dx*G.dy*G.dz*sum(sum(sum(FluorescenceEmitters))));
+P_exc_abs = G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*FMCinput.MCoutput.F)));
+P_flu_emit = G.dx*G.dy*G.dz*sum(sum(sum(FluorescenceEmitters)));
+fprintf('\n%.3g%% of absorbed excitation light was re-emitted as fluorescence.\n',100*P_flu_emit/P_exc_abs);
 
 %% Make power absorption plot
 mua_vec = [G.mediaProperties_f.mua];
 h_f = plotVolumetric(9,G.x,G.y,G.z,mua_vec(G.M).*FMCoutput.F,'MCmatlab_fromZero');
 h_f.Name = 'Fluorescence power absorption';
-title('Absorbed fluorescence power per unit volume [W/cm^3] ')
+title('Normalized absorbed fluorescence power per unit volume [W/cm^3/W.incident] ')
 
 %% Make fluence rate plot
 h_f = plotVolumetric(10,G.x,G.y,G.z,FMCoutput.F,'MCmatlab_fromZero');
 h_f.Name = 'Fluorescence fluence rate';
-title('Fluorescence fluence rate (Intensity) [W/cm^2] ')
+title('Normalized fluorescence fluence rate (Intensity) [W/cm^2/W.incident] ')
 
-fprintf('Out of this, %.3g W was re-absorbed within the cuboid.\n\n',G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*FMCoutput.F))));
+P_flu_abs = G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*FMCoutput.F)));
+fprintf('%.3g%% of emitted fluorescence light was re-absorbed within the cuboid.\n\n',100*P_flu_abs/P_flu_emit);
 
 if(isfield(FMCinput,'LightCollector'))
     %% If there's a fluorescence light collector, show its orientation and the detected light
@@ -98,9 +95,9 @@ if(isfield(FMCinput,'LightCollector'))
     end
 
     if LC.res > 1
-        fprintf('%.3g%% of fluorescence ends up on the detector.\n',100*mean(mean(FMCoutput.Image))*LC.FieldSize^2);
+        fprintf('%.3g%% of fluorescence light ends up on the detector.\n',100*mean(mean(FMCoutput.Image))*LC.FieldSize^2);
     else
-        fprintf('%.3g%% of fluorescence ends up on the detector.\n',100*FMCoutput.Image);
+        fprintf('%.3g%% of fluorescence light ends up on the detector.\n',100*FMCoutput.Image);
     end
 
     if LC.res > 1
@@ -114,7 +111,7 @@ if(isfield(FMCinput,'LightCollector'))
         clf;
         h_f.Name = 'Fluorescence image';
         imagesc(FMCoutput.X,FMCoutput.Y,FMCoutput.Image.');
-        title('Fluence rate in the fluorescence image plane at 1x magnification [W/cm^2]');axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
+        title({'Normalized fluence rate in the fluorescence image plane',' at 1x magnification [W/cm^2/W.incident]'});axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
         set(gca,'FontSize',18);
         colormap(inferno);
         colorbar;

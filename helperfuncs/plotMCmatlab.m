@@ -44,7 +44,7 @@ h_f = plotVolumetric(5,G.x,G.y,G.z,MCoutput.F,'MCmatlab_fromZero');
 h_f.Name = 'Normalized fluence rate';
 title('Normalized fluence rate (Intensity) [W/cm^2/W.incident] ')
 
-fprintf('\n%.3g%% of the input light was absorbed within the cuboid.\n',100*G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*MCoutput.F))));
+fprintf('\n%.3g%% of incident light was absorbed within the cuboid.\n\n',100*G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*MCoutput.F))));
 
 if(isfield(MCinput,'LightCollector'))
     %% If there's a light collector, show its orientation and the detected light
@@ -81,9 +81,9 @@ if(isfield(MCinput,'LightCollector'))
     end
 
     if LC.res > 1
-        fprintf('%.3g%% of input power ends up on the detector.\n',100*mean(mean(sum(MCoutput.Image,3)))*LC.FieldSize^2);
+        fprintf('%.3g%% of incident light ends up on the detector.\n',100*mean(mean(sum(MCoutput.Image,3)))*LC.FieldSize^2);
     else
-        fprintf('%.3g%% of input power ends up on the detector.\n',100*sum(MCoutput.Image,3));
+        fprintf('%.3g%% of incident light ends up on the detector.\n',100*sum(MCoutput.Image,3));
     end
 
     if(~isfield(LC,'nTimeBins'))
@@ -113,7 +113,7 @@ if(isfield(MCinput,'LightCollector'))
         clf;
         h_f.Name = 'Image';
         imagesc(MCoutput.X,MCoutput.Y,MCoutput.Image.');
-        title('Normalized fluence rate in the image plane at 1x magnification [W/cm^2/W.incident]');
+        title({'Normalized fluence rate in the image plane',' at 1x magnification [W/cm^2/W.incident]'});
         axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
         set(gca,'FontSize',18);
         colormap(inferno);

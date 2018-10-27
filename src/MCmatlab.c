@@ -27,8 +27,7 @@
  * To get the MATLAB C compiler to work, try this:
  * 1. Go to MATLAB's addon manager and tell it to install the "Support for MinGW-w64 compiler"
  * 2. Type "mex -setup" in the MATLAB command window and ensure that MATLAB has set the C compiler to MinGW64
- * 3. If you're using an older MATLAB version, you may need to copy the files "libgomp.a" and "libgomp.spec" to the folder with a path similar to "C:\ProgramData\MATLAB\SupportPackages\R2017a\MW_MinGW_4_9\lib\gcc\x86_64-w64-mingw32\4.9.2"
- * 4. mex should now be able to compile the code using the above command but in order to run, it needs to have the file "libgomp_64-1.dll" copied to the same folder as the mex file.
+ * 3. mex should now be able to compile the code using the above command
  *
  ** COMPILING ON MAC
  * As of June 2017, the macOS compiler doesn't support libut (for ctrl+c 
@@ -490,25 +489,26 @@ void normalizeDeposition(struct beam const * const B, struct geometry const * co
     double V = G->d[0]*G->d[1]*G->d[2]; // Voxel volume
     long L = G->n[0]*G->n[1]*G->n[2]; // Total number of voxels in cuboid
     long L_LC = LC->res[0]*LC->res[0]; // Total number of spatial pixels in light collector planes
-    // Normalize deposition to yield either absolute or relative fluence rate (F).
+    // Normalize deposition to yield relative fluence rate (F). For fluorescence, the result is relative to
+    // the incident excitation power (not emitted fluorescence power).
     if(B->S) { // For a 3D source distribution (e.g., fluorescence)
-		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]/B->power; // Absolute fluence rate [W/cm^2].
+		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]/B->power;
         if(Image) {
-            if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/B->power; // Absolute fluence rate [W/cm^2]
-            else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons/B->power; // Absolute power [W]
+            if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/B->power;
+            else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons/B->power;
         }
         mxFree(B->S);
     } else if(B->beamType == 3 && G->boundaryType != 1) { // For infinite plane wave launched into volume without absorbing walls
-		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
+		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE);
         if(Image) {
-            if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/(KILLRANGE*KILLRANGE); // Normalized fluence rate [W/cm^2/W.incident]
-            else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons/(KILLRANGE*KILLRANGE); // Normalized power [W/W.incident]
+            if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/(KILLRANGE*KILLRANGE);
+            else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons/(KILLRANGE*KILLRANGE);
         }
 	} else {
-		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]; // Normalized fluence rate [W/cm^2/W.incident]
+		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]];
         if(Image) {
-            if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons; // Normalized fluence rate [W/cm^2/W.incident]
-            else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons; // Normalized power [W/W.incident]
+            if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons;
+            else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons;
         }
 	}
 }
@@ -760,5 +760,5 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         printf("---------------------------------------------------------\n");
         mexEvalString("drawnow;");
     }
-    normalizeDeposition(B,G,LC,F,Image,*nPhotonsPtr); // Convert data to either relative or absolute fluence rate
+    normalizeDeposition(B,G,LC,F,Image,*nPhotonsPtr); // Convert data to relative fluence rate
 }

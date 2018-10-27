@@ -68,8 +68,6 @@ plotMCmatlabGeom(Goutput);
 % FMCinput.useAllCPUs               = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 % FMCinput.simulationTime           = .1; % [min] Time duration of the simulation
 % 
-% FMCinput.Beam.P_excitation        = 2; % [W] Power of excitation beam
-% 
 % % FMCinput.LightCollector.x         = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
 % % FMCinput.LightCollector.y         = 0; % [cm] y position
 % % FMCinput.LightCollector.z         = 0.03; % [cm] z position
