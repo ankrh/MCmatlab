@@ -12,7 +12,7 @@ addpath([fileparts(mfilename('fullpath')) '/helperfuncs']); % The helperfuncs fo
 % separately for excitation light and for fluorescence light. Although most
 % of the fluorescence light is absorbed in the medium surrounding the
 % cylinder, some of it escapes to the detector, showing a slightly blurred
-% shape of the cylinder.
+% image of the cylinder.
 
 %% Geometry definition
 clear Ginput

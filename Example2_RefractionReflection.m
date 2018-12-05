@@ -2,7 +2,7 @@ addpath([fileparts(mfilename('fullpath')) '/helperfuncs']); % The helperfuncs fo
 
 %% Description
 % This example illustrates simulation of refraction and reflection
-% according to Fresnel's equations. This requires the mathedInterfaces flag
+% according to Fresnel's equations. This requires the matchedInterfaces flag
 % to be set to false. The geometry consists of three layers: At the bottom
 % is a reflector such as metal (n = infinity), at the top is air (n = 1)
 % and in between is water (n = 1.3). The light source is an isotropically
