@@ -377,7 +377,7 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, d
     P->sameVoxel = true;
 
     double s = fmin(P->stepLeft/P->mus,fmin(P->D[0],fmin(P->D[1],P->D[2])));
-    P->stepLeft -= s*P->mus;
+    P->stepLeft -= fmax(DBL_MIN,s*P->mus); // s*P->mus may on rare occasions become smaller than the precision of P->stepLeft when s is denormal and P->mus is large, this would result in an infinite loop so we require that P->stepLeft is always decreased by at least DBL_MIN
     P->time     += s*P->RI/C;
     
     for(idx=0;idx<3;idx++) {
