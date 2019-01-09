@@ -1,4 +1,4 @@
-addpath([fileparts(mfilename('fullpath')) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
+addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
 
 %% Description
 % In this introductory example, a block of "standard tissue" (mu_a = 1,
