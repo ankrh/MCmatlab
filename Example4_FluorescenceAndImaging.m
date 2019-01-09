@@ -7,7 +7,7 @@ addpath([fileparts(mfilename('fullpath')) '/helperfuncs']); % The helperfuncs fo
 % fluorescence light is predominantly absorbed. The geometry is illuminated
 % with an infinite plane wave, for which the xFocus, yFocus, zFocus, waist
 % and divergence quantities are not used.
-
+%
 % This example also shows detection of the light exiting the cuboid,
 % separately for excitation light and for fluorescence light. Although most
 % of the fluorescence light is absorbed in the medium surrounding the

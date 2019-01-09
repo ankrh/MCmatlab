@@ -12,13 +12,13 @@ addpath([fileparts(mfilename('fullpath')) '/helperfuncs']); % The helperfuncs fo
 % to scatter the light over into the fiber, and the power starts to drop
 % off when the slab thickness passes 0.05 cm because then much of the light
 % is either absorbed or scattered backwards rather than into the fiber.
-
+%
 % Lz and nz have been carefully chosen so that the slab interfaces always
 % coincide with voxel boundaries, so we get exactly correct slab
 % thicknesses in all the iterations of the for loop. Otherwise, the
 % simulated slab thickness would deviate from the specified slab thickness
 % because of the voxel rounding during the geometry definition.
-
+%
 % The silentMode flags are used here, which suppress the outputs to the
 % command line, which is especially useful to avoid excessive text if
 % simulating in a for- or while-loop like this.

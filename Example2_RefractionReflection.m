@@ -10,7 +10,7 @@ addpath([fileparts(mfilename('fullpath')) '/helperfuncs']); % The helperfuncs fo
 % water layer. The rays can be seen to be reflected from the bottom
 % interface and also to an extent from the top interface, although some
 % light is also refracted out of the water.
-
+%
 % This example also shown the optional "useAllCPUs" flag that can be set on
 % the MC simulations to slightly increase speed. Default is false, which
 % means the solver leaves one CPU unused, making it easier to perform other

@@ -9,7 +9,7 @@ addpath([fileparts(mfilename('fullpath')) '/helperfuncs']); % The helperfuncs fo
 % well-defined center column of voxels (the middle of the 51st column). Use
 % the log10 plot checkbox in the visualizations to better see the fluence
 % rate and absorption distribution in the MC result.
-
+%
 % For a pencil beam, the "waist" and "divergence" quantities are not used.
 
 %% Geometry definition

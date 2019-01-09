@@ -6,7 +6,7 @@ addpath([fileparts(mfilename('fullpath')) '/helperfuncs']); % The helperfuncs fo
 % constructed identically to that on the mcxyz website, except that photons
 % are killed on all boundaries and the voxel grid is only 100x100x100:
 % https://omlc.org/software/mc/mcxyz/
-
+%
 % The found absorption distribution is then passed into the heat simulator,
 % assuming the light is on for 5 pulses of 1 ms on time and 4 ms off time
 % each, with 4 W of peak power. Some demonstration values of the Arrhenius
