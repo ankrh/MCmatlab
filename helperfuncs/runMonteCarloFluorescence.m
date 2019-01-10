@@ -35,7 +35,7 @@ if ~isfield(FMCinput,'useAllCPUs')
 	FMCinput.useAllCPUs = false;
 end
 
-%% Calculate 3D fluorescence source distribution, including saturation
+%% Calculate 3D fluorescence source distribution
 mua_vec = [FMCinput.G.mediaProperties.mua]; % The media's excitation absorption coefficients
 Y_vec = [FMCinput.G.mediaProperties.Y]; % The media's fluorescence power yields
 FMCinput.Beam.sourceDistribution = Y_vec(FMCinput.G.M).*mua_vec(FMCinput.G.M).*FMCinput.MCoutput.F; % [W/cm^3]
