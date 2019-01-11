@@ -331,8 +331,7 @@ M = mediumMap(M); % Reduced medium matrix, using only numbers from 1 up to the n
 %% Fill in fluorescence and Arrhenius parameter assumptions
 % For all media for which the fluorescence power yield Y, Arrhenius
 % activation energy E or Arrhenius pre-exponential factor A was not 
-% specified, assume they are zero. Also, if the fluorescence saturation
-% was not specified, assume it is infinite.
+% specified, assume they are zero.
 for j=1:length(mediaProperties)
     if(~isfield(mediaProperties,'Y') || isempty(mediaProperties(j).Y))
         mediaProperties(j).Y = 0;
