@@ -46,19 +46,21 @@ P_exc_abs = G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*FMCinput.MCoutput.F)));
 P_flu_emit = G.dx*G.dy*G.dz*sum(sum(sum(FluorescenceEmitters)));
 fprintf('\n%.3g%% of absorbed excitation light was re-emitted as fluorescence.\n',100*P_flu_emit/P_exc_abs);
 
-%% Make power absorption plot
-mua_vec = [G.mediaProperties_f.mua];
-h_f = plotVolumetric(9,G.x,G.y,G.z,mua_vec(G.M).*FMCoutput.F,'MCmatlab_fromZero');
-h_f.Name = 'Fluorescence power absorption';
-title('Normalized absorbed fluorescence power per unit volume [W/cm^3/W.incident] ')
+if isfield(FMCoutput,'F')
+    %% Make power absorption plot
+    mua_vec = [G.mediaProperties_f.mua];
+    h_f = plotVolumetric(9,G.x,G.y,G.z,mua_vec(G.M).*FMCoutput.F,'MCmatlab_fromZero');
+    h_f.Name = 'Fluorescence power absorption';
+    title('Normalized absorbed fluorescence power per unit volume [W/cm^3/W.incident] ')
 
-%% Make fluence rate plot
-h_f = plotVolumetric(10,G.x,G.y,G.z,FMCoutput.F,'MCmatlab_fromZero');
-h_f.Name = 'Fluorescence fluence rate';
-title('Normalized fluorescence fluence rate (Intensity) [W/cm^2/W.incident] ')
+    %% Make fluence rate plot
+    h_f = plotVolumetric(10,G.x,G.y,G.z,FMCoutput.F,'MCmatlab_fromZero');
+    h_f.Name = 'Fluorescence fluence rate';
+    title('Normalized fluorescence fluence rate (Intensity) [W/cm^2/W.incident] ')
 
-P_flu_abs = G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*FMCoutput.F)));
-fprintf('%.3g%% of emitted fluorescence light was re-absorbed within the cuboid.\n\n',100*P_flu_abs/P_flu_emit);
+    P_flu_abs = G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*FMCoutput.F)));
+    fprintf('%.3g%% of emitted fluorescence light was re-absorbed within the cuboid.\n',100*P_flu_abs/P_flu_emit);
+end
 
 if(isfield(FMCinput,'LightCollector'))
     %% If there's a fluorescence light collector, show its orientation and the detected light
@@ -95,9 +97,9 @@ if(isfield(FMCinput,'LightCollector'))
     end
 
     if LC.res > 1
-        fprintf('%.3g%% of fluorescence light ends up on the detector.\n',100*mean(mean(FMCoutput.Image))*LC.FieldSize^2);
+        fprintf('\n%.3g%% of fluorescence light ends up on the detector.\n',100*mean(mean(FMCoutput.Image))*LC.FieldSize^2);
     else
-        fprintf('%.3g%% of fluorescence light ends up on the detector.\n',100*FMCoutput.Image);
+        fprintf('\n%.3g%% of fluorescence light ends up on the detector.\n',100*FMCoutput.Image);
     end
 
     if LC.res > 1

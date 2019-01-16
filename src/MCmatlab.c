@@ -438,7 +438,7 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, d
     
     double absorb = P->weight*(1 - exp(-P->mua*s));   // photon weight absorbed at this step
     P->weight -= absorb;					   // decrement WEIGHT by amount absorbed
-    if(P->insideVolume) {	// only save data if the photon is inside simulation cuboid
+    if(P->insideVolume && F) {	// only save data if the photon is inside simulation cuboid and we're supposed to calculate F at all
         #ifdef _WIN32
         #pragma omp atomic
         #endif
@@ -492,20 +492,20 @@ void normalizeDeposition(struct beam const * const B, struct geometry const * co
     // Normalize deposition to yield relative fluence rate (F). For fluorescence, the result is relative to
     // the incident excitation power (not emitted fluorescence power).
     if(B->S) { // For a 3D source distribution (e.g., fluorescence)
-		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]/B->power;
+		if(F) for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]/B->power;
         if(Image) {
             if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/B->power;
             else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons/B->power;
         }
         mxFree(B->S);
     } else if(B->beamType == 3 && G->boundaryType != 1) { // For infinite plane wave launched into volume without absorbing walls
-		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE);
+		if(F) for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE);
         if(Image) {
             if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/(KILLRANGE*KILLRANGE);
             else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons/(KILLRANGE*KILLRANGE);
         }
 	} else {
-		for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]];
+		if(F) for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]];
         if(Image) {
             if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons;
             else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons;
@@ -519,6 +519,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     int  newPctProgress;    
     bool ctrlc_caught = false; // Has a ctrl+c been passed from MATLAB?
     bool silentMode = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"silentMode"));
+    bool calcF = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"calcF")); // Are we supposed to calculate the F matrix?
 
     
     // To know if we are simulating fluorescence, we check if a "sourceDistribution" field exists. If so, we will use it later in the beam definition.
@@ -622,17 +623,22 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     // Prepare output MATLAB struct
     double *Image  = NULL;
     
-    if(useLightCollector) {
+    if(useLightCollector && calcF) {
         plhs[0] = mxCreateStructMatrix(1,1,4,(const char *[]){"F","Image","nPhotons","nThreads"});
-        mxSetField(plhs[0],0,"Image", mxCreateNumericArray(3,(mwSize[]){LC->res[0],LC->res[0],LC->res[1]},mxDOUBLE_CLASS,mxREAL));
-        Image  = mxGetPr(mxGetField(plhs[0],0,"Image"));
-    } else {
+    } else if(useLightCollector) {
+        plhs[0] = mxCreateStructMatrix(1,1,3,(const char *[]){"Image","nPhotons","nThreads"});
+    } else { // useLightCollector and calcF cannot both be false
         plhs[0] = mxCreateStructMatrix(1,1,3,(const char *[]){"F","nPhotons","nThreads"});
     }
-    mxSetField(plhs[0],0,"F",       mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
+    if(useLightCollector) {
+        mxSetField(plhs[0],0,"Image", mxCreateNumericArray(3,(mwSize[]){LC->res[0],LC->res[0],LC->res[1]},mxDOUBLE_CLASS,mxREAL));
+        Image  = mxGetPr(mxGetField(plhs[0],0,"Image"));
+    }        
+    
+    if(calcF) mxSetField(plhs[0],0,"F",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
     mxSetField(plhs[0],0,"nPhotons",mxCreateDoubleMatrix(1,1,mxREAL));
     mxSetField(plhs[0],0,"nThreads",mxCreateDoubleMatrix(1,1,mxREAL));
-    double *F           = mxGetPr(mxGetField(plhs[0],0,"F"));
+    double *F           = calcF? mxGetPr(mxGetField(plhs[0],0,"F")): NULL;
     double *nPhotonsPtr = mxGetPr(mxGetField(plhs[0],0,"nPhotons"));
     double *nThreadsPtr = mxGetPr(mxGetField(plhs[0],0,"nThreads"));
     

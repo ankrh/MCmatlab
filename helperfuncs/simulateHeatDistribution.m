@@ -52,6 +52,9 @@ end
 if ~isfield(HSinput,'tempSensorPositions')
 	HSinput.tempSensorPositions = [];
 end
+if ~isfield(HSinput.MCoutput,'F')
+    error('Error: F matrix not calculated');
+end
 
 G = HSinput.G;
 

@@ -29,6 +29,9 @@ end
 if ~isfield(MCinput,'useAllCPUs')
 	MCinput.useAllCPUs = false;
 end
+if ~isfield(MCinput,'calcF')
+    MCinput.calcF = true;
+end
 
 if isfield(MCinput,'LightCollector')
     %% Check to ensure that the light collector is not inside the cuboid and set res to 1 if using fiber
@@ -72,6 +75,10 @@ else
 	MCinput.LightCollector.tStart = 0;
 	MCinput.LightCollector.tEnd = 0;
 	MCinput.LightCollector.nTimeBins = 0;
+end
+
+if ~MCinput.calcF && ~MCinput.useLightCollector
+    error('Error: calcF is false, nut no light collector is defined');
 end
 
 %% Call Monte Carlo C script (MEX file) to get fluence rate (intensity) distribution

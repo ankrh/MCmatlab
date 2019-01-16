@@ -34,6 +34,12 @@ end
 if ~isfield(FMCinput,'useAllCPUs')
 	FMCinput.useAllCPUs = false;
 end
+if ~isfield(FMCinput,'calcF')
+    FMCinput.calcF = true;
+end
+if ~isfield(FMCinput.MCoutput,'F')
+    error('Error: F matrix not calculated for excitation light');
+end
 
 %% Calculate 3D fluorescence source distribution
 mua_vec = [FMCinput.G.mediaProperties.mua]; % The media's excitation absorption coefficients
@@ -81,6 +87,10 @@ else
 	FMCinput.LightCollector.tStart = 0;
 	FMCinput.LightCollector.tEnd = 0;
 	FMCinput.LightCollector.nTimeBins = 0;
+end
+
+if ~FMCinput.calcF && ~FMCinput.useLightCollector
+    error('Error: calcF is false, nut no light collector is defined');
 end
 
 %% Call Monte Carlo C script (MEX file) to get fluence rate (intensity) distribution

@@ -32,19 +32,21 @@ function plotMCmatlab(MCinput,MCoutput)
 %%%%%
 
 G = MCinput.G;
+    
+if isfield(MCoutput,'F')
+    %% Make power absorption plot
+    mua_vec = [G.mediaProperties.mua];
+    h_f = plotVolumetric(4,G.x,G.y,G.z,mua_vec(G.M).*MCoutput.F,'MCmatlab_fromZero');
+    h_f.Name = 'Normalized power absorption';
+    title('Normalized absorbed power per unit volume [W/cm^3/W.incident] ')
 
-%% Make power absorption plot
-mua_vec = [G.mediaProperties.mua];
-h_f = plotVolumetric(4,G.x,G.y,G.z,mua_vec(G.M).*MCoutput.F,'MCmatlab_fromZero');
-h_f.Name = 'Normalized power absorption';
-title('Normalized absorbed power per unit volume [W/cm^3/W.incident] ')
+    %% Make fluence rate plot
+    h_f = plotVolumetric(5,G.x,G.y,G.z,MCoutput.F,'MCmatlab_fromZero');
+    h_f.Name = 'Normalized fluence rate';
+    title('Normalized fluence rate (Intensity) [W/cm^2/W.incident] ')
 
-%% Make fluence rate plot
-h_f = plotVolumetric(5,G.x,G.y,G.z,MCoutput.F,'MCmatlab_fromZero');
-h_f.Name = 'Normalized fluence rate';
-title('Normalized fluence rate (Intensity) [W/cm^2/W.incident] ')
-
-fprintf('\n%.3g%% of incident light was absorbed within the cuboid.\n\n',100*G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*MCoutput.F))));
+    fprintf('\n%.3g%% of incident light was absorbed within the cuboid.\n',100*G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*MCoutput.F))));
+end
 
 if(isfield(MCinput,'LightCollector'))
     %% If there's a light collector, show its orientation and the detected light
@@ -81,9 +83,9 @@ if(isfield(MCinput,'LightCollector'))
     end
 
     if LC.res > 1
-        fprintf('%.3g%% of incident light ends up on the detector.\n',100*mean(mean(sum(MCoutput.Image,3)))*LC.FieldSize^2);
+        fprintf('\n%.3g%% of incident light ends up on the detector.\n',100*mean(mean(sum(MCoutput.Image,3)))*LC.FieldSize^2);
     else
-        fprintf('%.3g%% of incident light ends up on the detector.\n',100*sum(MCoutput.Image,3));
+        fprintf('\n%.3g%% of incident light ends up on the detector.\n',100*sum(MCoutput.Image,3));
     end
 
     if(~isfield(LC,'nTimeBins'))
