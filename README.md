@@ -7,6 +7,9 @@ Fluorescence can optionally be simulated after simulation of the excitation ligh
 Included is also a finite element simulation for temperature increase and heat diffusion in the same voxel space.
 Primarily targeted for tissue optics, but can be used in any environment.
 
+You can find the latest version of MCmatlab and more information in the wiki on https://gitlab.gbar.dtu.dk/biophotonics/MCmatlab.
+If you publish results obtained with this software, we would be thankful if you cited its accompanying article: doi:10.1117/1.JBO.23.12.121622
+
 ## LICENSE ##
 
 This program is free software: you can redistribute it and/or modify
@@ -74,9 +77,9 @@ You build a model in a seperate m-file. Each model requires the first two and op
 
 ## Contribution guidelines ##
 
-If you want to report a bug or are missing a feature, report that as an issue on gitlab.gbar.dtu.dk/biophotonics/MCmatlab.
+If you want to report a bug or are missing a feature, report that as an issue on https://gitlab.gbar.dtu.dk/biophotonics/MCmatlab.
 
 ### Who do I talk to? ###
 
-This repository is part of the DTU Fotonik "biophotonics" team.
+This repository is part of the DTU "biophotonics" team.
 The main responsible is Anders Kragh Hansen: ankrh@fotonik.dtu.dk
