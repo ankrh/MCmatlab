@@ -1,11 +1,12 @@
 function plotMCmatlabFluorescence(FMCinput,FMCoutput)
-%   Displays
+%   Displays (if calculated)
 %       Distribution of fluorescence emitters
 %       Absorbed fluorescence power
-%       Fluorescence fluence rate
-%	And, if a light collector was defined, displays
+%       Fluorescence fluence rate of all photons
+%	And, if a light collector was defined, displays (if calculated)
 %		An illustration of the light collector angle and placement
 %		Image generated
+%       Fluorescence fluence rate of photons that hit the light collector
 %
 %   Requires
 %       plotVolumetric.m
@@ -38,7 +39,7 @@ mua_vec = [G.mediaProperties.mua];
 %% Plot emitter distribution
 Y_vec = [G.mediaProperties.Y]; % The media's fluorescence power efficiencies
 FluorescenceEmitters = Y_vec(G.M).*mua_vec(G.M).*FMCinput.MCoutput.F; % [W/cm^3]
-h_f = plotVolumetric(8,G.x,G.y,G.z,FluorescenceEmitters,'MCmatlab_fromZero');
+h_f = plotVolumetric(9,G.x,G.y,G.z,FluorescenceEmitters,'MCmatlab_fromZero');
 h_f.Name = 'Fluorescence emitters';
 title('Fluorescence emitter distribution [W/cm^3/W.incident] ')
 
@@ -49,12 +50,12 @@ fprintf('\n%.3g%% of absorbed excitation light was re-emitted as fluorescence.\n
 if isfield(FMCoutput,'F')
     %% Make power absorption plot
     mua_vec = [G.mediaProperties_f.mua];
-    h_f = plotVolumetric(9,G.x,G.y,G.z,mua_vec(G.M).*FMCoutput.F,'MCmatlab_fromZero');
+    h_f = plotVolumetric(10,G.x,G.y,G.z,mua_vec(G.M).*FMCoutput.F,'MCmatlab_fromZero');
     h_f.Name = 'Fluorescence power absorption';
     title('Normalized absorbed fluorescence power per unit volume [W/cm^3/W.incident] ')
 
     %% Make fluence rate plot
-    h_f = plotVolumetric(10,G.x,G.y,G.z,FMCoutput.F,'MCmatlab_fromZero');
+    h_f = plotVolumetric(11,G.x,G.y,G.z,FMCoutput.F,'MCmatlab_fromZero');
     h_f.Name = 'Fluorescence fluence rate';
     title('Normalized fluorescence fluence rate (Intensity) [W/cm^2/W.incident] ')
 
@@ -64,7 +65,7 @@ end
 
 if(isfield(FMCinput,'LightCollector'))
     %% If there's a fluorescence light collector, show its orientation and the detected light
-    h_f = plotVolumetric(11,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_f);
+    h_f = plotVolumetric(12,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_f);
     h_f.Name = 'Fluorescence light collector illustration';
     title('Fluorescence light collector illustration');
     box on;grid on;grid minor;
@@ -102,12 +103,19 @@ if(isfield(FMCinput,'LightCollector'))
         fprintf('\n%.3g%% of fluorescence light ends up on the detector.\n',100*FMCoutput.Image);
     end
 
+    if isfield(FMCoutput,'Fdet')
+        %% Make Fdet fluence rate plot
+        h_f = plotVolumetric(13,G.x,G.y,G.z,FMCoutput.Fdet,'MCmatlab_fromZero');
+        h_f.Name = 'Normalized fluence rate of collected fluorescence light';
+        title('Normalized fluence rate of collected fluorescence light [W/cm^2/W.incident] ')
+    end
+    
     if LC.res > 1
-        if(~ishandle(12))
-            h_f = figure(12);
+        if(~ishandle(14))
+            h_f = figure(14);
             h_f.Position = [40 80 1100 650];
         else
-            h_f = figure(12);
+            h_f = figure(14);
         end
 		h_f.Color = 'w';
         clf;

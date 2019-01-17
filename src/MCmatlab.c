@@ -102,6 +102,10 @@ struct photon { // Struct type for parameters describing the thread-specific cur
     bool           insideVolume,alive,sameVoxel;
     dsfmt_t        dsfmt; // "State" of the Mersenne Twister pseudo-random number generator
     long long      nThreadPhotons; //  Number of times this thread has launched a photon
+    long           recordSize; // Current size of the list of voxels in which power has been deposited, used only if calcFdet is true
+    long           recordElems; // Current number of elements used of the record. Starts at 0 every photon launch, used only if calcFdet is true
+    long           *j_record; // List of the indices of the voxels in which the current photon has deposited power, used only if calcFdet is true
+    double         *weight_record; // List of the weights that have been deposited into the voxels, used only if calcFdet is true
 };
 
 void unitcrossprod(double *a, double *b, double *c) {
@@ -138,6 +142,7 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
     P->alive = true;
     P->sameVoxel = false;
     P->weight = 1;
+    P->recordElems = 0;
     
     if(B->S) { // If a 3D source distribution was defined
         // ... then search the cumulative distribution function via binary tree method to find the voxel to start the photon in
@@ -281,7 +286,7 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
     P->nThreadPhotons++;
 }
 
-void formImage(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC, double * const Image) {
+void formImage(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC, double * const Fdet, double * const Image) {
     double U[3];
     xyztoXYZ(P->u,LC->theta,LC->phi,U); // U is now the photon trajectory in basis of detection frame (X,Y,Z)
 
@@ -315,6 +320,12 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
                     Image[Xindex               + 
                           Yindex   *LC->res[0] +
                           timeindex*LC->res[0]*LC->res[0]] += P->weight;
+                    if(Fdet) for(long i=0;i<P->recordElems;i++) {
+                        #ifdef _WIN32
+                        #pragma omp atomic
+                        #endif
+                        Fdet[P->j_record[i]] += P->weight_record[i];
+                    }
                 }
             } else { // If the light collector is a fiber tip
                 double thetaLCFF = atan(-sqrt(U[0]*U[0] + U[1]*U[1])/U[2]); // Light collector far field polar angle
@@ -324,13 +335,19 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
                     #pragma omp atomic
                     #endif
                     Image[timeindex] += P->weight;
+                    if(Fdet) for(long i=0;i<P->recordElems;i++) {
+                        #ifdef _WIN32
+                        #pragma omp atomic
+                        #endif
+                        Fdet[P->j_record[i]] += P->weight_record[i];
+                    }
                 }
             }
         }
     }
 }
 
-void checkEscape(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC, double * const Image) {
+void checkEscape(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC, double * const Fdet, double * const Image) {
     bool escaped = false;
     P->insideVolume = P->i[0] < G->n[0] && P->i[0] >= 0 &&
                       P->i[1] < G->n[1] && P->i[1] >= 0 &&
@@ -355,7 +372,7 @@ void checkEscape(struct photon * const P, struct geometry const * const G, struc
             break;
     }
     
-    if(escaped && Image) formImage(P,G,LC,Image); // If Image is not NULL then that's because useLightCollector was set to true (non-zero)
+    if(escaped && Image) formImage(P,G,LC,Fdet,Image); // If Image is not NULL then that's because useLightCollector was set to true (non-zero)
 }
 
 void getNewVoxelProperties(struct photon * const P, struct geometry const * const G) {
@@ -438,11 +455,24 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, d
     
     double absorb = P->weight*(1 - exp(-P->mua*s));   // photon weight absorbed at this step
     P->weight -= absorb;					   // decrement WEIGHT by amount absorbed
-    if(P->insideVolume && F) {	// only save data if the photon is inside simulation cuboid and we're supposed to calculate F at all
-        #ifdef _WIN32
-        #pragma omp atomic
-        #endif
-            F[P->j] += absorb;
+    if(P->insideVolume) {	// only save data if the photon is inside simulation cuboid
+        if(F) {
+            #ifdef _WIN32
+            #pragma omp atomic
+            #endif
+                F[P->j] += absorb;
+        }
+        if(P->recordSize) { // store indices and weights in pseudosparse array, to later add to Fdet if photon ends up on the light collector
+            if(P->recordElems == P->recordSize) {
+                P->recordSize *= 2; // double the record's size
+                P->j_record = mxRealloc(P->j_record,P->recordSize*sizeof(long));
+                P->weight_record = mxRealloc(P->weight_record,P->recordSize*sizeof(double));
+                if(!P->j_record || !P->weight_record) mexErrMsgIdAndTxt("Error: Out of memory","Error: Out of memory");
+            }
+            P->recordElems++;
+            P->j_record[P->recordElems-1] = P->j;
+            P->weight_record[P->recordElems-1] = absorb;
+        }
     }
 }
 
@@ -484,7 +514,7 @@ void scatterPhoton(struct photon * const P, struct geometry const * const G) {
     P->stepLeft	= -log(RandomNum);
 }
 
-void normalizeDeposition(struct beam const * const B, struct geometry const * const G, struct lightcollector const * const LC, double * const F, double * const Image, double nPhotons) {
+void normalizeDeposition(struct beam const * const B, struct geometry const * const G, struct lightcollector const * const LC, double * const F, double * const Fdet, double * const Image, double nPhotons) {
     long j;
     double V = G->d[0]*G->d[1]*G->d[2]; // Voxel volume
     long L = G->n[0]*G->n[1]*G->n[2]; // Total number of voxels in cuboid
@@ -492,20 +522,23 @@ void normalizeDeposition(struct beam const * const B, struct geometry const * co
     // Normalize deposition to yield relative fluence rate (F). For fluorescence, the result is relative to
     // the incident excitation power (not emitted fluorescence power).
     if(B->S) { // For a 3D source distribution (e.g., fluorescence)
-		if(F) for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]/B->power;
+		if(F)    for(j=0;j<L;j++) F[j]    /= V*nPhotons*G->muav[G->M[j]]/B->power;
+		if(Fdet) for(j=0;j<L;j++) Fdet[j] /= V*nPhotons*G->muav[G->M[j]]/B->power;
         if(Image) {
             if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/B->power;
             else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons/B->power;
         }
         mxFree(B->S);
     } else if(B->beamType == 3 && G->boundaryType != 1) { // For infinite plane wave launched into volume without absorbing walls
-		if(F) for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE);
+		if(F)    for(j=0;j<L;j++) F[j]    /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE);
+		if(Fdet) for(j=0;j<L;j++) Fdet[j] /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE);
         if(Image) {
             if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/(KILLRANGE*KILLRANGE);
             else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons/(KILLRANGE*KILLRANGE);
         }
 	} else {
-		if(F) for(j=0;j<L;j++) F[j] /= V*nPhotons*G->muav[G->M[j]];
+		if(F)    for(j=0;j<L;j++) F[j]    /= V*nPhotons*G->muav[G->M[j]];
+		if(Fdet) for(j=0;j<L;j++) Fdet[j] /= V*nPhotons*G->muav[G->M[j]];
         if(Image) {
             if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons;
             else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons;
@@ -520,6 +553,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     bool ctrlc_caught = false; // Has a ctrl+c been passed from MATLAB?
     bool silentMode = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"silentMode"));
     bool calcF = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"calcF")); // Are we supposed to calculate the F matrix?
+    bool calcFdet = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"calcFdet")); // Are we supposed to calculate the Fdet matrix?
 
     
     // To know if we are simulating fluorescence, we check if a "sourceDistribution" field exists. If so, we will use it later in the beam definition.
@@ -623,11 +657,15 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     // Prepare output MATLAB struct
     double *Image  = NULL;
     
-    if(useLightCollector && calcF) {
+    if(useLightCollector && calcF && calcFdet) {
+        plhs[0] = mxCreateStructMatrix(1,1,5,(const char *[]){"F","Fdet","Image","nPhotons","nThreads"});
+    } else if(useLightCollector && calcF) {
         plhs[0] = mxCreateStructMatrix(1,1,4,(const char *[]){"F","Image","nPhotons","nThreads"});
+    } else if(useLightCollector && calcFdet) {
+        plhs[0] = mxCreateStructMatrix(1,1,4,(const char *[]){"Fdet","Image","nPhotons","nThreads"});
     } else if(useLightCollector) {
         plhs[0] = mxCreateStructMatrix(1,1,3,(const char *[]){"Image","nPhotons","nThreads"});
-    } else { // useLightCollector and calcF cannot both be false
+    } else { // only calcF is true
         plhs[0] = mxCreateStructMatrix(1,1,3,(const char *[]){"F","nPhotons","nThreads"});
     }
     if(useLightCollector) {
@@ -636,9 +674,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     }        
     
     if(calcF) mxSetField(plhs[0],0,"F",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
+    if(calcFdet) mxSetField(plhs[0],0,"Fdet",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
     mxSetField(plhs[0],0,"nPhotons",mxCreateDoubleMatrix(1,1,mxREAL));
     mxSetField(plhs[0],0,"nThreads",mxCreateDoubleMatrix(1,1,mxREAL));
     double *F           = calcF? mxGetPr(mxGetField(plhs[0],0,"F")): NULL;
+    double *Fdet        = calcFdet? mxGetPr(mxGetField(plhs[0],0,"Fdet")): NULL;
     double *nPhotonsPtr = mxGetPr(mxGetField(plhs[0],0,"nPhotons"));
     double *nThreadsPtr = mxGetPr(mxGetField(plhs[0],0,"nThreads"));
     
@@ -704,6 +744,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         struct photon *P = &P_var;
         
         P->nThreadPhotons = 0;
+        P->recordSize    = Fdet? 1000: 0; // If we're supposed to calculate Fdet, we start the record at a size of 1000 elements - it will be dynamically expanded later if needed
+        P->j_record      = Fdet? mxMalloc(P->recordSize*sizeof(long)): NULL;
+        P->weight_record = Fdet? mxMalloc(P->recordSize*sizeof(double)): NULL;
         
         #ifdef _WIN32
 		dsfmt_init_gen_rand(&P->dsfmt,simulationTimeStart.tv_nsec + omp_get_thread_num()); // Seed the photon's random number generator
@@ -717,7 +760,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 			while(P->alive) {
 				while(P->stepLeft>0) {
 					if(!P->sameVoxel) {
-                        checkEscape(P,G,LC,Image);
+                        checkEscape(P,G,LC,Fdet,Image);
                         if(!P->alive) break;
                         getNewVoxelProperties(P,G); // If photon has just entered a new voxel or has just been launched
                     }
@@ -756,6 +799,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         #pragma omp atomic
         #endif
         *nPhotonsPtr += P->nThreadPhotons; // Add up the launches made in the individual threads to the total photon counter
+        
+        mxFree(P->j_record);
+        mxFree(P->weight_record);
 	}
     
 	clock_gettime(CLOCK_MONOTONIC, &simulationTimeCurrent);
@@ -766,5 +812,5 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         printf("---------------------------------------------------------\n");
         mexEvalString("drawnow;");
     }
-    normalizeDeposition(B,G,LC,F,Image,*nPhotonsPtr); // Convert data to relative fluence rate
+    normalizeDeposition(B,G,LC,F,Fdet,Image,*nPhotonsPtr); // Convert data to relative fluence rate
 }

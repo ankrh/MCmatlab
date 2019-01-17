@@ -1,10 +1,11 @@
 function plotMCmatlab(MCinput,MCoutput)
-%   Displays
+%   Displays (if calculated)
 %       Absorbed power
-%       Fluence rate
-%	And, if a light collector was defined, displays
+%       Fluence rate of all photons
+%	And, if a light collector was defined, displays (if calculated)
 %		An illustration of the light collector angle and placement
 %		Image generated (which might be time-resolved)
+%       Fluence rate of photons that hit the light collector
 %
 %   Requires
 %       plotVolumetric.m
@@ -88,6 +89,13 @@ if(isfield(MCinput,'LightCollector'))
         fprintf('\n%.3g%% of incident light ends up on the detector.\n',100*sum(MCoutput.Image,3));
     end
 
+    if isfield(MCoutput,'Fdet')
+        %% Make Fdet fluence rate plot
+        h_f = plotVolumetric(7,G.x,G.y,G.z,MCoutput.Fdet,'MCmatlab_fromZero');
+        h_f.Name = 'Normalized fluence rate of collected light';
+        title('Normalized fluence rate of collected light [W/cm^2/W.incident] ')
+    end
+    
     if(~isfield(LC,'nTimeBins'))
         LC.nTimeBins = 0;
     end
@@ -97,7 +105,7 @@ if(isfield(MCinput,'LightCollector'))
     end
 
     if LC.res > 1 && LC.nTimeBins > 0
-        h_f = plotVolumetric(7,MCoutput.X,MCoutput.Y,timevector,MCoutput.Image,'slicePositions',[1 1 0]);
+        h_f = plotVolumetric(8,MCoutput.X,MCoutput.Y,timevector,MCoutput.Image,'slicePositions',[1 1 0]);
         h_f.Name = 'Image';
         xlabel('X [cm]');
         ylabel('Y [cm]');
@@ -105,11 +113,11 @@ if(isfield(MCinput,'LightCollector'))
         title({'Normalized time-resolved fluence rate in the image plane','at 1x magnification [W/cm^2/W.incident]'});
         fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
     elseif LC.res > 1
-        if(~ishandle(7))
-            h_f = figure(7);
+        if(~ishandle(8))
+            h_f = figure(8);
             h_f.Position = [40 80 1100 650];
         else
-            h_f = figure(7);
+            h_f = figure(8);
         end
 		h_f.Color = 'w';
         clf;
@@ -121,11 +129,11 @@ if(isfield(MCinput,'LightCollector'))
         colormap(inferno);
         colorbar;
     elseif LC.nTimeBins > 0
-        if(~ishandle(7))
-            h_f = figure(7);
+        if(~ishandle(8))
+            h_f = figure(8);
             h_f.Position = [40 80 1100 650];
         else
-            h_f = figure(7);
+            h_f = figure(8);
         end
 		h_f.Color = 'w';
         clf;
