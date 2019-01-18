@@ -13,6 +13,9 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 % event at 45°. There is a secondary hump around -0.7, which fits with
 % photons experiencing two scattering events at a scattering angle of
 % 157.5°.
+% 
+% As in example 6, calcF is again set to false to speed up the simulation
+% slightly.
 
 g_vec = linspace(-1,1,21); % g values to simulate
 power_vec = zeros(1,length(g_vec));
@@ -46,6 +49,7 @@ clear MCinput
 MCinput.silentMode               = true; % Disables command window text and progress indication
 MCinput.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 MCinput.simulationTime           = 2/60; % [min] Time duration of the simulation
+MCinput.calcF                    = false; % (Default: true) If true, the 3D fluence rate output matrix F will be calculated. Set to false if you have a light collector and you're only interested in the Image output.
 
 MCinput.Beam.beamType            = 0; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
 MCinput.Beam.xFocus              = 0; % [cm] x position of focus

@@ -22,6 +22,11 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 % The silentMode flags are used here, which suppress the outputs to the
 % command line, which is especially useful to avoid excessive text if
 % simulating in a for- or while-loop like this.
+% 
+% Also, the optional calcF flag in the MCinput is here set to false, which
+% means the MC simulation does not calculate the 3D fluence rate matrix.
+% This is useful because we're here only interested in the "Image" data,
+% and setting calcF to false will speed up the simulation a bit (10-30%).
 
 t_vec = linspace(0,0.1,21); % Thicknesses to simulate
 power_vec = zeros(1,length(t_vec));
@@ -55,6 +60,7 @@ clear MCinput
 MCinput.silentMode               = true; % Disables command window text and progress indication
 MCinput.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 MCinput.simulationTime           = 2/60; % [min] Time duration of the simulation
+MCinput.calcF                    = false; % (Default: true) If true, the 3D fluence rate output matrix F will be calculated. Set to false if you have a light collector and you're only interested in the Image output.
 
 MCinput.Beam.beamType            = 0; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
 MCinput.Beam.xFocus              = 0; % [cm] x position of focus

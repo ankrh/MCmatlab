@@ -1,9 +1,14 @@
 addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
 
 %% Description
-% This example shows how to calculate and plot the fluence rate of only
-% that light which ends up on the light collector. This is shown for both
-% excitation light and fluorescence light.
+% This example shows how to use the calcFdet flag to calculate and plot the
+% fluence rate of only that light which ends up on the light collector.
+% This is shown for both excitation light and fluorescence light. The
+% geometry is the same as in example 4, into which a Gaussian beam is
+% injected at x = 0.02 and the light collector is looking at x = -0.02.
+% 
+% In the fluence rate plot for collected light, you can see how the photons
+% all start at the source and end at the light collector.
 
 %% Geometry definition
 clear Ginput
