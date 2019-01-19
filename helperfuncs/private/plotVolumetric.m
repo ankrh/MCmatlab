@@ -164,6 +164,8 @@ set(h_checkbox1,'Callback',{@callback,vars});
 set(h_slider1,'Callback',{@callback,vars});
 set(h_slider2,'Callback',{@callback,vars});
 set(h_slider3,'Callback',{@callback,vars});
+
+rotate3d on
 return
 end
 
