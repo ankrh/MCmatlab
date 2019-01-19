@@ -2,6 +2,7 @@ function plotMCmatlab(MCinput,MCoutput)
 %   Displays (if calculated)
 %       Absorbed power
 %       Fluence rate of all photons
+%       Example paths of some of the photons
 %	And, if a light collector was defined, displays (if calculated)
 %		An illustration of the light collector angle and placement
 %		Image generated (which might be time-resolved)
@@ -49,9 +50,38 @@ if isfield(MCoutput,'F')
     fprintf('\n%.3g%% of incident light was absorbed within the cuboid.\n',100*G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(G.M).*MCoutput.F))));
 end
 
+if isfield(MCoutput,'ExamplePaths')
+    h_f = plotVolumetric(6,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties);
+    h_f.Name = 'Photon paths';
+    title('Photon paths');
+    box on;grid on;grid minor;
+
+    previousNaNidx = 1;
+    linenumber = 0;
+    for idx=3:size(MCoutput.ExamplePaths,2)
+        if isnan(MCoutput.ExamplePaths(1,idx))
+            linenumber = linenumber + 1;
+            xdata = MCoutput.ExamplePaths(1,previousNaNidx+1:idx-1);
+            ydata = MCoutput.ExamplePaths(2,previousNaNidx+1:idx-1);
+            zdata = MCoutput.ExamplePaths(3,previousNaNidx+1:idx-1);
+            adata = MCoutput.ExamplePaths(4,previousNaNidx+1:idx-1);
+            previousNaNidx = idx;
+            surface([xdata;xdata],...
+				    [ydata;ydata],...
+				    [zdata;zdata],...
+                    'AlphaData',[adata;adata],...
+				    'EdgeColor',[0 0 0],...
+                    'EdgeAlpha','flat',...
+                    'FaceColor','none',...
+                    'CDataMapping','direct',...
+                    'LineWidth',2);
+        end
+    end
+end
+
 if(isfield(MCinput,'LightCollector'))
     %% If there's a light collector, show its orientation and the detected light
-    h_f = plotVolumetric(6,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties);
+    h_f = plotVolumetric(7,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties);
     h_f.Name = 'Light collector illustration';
     title('Light collector illustration');
     box on;grid on;grid minor;
@@ -91,7 +121,7 @@ if(isfield(MCinput,'LightCollector'))
 
     if isfield(MCoutput,'Fdet')
         %% Make Fdet fluence rate plot
-        h_f = plotVolumetric(7,G.x,G.y,G.z,MCoutput.Fdet,'MCmatlab_fromZero');
+        h_f = plotVolumetric(8,G.x,G.y,G.z,MCoutput.Fdet,'MCmatlab_fromZero');
         h_f.Name = 'Normalized fluence rate of collected light';
         title('Normalized fluence rate of collected light [W/cm^2/W.incident] ')
     end
@@ -105,7 +135,7 @@ if(isfield(MCinput,'LightCollector'))
     end
 
     if LC.res > 1 && LC.nTimeBins > 0
-        h_f = plotVolumetric(8,MCoutput.X,MCoutput.Y,timevector,MCoutput.Image,'slicePositions',[1 1 0]);
+        h_f = plotVolumetric(9,MCoutput.X,MCoutput.Y,timevector,MCoutput.Image,'slicePositions',[1 1 0]);
         h_f.Name = 'Image';
         xlabel('X [cm]');
         ylabel('Y [cm]');
@@ -129,11 +159,11 @@ if(isfield(MCinput,'LightCollector'))
         colormap(inferno);
         colorbar;
     elseif LC.nTimeBins > 0
-        if(~ishandle(8))
-            h_f = figure(8);
+        if(~ishandle(9))
+            h_f = figure(9);
             h_f.Position = [40 80 1100 650];
         else
-            h_f = figure(8);
+            h_f = figure(9);
         end
 		h_f.Color = 'w';
         clf;

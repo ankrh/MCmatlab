@@ -16,6 +16,10 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 % means the solver leaves one CPU unused, making it easier to perform other
 % work on the PC while simulations are running. Note that multithreading is
 % anyway only supported on Windows. On Mac, useAllCPUs is ignored.
+% 
+% Additionally, the optional "nExamplePaths" parameter is demonstrated, a
+% value specifying the number of photons whose paths should be stored and
+% shown as lines in a 3D plot after completion.
 
 %% Geometry definition
 clear Ginput
@@ -41,6 +45,7 @@ plotMCmatlabGeom(Goutput);
 clear MCinput
 MCinput.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 MCinput.simulationTime           = .1; % [min] Time duration of the simulation
+MCinput.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
 
 MCinput.Beam.beamType            = 1; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
 MCinput.Beam.xFocus              = 0; % [cm] x position of focus

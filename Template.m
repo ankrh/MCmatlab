@@ -31,6 +31,7 @@ plotMCmatlabGeom(Goutput);
 % MCinput.simulationTime           = .1; % [min] Time duration of the simulation
 % MCinput.calcF                    = true; % (Default: true) If true, the 3D fluence rate output matrix F will be calculated. Set to false if you have a light collector and you're only interested in the Image output.
 % MCinput.calcFdet                 = false; % (Default: false) If true, the 3D fluence rate output matrix Fdet will be calculated. Only photons that end up on the light collector are counted in Fdet.
+% MCinput.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
 % 
 % MCinput.Beam.beamType            = 2; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
 % MCinput.Beam.xFocus              = 0; % [cm] x position of focus
@@ -71,6 +72,7 @@ plotMCmatlabGeom(Goutput);
 % FMCinput.simulationTime           = .1; % [min] Time duration of the simulation
 % FMCinput.calcF                    = true; % (Default: true) If true, the 3D fluence rate output matrix F will be calculated. Set to false if you have a light collector and you're only interested in the Image output.
 % FMCinput.calcFdet                 = false; % (Default: false) If true, the 3D fluence rate output matrix Fdet will be calculated. Only photons that end up on the light collector are counted in Fdet.
+% FMCinput.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
 % 
 % % FMCinput.LightCollector.x         = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
 % % FMCinput.LightCollector.y         = 0; % [cm] y position

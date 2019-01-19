@@ -35,6 +35,9 @@ end
 if ~isfield(MCinput,'calcFdet')
     MCinput.calcFdet = false;
 end
+if ~isfield(MCinput,'nExamplePaths')
+    MCinput.nExamplePaths = 0;
+end
 
 if isfield(MCinput,'LightCollector')
     %% Check to ensure that the light collector is not inside the cuboid and set res to 1 if using fiber

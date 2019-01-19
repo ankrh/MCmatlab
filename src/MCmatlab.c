@@ -108,6 +108,13 @@ struct photon { // Struct type for parameters describing the thread-specific cur
     double         *weight_record; // List of the weights that have been deposited into the voxels, used only if calcFdet is true
 };
 
+struct paths { // Struct type for storing the paths taken by the nExamplePaths first photons simulated by the master thread
+    long           nExamplePaths; // Number of photons to store the path of
+    long           pathsSize; // Current size of the list
+    long           pathsElems; // Current number of elements used
+    double         *data; // Array containing x, y, z and weight data for the photons, in which the paths of different photons are separated by four NaNs
+};
+
 void unitcrossprod(double *a, double *b, double *c) {
     c[0] = a[1]*b[2] - a[2]*b[1];
     c[1] = a[2]*b[0] - a[0]*b[2];
@@ -134,7 +141,7 @@ void axisrotate(double const * const r, double const * const u, double const the
     r_out[2] = (u[2]*u[0]*(1-ct) - u[1]*st)*r[0] + (u[2]*u[1]*(1-ct) + u[0]*st)*r[1] + (u[2]*u[2]*(1-ct) +      ct)*r[2];
 }
 
-void launchPhoton(struct photon * const P, struct beam const * const B, struct geometry const * const G) {
+void launchPhoton(struct photon * const P, struct beam const * const B, struct geometry const * const G, struct paths * const Pa) {
     double r,phi,rand,costheta,sintheta;
     long   d,j,idx;
     double target[3],w0[3];
@@ -284,6 +291,26 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
     
     P->stepLeft	= -log(RandomNum);
     P->nThreadPhotons++;
+    
+    #ifdef _WIN32
+    #pragma omp master
+    #endif
+    {
+        if(P->nThreadPhotons <= Pa->nExamplePaths) {
+            if(Pa->pathsElems + 1 >= Pa->pathsSize) {
+                Pa->pathsSize *= 2; // double the record's size
+                Pa->data = mxRealloc(Pa->data,4*Pa->pathsSize*sizeof(double));
+                if(!Pa->data) mexErrMsgIdAndTxt("Error: Out of memory","Error: Out of memory");
+            }
+            for(long i=0;i<4;i++) Pa->data[4*Pa->pathsElems+i] = NAN;
+            Pa->pathsElems++;
+            Pa->data[4*Pa->pathsElems  ] = (P->i[0] - G->n[0]/2.0)*G->d[0]; // Store x
+            Pa->data[4*Pa->pathsElems+1] = (P->i[1] - G->n[1]/2.0)*G->d[1]; // Store y
+            Pa->data[4*Pa->pathsElems+2] = (P->i[2]              )*G->d[2]; // Store z
+            Pa->data[4*Pa->pathsElems+3] = P->weight;                     // Store photon weight
+            Pa->pathsElems++;
+        }
+    }
 }
 
 void formImage(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC, double * const Fdet, double * const Image) {
@@ -388,7 +415,7 @@ void getNewVoxelProperties(struct photon * const P, struct geometry const * cons
     P->RI  = G->RIv  [(P->i[2] < 0)? 0: ((P->i[2] >= G->n[2])? G->n[2]-1: (long)floor(P->i[2]))];
 }
 
-void propagatePhoton(struct photon * const P, struct geometry const * const G, double * const F) {
+void propagatePhoton(struct photon * const P, struct geometry const * const G, double * const F, struct paths * const Pa) {
     long idx;
 
     P->sameVoxel = true;
@@ -469,9 +496,26 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, d
                 P->weight_record = mxRealloc(P->weight_record,P->recordSize*sizeof(double));
                 if(!P->j_record || !P->weight_record) mexErrMsgIdAndTxt("Error: Out of memory","Error: Out of memory");
             }
+            P->j_record[P->recordElems] = P->j;
+            P->weight_record[P->recordElems] = absorb;
             P->recordElems++;
-            P->j_record[P->recordElems-1] = P->j;
-            P->weight_record[P->recordElems-1] = absorb;
+        }
+    }
+    #ifdef _WIN32
+    #pragma omp master
+    #endif
+    {
+        if(P->nThreadPhotons <= Pa->nExamplePaths) {
+            if(Pa->pathsElems == Pa->pathsSize) {
+                Pa->pathsSize *= 2; // double the record's size
+                Pa->data = mxRealloc(Pa->data,4*Pa->pathsSize*sizeof(double));
+                if(!Pa->data) mexErrMsgIdAndTxt("Error: Out of memory","Error: Out of memory");
+            }
+            Pa->data[4*Pa->pathsElems  ] = (P->i[0] - G->n[0]/2.0)*G->d[0]; // Store x
+            Pa->data[4*Pa->pathsElems+1] = (P->i[1] - G->n[1]/2.0)*G->d[1]; // Store y
+            Pa->data[4*Pa->pathsElems+2] = (P->i[2]              )*G->d[2]; // Store z
+            Pa->data[4*Pa->pathsElems+3] = P->weight;                     // Store photon weight
+            Pa->pathsElems++;
         }
     }
 }
@@ -554,7 +598,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     bool silentMode = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"silentMode"));
     bool calcF = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"calcF")); // Are we supposed to calculate the F matrix?
     bool calcFdet = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"calcFdet")); // Are we supposed to calculate the Fdet matrix?
-
     
     // To know if we are simulating fluorescence, we check if a "sourceDistribution" field exists. If so, we will use it later in the beam definition.
     mxArray *MatlabBeam = mxGetField(prhs[0],0,"Beam");
@@ -654,34 +697,40 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         .tEnd         =  *mxGetPr(mxGetField(MatlabLC,0,"tEnd"))};
     struct lightcollector const *LC = &LC_var;
     
-    // Prepare output MATLAB struct
-    double *Image  = NULL;
+    struct paths Pa_var;
+    struct paths *Pa = &Pa_var;
+    Pa->nExamplePaths = *mxGetPr(mxGetField(prhs[0],0,"nExamplePaths")); // How many photon path examples are we supposed to store?
+    Pa->pathsSize = 10*Pa->nExamplePaths; // Will be dynamically increased later if needed
+    Pa->pathsElems = 0;
+    Pa->data = Pa->pathsSize? mxMalloc(4*Pa->pathsSize*sizeof(double)): NULL;
+
     
-    if(useLightCollector && calcF && calcFdet) {
-        plhs[0] = mxCreateStructMatrix(1,1,5,(const char *[]){"F","Fdet","Image","nPhotons","nThreads"});
-    } else if(useLightCollector && calcF) {
-        plhs[0] = mxCreateStructMatrix(1,1,4,(const char *[]){"F","Image","nPhotons","nThreads"});
-    } else if(useLightCollector && calcFdet) {
-        plhs[0] = mxCreateStructMatrix(1,1,4,(const char *[]){"Fdet","Image","nPhotons","nThreads"});
-    } else if(useLightCollector) {
-        plhs[0] = mxCreateStructMatrix(1,1,3,(const char *[]){"Image","nPhotons","nThreads"});
-    } else { // only calcF is true
-        plhs[0] = mxCreateStructMatrix(1,1,3,(const char *[]){"F","nPhotons","nThreads"});
-    }
-    if(useLightCollector) {
-        mxSetField(plhs[0],0,"Image", mxCreateNumericArray(3,(mwSize[]){LC->res[0],LC->res[0],LC->res[1]},mxDOUBLE_CLASS,mxREAL));
-        Image  = mxGetPr(mxGetField(plhs[0],0,"Image"));
-    }        
+// Prepare output MATLAB struct
+    long nOutputs = 2 + useLightCollector + calcF + calcFdet + (Pa->nExamplePaths != 0);
+    char *fieldnames[nOutputs];
+    idx = 0;
+    fieldnames[idx++] = "nPhotons";
+    fieldnames[idx++] = "nThreads";
+    if(useLightCollector) fieldnames[idx++] = "Image";
+    if(calcF) fieldnames[idx++] = "F";
+    if(calcFdet) fieldnames[idx++] = "Fdet";
+    if(Pa->nExamplePaths) fieldnames[idx++] = "ExamplePaths";
     
-    if(calcF) mxSetField(plhs[0],0,"F",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
-    if(calcFdet) mxSetField(plhs[0],0,"Fdet",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
+    plhs[0] = mxCreateStructMatrix(1,1,nOutputs,(const char **)fieldnames);
+
+    if(calcF)             mxSetField(plhs[0],0,"F",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
+    if(calcFdet)          mxSetField(plhs[0],0,"Fdet",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
+    if(useLightCollector) mxSetField(plhs[0],0,"Image", mxCreateNumericArray(3,(mwSize[]){LC->res[0],LC->res[0],LC->res[1]},mxDOUBLE_CLASS,mxREAL));
     mxSetField(plhs[0],0,"nPhotons",mxCreateDoubleMatrix(1,1,mxREAL));
     mxSetField(plhs[0],0,"nThreads",mxCreateDoubleMatrix(1,1,mxREAL));
     double *F           = calcF? mxGetPr(mxGetField(plhs[0],0,"F")): NULL;
     double *Fdet        = calcFdet? mxGetPr(mxGetField(plhs[0],0,"Fdet")): NULL;
+    double *Image       = useLightCollector? mxGetPr(mxGetField(plhs[0],0,"Image")): NULL;
     double *nPhotonsPtr = mxGetPr(mxGetField(plhs[0],0,"nPhotons"));
     double *nThreadsPtr = mxGetPr(mxGetField(plhs[0],0,"nThreads"));
     
+    
+
     if(!silentMode) {
         // Display parameters
         printf("---------------------------------------------------------\n");
@@ -755,7 +804,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         #endif
         
 		while((pctProgress < 100) && !ctrlc_caught) {
-            launchPhoton(P,B,G);
+            launchPhoton(P,B,G,Pa);
             
 			while(P->alive) {
 				while(P->stepLeft>0) {
@@ -764,7 +813,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                         if(!P->alive) break;
                         getNewVoxelProperties(P,G); // If photon has just entered a new voxel or has just been launched
                     }
-                    propagatePhoton(P,G,F);
+                    propagatePhoton(P,G,F,Pa);
 				}
                 checkRoulette(P);
 				scatterPhoton(P,G);
@@ -813,4 +862,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         mexEvalString("drawnow;");
     }
     normalizeDeposition(B,G,LC,F,Fdet,Image,*nPhotonsPtr); // Convert data to relative fluence rate
+    
+    if(Pa->nExamplePaths) {
+        mxSetField(plhs[0],0,"ExamplePaths",mxCreateNumericMatrix(4,Pa->pathsElems,mxDOUBLE_CLASS,mxREAL));
+        memcpy(mxGetPr(mxGetField(plhs[0],0,"ExamplePaths")),Pa->data,4*sizeof(double)*Pa->pathsElems);
+        mxFree(Pa->data);
+    }
 }

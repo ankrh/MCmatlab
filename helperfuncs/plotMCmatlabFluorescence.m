@@ -3,6 +3,7 @@ function plotMCmatlabFluorescence(FMCinput,FMCoutput)
 %       Distribution of fluorescence emitters
 %       Absorbed fluorescence power
 %       Fluorescence fluence rate of all photons
+%       Example paths of some of the photons
 %	And, if a light collector was defined, displays (if calculated)
 %		An illustration of the light collector angle and placement
 %		Image generated
@@ -39,7 +40,7 @@ mua_vec = [G.mediaProperties.mua];
 %% Plot emitter distribution
 Y_vec = [G.mediaProperties.Y]; % The media's fluorescence power efficiencies
 FluorescenceEmitters = Y_vec(G.M).*mua_vec(G.M).*FMCinput.MCoutput.F; % [W/cm^3]
-h_f = plotVolumetric(9,G.x,G.y,G.z,FluorescenceEmitters,'MCmatlab_fromZero');
+h_f = plotVolumetric(10,G.x,G.y,G.z,FluorescenceEmitters,'MCmatlab_fromZero');
 h_f.Name = 'Fluorescence emitters';
 title('Fluorescence emitter distribution [W/cm^3/W.incident] ')
 
@@ -50,12 +51,12 @@ fprintf('\n%.3g%% of absorbed excitation light was re-emitted as fluorescence.\n
 if isfield(FMCoutput,'F')
     %% Make power absorption plot
     mua_vec = [G.mediaProperties_f.mua];
-    h_f = plotVolumetric(10,G.x,G.y,G.z,mua_vec(G.M).*FMCoutput.F,'MCmatlab_fromZero');
+    h_f = plotVolumetric(11,G.x,G.y,G.z,mua_vec(G.M).*FMCoutput.F,'MCmatlab_fromZero');
     h_f.Name = 'Fluorescence power absorption';
     title('Normalized absorbed fluorescence power per unit volume [W/cm^3/W.incident] ')
 
     %% Make fluence rate plot
-    h_f = plotVolumetric(11,G.x,G.y,G.z,FMCoutput.F,'MCmatlab_fromZero');
+    h_f = plotVolumetric(12,G.x,G.y,G.z,FMCoutput.F,'MCmatlab_fromZero');
     h_f.Name = 'Fluorescence fluence rate';
     title('Normalized fluorescence fluence rate (Intensity) [W/cm^2/W.incident] ')
 
@@ -63,9 +64,38 @@ if isfield(FMCoutput,'F')
     fprintf('%.3g%% of emitted fluorescence light was re-absorbed within the cuboid.\n',100*P_flu_abs/P_flu_emit);
 end
 
+if isfield(FMCoutput,'ExamplePaths')
+    h_f = plotVolumetric(13,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_f);
+    h_f.Name = 'Fluorescence photon paths';
+    title('Fluorescence photon paths');
+    box on;grid on;grid minor;
+
+    previousNaNidx = 1;
+    linenumber = 0;
+    for idx=3:size(FMCoutput.ExamplePaths,2)
+        if isnan(FMCoutput.ExamplePaths(1,idx))
+            linenumber = linenumber + 1;
+            xdata = FMCoutput.ExamplePaths(1,previousNaNidx+1:idx-1);
+            ydata = FMCoutput.ExamplePaths(2,previousNaNidx+1:idx-1);
+            zdata = FMCoutput.ExamplePaths(3,previousNaNidx+1:idx-1);
+            adata = FMCoutput.ExamplePaths(4,previousNaNidx+1:idx-1);
+            previousNaNidx = idx;
+            surface([xdata;xdata],...
+				    [ydata;ydata],...
+				    [zdata;zdata],...
+                    'AlphaData',[adata;adata],...
+				    'EdgeColor',[0 0 0],...
+                    'EdgeAlpha','flat',...
+                    'FaceColor','none',...
+                    'CDataMapping','direct',...
+                    'LineWidth',2);
+        end
+    end
+end
+
 if(isfield(FMCinput,'LightCollector'))
     %% If there's a fluorescence light collector, show its orientation and the detected light
-    h_f = plotVolumetric(12,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_f);
+    h_f = plotVolumetric(14,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_f);
     h_f.Name = 'Fluorescence light collector illustration';
     title('Fluorescence light collector illustration');
     box on;grid on;grid minor;
@@ -105,17 +135,17 @@ if(isfield(FMCinput,'LightCollector'))
 
     if isfield(FMCoutput,'Fdet')
         %% Make Fdet fluence rate plot
-        h_f = plotVolumetric(13,G.x,G.y,G.z,FMCoutput.Fdet,'MCmatlab_fromZero');
+        h_f = plotVolumetric(15,G.x,G.y,G.z,FMCoutput.Fdet,'MCmatlab_fromZero');
         h_f.Name = 'Normalized fluence rate of collected fluorescence light';
         title('Normalized fluence rate of collected fluorescence light [W/cm^2/W.incident] ')
     end
     
     if LC.res > 1
-        if(~ishandle(14))
-            h_f = figure(14);
+        if(~ishandle(16))
+            h_f = figure(16);
             h_f.Position = [40 80 1100 650];
         else
-            h_f = figure(14);
+            h_f = figure(16);
         end
 		h_f.Color = 'w';
         clf;
