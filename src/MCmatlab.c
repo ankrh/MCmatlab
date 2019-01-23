@@ -50,7 +50,7 @@
 extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing the mex function
 #endif
 
-#define PI          3.14159265358979323846
+#define PI          acos(-1)
 #define C           29979245800 // speed of light in vacuum in cm/s
 #define THRESHOLD   0.01		// used in roulette
 #define CHANCE      0.1  		// used in roulette
@@ -374,54 +374,42 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
     }
 }
 
-void checkEscape(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC, double * const Fdet, double * const Image) {
-	bool escaped = false;
-	long killorescapedirection = 0; // 0: no kill or escape, 1: neg x, 2: pos x, 3: neg y, 4: pos y, 5: neg z, 6: pos z
+void formFarField(struct photon const * const P, long const farfieldRes, double * const FF) {
+    double theta = acos(P->u[2]);
+    double phi = atan2(P->u[1],P->u[0]);
+    #ifdef _WIN32
+    #pragma omp atomic
+    #endif
+    FF[(long)floor(theta/PI*farfieldRes) + farfieldRes*(long)floor((phi+PI)/(2*PI)*farfieldRes)] += P->weight;
+}
 
-	P->insideVolume = P->i[0] < G->n[0] && P->i[0] >= 0 &&
+void checkEscape(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC, double * const Fdet, double * const Image, long const farfieldRes, double * const FF) {
+    bool escaped = false;
+    P->insideVolume = P->i[0] < G->n[0] && P->i[0] >= 0 &&
                       P->i[1] < G->n[1] && P->i[1] >= 0 &&
                       P->i[2] < G->n[2] && P->i[2] >= 0;
 
     switch (G->boundaryType) {
         case 0:
-			killorescapedirection = P->i[0]/G->n[0] - 1.0/2 < -KILLRANGE/2? 1:
-					     		    P->i[0]/G->n[0] - 1.0/2 >  KILLRANGE/2? 2:
-							        P->i[1]/G->n[1] - 1.0/2 < -KILLRANGE/2? 3:
-					     		    P->i[1]/G->n[1] - 1.0/2 >  KILLRANGE/2? 4:
-							        P->i[2]/G->n[2] - 1.0/2 < -KILLRANGE/2? 5:
-					     		    P->i[2]/G->n[2] - 1.0/2 >  KILLRANGE/2? 6:
-									     				                    0;
+            P->alive = (fabs(P->i[0]/G->n[0] - 1.0/2) <  KILLRANGE/2 &&
+                        fabs(P->i[1]/G->n[1] - 1.0/2) <  KILLRANGE/2 &&
+                        fabs(P->i[2]/G->n[2] - 1.0/2) <  KILLRANGE/2);
             break;
         case 1:
-			killorescapedirection = P->i[0] <  0      ? 1:
-					     		    P->i[0] >= G->n[0]? 2:
-							        P->i[1] <  0      ? 3:
-							        P->i[1] >= G->n[1]? 4:
-							        P->i[2] <  0      ? 5:
-							        P->i[2] >= G->n[2]? 6:
-									     				0;
-			escaped = killorescapedirection != 0;
+            P->alive = P->insideVolume;
+            escaped = !P->insideVolume && P->RI == 1;
             break;
         case 2:
-			killorescapedirection = P->i[0]/G->n[0] - 1.0/2 < -KILLRANGE/2? 1:
-					     		    P->i[0]/G->n[0] - 1.0/2 >  KILLRANGE/2? 2:
-							        P->i[1]/G->n[1] - 1.0/2 < -KILLRANGE/2? 3:
-					     		    P->i[1]/G->n[1] - 1.0/2 >  KILLRANGE/2? 4:
-							        P->i[2]                 <  0          ? 5:
-					     		    P->i[2]/G->n[2] - 1.0/2 >  KILLRANGE/2? 6:
-									     				                    0;
-			escaped = killorescapedirection == 5;
+            P->alive = (fabs(P->i[0]/G->n[0] - 1.0/2) <  KILLRANGE/2 &&
+                        fabs(P->i[1]/G->n[1] - 1.0/2) <  KILLRANGE/2 &&
+                             P->i[2]/G->n[2] - 1.0/2  <  KILLRANGE/2 &&
+                             P->i[2]                  >= 0);
+            escaped = (P->i[2] < 0) && P->RI == 1;
             break;
     }
-	P->alive = killorescapedirection != 0;
     
-	switch(killorescapedirection) {
-		case 1:
-			
-			break;
-	}
-
-    if(escaped && Image && P->RI == 1) formImage(P,G,LC,Fdet,Image); // If Image is not NULL then that's because useLightCollector was set to true (non-zero)
+    if(escaped && FF)    formFarField(P,farfieldRes,FF);
+    if(escaped && Image) formImage(P,G,LC,Fdet,Image); // If Image is not NULL then that's because useLightCollector was set to true (non-zero)
 }
 
 void getNewVoxelProperties(struct photon * const P, struct geometry const * const G) {
@@ -580,31 +568,35 @@ void scatterPhoton(struct photon * const P, struct geometry const * const G) {
     P->stepLeft	= -log(RandomNum);
 }
 
-void normalizeDeposition(struct beam const * const B, struct geometry const * const G, struct lightcollector const * const LC, double * const F, double * const Fdet, double * const Image, double nPhotons) {
+void normalizeDeposition(struct beam const * const B, struct geometry const * const G, struct lightcollector const * const LC, double * const F, double * const Fdet, double * const Image, double * const FF, long const farfieldRes, double nPhotons) {
     long j;
     double V = G->d[0]*G->d[1]*G->d[2]; // Voxel volume
     long L = G->n[0]*G->n[1]*G->n[2]; // Total number of voxels in cuboid
     long L_LC = LC->res[0]*LC->res[0]; // Total number of spatial pixels in light collector planes
+    long L_FF = farfieldRes*farfieldRes; // Total number of pixels in the far field array
     // Normalize deposition to yield relative fluence rate (F). For fluorescence, the result is relative to
     // the incident excitation power (not emitted fluorescence power).
     if(B->S) { // For a 3D source distribution (e.g., fluorescence)
-		if(F)    for(j=0;j<L;j++) F[j]    /= V*nPhotons*G->muav[G->M[j]]/B->power;
-		if(Fdet) for(j=0;j<L;j++) Fdet[j] /= V*nPhotons*G->muav[G->M[j]]/B->power;
+		if(F)    for(j=0;j<L   ;j++) F[j]    /= V*nPhotons*G->muav[G->M[j]]/B->power;
+		if(Fdet) for(j=0;j<L   ;j++) Fdet[j] /= V*nPhotons*G->muav[G->M[j]]/B->power;
+        if(FF)   for(j=0;j<L_FF;j++) FF[j]   /=   nPhotons                 /B->power;
         if(Image) {
             if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/B->power;
             else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons/B->power;
         }
         mxFree(B->S);
     } else if(B->beamType == 3 && G->boundaryType != 1) { // For infinite plane wave launched into volume without absorbing walls
-		if(F)    for(j=0;j<L;j++) F[j]    /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE);
-		if(Fdet) for(j=0;j<L;j++) Fdet[j] /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE);
+		if(F)    for(j=0;j<L   ;j++) F[j]    /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE);
+		if(Fdet) for(j=0;j<L   ;j++) Fdet[j] /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE);
+        if(FF)   for(j=0;j<L_FF;j++) FF[j]   /=   nPhotons                 /(KILLRANGE*KILLRANGE);
         if(Image) {
             if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/(KILLRANGE*KILLRANGE);
             else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons/(KILLRANGE*KILLRANGE);
         }
 	} else {
-		if(F)    for(j=0;j<L;j++) F[j]    /= V*nPhotons*G->muav[G->M[j]];
-		if(Fdet) for(j=0;j<L;j++) Fdet[j] /= V*nPhotons*G->muav[G->M[j]];
+		if(F)    for(j=0;j<L   ;j++) F[j]    /= V*nPhotons*G->muav[G->M[j]];
+		if(Fdet) for(j=0;j<L   ;j++) Fdet[j] /= V*nPhotons*G->muav[G->M[j]];
+        if(FF)   for(j=0;j<L_FF;j++) FF[j]   /=   nPhotons;
         if(Image) {
             if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons;
             else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons;
@@ -719,6 +711,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         .tEnd         =  *mxGetPr(mxGetField(MatlabLC,0,"tEnd"))};
     struct lightcollector const *LC = &LC_var;
     
+    // Paths definitions (example photon trajectories)
     struct paths Pa_var;
     struct paths *Pa = &Pa_var;
     Pa->nExamplePaths = *mxGetPr(mxGetField(prhs[0],0,"nExamplePaths")); // How many photon path examples are we supposed to store?
@@ -726,9 +719,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     Pa->pathsElems = 0;
     Pa->data = Pa->pathsSize? mxMalloc(4*Pa->pathsSize*sizeof(double)): NULL;
 
+    // Far field angle distribution resolution
+    long farfieldRes = *mxGetPr(mxGetField(prhs[0],0,"farfieldRes"));
     
 // Prepare output MATLAB struct
-    long nOutputs = 2 + useLightCollector + calcF + calcFdet + (Pa->nExamplePaths != 0);
+    long nOutputs = 2 + useLightCollector + calcF + calcFdet + (Pa->nExamplePaths != 0) + (farfieldRes != 0);
     char *fieldnames[nOutputs];
     idx = 0;
     fieldnames[idx++] = "nPhotons";
@@ -737,12 +732,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     if(calcF) fieldnames[idx++] = "F";
     if(calcFdet) fieldnames[idx++] = "Fdet";
     if(Pa->nExamplePaths) fieldnames[idx++] = "ExamplePaths";
+    if(farfieldRes) fieldnames[idx++] = "FarField";
     
     plhs[0] = mxCreateStructMatrix(1,1,nOutputs,(const char **)fieldnames);
 
     if(calcF)             mxSetField(plhs[0],0,"F",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
     if(calcFdet)          mxSetField(plhs[0],0,"Fdet",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
     if(useLightCollector) mxSetField(plhs[0],0,"Image", mxCreateNumericArray(3,(mwSize[]){LC->res[0],LC->res[0],LC->res[1]},mxDOUBLE_CLASS,mxREAL));
+    if(farfieldRes)       mxSetField(plhs[0],0,"FarField", mxCreateDoubleMatrix(farfieldRes,farfieldRes,mxREAL));
     mxSetField(plhs[0],0,"nPhotons",mxCreateDoubleMatrix(1,1,mxREAL));
     mxSetField(plhs[0],0,"nThreads",mxCreateDoubleMatrix(1,1,mxREAL));
     double *F           = calcF? mxGetPr(mxGetField(plhs[0],0,"F")): NULL;
@@ -750,7 +747,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     double *Image       = useLightCollector? mxGetPr(mxGetField(plhs[0],0,"Image")): NULL;
     double *nPhotonsPtr = mxGetPr(mxGetField(plhs[0],0,"nPhotons"));
     double *nThreadsPtr = mxGetPr(mxGetField(plhs[0],0,"nThreads"));
-    
+    double *FF          = farfieldRes? mxGetPr(mxGetField(plhs[0],0,"FarField")): NULL;
     
 
     if(!silentMode) {
@@ -831,7 +828,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 			while(P->alive) {
 				while(P->stepLeft>0) {
 					if(!P->sameVoxel) {
-                        checkEscape(P,G,LC,Fdet,Image,Pesc);
+                        checkEscape(P,G,LC,Fdet,Image,farfieldRes,FF);
                         if(!P->alive) break;
                         getNewVoxelProperties(P,G); // If photon has just entered a new voxel or has just been launched
                     }
@@ -883,7 +880,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         printf("---------------------------------------------------------\n");
         mexEvalString("drawnow;");
     }
-    normalizeDeposition(B,G,LC,F,Fdet,Image,*nPhotonsPtr); // Convert data to relative fluence rate
+    normalizeDeposition(B,G,LC,F,Fdet,Image,FF,farfieldRes,*nPhotonsPtr); // Convert data to relative fluence rate
     
     if(Pa->nExamplePaths) {
         mxSetField(plhs[0],0,"ExamplePaths",mxCreateNumericMatrix(4,Pa->pathsElems,mxDOUBLE_CLASS,mxREAL));

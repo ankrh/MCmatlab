@@ -3,6 +3,7 @@ function plotMCmatlab(MCinput,MCoutput)
 %       Absorbed power
 %       Fluence rate of all photons
 %       Example paths of some of the photons
+%       Distribution of escaped photons in the far field
 %	And, if a light collector was defined, displays (if calculated)
 %		An illustration of the light collector angle and placement
 %		Image generated (which might be time-resolved)
@@ -174,6 +175,40 @@ if(isfield(MCinput,'LightCollector'))
         xlabel('Time [s]'); ylabel('Normalized power [W/W.incident]'); grid on; grid minor;
         set(gca,'FontSize',18);
         fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
+    end
+end
+
+if isfield(MCoutput,'FarField')
+    farfieldRes = length(MCoutput.FarField);
+    if farfieldRes > 1
+        theta_vec = linspace(0,pi,farfieldRes+1).';
+        area_vec = 2*pi*(cos(theta_vec(1:end-1)) - cos(theta_vec(2:end)))/farfieldRes;
+        if(~ishandle(10))
+            h_f = figure(10);
+            h_f.Position = [40 80 1100 650];
+        else
+            h_f = figure(10);
+        end
+        h_f.Color = 'w';
+        clf;
+        [X_FF,Y_FF,Z_sphere] = sphere(farfieldRes);
+        Z_FF = -Z_sphere;
+        surf(X_FF,Y_FF,Z_FF,MCoutput.FarField./repmat(area_vec,1,farfieldRes),'EdgeColor','none');
+        colormap(inferno);colorbar;
+        xlabel('u_x');
+        ylabel('u_y');
+        zlabel('u_z');
+        title('Far field distribution of escaped photons');
+        set(gca,'FontSize',18);
+        axis equal;
+        xlim([-1 1]);
+        ylim([-1 1]);
+        zlim([-1 1]);
+        set(gca,'ZDir','reverse');
+        rotate3d on
+        if ~verLessThan('matlab','9.0')
+            setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera');
+        end
     end
 end
 drawnow;

@@ -46,6 +46,9 @@ end
 if ~isfield(FMCinput,'nExamplePaths')
     FMCinput.nExamplePaths = 0;
 end
+if ~isfield(FMCinput,'farfieldRes')
+    FMCinput.farfieldRes = 0;
+end
 
 %% Calculate 3D fluorescence source distribution
 mua_vec = [FMCinput.G.mediaProperties.mua]; % The media's excitation absorption coefficients
