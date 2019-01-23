@@ -375,31 +375,53 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
 }
 
 void checkEscape(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC, double * const Fdet, double * const Image) {
-    bool escaped = false;
-    P->insideVolume = P->i[0] < G->n[0] && P->i[0] >= 0 &&
+	bool escaped = false;
+	long killorescapedirection = 0; // 0: no kill or escape, 1: neg x, 2: pos x, 3: neg y, 4: pos y, 5: neg z, 6: pos z
+
+	P->insideVolume = P->i[0] < G->n[0] && P->i[0] >= 0 &&
                       P->i[1] < G->n[1] && P->i[1] >= 0 &&
                       P->i[2] < G->n[2] && P->i[2] >= 0;
 
     switch (G->boundaryType) {
         case 0:
-            P->alive = (fabs(P->i[0]/G->n[0] - 1.0/2) <  KILLRANGE/2 &&
-                        fabs(P->i[1]/G->n[1] - 1.0/2) <  KILLRANGE/2 &&
-                        fabs(P->i[2]/G->n[2] - 1.0/2) <  KILLRANGE/2);
+			killorescapedirection = P->i[0]/G->n[0] - 1.0/2 < -KILLRANGE/2? 1:
+					     		    P->i[0]/G->n[0] - 1.0/2 >  KILLRANGE/2? 2:
+							        P->i[1]/G->n[1] - 1.0/2 < -KILLRANGE/2? 3:
+					     		    P->i[1]/G->n[1] - 1.0/2 >  KILLRANGE/2? 4:
+							        P->i[2]/G->n[2] - 1.0/2 < -KILLRANGE/2? 5:
+					     		    P->i[2]/G->n[2] - 1.0/2 >  KILLRANGE/2? 6:
+									     				                    0;
             break;
         case 1:
-            P->alive = P->insideVolume;
-            escaped = !P->insideVolume && P->RI == 1;
+			killorescapedirection = P->i[0] <  0      ? 1:
+					     		    P->i[0] >= G->n[0]? 2:
+							        P->i[1] <  0      ? 3:
+							        P->i[1] >= G->n[1]? 4:
+							        P->i[2] <  0      ? 5:
+							        P->i[2] >= G->n[2]? 6:
+									     				0;
+			escaped = killorescapedirection != 0;
             break;
         case 2:
-            P->alive = (fabs(P->i[0]/G->n[0] - 1.0/2) <  KILLRANGE/2 &&
-                        fabs(P->i[1]/G->n[1] - 1.0/2) <  KILLRANGE/2 &&
-                             P->i[2]/G->n[2] - 1.0/2  <  KILLRANGE/2 &&
-                             P->i[2]                  >= 0);
-            escaped = (P->i[2] < 0) && P->RI == 1;
+			killorescapedirection = P->i[0]/G->n[0] - 1.0/2 < -KILLRANGE/2? 1:
+					     		    P->i[0]/G->n[0] - 1.0/2 >  KILLRANGE/2? 2:
+							        P->i[1]/G->n[1] - 1.0/2 < -KILLRANGE/2? 3:
+					     		    P->i[1]/G->n[1] - 1.0/2 >  KILLRANGE/2? 4:
+							        P->i[2]                 <  0          ? 5:
+					     		    P->i[2]/G->n[2] - 1.0/2 >  KILLRANGE/2? 6:
+									     				                    0;
+			escaped = killorescapedirection == 5;
             break;
     }
+	P->alive = killorescapedirection != 0;
     
-    if(escaped && Image) formImage(P,G,LC,Fdet,Image); // If Image is not NULL then that's because useLightCollector was set to true (non-zero)
+	switch(killorescapedirection) {
+		case 1:
+			
+			break;
+	}
+
+    if(escaped && Image && P->RI == 1) formImage(P,G,LC,Fdet,Image); // If Image is not NULL then that's because useLightCollector was set to true (non-zero)
 }
 
 void getNewVoxelProperties(struct photon * const P, struct geometry const * const G) {
@@ -809,7 +831,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 			while(P->alive) {
 				while(P->stepLeft>0) {
 					if(!P->sameVoxel) {
-                        checkEscape(P,G,LC,Fdet,Image);
+                        checkEscape(P,G,LC,Fdet,Image,Pesc);
                         if(!P->alive) break;
                         getNewVoxelProperties(P,G); // If photon has just entered a new voxel or has just been launched
                     }
