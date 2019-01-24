@@ -26,13 +26,14 @@ plotMCmatlabGeom(Goutput);
 
 %% Monte Carlo simulation
 % clear MCinput
-% MCinput.silentMode               = false; % (Default: false) Disables command window text and progress indication
-% MCinput.useAllCPUs               = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 % MCinput.simulationTime           = .1; % [min] Time duration of the simulation
-% MCinput.calcF                    = true; % (Default: true) If true, the 3D fluence rate output matrix F will be calculated. Set to false if you have a light collector and you're only interested in the Image output.
-% MCinput.calcFdet                 = false; % (Default: false) If true, the 3D fluence rate output matrix Fdet will be calculated. Only photons that end up on the light collector are counted in Fdet.
-% MCinput.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
-% MCinput.farfieldRes              = 50; % (Default: 0) If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
+% 
+% % MCinput.silentMode               = false; % (Default: false) Disables command window text and progress indication
+% % MCinput.useAllCPUs               = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
+% % MCinput.calcF                    = true; % (Default: true) If true, the 3D fluence rate output matrix F will be calculated. Set to false if you have a light collector and you're only interested in the Image output.
+% % MCinput.calcFdet                 = false; % (Default: false) If true, the 3D fluence rate output matrix Fdet will be calculated. Only photons that end up on the light collector are counted in Fdet.
+% % MCinput.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
+% % MCinput.farfieldRes              = 50; % (Default: 0) If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
 % 
 % MCinput.Beam.beamType            = 2; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
 % MCinput.Beam.xFocus              = 0; % [cm] x position of focus
@@ -68,13 +69,14 @@ plotMCmatlabGeom(Goutput);
 
 %% Fluorescence Monte Carlo
 % clear FMCinput
-% FMCinput.silentMode               = false; % (Default: false) Disables command window text and progress indication
-% FMCinput.useAllCPUs               = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 % FMCinput.simulationTime           = .1; % [min] Time duration of the simulation
-% FMCinput.calcF                    = true; % (Default: true) If true, the 3D fluence rate output matrix F will be calculated. Set to false if you have a light collector and you're only interested in the Image output.
-% FMCinput.calcFdet                 = false; % (Default: false) If true, the 3D fluence rate output matrix Fdet will be calculated. Only photons that end up on the light collector are counted in Fdet.
-% FMCinput.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
-% FMCinput.farfieldRes              = 50; % (Default: 0) If nonzero, the photons exiting the simulation, either by being "killed" or "escaping", will have their angle distribution tracked in a 2D (theta,phi) array
+% 
+% % FMCinput.silentMode               = false; % (Default: false) Disables command window text and progress indication
+% % FMCinput.useAllCPUs               = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
+% % FMCinput.calcF                    = true; % (Default: true) If true, the 3D fluence rate output matrix F will be calculated. Set to false if you have a light collector and you're only interested in the Image output.
+% % FMCinput.calcFdet                 = false; % (Default: false) If true, the 3D fluence rate output matrix Fdet will be calculated. Only photons that end up on the light collector are counted in Fdet.
+% % FMCinput.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
+% % FMCinput.farfieldRes              = 50; % (Default: 0) If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
 % 
 % % FMCinput.LightCollector.x         = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
 % % FMCinput.LightCollector.y         = 0; % [cm] y position
@@ -97,9 +99,9 @@ plotMCmatlabGeom(Goutput);
 % plotMCmatlabFluorescence(FMCinput,FMCoutput);
 
 %% Heat simulation
-% HSinput.silentMode          = false; % (Default: false) Disables command window text and progress indication
-% HSinput.useAllCPUs          = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
-% HSinput.makeMovie           = true; % (Default: false) Requires silentMode = false.
+% % HSinput.silentMode          = false; % (Default: false) Disables command window text and progress indication
+% % HSinput.useAllCPUs          = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
+% % HSinput.makeMovie           = true; % (Default: false) Requires silentMode = false.
 % 
 % HSinput.heatBoundaryType    = 0; % 0: Insulating boundaries, 1: Constant-temperature boundaries (heat-sinked)
 % HSinput.P                   = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)

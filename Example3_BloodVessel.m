@@ -4,7 +4,7 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 % This example simulates a collimated top hat beam of radius 300 µm
 % incident on skin, with some gel (water) on the top. This example is
 % constructed identically to that on the mcxyz website, except that photons
-% are killed on all boundaries and the voxel grid is only 100x100x100:
+% escape on all boundaries and the voxel grid is only 100x100x100:
 % https://omlc.org/software/mc/mcxyz/
 %
 % The found absorption distribution is then passed into the heat simulator,

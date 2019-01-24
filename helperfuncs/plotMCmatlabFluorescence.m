@@ -4,6 +4,7 @@ function plotMCmatlabFluorescence(FMCinput,FMCoutput)
 %       Absorbed fluorescence power
 %       Fluorescence fluence rate of all photons
 %       Example paths of some of the photons
+%       Distribution of escaped photons in the far field
 %	And, if a light collector was defined, displays (if calculated)
 %		An illustration of the light collector angle and placement
 %		Image generated
@@ -40,7 +41,7 @@ mua_vec = [G.mediaProperties.mua];
 %% Plot emitter distribution
 Y_vec = [G.mediaProperties.Y]; % The media's fluorescence power efficiencies
 FluorescenceEmitters = Y_vec(G.M).*mua_vec(G.M).*FMCinput.MCoutput.F; % [W/cm^3]
-h_f = plotVolumetric(10,G.x,G.y,G.z,FluorescenceEmitters,'MCmatlab_fromZero');
+h_f = plotVolumetric(11,G.x,G.y,G.z,FluorescenceEmitters,'MCmatlab_fromZero');
 h_f.Name = 'Fluorescence emitters';
 title('Fluorescence emitter distribution [W/cm^3/W.incident] ')
 
@@ -51,12 +52,12 @@ fprintf('\n%.3g%% of absorbed excitation light was re-emitted as fluorescence.\n
 if isfield(FMCoutput,'F')
     %% Make power absorption plot
     mua_vec = [G.mediaProperties_f.mua];
-    h_f = plotVolumetric(11,G.x,G.y,G.z,mua_vec(G.M).*FMCoutput.F,'MCmatlab_fromZero');
+    h_f = plotVolumetric(12,G.x,G.y,G.z,mua_vec(G.M).*FMCoutput.F,'MCmatlab_fromZero');
     h_f.Name = 'Fluorescence power absorption';
     title('Normalized absorbed fluorescence power per unit volume [W/cm^3/W.incident] ')
 
     %% Make fluence rate plot
-    h_f = plotVolumetric(12,G.x,G.y,G.z,FMCoutput.F,'MCmatlab_fromZero');
+    h_f = plotVolumetric(13,G.x,G.y,G.z,FMCoutput.F,'MCmatlab_fromZero');
     h_f.Name = 'Fluorescence fluence rate';
     title('Normalized fluorescence fluence rate (Intensity) [W/cm^2/W.incident] ')
 
@@ -65,7 +66,7 @@ if isfield(FMCoutput,'F')
 end
 
 if isfield(FMCoutput,'ExamplePaths')
-    h_f = plotVolumetric(13,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_f);
+    h_f = plotVolumetric(14,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_f);
     h_f.Name = 'Fluorescence photon paths';
     title('Fluorescence photon paths');
     box on;grid on;grid minor;
@@ -95,7 +96,7 @@ end
 
 if(isfield(FMCinput,'LightCollector'))
     %% If there's a fluorescence light collector, show its orientation and the detected light
-    h_f = plotVolumetric(14,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_f);
+    h_f = plotVolumetric(15,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_f);
     h_f.Name = 'Fluorescence light collector illustration';
     title('Fluorescence light collector illustration');
     box on;grid on;grid minor;
@@ -128,24 +129,24 @@ if(isfield(FMCinput,'LightCollector'))
     end
 
     if LC.res > 1
-        fprintf('\n%.3g%% of fluorescence light ends up on the detector.\n',100*mean(mean(FMCoutput.Image))*LC.FieldSize^2);
+        fprintf('\n%.3g%% of fluorescence light ends up on the detector.\n',100*mean(mean(FMCoutput.Image))*LC.FieldSize^2/P_flu_emit);
     else
-        fprintf('\n%.3g%% of fluorescence light ends up on the detector.\n',100*FMCoutput.Image);
+        fprintf('\n%.3g%% of fluorescence light ends up on the detector.\n',100*FMCoutput.Image/P_flu_emit);
     end
 
     if isfield(FMCoutput,'Fdet')
         %% Make Fdet fluence rate plot
-        h_f = plotVolumetric(15,G.x,G.y,G.z,FMCoutput.Fdet,'MCmatlab_fromZero');
+        h_f = plotVolumetric(16,G.x,G.y,G.z,FMCoutput.Fdet,'MCmatlab_fromZero');
         h_f.Name = 'Normalized fluence rate of collected fluorescence light';
         title('Normalized fluence rate of collected fluorescence light [W/cm^2/W.incident] ')
     end
     
     if LC.res > 1
-        if(~ishandle(16))
-            h_f = figure(16);
+        if(~ishandle(17))
+            h_f = figure(17);
             h_f.Position = [40 80 1100 650];
         else
-            h_f = figure(16);
+            h_f = figure(17);
         end
 		h_f.Color = 'w';
         clf;
@@ -157,4 +158,45 @@ if(isfield(FMCinput,'LightCollector'))
         colorbar;
     end
 end
+
+if isfield(FMCoutput,'FarField')
+	fprintf('%.3g%% of fluorescence light escapes.\n',100*sum(sum(FMCoutput.FarField))/P_flu_emit);
+    farfieldRes = length(FMCoutput.FarField);
+    if farfieldRes > 1
+        theta_vec = linspace(0,pi,farfieldRes+1).'; % FMCoutput.FFtheta contains the theta values at the centers of the far field pixels, but we will not use those here since we need the corner positions to calculate the solid angle of the pixels
+        solidangle_vec = 2*pi*(cos(theta_vec(1:end-1)) - cos(theta_vec(2:end)))/farfieldRes; % Solid angle extended by each far field pixel, as function of theta
+        if(~ishandle(18))
+            h_f = figure(18);
+            h_f.Position = [40 80 1100 650];
+        else
+            h_f = figure(18);
+        end
+        h_f.Color = 'w';
+		h_f.Name = 'Fluorescence far field';
+        clf;
+		h_a = axes;
+
+        [ux,uy,minus_uz] = sphere(farfieldRes); % This MATLAB function gives us the correct ux,uy,uz coordinates of the corners of the far field pixels, except that uz has the wrong sign
+        uz = -minus_uz;
+        surf(ux,uy,uz,FMCoutput.FarField./repmat(solidangle_vec,1,farfieldRes),'EdgeColor','none');
+
+        colormap(inferno);colorbar;
+        xlabel('u_x');
+        ylabel('u_y');
+        zlabel('u_z');
+        title('Far field radiant intensity of escaped fluorescence photons [W/sr/W.incident]');
+        set(gca,'FontSize',18);
+        axis equal;
+        xlim([-1 1]);
+        ylim([-1 1]);
+        zlim([-1 1]);
+		h_a.ZDir = 'reverse';
+		h_a.CLim = [0 h_a.CLim(2)];
+        rotate3d on
+        if ~verLessThan('matlab','9.0')
+            setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera');
+        end
+    end
+end
+drawnow;
 end

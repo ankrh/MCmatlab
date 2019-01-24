@@ -6,7 +6,7 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 % medium with a variable (parametrically sweeped) scattering anisotropy g.
 % g is passed in through the mediaPropParams field and used within
 % getMediaProperties. Light is collected in transmission at a 45° angle in
-% a fiber, similar to example 6. At the end of the script, collected power
+% a fiber, similar to example 8. At the end of the script, collected power
 % as a function of g is plotted. The power is seen to be zero for g = +- 1,
 % which is because then the light can only be scattered exactly forward or
 % backward. The max is at about 0.6, fitting well with a single scattering
@@ -14,7 +14,7 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 % photons experiencing two scattering events at a scattering angle of
 % 157.5°.
 % 
-% As in example 6, calcF is again set to false to speed up the simulation
+% As in example 8, calcF is again set to false to speed up the simulation
 % slightly.
 
 g_vec = linspace(-1,1,21); % g values to simulate

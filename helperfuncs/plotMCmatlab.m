@@ -144,11 +144,11 @@ if(isfield(MCinput,'LightCollector'))
         title({'Normalized time-resolved fluence rate in the image plane','at 1x magnification [W/cm^2/W.incident]'});
         fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
     elseif LC.res > 1
-        if(~ishandle(8))
-            h_f = figure(8);
+        if(~ishandle(9))
+            h_f = figure(9);
             h_f.Position = [40 80 1100 650];
         else
-            h_f = figure(8);
+            h_f = figure(9);
         end
 		h_f.Color = 'w';
         clf;
@@ -179,10 +179,11 @@ if(isfield(MCinput,'LightCollector'))
 end
 
 if isfield(MCoutput,'FarField')
+	fprintf('%.3g%% of incident light escapes.\n',100*sum(sum(MCoutput.FarField)));
     farfieldRes = length(MCoutput.FarField);
     if farfieldRes > 1
-        theta_vec = linspace(0,pi,farfieldRes+1).';
-        area_vec = 2*pi*(cos(theta_vec(1:end-1)) - cos(theta_vec(2:end)))/farfieldRes;
+        theta_vec = linspace(0,pi,farfieldRes+1).'; % MCoutput.FFtheta contains the theta values at the centers of the far field pixels, but we will not use those here since we need the corner positions to calculate the solid angle of the pixels
+        solidangle_vec = 2*pi*(cos(theta_vec(1:end-1)) - cos(theta_vec(2:end)))/farfieldRes; % Solid angle extended by each far field pixel, as function of theta
         if(~ishandle(10))
             h_f = figure(10);
             h_f.Position = [40 80 1100 650];
@@ -190,21 +191,26 @@ if isfield(MCoutput,'FarField')
             h_f = figure(10);
         end
         h_f.Color = 'w';
+		h_f.Name = 'Far field';
         clf;
-        [X_FF,Y_FF,Z_sphere] = sphere(farfieldRes);
-        Z_FF = -Z_sphere;
-        surf(X_FF,Y_FF,Z_FF,MCoutput.FarField./repmat(area_vec,1,farfieldRes),'EdgeColor','none');
+		h_a = axes;
+
+        [ux,uy,minus_uz] = sphere(farfieldRes); % This MATLAB function gives us the correct ux,uy,uz coordinates of the corners of the far field pixels, except that uz has the wrong sign
+        uz = -minus_uz;
+        surf(ux,uy,uz,MCoutput.FarField./repmat(solidangle_vec,1,farfieldRes),'EdgeColor','none');
+
         colormap(inferno);colorbar;
         xlabel('u_x');
         ylabel('u_y');
         zlabel('u_z');
-        title('Far field distribution of escaped photons');
+        title('Far field radiant intensity of escaped photons [W/sr/W.incident]');
         set(gca,'FontSize',18);
         axis equal;
         xlim([-1 1]);
         ylim([-1 1]);
         zlim([-1 1]);
-        set(gca,'ZDir','reverse');
+		h_a.ZDir = 'reverse';
+		h_a.CLim = [0 h_a.CLim(2)];
         rotate3d on
         if ~verLessThan('matlab','9.0')
             setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera');

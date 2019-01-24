@@ -103,4 +103,10 @@ if MCinput.useLightCollector && MCinput.LightCollector.res > 1
     MCoutput.Y = MCoutput.X;
 end
 
+% Add angles of the centers of the far field pixels
+if MCinput.farfieldRes
+	MCoutput.FarFieldTheta = linspace(pi/MCinput.farfieldRes/2,pi-pi/MCinput.farfieldRes/2,MCinput.farfieldRes);
+	MCoutput.FarFieldPhi   = linspace(-pi+(2*pi)/MCinput.farfieldRes/2,pi-(2*pi)/MCinput.farfieldRes/2,MCinput.farfieldRes);
+end
+
 end

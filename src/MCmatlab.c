@@ -375,12 +375,12 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
 }
 
 void formFarField(struct photon const * const P, long const farfieldRes, double * const FF) {
-    double theta = acos(P->u[2]);
-    double phi = atan2(P->u[1],P->u[0]);
+    double theta = (1-DBL_EPSILON)*acos(P->u[2]); // The (1-DBL_EPS) factor is to ensure that photons exiting with theta = PI will be stored correctly
+    double phi_shifted = (1-DBL_EPSILON)*(PI + atan2(P->u[1],P->u[0])); // Here it's to handle the case of phi = +PI
     #ifdef _WIN32
     #pragma omp atomic
     #endif
-    FF[(long)floor(theta/PI*farfieldRes) + farfieldRes*(long)floor((phi+PI)/(2*PI)*farfieldRes)] += P->weight;
+    FF[(long)floor(theta/PI*farfieldRes) + farfieldRes*(long)floor(phi_shifted/(2*PI)*farfieldRes)] += P->weight;
 }
 
 void checkEscape(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC, double * const Fdet, double * const Image, long const farfieldRes, double * const FF) {
@@ -585,10 +585,10 @@ void normalizeDeposition(struct beam const * const B, struct geometry const * co
             else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons/B->power;
         }
         mxFree(B->S);
-    } else if(B->beamType == 3 && G->boundaryType != 1) { // For infinite plane wave launched into volume without absorbing walls
+    } else if(B->beamType == 2 && G->boundaryType != 1) { // For infinite plane wave launched into volume without absorbing walls
 		if(F)    for(j=0;j<L   ;j++) F[j]    /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE);
 		if(Fdet) for(j=0;j<L   ;j++) Fdet[j] /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE);
-        if(FF)   for(j=0;j<L_FF;j++) FF[j]   /=   nPhotons                 /(KILLRANGE*KILLRANGE);
+        if(FF)   for(j=0;j<L_FF;j++) FF[j]   /=   nPhotons; // Here we deliberately do not count only photons entering on the top cuboid boundary, but all simulated photons, since they can anyway also escape outside the cuboid.
         if(Image) {
             if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/(KILLRANGE*KILLRANGE);
             else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons/(KILLRANGE*KILLRANGE);
