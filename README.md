@@ -71,9 +71,13 @@ You build a model in a seperate m-file. Each model requires the first two and op
  - "Example4_FluorescenceAndImaging.m" also contains the definitions for a "LightCollector" for both the incident light Monte Carlo and the fluorescence Monte Carlo. This enables simulating a light collection and imaging system, presented in a figure after this step. This is not required if you are only interested in the fluorescence light distribution in the cube.
  - After this step, you will be shown three figures with the fluorescence emitters distribution, the fluorescent light fluence rate and absorption within the cube. If you have chosen to use the LightCollector, you will additionally see an illustration of the geometry of your imaging system and the image of the fluorescent light.
   - You can also choose to show the light impinging on the LightCollector in a time-resolved manner. Check out "Example5_TimeTagging.m" on how to do so.
-  
-6. (Optional) Programmatically assign values to the parameters
- - See "Example6_GeometryParametricSweep.m" and "Example7_MediaPropertyParametricSweep.m" on how to implement sweeps of the parameters.
+ 
+6. (Optional) Calculate the far field distribution of light escaping the simulation volume (see "Example6_FarField.m")
+
+7. (Optional) Calculate the fluence rate matrix of only those photons which end up on the detector (see "Example7_CollectedFluenceRate.m")
+ 
+8. (Optional) Programmatically assign values to the parameters
+ - See "Example8_GeometryParametricSweep.m" and "Example9_MediaPropertyParametricSweep.m" on how to implement sweeps of the parameters.
 
 ## Contribution guidelines ##
 
