@@ -53,7 +53,9 @@ if isfield(MCinput,'LightCollector')
         xLCC = MCinput.LightCollector.x;
         yLCC = MCinput.LightCollector.y;
         zLCC = MCinput.LightCollector.z;
-        MCinput.LightCollector.res = 1;
+        if MCinput.LightCollector.res ~= 1
+            error('Error: LightCollector.res must be 1 when LightCollector.f is Inf');
+        end
     end
 
     if (abs(xLCC)                           < MCinput.G.nx*MCinput.G.dx/2 && ...
