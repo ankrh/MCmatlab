@@ -1,4 +1,4 @@
-function h_f = plotMediaProperties(nFig,mediaProperties)
+function h_f = plotMediaProperties(nFig,mediaProperties,matchedInterfaces)
 
 if(~ishandle(nFig))
     h_f = figure(nFig);
@@ -55,10 +55,18 @@ subplotIndex = subplotIndex + 1;
 
 subplot(rows,columns,subplotIndex);
 hold on;
-for i=1:nM
-    bar(i,mediaProperties(i).n,'FaceColor',cmap(i,:));
+if ~matchedInterfaces
+    for i=1:nM
+        bar(i,mediaProperties(i).n,'FaceColor',cmap(i,:));
+    end
+    set(gca,'XTick',1:nM,'XTickLabel',{mediaProperties.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
+else
+    ax = gca;
+    ax.XAxis.Visible = 'off';
+    ax.YAxis.Visible = 'off';
+    str = {'Assuming','index','matched','interfaces:','n = 1'};
+    text(0.5,0.5,str,'FontSize',18,'HorizontalAlignment','center');
 end
-set(gca,'XTick',1:nM,'XTickLabel',{mediaProperties.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
 title('n');
 subplotIndex = subplotIndex + 1;
 
