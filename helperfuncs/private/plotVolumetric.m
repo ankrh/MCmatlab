@@ -22,7 +22,13 @@ x = round([(xraw - dx/2) , (max(xraw) + dx/2)],15);
 y = round([(yraw - dy/2) , (max(yraw) + dy/2)],15);
 z = round([(zraw - dz/2) , (max(zraw) + dz/2)],15);
 
-h_f.UserData = padarray(single(Mraw),[1 1 1],'replicate','post'); % The single data type is used to conserve memory
+h_f.UserData = zeros(size(Mraw)+[1 1 1]);
+h_f.UserData(1:end-1,1:end-1,1:end-1) = single(Mraw);
+h_f.UserData(end,:,:) = h_f.UserData(end-1,:,:);
+h_f.UserData(:,end,:) = h_f.UserData(:,end-1,:);
+h_f.UserData(:,:,end) = h_f.UserData(:,:,end-1);
+
+% padarray(single(Mraw),[1 1 1],'replicate','post'); % The single data type is used to conserve memory
 clear Mraw;
 [nx,ny,nz] = size(h_f.UserData);
 
