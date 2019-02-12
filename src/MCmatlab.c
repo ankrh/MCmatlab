@@ -299,7 +299,7 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         if(P->nThreadPhotons <= Pa->nExamplePaths) {
             if(Pa->pathsElems + 1 >= Pa->pathsSize) {
                 Pa->pathsSize *= 2; // double the record's size
-                Pa->data = mxRealloc(Pa->data,4*Pa->pathsSize*sizeof(double));
+                Pa->data = realloc(Pa->data,4*Pa->pathsSize*sizeof(double));
                 if(!Pa->data) mexErrMsgIdAndTxt("Error: Out of memory","Error: Out of memory");
             }
             for(long i=0;i<4;i++) Pa->data[4*Pa->pathsElems+i] = NAN;
@@ -502,8 +502,8 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, d
         if(P->recordSize) { // store indices and weights in pseudosparse array, to later add to Fdet if photon ends up on the light collector
             if(P->recordElems == P->recordSize) {
                 P->recordSize *= 2; // double the record's size
-                P->j_record = mxRealloc(P->j_record,P->recordSize*sizeof(long));
-                P->weight_record = mxRealloc(P->weight_record,P->recordSize*sizeof(double));
+                P->j_record = realloc(P->j_record,P->recordSize*sizeof(long));
+                P->weight_record = realloc(P->weight_record,P->recordSize*sizeof(double));
                 if(!P->j_record || !P->weight_record) mexErrMsgIdAndTxt("Error: Out of memory","Error: Out of memory");
             }
             P->j_record[P->recordElems] = P->j;
@@ -518,7 +518,7 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, d
         if(P->nThreadPhotons <= Pa->nExamplePaths) {
             if(Pa->pathsElems == Pa->pathsSize) {
                 Pa->pathsSize *= 2; // double the record's size
-                Pa->data = mxRealloc(Pa->data,4*Pa->pathsSize*sizeof(double));
+                Pa->data = realloc(Pa->data,4*Pa->pathsSize*sizeof(double));
                 if(!Pa->data) mexErrMsgIdAndTxt("Error: Out of memory","Error: Out of memory");
             }
             Pa->data[4*Pa->pathsElems  ] = (P->i[0] - G->n[0]/2.0)*G->d[0]; // Store x
@@ -584,7 +584,7 @@ void normalizeDeposition(struct beam const * const B, struct geometry const * co
             if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/B->power;
             else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons/B->power;
         }
-        mxFree(B->S);
+        free(B->S);
     } else if(B->beamType == 2 && G->boundaryType != 1) { // For infinite plane wave launched into volume without absorbing walls
 		if(F)    for(j=0;j<L   ;j++) F[j]    /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE);
 		if(Fdet) for(j=0;j<L   ;j++) Fdet[j] /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE);
@@ -656,7 +656,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     double power        = 0;
     double *S           = NULL; // Cumulative distribution function
 	if(S_PDF) {
-        S = mxMalloc((L+1)*sizeof(double));
+        S = malloc((L+1)*sizeof(double));
+        if(!S) mexErrMsgIdAndTxt("Error: Out of memory","Error: Out of memory");
         S[0] = 0;
         for(idx=1;idx<(L+1);idx++) S[idx] = S[idx-1] + S_PDF[idx-1];
         power = S[L]*G->d[0]*G->d[1]*G->d[2];
@@ -717,12 +718,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     Pa->nExamplePaths = *mxGetPr(mxGetField(prhs[0],0,"nExamplePaths")); // How many photon path examples are we supposed to store?
     Pa->pathsSize = 10*Pa->nExamplePaths; // Will be dynamically increased later if needed
     Pa->pathsElems = 0;
-    Pa->data = Pa->pathsSize? mxMalloc(4*Pa->pathsSize*sizeof(double)): NULL;
-
+    Pa->data = malloc(4*Pa->pathsSize*sizeof(double)); // Will be NULL if Pa->pathsSize == 0
+    if(Pa->pathsSize && !Pa->data) mexErrMsgIdAndTxt("Error: Out of memory","Error: Out of memory");
+    
     // Far field angle distribution resolution
     long farfieldRes = *mxGetPr(mxGetField(prhs[0],0,"farfieldRes"));
     
-// Prepare output MATLAB struct
+    // Prepare output MATLAB struct
     long nOutputs = 2 + useLightCollector + calcF + calcFdet + (Pa->nExamplePaths != 0) + (farfieldRes != 0);
     char *fieldnames[nOutputs];
     idx = 0;
@@ -813,8 +815,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         
         P->nThreadPhotons = 0;
         P->recordSize    = Fdet? 1000: 0; // If we're supposed to calculate Fdet, we start the record at a size of 1000 elements - it will be dynamically expanded later if needed
-        P->j_record      = Fdet? mxMalloc(P->recordSize*sizeof(long)): NULL;
-        P->weight_record = Fdet? mxMalloc(P->recordSize*sizeof(double)): NULL;
+        P->j_record      = malloc(P->recordSize*sizeof(long)); // Will be NULL if P->recordSize == 0
+        if(P->recordSize && !P->j_record) mexErrMsgIdAndTxt("Error: Out of memory","Error: Out of memory");
+        P->weight_record = malloc(P->recordSize*sizeof(double)); // Will be NULL if P->recordSize == 0
+        if(P->recordSize && !P->weight_record) mexErrMsgIdAndTxt("Error: Out of memory","Error: Out of memory");
         
         #ifdef _WIN32
 		dsfmt_init_gen_rand(&P->dsfmt,simulationTimeStart.tv_nsec + omp_get_thread_num()); // Seed the photon's random number generator
@@ -868,8 +872,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         #endif
         *nPhotonsPtr += P->nThreadPhotons; // Add up the launches made in the individual threads to the total photon counter
         
-        mxFree(P->j_record);
-        mxFree(P->weight_record);
+        free(P->j_record); // Will do nothing if P->j_record == NULL
+        free(P->weight_record); // Will do nothing if P->weight_record == NULL
 	}
     
 	clock_gettime(CLOCK_MONOTONIC, &simulationTimeCurrent);
@@ -885,6 +889,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     if(Pa->nExamplePaths) {
         mxSetField(plhs[0],0,"ExamplePaths",mxCreateNumericMatrix(4,Pa->pathsElems,mxDOUBLE_CLASS,mxREAL));
         memcpy(mxGetPr(mxGetField(plhs[0],0,"ExamplePaths")),Pa->data,4*sizeof(double)*Pa->pathsElems);
-        mxFree(Pa->data);
+        free(Pa->data);
     }
 }
