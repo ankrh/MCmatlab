@@ -346,6 +346,14 @@ end
 
 %% Throw an error if a variable doesn't conform to its required interval
 for j=1:length(mediaProperties)
+    if(~isfield(mediaProperties,'mua') || isempty(mediaProperties(j).mua))
+        error('Medium %s has no mua.',mediaProperties(j).name);
+    elseif(~isfield(mediaProperties,'mus') || isempty(mediaProperties(j).mus))
+        error('Medium %s has no mus.',mediaProperties(j).name);
+    elseif(~isfield(mediaProperties,'g') || isempty(mediaProperties(j).g))
+        error('Medium %s has no g.',mediaProperties(j).name);
+    end
+
     if(mediaProperties(j).mua <= 0)
         error('Medium %s has mua <= 0',mediaProperties(j).name);
     elseif(mediaProperties(j).mus <= 0)
