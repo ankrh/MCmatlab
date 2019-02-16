@@ -28,18 +28,21 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ## How do I get set up? ##
 
 Requirements:
-- Windows 7 or later, or macOS 10.12 (Sierra) or later (this software is not compatible with macOS 10.11 El Capitan)
-- MATLAB R2014B or later (if you want to use the pre-compiled mex-files, you might need to update MATLAB to R2018B, but compiling the mex-files for your system is straight forward)
+- Windows 7 or newer
+ - MATLAB R2017A or newer (if you want to use the pre-compiled mex-files, you might need to update MATLAB to R2018B, but compiling the mex-files for your system is straight forward)
  - Image Processing Toolbox for MATLAB
+- macOS 10.12 (Sierra) or newer
+ - MATLAB R2017a or newer
+ - Image Processing Toolbox for MATLAB
+
+HELPER FILES:
+All the helper functions needed for running MCmatlab are located in the folder "helperfuncs", which therefore has to be on your MATLAB path. You will not need to modify any of these files (except for "getMediaProperties.m" as mentioned below). The example model files automatically add "helperfuncs" to the MATLAB path as the first command, and you should keep that practice also in your own model files.
 
 MODEL FILES:
 In MCmatlab, you set up your model in a single m-file. You can find a few examples to get you started in the root folder of MCmatlab. Once you're familiar with those, you can check the model file "Template.m" for all the possible switches you might use, but it is itself not a valid model file, as it also contains some mutually exclusive switches.
 
 MEDIA PROPERTIES:
 The optical properties of all media are defined in the file "getMediaProperties.m" in the folder "helperfuncs". Many media are already defined therein, and you can either modify the properties of those, or add more media types to this file. Make sure that each media has its distinct "j"-number, as this is the number you will refer to when building your model.
-
-HELPER FILES:
-All the helper functions needed for running MCmatlab are located in the folder "helperfuncs", which therefore has to be on your MATLAB path. You will not need to modify any of these files (except for "getMediaProperties.m" as mentioned above). The example model files automatically add "helperfuncs" to the MATLAB path as the first command, and you should keep that practice also in your own model files.
 
 ## How do I use MCmatlab? ##
 ### Compilation ###
