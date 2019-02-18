@@ -28,12 +28,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ## How do I get set up? ##
 
 Requirements:
-- Windows 7 or newer
- - MATLAB R2017A or newer (if you want to use the pre-compiled mex-files, you might need to update MATLAB to R2018B, but compiling the mex-files for your system is straight forward)
- - Image Processing Toolbox for MATLAB
-- macOS 10.12 (Sierra) or newer
- - MATLAB R2017a or newer
- - Image Processing Toolbox for MATLAB
+- Windows 7 or macOS 10.12 (Sierra) or newer
+- MATLAB R2017a or newer
 
 HELPER FILES:
 All the helper functions needed for running MCmatlab are located in the folder "helperfuncs", which therefore has to be on your MATLAB path. You will not need to modify any of these files (except for "getMediaProperties.m" as mentioned below). The example model files automatically add "helperfuncs" to the MATLAB path as the first command, and you should keep that practice also in your own model files.
