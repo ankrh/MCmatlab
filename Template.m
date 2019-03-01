@@ -36,6 +36,8 @@ plotMCmatlabGeom(Goutput);
 % % MCinput.farfieldRes              = 50; % (Default: 0) If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
 % 
 % MCinput.Beam.beamType            = 2; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
+% MCinput.Beam.nearFieldType       = 2; % 0: Gaussian, 1: Circular top-hat, 2: Square top-hat
+% MCinput.Beam.farFieldType        = 2; % 0: Gaussian, 1: Circular top-hat, 2: Cosine distribution (Lambertian)
 % MCinput.Beam.xFocus              = 0; % [cm] x position of focus
 % MCinput.Beam.yFocus              = 0; % [cm] y position of focus
 % MCinput.Beam.zFocus              = Ginput.Lz/2; % [cm] z position of focus

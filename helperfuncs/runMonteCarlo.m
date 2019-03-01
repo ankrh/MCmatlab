@@ -88,11 +88,24 @@ else
 	MCinput.LightCollector.nTimeBins = 0;
 end
 
+if xor(isfield(MCinput.Beam,'nearFieldType'), isfield(MCinput.Beam,'farFieldType'))
+	error('Error: nearFieldType and farFieldType must either both be specified, or neither');
+end
+if isfield(MCinput.Beam,'nearFieldType') && isfield(MCinput.Beam,'beamType')
+	error('Error: nearFieldType and beamType may not both be specified');
+end
 if ~MCinput.calcF && ~MCinput.useLightCollector
     error('Error: calcF is false, but no light collector is defined');
 end
 if MCinput.calcFdet && ~MCinput.useLightCollector
     error('Error: calcFdet is true, but no light collector is defined');
+end
+
+if isfield(MCinput.Beam,'nearFieldType')
+	MCinput.Beam.beamType = -1;
+else
+	MCinput.Beam.nearFieldType = -1;
+	MCinput.Beam.farFieldType = -1;
 end
 
 %% Call Monte Carlo C script (MEX file) to get fluence rate (intensity) distribution
