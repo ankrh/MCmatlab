@@ -1,0 +1,102 @@
+%\documentclass[fleqn]{scrartcl}
+\documentclass{scrartcl}
+\usepackage{amsmath}
+%\setlength{\mathindent}{0pt}
+\newcommand{\VHC}{c_\mathrm{VHC}}
+
+
+\title{Theory for derivation of the expressions for Douglas-Gunn Alternating Direction Implicit (DG-ADI) method for solving the inhomogeneous heat diffusion equation on a rectangular cuboid finite element grid}
+\author{Anders K. Hansen}
+
+\begin{document}
+
+\maketitle
+
+\section{Heat equation}
+$t$ is the time. The remaining quantities are considered functions of space: The volumetric heat capacity $\VHC$, with units of $\mathrm{\frac J {m^3 K}}$, the temperature $T$ with units of $\mathrm K$, the rate of heat deposition per unit volume per unit time $q$ with units of $\mathrm{\frac W {m^3 s}}$ and the thermal conductivity $k$, with units of $\mathrm{\frac W {m \cdot K}}$.
+
+The heat diffusion equation is
+\begin{equation}
+\VHC \frac{dT}{dt} = \nabla \cdot \left(k \nabla T\right) + q
+\end{equation}
+
+\section{Discretization in 1D}
+Let $k_{x+}$ denote the effective thermal conductivity for heat flow between a voxel and its neighbor in the plus x direction: $k_{x_+} = \frac{2k_ik_{i+1}}{k_i + k_{i+1}}$. Similarly, $k_{x_-} = \frac{2k_{i-1}k_i}{k_{i-1} + k_i}$.
+
+Writing the equation in 1D yields
+\begin{equation}
+\VHC \frac{dT}{dt} = \frac d {dx} \left( k \frac d {dx} T \right) + q
+\end{equation}
+Using the notation $T^n$ to denote the temperature at time step $n$, we can discretize the above as
+\begin{equation}
+\VHC \frac{\Delta T}{\Delta t} = \frac \Delta {\Delta x} \left( k \frac \Delta {2\Delta x} \left( T^n + T^{n+1} \right) \right) + q
+\end{equation}
+where we have chosen to use the mean $\frac 1 2 \left( T^n + T^{n+1} \right)$ as the estimate of the temperature.
+
+We can expand this to get
+\begin{multline}
+\VHC \frac{T^{n+1}-T^n}{\Delta t} = \frac 1 {2\Delta x^2} \Delta \left( k \Delta \left(T^n + T^{n+1} \right) \right) + q\\
+= \frac 1 {2\Delta x^2} \left( k_{x_+} \left(T_{i+1}^n + T_{i+1}^{n+1} - T_i^n - T_i^{n+1}\right) - k_{x_-} \left(T_i^n + T_i^{n+1} - T_{i-1}^n - T_{i-1}^{n+1}\right)\right) + q
+\end{multline}
+Moving the terms with time step $n+1$ to the left hand side:
+\begin{equation}
+\begin{split}
+- \frac{k_{x_+}}{2\Delta x^2} T_{i+1}^{n+1} + \left( \frac \VHC {\Delta t} + \frac{k_{x_+}+k_{x_-}}{2\Delta x^2} \right) T_i^{n+1} - \frac{k_{x_-}}{2\Delta x^2} T_{i-1}^{n+1}\\
+= \frac{k_{x_+}}{2\Delta x^2} T_{i+1}^n + \left( \frac \VHC {\Delta t} - \frac{k_{x_+} + k_{x_-}}{2\Delta x^2} \right) T_i^n + \frac{k_{x_-}}{2\Delta x^2} T_{i-1}^n + q
+\end{split}
+\end{equation}
+Representing the temperatures and the heat deposition rate as column vectors, we can write the equation in terms of tridiagonal matrix multiplication and column vector addition
+\begin{equation} \label{LHSRHS}
+M_\mathrm{LHS} T^{n+1} = M_\mathrm{RHS} T^n + q
+\end{equation}
+where the matrices for insulating boundaries are (example shown for a 5-element grid)
+\begin{align}
+&M_\mathrm{LHS} = \begin{bmatrix}
+\frac \VHC {\Delta t} + \frac{k_{x_+}}{2\Delta x^2} & - \frac{k_{x_+}}{2\Delta x^2} & 0 & 0 & 0\\
+- \frac{k_{x_-}}{2\Delta x^2} & \frac \VHC {\Delta t} + \frac{k_{x_+}+k_{x_-}}{2\Delta x^2} & - \frac{k_{x_+}}{2\Delta x^2} & 0 & 0\\
+0 & - \frac{k_{x_-}}{2\Delta x^2} & \frac \VHC {\Delta t} + \frac{k_{x_+}+k_{x_-}}{2\Delta x^2} & - \frac{k_{x_+}}{2\Delta x^2} & 0\\
+0 & 0 & - \frac{k_{x_-}}{2\Delta x^2} & \frac \VHC {\Delta t} + \frac{k_{x_+}+k_{x_-}}{2\Delta x^2} & - \frac{k_{x_+}}{2\Delta x^2}\\
+0 & 0 & 0 & - \frac{k_{x_-}}{2\Delta x^2} & \frac \VHC {\Delta t} + \frac{k_{x_-}}{2\Delta x^2}
+\end{bmatrix}\\
+&M_\mathrm{RHS} = \begin{bmatrix}
+\frac \VHC {\Delta t} - \frac{k_{x_+}}{2\Delta x^2} & \frac{k_{x_+}}{2\Delta x^2} & 0 & 0 & 0\\
+\frac{k_{x_-}}{2\Delta x^2} & \frac \VHC {\Delta t} - \frac{k_{x_+}+k_{x_-}}{2\Delta x^2} & \frac{k_{x_+}}{2\Delta x^2} & 0 & 0\\
+0 & \frac{k_{x_-}}{2\Delta x^2} & \frac \VHC {\Delta t} - \frac{k_{x_+}+k_{x_-}}{2\Delta x^2} & \frac{k_{x_+}}{2\Delta x^2} & 0\\
+0 & 0 & \frac{k_{x_-}}{2\Delta x^2} & \frac \VHC {\Delta t} - \frac{k_{x_+}+k_{x_-}}{2\Delta x^2} & \frac{k_{x_+}}{2\Delta x^2}\\
+0 & 0 & 0 & \frac{k_{x_-}}{2\Delta x^2} & \frac \VHC {\Delta t} - \frac{k_{x_-}}{2\Delta x^2}
+\end{bmatrix}
+\end{align}
+in which $\VHC$, $k_{x_+}$, and $k_{x_-}$ in the $i$'th row in both matrices are to be evaluated at the spatial position of the $i$'th pixel/voxel.
+
+The matrices for heat sinked boundaries are
+\begin{align}
+&M_\mathrm{LHS} = \begin{bmatrix}
+1 & 0 & 0 & 0 & 0\\
+- \frac{k_{x_-}}{2\Delta x^2} & \frac \VHC {\Delta t} + \frac{k_{x_+}+k_{x_-}}{2\Delta x^2} & - \frac{k_{x_+}}{2\Delta x^2} & 0 & 0\\
+0 & - \frac{k_{x_-}}{2\Delta x^2} & \frac \VHC {\Delta t} + \frac{k_{x_+}+k_{x_-}}{2\Delta x^2} & - \frac{k_{x_+}}{2\Delta x^2} & 0\\
+0 & 0 & - \frac{k_{x_-}}{2\Delta x^2} & \frac \VHC {\Delta t} + \frac{k_{x_+}+k_{x_-}}{2\Delta x^2} & - \frac{k_{x_+}}{2\Delta x^2}\\
+0 & 0 & 0 & 0 & 1
+\end{bmatrix}\\
+&M_\mathrm{RHS} = \begin{bmatrix}
+1 & 0 & 0 & 0 & 0\\
+\frac{k_{x_-}}{2\Delta x^2} & \frac \VHC {\Delta t} - \frac{k_{x_+}+k_{x_-}}{2\Delta x^2} & \frac{k_{x_+}}{2\Delta x^2} & 0 & 0\\
+0 & \frac{k_{x_-}}{2\Delta x^2} & \frac \VHC {\Delta t} - \frac{k_{x_+}+k_{x_-}}{2\Delta x^2} & \frac{k_{x_+}}{2\Delta x^2} & 0\\
+0 & 0 & \frac{k_{x_-}}{2\Delta x^2} & \frac \VHC {\Delta t} - \frac{k_{x_+}+k_{x_-}}{2\Delta x^2} & \frac{k_{x_+}}{2\Delta x^2}\\
+0 & 0 & 0 & 0 & 1
+\end{bmatrix}
+\end{align}
+where furthermore the edge values of $q$ must be zero.
+
+To calculate the temperature $T^{n+1}$, one can calculate first the right hand side of Eq. \ref{LHSRHS} by simple matrix multiplication and addition and then solve the remaining system of linear equations for $T^{n+1}$ using, for example, the "matrix left division" of MATLAB.
+
+\section{Discretization in 2D}
+
+
+\end{document}
+
+
+
+
+
+
+
