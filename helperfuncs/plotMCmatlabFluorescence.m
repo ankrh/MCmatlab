@@ -41,7 +41,7 @@ mua_vec = [G.mediaProperties.mua];
 %% Plot emitter distribution
 Y_vec = [G.mediaProperties.Y]; % The media's fluorescence power efficiencies
 FluorescenceEmitters = Y_vec(G.M).*mua_vec(G.M).*FMCinput.MCoutput.F; % [W/cm^3]
-h_f = plotVolumetric(11,G.x,G.y,G.z,FluorescenceEmitters,'MCmatlab_fromZero');
+h_f = plotVolumetric(12,G.x,G.y,G.z,FluorescenceEmitters,'MCmatlab_fromZero');
 h_f.Name = 'Fluorescence emitters';
 title('Fluorescence emitter distribution [W/cm^3/W.incident] ')
 
@@ -52,12 +52,12 @@ fprintf('\n%.3g%% of absorbed excitation light was re-emitted as fluorescence.\n
 if isfield(FMCoutput,'F')
     %% Make power absorption plot
     mua_vec = [G.mediaProperties_f.mua];
-    h_f = plotVolumetric(12,G.x,G.y,G.z,mua_vec(G.M).*FMCoutput.F,'MCmatlab_fromZero');
+    h_f = plotVolumetric(13,G.x,G.y,G.z,mua_vec(G.M).*FMCoutput.F,'MCmatlab_fromZero');
     h_f.Name = 'Fluorescence power absorption';
     title('Normalized absorbed fluorescence power per unit volume [W/cm^3/W.incident] ')
 
     %% Make fluence rate plot
-    h_f = plotVolumetric(13,G.x,G.y,G.z,FMCoutput.F,'MCmatlab_fromZero');
+    h_f = plotVolumetric(14,G.x,G.y,G.z,FMCoutput.F,'MCmatlab_fromZero');
     h_f.Name = 'Fluorescence fluence rate';
     title('Normalized fluorescence fluence rate (Intensity) [W/cm^2/W.incident] ')
 
@@ -66,7 +66,7 @@ if isfield(FMCoutput,'F')
 end
 
 if isfield(FMCoutput,'ExamplePaths')
-    h_f = plotVolumetric(14,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_f);
+    h_f = plotVolumetric(15,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_f);
     h_f.Name = 'Fluorescence photon paths';
     title('Fluorescence photon paths');
     box on;grid on;grid minor;
@@ -96,7 +96,7 @@ end
 
 if(isfield(FMCinput,'LightCollector'))
     %% If there's a fluorescence light collector, show its orientation and the detected light
-    h_f = plotVolumetric(15,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_f);
+    h_f = plotVolumetric(16,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_f);
     h_f.Name = 'Fluorescence light collector illustration';
     title('Fluorescence light collector illustration');
     box on;grid on;grid minor;
@@ -136,17 +136,17 @@ if(isfield(FMCinput,'LightCollector'))
 
     if isfield(FMCoutput,'Fdet')
         %% Make Fdet fluence rate plot
-        h_f = plotVolumetric(16,G.x,G.y,G.z,FMCoutput.Fdet,'MCmatlab_fromZero');
+        h_f = plotVolumetric(17,G.x,G.y,G.z,FMCoutput.Fdet,'MCmatlab_fromZero');
         h_f.Name = 'Normalized fluence rate of collected fluorescence light';
         title('Normalized fluence rate of collected fluorescence light [W/cm^2/W.incident] ')
     end
     
     if LC.res > 1
-        if(~ishandle(17))
-            h_f = figure(17);
+        if(~ishandle(18))
+            h_f = figure(18);
             h_f.Position = [40 80 1100 650];
         else
-            h_f = figure(17);
+            h_f = figure(18);
         end
 		h_f.Color = 'w';
         clf;
@@ -165,11 +165,11 @@ if isfield(FMCoutput,'FarField')
     if farfieldRes > 1
         theta_vec = linspace(0,pi,farfieldRes+1).'; % FMCoutput.FFtheta contains the theta values at the centers of the far field pixels, but we will not use those here since we need the corner positions to calculate the solid angle of the pixels
         solidangle_vec = 2*pi*(cos(theta_vec(1:end-1)) - cos(theta_vec(2:end)))/farfieldRes; % Solid angle extended by each far field pixel, as function of theta
-        if(~ishandle(18))
-            h_f = figure(18);
+        if(~ishandle(19))
+            h_f = figure(19);
             h_f.Position = [40 80 1100 650];
         else
-            h_f = figure(18);
+            h_f = figure(19);
         end
         h_f.Color = 'w';
 		h_f.Name = 'Fluorescence far field';
@@ -197,6 +197,87 @@ if isfield(FMCoutput,'FarField')
             setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera');
         end
     end
+end
+
+if G.boundaryType == 1
+    fprintf('%.3g%% of fluorescence light hits the cuboid boundaries.\n',100*(sum(sum((FMCoutput.I_xpos + FMCoutput.I_xneg)*G.dy*G.dz)) + sum(sum((FMCoutput.I_ypos + FMCoutput.I_yneg)*G.dx*G.dz)) + sum(sum((FMCoutput.I_zpos + FMCoutput.I_zneg)*G.dx*G.dy)))/P_flu_emit);
+    
+    if(~ishandle(20))
+        h_f = figure(20);
+        h_f.Position = [40 80 1100 650];
+    else
+        h_f = figure(20);
+    end
+    h_f.Color = 'w';
+    h_f.Name = 'Boundary fluorescence intensity';
+    clf;
+    h_a = axes;
+    title('Boundary fluorescence intensity [W/cm^2/W.incident]');
+    
+    x = round([(G.x - G.dx/2) , (max(G.x) + G.dx/2)],15);
+    y = round([(G.y - G.dy/2) , (max(G.y) + G.dy/2)],15);
+    z = round([(G.z - G.dz/2) , (max(G.z) + G.dz/2)],15);
+    xl = x(1); % x low
+    xh = x(end); % x high
+    yl = y(1); % y low
+    yh = y(end); % y high
+    zl = z(1); % z low
+    zh = z(end); % z high
+    I_xneg_pad = FMCoutput.I_xneg;
+    I_xneg_pad(G.ny+1,G.nz+1) = 0;
+    I_yneg_pad = FMCoutput.I_yneg;
+    I_yneg_pad(G.nx+1,G.nz+1) = 0;
+    I_zneg_pad = FMCoutput.I_zneg;
+    I_zneg_pad(G.nx+1,G.ny+1) = 0;
+    I_xpos_pad = FMCoutput.I_xpos;
+    I_xpos_pad(G.ny+1,G.nz+1) = 0;
+    I_ypos_pad = FMCoutput.I_ypos;
+    I_ypos_pad(G.nx+1,G.nz+1) = 0;
+    I_zpos_pad = FMCoutput.I_zpos;
+    I_zpos_pad(G.nx+1,G.ny+1) = 0;
+
+    h_surfxneg = surface(repmat(xl,G.ny+1,G.nz+1),repmat(y',     1,G.nz+1),repmat(z ,G.ny+1,     1),I_xneg_pad,'LineStyle','none');
+    h_surfyneg = surface(repmat(x',     1,G.nz+1),repmat(yl,G.nx+1,G.nz+1),repmat(z ,G.nx+1,     1),I_yneg_pad,'LineStyle','none');
+    h_surfzneg = surface(repmat(x',     1,G.ny+1),repmat(y ,G.nx+1,     1),repmat(zl,G.nx+1,G.ny+1),I_zneg_pad,'LineStyle','none');
+    h_surfxpos = surface(repmat(xh,G.ny+1,G.nz+1),repmat(y',     1,G.nz+1),repmat(z ,G.ny+1,     1),I_xpos_pad,'LineStyle','none');
+    h_surfypos = surface(repmat(x',     1,G.nz+1),repmat(yh,G.nx+1,G.nz+1),repmat(z ,G.nx+1,     1),I_ypos_pad,'LineStyle','none');
+    h_surfzpos = surface(repmat(x',     1,G.ny+1),repmat(y ,G.nx+1,     1),repmat(zh,G.nx+1,G.ny+1),I_zpos_pad,'LineStyle','none');
+    set(gca,'ZDir','reverse');
+    colormap(inferno);
+    colorbar;
+    axis tight
+    axis equal
+    xlabel('x [cm]');
+    ylabel('y [cm]');
+    zlabel('z [cm]');
+    set(gca,'fontsize',18)
+    view(3)
+    rotate3d on
+    if ~verLessThan('matlab','9.0')
+        setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera');
+    end
+elseif G.boundaryType == 2
+    fprintf('%.3g%% of fluorescence light hits the top cuboid boundary.\n',100*(sum(sum(FMCoutput.I_zneg*G.dx*G.dy)))/P_flu_emit);
+    
+    if(~ishandle(20))
+        h_f = figure(20);
+        h_f.Position = [40 80 1100 650];
+    else
+        h_f = figure(20);
+    end
+    h_f.Color = 'w';
+    h_f.Name = 'Boundary fluorescence intensity';
+    clf;
+    imagesc(G.x,G.y,FMCoutput.I_zneg.');
+    set(gca,'YDir','normal');
+    title('Boundary fluorescence intensity [W/cm^2/W.incident]');
+    colormap(inferno);
+    colorbar;
+    axis tight
+    axis equal
+    xlabel('x [cm]');
+    ylabel('y [cm]');
+    set(gca,'fontsize',18)
 end
 drawnow;
 end
