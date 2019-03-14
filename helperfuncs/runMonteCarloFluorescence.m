@@ -59,6 +59,9 @@ if(max(FMCinput.Beam.sourceDistribution(:)) == 0); error('Error: No fluorescence
 %% Check to ensure that the light collector is not inside the cuboid and set res_LC to 1 if using fiber
 if isfield(FMCinput,'LightCollector')
 	FMCinput.useLightCollector = true;
+	if FMCinput.G.boundaryType == 0
+		error('Error: If boundaryType == 0, no photons can escape to be registered on the light collector. Disable light collector or change boundaryType.');
+	end
     if isfinite(FMCinput.LightCollector.f)
         xLCC = FMCinput.LightCollector.x - FMCinput.LightCollector.f*sin(FMCinput.LightCollector.theta)*cos(FMCinput.LightCollector.phi); % x position of Light Collector Center
         yLCC = FMCinput.LightCollector.y - FMCinput.LightCollector.f*sin(FMCinput.LightCollector.theta)*sin(FMCinput.LightCollector.phi); % y position
@@ -98,6 +101,10 @@ else
 	FMCinput.LightCollector.tStart = 0;
 	FMCinput.LightCollector.tEnd = 0;
 	FMCinput.LightCollector.nTimeBins = 0;
+end
+
+if FMCinput.farfieldRes && FMCinput.G.boundaryType == 0
+	error('Error: If boundaryType == 0, no photons can escape to be registered in the far field. Set farfieldRes to zero or change boundaryType.');
 end
 
 if ~FMCinput.calcF && ~FMCinput.useLightCollector

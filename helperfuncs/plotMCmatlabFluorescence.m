@@ -5,6 +5,7 @@ function plotMCmatlabFluorescence(FMCinput,FMCoutput)
 %       Fluorescence fluence rate of all photons
 %       Example paths of some of the photons
 %       Distribution of escaped photons in the far field
+%       Fluence rates (intensities) on all boundaries
 %	And, if a light collector was defined, displays (if calculated)
 %		An illustration of the light collector angle and placement
 %		Image generated
@@ -209,10 +210,10 @@ if G.boundaryType == 1
         h_f = figure(20);
     end
     h_f.Color = 'w';
-    h_f.Name = 'Boundary fluorescence intensity';
+    h_f.Name = 'Boundary fluorescence fluence rate';
     clf;
     h_a = axes;
-    title('Boundary fluorescence intensity [W/cm^2/W.incident]');
+    title('Boundary fluorescence fluence rate [W/cm^2/W.incident]');
     
     x = round([(G.x - G.dx/2) , (max(G.x) + G.dx/2)],15);
     y = round([(G.y - G.dy/2) , (max(G.y) + G.dy/2)],15);
@@ -236,12 +237,12 @@ if G.boundaryType == 1
     I_zpos_pad = FMCoutput.I_zpos;
     I_zpos_pad(G.nx+1,G.ny+1) = 0;
 
-    h_surfxneg = surface(repmat(xl,G.ny+1,G.nz+1),repmat(y',     1,G.nz+1),repmat(z ,G.ny+1,     1),I_xneg_pad,'LineStyle','none');
-    h_surfyneg = surface(repmat(x',     1,G.nz+1),repmat(yl,G.nx+1,G.nz+1),repmat(z ,G.nx+1,     1),I_yneg_pad,'LineStyle','none');
-    h_surfzneg = surface(repmat(x',     1,G.ny+1),repmat(y ,G.nx+1,     1),repmat(zl,G.nx+1,G.ny+1),I_zneg_pad,'LineStyle','none');
-    h_surfxpos = surface(repmat(xh,G.ny+1,G.nz+1),repmat(y',     1,G.nz+1),repmat(z ,G.ny+1,     1),I_xpos_pad,'LineStyle','none');
-    h_surfypos = surface(repmat(x',     1,G.nz+1),repmat(yh,G.nx+1,G.nz+1),repmat(z ,G.nx+1,     1),I_ypos_pad,'LineStyle','none');
-    h_surfzpos = surface(repmat(x',     1,G.ny+1),repmat(y ,G.nx+1,     1),repmat(zh,G.nx+1,G.ny+1),I_zpos_pad,'LineStyle','none');
+    surface(repmat(xl,G.ny+1,G.nz+1),repmat(y',     1,G.nz+1),repmat(z ,G.ny+1,     1),I_xneg_pad,'LineStyle','none');
+    surface(repmat(x',     1,G.nz+1),repmat(yl,G.nx+1,G.nz+1),repmat(z ,G.nx+1,     1),I_yneg_pad,'LineStyle','none');
+    surface(repmat(x',     1,G.ny+1),repmat(y ,G.nx+1,     1),repmat(zl,G.nx+1,G.ny+1),I_zneg_pad,'LineStyle','none');
+    surface(repmat(xh,G.ny+1,G.nz+1),repmat(y',     1,G.nz+1),repmat(z ,G.ny+1,     1),I_xpos_pad,'LineStyle','none');
+    surface(repmat(x',     1,G.nz+1),repmat(yh,G.nx+1,G.nz+1),repmat(z ,G.nx+1,     1),I_ypos_pad,'LineStyle','none');
+    surface(repmat(x',     1,G.ny+1),repmat(y ,G.nx+1,     1),repmat(zh,G.nx+1,G.ny+1),I_zpos_pad,'LineStyle','none');
     set(gca,'ZDir','reverse');
     colormap(inferno);
     colorbar;
@@ -266,11 +267,12 @@ elseif G.boundaryType == 2
         h_f = figure(20);
     end
     h_f.Color = 'w';
-    h_f.Name = 'Boundary fluorescence intensity';
+    h_f.Name = 'Boundary fluorescence fluence rate';
     clf;
-    imagesc(G.x,G.y,FMCoutput.I_zneg.');
+    imagesc(size(FMCoutput.I_zneg,1)/2*[-G.dx G.dx],size(FMCoutput.I_zneg,2)/2*[-G.dy G.dy],FMCoutput.I_zneg.');
+	line(G.Lx/2*[-1 -1 1 1 -1],G.Ly/2*[-1 1 1 -1 -1],'Color',[1 1 1],'Linestyle','--');
     set(gca,'YDir','normal');
-    title('Boundary fluorescence intensity [W/cm^2/W.incident]');
+    title('Boundary fluorescence fluence rate [W/cm^2/W.incident]');
     colormap(inferno);
     colorbar;
     axis tight
