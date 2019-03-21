@@ -68,7 +68,7 @@ if isfield(MCinput,'LightCollector')
     end
 
     %% If no time tagging start value was defined, assume no time tagging is to be performed
-	if ~isfield(MCinput.LightCollector,'tStart')
+	if ~isfield(MCinput.LightCollector,'nTimeBins')
 		MCinput.LightCollector.tStart = 0;
 		MCinput.LightCollector.tEnd = 0;
 		MCinput.LightCollector.nTimeBins = 0;

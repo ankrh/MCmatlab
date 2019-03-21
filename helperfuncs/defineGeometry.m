@@ -32,6 +32,9 @@ function G = defineGeometry(G)
 if ~isfield(G,'silentMode')
 	G.silentMode = false;
 end
+if ~isfield(G,'matchedInterfaces')
+	G.matchedInterfaces = false;
+end
 if ~isfield(G,'wavelength_f')
 	G.wavelength_f = NaN;
 end
