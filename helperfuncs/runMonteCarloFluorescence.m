@@ -81,10 +81,12 @@ if isfield(FMCinput,'LightCollector')
         error('Error: Light collector center (%.4f,%.4f,%.4f) is inside cuboid',xLCC,yLCC,zLCC);
     end
 
-	if ~isfield(FMCinput.LightCollector,'tStart')
+	if ~isfield(FMCinput.LightCollector,'nTimeBins')
 		FMCinput.LightCollector.tStart = 0;
 		FMCinput.LightCollector.tEnd = 0;
 		FMCinput.LightCollector.nTimeBins = 0;
+  elseif FMCinput.LightCollector.nTimeBins > 0
+    error('Error: Fluorescence Monte Carlo does not support time tagging: LightCollector.nTimeBins must be 0.');    
 	end
 else
 	FMCinput.useLightCollector = false;

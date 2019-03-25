@@ -67,7 +67,7 @@ if isfield(MCinput,'LightCollector')
         error('Error: Light collector center (%.4f,%.4f,%.4f) is inside cuboid',xLCC,yLCC,zLCC);
     end
 
-    %% If no time tagging start value was defined, assume no time tagging is to be performed
+    %% If no time tagging bins are defined, assume no time tagging is to be performed
 	if ~isfield(MCinput.LightCollector,'nTimeBins')
 		MCinput.LightCollector.tStart = 0;
 		MCinput.LightCollector.tEnd = 0;
