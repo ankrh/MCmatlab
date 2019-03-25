@@ -33,7 +33,7 @@ if ~isfield(G,'silentMode')
 	G.silentMode = false;
 end
 if ~isfield(G,'matchedInterfaces')
-	G.matchedInterfaces = false;
+	G.matchedInterfaces = true;
 end
 if ~isfield(G,'wavelength_f')
 	G.wavelength_f = NaN;
