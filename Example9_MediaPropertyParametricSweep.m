@@ -26,7 +26,7 @@ fprintf('\b\b\b\b\b\b%2d/%2d\n',i,length(g_vec)); % Simple progress indicator
 clear Ginput
 Ginput.silentMode        = true; % Disables command window text and progress indication
 Ginput.matchedInterfaces = true; % Assumes all refractive indices are 1
-Ginput.boundaryType      = 1; % 0: No boundaries, 1: All cuboid boundaries, 2: Top cuboid boundary only
+Ginput.boundaryType      = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 
 Ginput.wavelength        = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 Ginput.mediaPropParams   = {g_vec(i)}; % Cell array containing any additional parameters to be passed to the getMediaProperties function

@@ -1,6 +1,6 @@
-# MCmatlab #
+# MCmatlab
 
-## What is this repository for? ##
+## What is this repository for?
 
 A Monte Carlo simulation for modeling light propagation in a 3D voxel space.
 Fluorescence can optionally be simulated after simulation of the excitation light.
@@ -10,7 +10,7 @@ Primarily targeted for tissue optics, but can be used in any environment.
 You can find the latest version of MCmatlab and more information in the wiki on https://gitlab.gbar.dtu.dk/biophotonics/MCmatlab.
 If you publish results obtained with this software, we would be thankful if you cited its accompanying article: doi:10.1117/1.JBO.23.12.121622
 
-## LICENSE ##
+## LICENSE
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## How do I get set up? ##
+## How do I get set up?
 
 Requirements:
 - Windows 7 or macOS 10.12 (Sierra) or newer
@@ -40,11 +40,11 @@ In MCmatlab, you set up your model in a single m-file. You can find a few exampl
 MEDIA PROPERTIES:
 The optical properties of all media are defined in the file "getMediaProperties.m" in the folder "helperfuncs". Many media are already defined therein, and you can either modify the properties of those, or add more media types to this file. Make sure that each media has its distinct "j"-number, as this is the number you will refer to when building your model.
 
-## How do I use MCmatlab? ##
-### Compilation ###
+## How do I use MCmatlab?
+### Compilation
 - The folders include all the executables necessary, so you don't need to compile anything. If, however, you want to change the routine in either the MCmatlab.c source code or the finiteElementHeatPropagator.c source code (both located in the folder "src"), you will need to recompile the respective mex-files. Check out those two source-files on how to do so.
- 
-### Building the model ###
+
+### Building the model
 You build a model in a seperate m-file. Each model requires the first two and optionally more of the following steps:
 1. Build geometry (check out "Example1_StandardTissue.m", section "%% Geometry definition")
  - Modify or add to "helperfuncs/getMediaProperties.m" to include the definitions of the media you're interested in. You may optionally include thermal and/or fluorescence properties.
@@ -54,11 +54,11 @@ You build a model in a seperate m-file. Each model requires the first two and op
 
 2. Calculate light distribution (check out "Example1_StandardTissue.m", section "%% Monte Carlo simulation")
  - This section in the model file contains the definitions for the Monte Carlo simulation.
- - After this step, you will be shown two figures with the normalized fluence rate and the absorbed light in the cube.
- 
+ - After this step, you will be shown three figures, with the normalized fluence rate, the absorbed light in the cube, and the fluence rate at the cuboid boundaries (taking into account only the *exiting* photon packages, not the incident beam). The last figure will only be shown if some of your cuboid boundaries are "escaping" boundaries, i.e., boundary type 1 (all boundaries are escaping boundaries) or 2 (top boundary only is escaping boundary).
+
 3. (Optional) Include Fresnel reflection and refraction
  - Check out "Example2_RefractionReflection.m" on how to implement changing refractive indices in your model.
- 
+
 4. (Optional) Simulate heat distribution (check out "Example3_BloodVessel.m", section "%% Heat simulation")
  - To simulate the heat diffusion, all media involved in the simulation must have the thermal properties volumetric heat capacity (VHC) and thermal conductivity (TC) defined in "helperfuncs/getMediaProperties.m".
  - If you want to model chemical changes such as tissue damage, the media that might undergo such change need to have the Arrhenius activation energy (E) and the Arrhenius pre-exponential factor (A) defined.
@@ -66,9 +66,9 @@ You build a model in a seperate m-file. Each model requires the first two and op
  - After this step, you will be shown three figures with the position of virtual temperature sensors in the cube, the temperature evolution at these positions, and whether there was some chemical change (based on the Arrhenius integral) in your cube.
 
 5. (Optional) Calculate fluorescence light distribution (check out "Example4_FluorescenceAndImaging.m", section "%% Fluorescence Monte Carlo")
- - To be able to run this step, your geometry definitions needs to include the fluorescence wavelength, "wavelength_f".
+ - To be able to run this step, your geometry definitions needs to include the fluorescence wavelength, "wavelength_f". Additionally, at least one of your media should be defined fluoerscent, by defining its fluorescent yield Y in "helperfuncs/getMediaProperties.m".
  - "Example4_FluorescenceAndImaging.m" also contains the definitions for a "LightCollector" for both the incident light Monte Carlo and the fluorescence Monte Carlo. This enables simulating a light collection and imaging system, presented in a figure after this step. This is not required if you are only interested in the fluorescence light distribution in the cube.
- - After this step, you will be shown three figures with the fluorescence emitters distribution, the fluorescent light fluence rate and absorption within the cube. If you have chosen to use the LightCollector, you will additionally see an illustration of the geometry of your imaging system and the image of the fluorescent light.
+ - After this step, you will be shown four figures, with the fluorescence emitters distribution, the fluorescent light fluence rate, the absorption within the cube, and the fluorescent light fluence rate at the cuboid boundaries. If you have chosen to use the LightCollector, you will additionally see an illustration of the geometry of your imaging system and the image of the fluorescent light.
   - You can also choose to show the light impinging on the LightCollector in a time-resolved manner. Check out "Example5_TimeTagging.m" on how to do so.
 
 6. (Optional) Imaging: Model the intensity distribution received by a detector (check out ”Example4_FluorescenceAndImaging.m”, sections ”%% Monte Carlo simulation” and ”%% Fluorescence Monte Carlo”)
@@ -77,15 +77,15 @@ You build a model in a seperate m-file. Each model requires the first two and op
 7. (Optional) Calculate the far field distribution of light escaping the simulation volume (see "Example6_FarField.m")
 
 8. (Optional) Calculate the fluence rate matrix of only those photons which end up on the detector (see "Example7_CollectedFluenceRate.m")
- 
+
 9. (Optional) Programmatically assign values to the parameters
  - See "Example8_GeometryParametricSweep.m" and "Example9_MediaPropertyParametricSweep.m" on how to implement sweeps of the parameters.
 
-## Contribution guidelines ##
+## Contribution guidelines
 
 If you want to report a bug or are missing a feature, report that as an issue on https://gitlab.gbar.dtu.dk/biophotonics/MCmatlab.
 
-### Who do I talk to? ###
+### Who do I talk to?
 
 This repository is part of the DTU "biophotonics" team.
 The main responsible is Anders Kragh Hansen: ankrh@fotonik.dtu.dk

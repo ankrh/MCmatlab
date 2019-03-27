@@ -56,7 +56,7 @@ extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing th
 #define CHANCE      0.1  		// used in roulette
 #define SIGN(x)     ((x)>=0 ? 1:-1)
 #define RandomNum   dsfmt_genrand_open_close(&P->dsfmt) // Calls for a random number in (0,1]
-#define KILLRANGE   6.0
+#define KILLRANGE   5 // Must be odd integer
     /* KILLRANGE determines the region that photons are allowed to stay 
      * alive in in multiples of the cuboid size (if outside, the probability
      * of returning to the region of interest is judged as too low). When
@@ -146,196 +146,216 @@ void axisrotate(double const * const r, double const * const u, double const the
 void launchPhoton(struct photon * const P, struct beam const * const B, struct geometry const * const G, struct paths * const Pa) {
     double r,s,phi,rand,costheta,sintheta;
     long   d,j,idx;
-    double target[3],w0[3];
+    double target[3]={0},w0[3];
     
-    P->alive = true;
     P->sameVoxel = false;
     P->weight = 1;
     P->recordElems = 0;
     
-    if(B->S) { // If a 3D source distribution was defined
-        // ... then search the cumulative distribution function via binary tree method to find the voxel to start the photon in
-        rand = RandomNum;
-        d = G->n[0]*G->n[1]*G->n[2]-1; // Number of elements in the current section to be searched, minus one
-        j = d/2; // Index of the middle element of the current section
-        while(!(B->S[j] < rand && B->S[j+1] >= rand)) { // Binary tree search
-            if(B->S[j] >= rand) {
-                j = j + (d-2)/4 - d/2;
-                d = d/2 - 1;
-            } else {
-                d = d - d/2 - 1;
-                j = j + d/2 + 1;
-            }
-        }
-        P->i[0] = j%G->n[0]         + 1 - RandomNum;
-        P->i[1] = j/G->n[0]%G->n[1] + 1 - RandomNum;
-        P->i[2] = j/G->n[0]/G->n[1] + 1 - RandomNum;
-        costheta = 1 - 2*RandomNum;
-        sintheta = sqrt(1 - costheta*costheta);
-        phi = 2*PI*RandomNum;
-        P->u[0] = sintheta*cos(phi);
-        P->u[1] = sintheta*sin(phi);
-        P->u[2] = costheta;
-        P->time = 0;
-    } else switch (B->beamType) {
-        case -1: // Custom near/far field beam
-			switch (B->nearFieldType) {
-				case 0: // Gaussian
-					phi     = RandomNum*2*PI;
-					axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
-					r		= B->waist*sqrt(-0.5*log(RandomNum)); // for target calculation
-					for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
-					break;
-				case 1: // Circular top-hat
-					phi     = RandomNum*2*PI;
-					axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
-					r		= B->waist*sqrt(RandomNum); // for target calculation
-					for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
-					break;
-				case 2: // Square top-hat
-					axisrotate(B->v,B->u,PI/2,w0); // w0 unit vector is now orthogonal to both u and v
-					r		= B->waist*(2*RandomNum-1); // for target calculation, displacement along v
-					s		= B->waist*(2*RandomNum-1); // for target calculation, displacement along w0
-					for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*B->v[idx] + s*w0[idx];
-					break;
+	do{
+		if(B->S) { // If a 3D source distribution was defined
+			// ... then search the cumulative distribution function via binary tree method to find the voxel to start the photon in
+			rand = RandomNum;
+			d = G->n[0]*G->n[1]*G->n[2]-1; // Number of elements in the current section to be searched, minus one
+			j = d/2; // Index of the middle element of the current section
+			while(!(B->S[j] < rand && B->S[j+1] >= rand)) { // Binary tree search
+				if(B->S[j] >= rand) {
+					j = j + (d-2)/4 - d/2;
+					d = d/2 - 1;
+				} else {
+					d = d - d/2 - 1;
+					j = j + d/2 + 1;
+				}
 			}
-			switch (B->farFieldType) {
-				case 0: // Gaussian
-					phi     = RandomNum*2*PI;
-					axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-					phi     = B->divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-					axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
-					break;
-				case 1: // Circular top-hat
-					phi     = RandomNum*2*PI;
-					axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-					phi     = B->divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-					axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
-					break;
-				case 2: // Cosine distribution (Lambertian)
-					phi     = RandomNum*2*PI;
-					axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-					phi     = asin(sqrt(RandomNum));
-					axisrotate(B->u,w0,phi,P->u);
-					break;
-			}
-            P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-            P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
-            P->i[2] = 0;
-            P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) + 
-                                        pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
-                                        pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
-            break;
-        case 0: // pencil beam
-            P->i[0] = (B->focus[0] - B->focus[2]*B->u[0]/B->u[2])/G->d[0] + G->n[0]/2.0;
-            P->i[1] = (B->focus[1] - B->focus[2]*B->u[1]/B->u[2])/G->d[1] + G->n[1]/2.0;
-            P->i[2] = 0;
-            for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
-            P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - B->focus[0],2) + 
-                                        pow((P->i[1] - G->n[1]/2.0)*G->d[1] - B->focus[1],2) +
-                                        pow((P->i[2]              )*G->d[2] - B->focus[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
-            break;
-        case 1: // isotropically emitting point source
-            P->i[0] = B->focus[0]/G->d[0] + G->n[0]/2.0;
-            P->i[1] = B->focus[1]/G->d[1] + G->n[1]/2.0;
-            P->i[2] = B->focus[2]/G->d[2];
-            costheta = 1 - 2*RandomNum;
-            sintheta = sqrt(1 - costheta*costheta);
-            phi = 2*PI*RandomNum;
-            P->u[0] = sintheta*cos(phi);
-            P->u[1] = sintheta*sin(phi);
-            P->u[2] = costheta;
-            P->time = 0;
-            break;
-        case 2: // infinite plane wave
-            P->i[0] = ((G->boundaryType==1)? 1: KILLRANGE)*G->n[0]*(RandomNum-0.5) + G->n[0]/2.0; // Generates a random ix coordinate within the cuboid
-            P->i[1] = ((G->boundaryType==1)? 1: KILLRANGE)*G->n[1]*(RandomNum-0.5) + G->n[1]/2.0; // Generates a random iy coordinate within the cuboid
-            P->i[2] = 0;
-            for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
-            P->time = G->RIv[0]/C*((P->i[0] - G->n[0]/2.0)*G->d[0]*B->u[0] + 
-                                   (P->i[1] - G->n[1]/2.0)*G->d[1]*B->u[1] +
-                                   (P->i[2]              )*G->d[2]*B->u[2]); // Starting time is set so that the wave crosses (x=0,y=0,z=0) at time = 0
-            break;
-        case 3: // Gaussian focus, Gaussian far field beam
-            phi     = RandomNum*2*PI;
-            axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
-            r		= B->waist*sqrt(-0.5*log(RandomNum)); // for target calculation
-            for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
-            phi     = RandomNum*2*PI;
-            axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-            phi     = B->divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-            axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
-            P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-            P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
-            P->i[2] = 0;
-            P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) + 
-                                        pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
-                                        pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
-            break;
-        case 4: // Gaussian focus, top-hat far field beam
-            phi     = RandomNum*2*PI;
-            axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
-            r		= B->waist*sqrt(-0.5*log(RandomNum)); // for target calculation
-            for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
-            phi     = RandomNum*2*PI;
-            axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-            phi     = B->divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-            axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
-            P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-            P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
-            P->i[2] = 0;
-            P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) + 
-                                        pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
-                                        pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
-            break;
-        case 5: // top-hat focus, Gaussian far field beam
-            phi     = RandomNum*2*PI;
-            axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
-            r		= B->waist*sqrt(RandomNum); // for target calculation
-            for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
-            phi     = RandomNum*2*PI;
-            axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-            phi     = B->divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-            axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
-            P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-            P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
-            P->i[2] = 0;
-            P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) + 
-                                        pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
-                                        pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
-            break;
-        case 6: // top-hat focus, top-hat far field beam
-            phi  	= RandomNum*2*PI;
-            axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
-            r		= B->waist*sqrt(RandomNum); // for target calculation
-            for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
-            phi     = RandomNum*2*PI;
-            axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
-            phi     = B->divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-            axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
-            P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-            P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
-            P->i[2] = 0;
-            P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) + 
-                                        pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
-                                        pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
-            break;
-        case 7: // Laguerre-Gaussian LG01 beam
-            phi     = RandomNum*2*PI;
-            axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
-            r		= B->waist*sqrt((gsl_sf_lambert_Wm1(-RandomNum*exp(-1))+1)/(-2))/1.50087; // for target calculation
-            for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
-            phi     = B->divergence*sqrt((gsl_sf_lambert_Wm1(-RandomNum*exp(-1))+1)/(-2))/1.50087; // for trajectory calculation. The sqrt is valid within paraxial approximation.
-            axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
-            P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
-            P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
-            P->i[2] = 0;
-            P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) + 
-                                        pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
-                                        pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
-            break;
-    }
-    
+			P->i[0] = j%G->n[0]         + 1 - RandomNum;
+			P->i[1] = j/G->n[0]%G->n[1] + 1 - RandomNum;
+			P->i[2] = j/G->n[0]/G->n[1] + 1 - RandomNum;
+			costheta = 1 - 2*RandomNum;
+			sintheta = sqrt(1 - costheta*costheta);
+			phi = 2*PI*RandomNum;
+			P->u[0] = sintheta*cos(phi);
+			P->u[1] = sintheta*sin(phi);
+			P->u[2] = costheta;
+			P->time = 0;
+		} else switch (B->beamType) {
+			case -1: // Custom near/far field beam
+				switch (B->nearFieldType) {
+					case 0: // Gaussian
+						phi     = RandomNum*2*PI;
+						axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
+						r		= B->waist*sqrt(-0.5*log(RandomNum)); // for target calculation
+						for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
+						break;
+					case 1: // Circular top-hat
+						phi     = RandomNum*2*PI;
+						axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
+						r		= B->waist*sqrt(RandomNum); // for target calculation
+						for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
+						break;
+					case 2: // Square top-hat
+						axisrotate(B->v,B->u,PI/2,w0); // w0 unit vector is now orthogonal to both u and v
+						r		= B->waist*(2*RandomNum-1); // for target calculation, displacement along v
+						s		= B->waist*(2*RandomNum-1); // for target calculation, displacement along w0
+						for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*B->v[idx] + s*w0[idx];
+						break;
+				}
+				switch (B->farFieldType) {
+					case 0: // Gaussian
+						phi     = RandomNum*2*PI;
+						axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+						phi     = B->divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+						axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
+						break;
+					case 1: // Circular top-hat
+						phi     = RandomNum*2*PI;
+						axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+						phi     = B->divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+						axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
+						break;
+					case 2: // Cosine distribution (Lambertian)
+						phi     = RandomNum*2*PI;
+						axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+						phi     = asin(sqrt(RandomNum));
+						axisrotate(B->u,w0,phi,P->u);
+						break;
+				}
+				P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+				P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
+				P->i[2] = 0;
+				P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) + 
+											pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
+											pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
+				break;
+			case 0: // pencil beam
+				P->i[0] = (B->focus[0] - B->focus[2]*B->u[0]/B->u[2])/G->d[0] + G->n[0]/2.0;
+				P->i[1] = (B->focus[1] - B->focus[2]*B->u[1]/B->u[2])/G->d[1] + G->n[1]/2.0;
+				P->i[2] = 0;
+				for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
+				P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - B->focus[0],2) + 
+											pow((P->i[1] - G->n[1]/2.0)*G->d[1] - B->focus[1],2) +
+											pow((P->i[2]              )*G->d[2] - B->focus[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
+				break;
+			case 1: // isotropically emitting point source
+				P->i[0] = B->focus[0]/G->d[0] + G->n[0]/2.0;
+				P->i[1] = B->focus[1]/G->d[1] + G->n[1]/2.0;
+				P->i[2] = B->focus[2]/G->d[2];
+				costheta = 1 - 2*RandomNum;
+				sintheta = sqrt(1 - costheta*costheta);
+				phi = 2*PI*RandomNum;
+				P->u[0] = sintheta*cos(phi);
+				P->u[1] = sintheta*sin(phi);
+				P->u[2] = costheta;
+				P->time = 0;
+				break;
+			case 2: // infinite plane wave
+				P->i[0] = ((G->boundaryType==1)? 1: KILLRANGE)*G->n[0]*(RandomNum-0.5) + G->n[0]/2.0; // Generates a random ix coordinate within the cuboid
+				P->i[1] = ((G->boundaryType==1)? 1: KILLRANGE)*G->n[1]*(RandomNum-0.5) + G->n[1]/2.0; // Generates a random iy coordinate within the cuboid
+				P->i[2] = 0;
+				for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
+				P->time = G->RIv[0]/C*((P->i[0] - G->n[0]/2.0)*G->d[0]*B->u[0] + 
+									   (P->i[1] - G->n[1]/2.0)*G->d[1]*B->u[1] +
+									   (P->i[2]              )*G->d[2]*B->u[2]); // Starting time is set so that the wave crosses (x=0,y=0,z=0) at time = 0
+				break;
+			case 3: // Gaussian focus, Gaussian far field beam
+				phi     = RandomNum*2*PI;
+				axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
+				r		= B->waist*sqrt(-0.5*log(RandomNum)); // for target calculation
+				for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
+				phi     = RandomNum*2*PI;
+				axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+				phi     = B->divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+				axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
+				P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+				P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
+				P->i[2] = 0;
+				P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) + 
+											pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
+											pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
+				break;
+			case 4: // Gaussian focus, top-hat far field beam
+				phi     = RandomNum*2*PI;
+				axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
+				r		= B->waist*sqrt(-0.5*log(RandomNum)); // for target calculation
+				for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
+				phi     = RandomNum*2*PI;
+				axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+				phi     = B->divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+				axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
+				P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+				P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
+				P->i[2] = 0;
+				P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) + 
+											pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
+											pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
+				break;
+			case 5: // top-hat focus, Gaussian far field beam
+				phi     = RandomNum*2*PI;
+				axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
+				r		= B->waist*sqrt(RandomNum); // for target calculation
+				for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
+				phi     = RandomNum*2*PI;
+				axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+				phi     = B->divergence*sqrt(-0.5*log(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+				axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
+				P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+				P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
+				P->i[2] = 0;
+				P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) + 
+											pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
+											pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
+				break;
+			case 6: // top-hat focus, top-hat far field beam
+				phi  	= RandomNum*2*PI;
+				axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
+				r		= B->waist*sqrt(RandomNum); // for target calculation
+				for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
+				phi     = RandomNum*2*PI;
+				axisrotate(B->v,B->u,phi,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
+				phi     = B->divergence*sqrt(RandomNum); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+				axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
+				P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+				P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
+				P->i[2] = 0;
+				P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) + 
+											pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
+											pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
+				break;
+			case 7: // Laguerre-Gaussian LG01 beam
+				phi     = RandomNum*2*PI;
+				axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
+				r		= B->waist*sqrt((gsl_sf_lambert_Wm1(-RandomNum*exp(-1))+1)/(-2))/1.50087; // for target calculation
+				for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
+				phi     = B->divergence*sqrt((gsl_sf_lambert_Wm1(-RandomNum*exp(-1))+1)/(-2))/1.50087; // for trajectory calculation. The sqrt is valid within paraxial approximation.
+				axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
+				P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
+				P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
+				P->i[2] = 0;
+				P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) + 
+											pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
+											pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
+				break;
+		}
+
+		switch (G->boundaryType) {
+			case 0:
+				P->alive = (fabs(P->i[0]/G->n[0] - 1.0/2) <  KILLRANGE/2.0 &&
+							fabs(P->i[1]/G->n[1] - 1.0/2) <  KILLRANGE/2.0 &&
+							fabs(P->i[2]/G->n[2] - 1.0/2) <  KILLRANGE/2.0);
+				break;
+			case 1:
+				P->alive = P->i[0] < G->n[0] && P->i[0] >= 0 &&
+						   P->i[1] < G->n[1] && P->i[1] >= 0 &&
+						   P->i[2] < G->n[2] && P->i[2] >= 0;
+				break;
+			case 2:
+				P->alive = (fabs(P->i[0]/G->n[0] - 1.0/2) <  KILLRANGE/2.0 &&
+							fabs(P->i[1]/G->n[1] - 1.0/2) <  KILLRANGE/2.0 &&
+								 P->i[2]/G->n[2] - 1.0/2  <  KILLRANGE/2.0 &&
+								 P->i[2]                  >= 0);
+				break;
+		}
+	} while(!P->alive); // If photon happened to be initialized outside the volume in which it is allowed to travel, we try again
+	
     // Calculate distances to next voxel boundary planes
     for(idx=0;idx<3;idx++) P->D[idx] = P->u[idx]? (floor(P->i[idx]) + (P->u[idx]>0) - P->i[idx])*G->d[idx]/P->u[idx] : INFINITY;
     
@@ -433,7 +453,55 @@ void formFarField(struct photon const * const P, long const farfieldRes, double 
     FF[(long)floor(theta/PI*farfieldRes) + farfieldRes*(long)floor(phi_shifted/(2*PI)*farfieldRes)] += P->weight;
 }
 
-void checkEscape(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC, double * const Fdet, double * const Image, long const farfieldRes, double * const FF) {
+void formEdgeFluxes(struct photon const * const P, struct geometry const * const G,
+                    double * const I_xpos, double * const I_xneg, double * const I_ypos,
+                    double * const I_yneg, double * const I_zpos, double * const I_zneg) {
+    if(G->boundaryType == 1) {
+        if(P->i[2] < 0) {
+            #ifdef _WIN32
+            #pragma omp atomic
+            #endif
+            I_zneg[(long)P->i[0] + G->n[0]*(long)P->i[1]] += P->weight;
+        } else if(P->i[2] >= G->n[2]) {
+            #ifdef _WIN32
+            #pragma omp atomic
+            #endif
+            I_zpos[(long)P->i[0] + G->n[0]*(long)P->i[1]] += P->weight;
+        } else if(P->i[1] < 0) {
+            #ifdef _WIN32
+            #pragma omp atomic
+            #endif
+            I_yneg[(long)P->i[0] + G->n[0]*(long)P->i[2]] += P->weight;
+        } else if(P->i[1] >= G->n[1]) {
+            #ifdef _WIN32
+            #pragma omp atomic
+            #endif
+            I_ypos[(long)P->i[0] + G->n[0]*(long)P->i[2]] += P->weight;
+        } else if(P->i[0] < 0) {
+            #ifdef _WIN32
+            #pragma omp atomic
+            #endif
+            I_xneg[(long)P->i[1] + G->n[1]*(long)P->i[2]] += P->weight;
+        } else if(P->i[0] >= G->n[0]) {
+            #ifdef _WIN32
+            #pragma omp atomic
+            #endif
+            I_xpos[(long)P->i[1] + G->n[1]*(long)P->i[2]] += P->weight;
+        }
+    } else { // boundaryType == 2
+        if(P->i[2] < 0) {
+            #ifdef _WIN32
+            #pragma omp atomic
+            #endif
+            I_zneg[(long)(P->i[0] + G->n[0]*(KILLRANGE-1)/2.0) + (KILLRANGE*G->n[0])*((long)(P->i[1] + G->n[1]*(KILLRANGE-1)/2.0))] += P->weight;
+        }
+    }
+}
+
+void checkEscape(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC,
+        double * const Fdet, double * const Image, long const farfieldRes, double * const FF,
+        double * const I_xpos, double * const I_xneg, double * const I_ypos,
+        double * const I_yneg, double * const I_zpos, double * const I_zneg) {
     bool escaped = false;
     P->insideVolume = P->i[0] < G->n[0] && P->i[0] >= 0 &&
                       P->i[1] < G->n[1] && P->i[1] >= 0 &&
@@ -441,25 +509,26 @@ void checkEscape(struct photon * const P, struct geometry const * const G, struc
 
     switch (G->boundaryType) {
         case 0:
-            P->alive = (fabs(P->i[0]/G->n[0] - 1.0/2) <  KILLRANGE/2 &&
-                        fabs(P->i[1]/G->n[1] - 1.0/2) <  KILLRANGE/2 &&
-                        fabs(P->i[2]/G->n[2] - 1.0/2) <  KILLRANGE/2);
+            P->alive = (fabs(P->i[0]/G->n[0] - 1.0/2) <  KILLRANGE/2.0 &&
+                        fabs(P->i[1]/G->n[1] - 1.0/2) <  KILLRANGE/2.0 &&
+                        fabs(P->i[2]/G->n[2] - 1.0/2) <  KILLRANGE/2.0);
             break;
         case 1:
             P->alive = P->insideVolume;
             escaped = !P->insideVolume && P->RI == 1;
             break;
         case 2:
-            P->alive = (fabs(P->i[0]/G->n[0] - 1.0/2) <  KILLRANGE/2 &&
-                        fabs(P->i[1]/G->n[1] - 1.0/2) <  KILLRANGE/2 &&
-                             P->i[2]/G->n[2] - 1.0/2  <  KILLRANGE/2 &&
+            P->alive = (fabs(P->i[0]/G->n[0] - 1.0/2) <  KILLRANGE/2.0 &&
+                        fabs(P->i[1]/G->n[1] - 1.0/2) <  KILLRANGE/2.0 &&
+                             P->i[2]/G->n[2] - 1.0/2  <  KILLRANGE/2.0 &&
                              P->i[2]                  >= 0);
             escaped = (P->i[2] < 0) && P->RI == 1;
             break;
     }
     
-    if(escaped && FF)    formFarField(P,farfieldRes,FF);
-    if(escaped && Image) formImage(P,G,LC,Fdet,Image); // If Image is not NULL then that's because useLightCollector was set to true (non-zero)
+    if(!P->alive && G->boundaryType) formEdgeFluxes(P,G,I_xpos,I_xneg,I_ypos,I_yneg,I_zpos,I_zneg);
+    if(escaped && FF)                formFarField(P,farfieldRes,FF);
+    if(escaped && Image)             formImage(P,G,LC,Fdet,Image); // If Image is not NULL then that's because useLightCollector was set to true (non-zero)
 }
 
 void getNewVoxelProperties(struct photon * const P, struct geometry const * const G) {
@@ -618,7 +687,10 @@ void scatterPhoton(struct photon * const P, struct geometry const * const G) {
     P->stepLeft	= -log(RandomNum);
 }
 
-void normalizeDeposition(struct beam const * const B, struct geometry const * const G, struct lightcollector const * const LC, double * const F, double * const Fdet, double * const Image, double * const FF, long const farfieldRes, double nPhotons) {
+void normalizeDeposition(struct beam const * const B, struct geometry const * const G, struct lightcollector const * const LC,
+                         double * const F, double * const Fdet, double * const Image, double * const FF, long const farfieldRes,
+                         double * const I_xpos, double * const I_xneg, double * const I_ypos,
+                         double * const I_yneg, double * const I_zpos, double * const I_zneg, double nPhotons) {
     long j;
     double V = G->d[0]*G->d[1]*G->d[2]; // Voxel volume
     long L = G->n[0]*G->n[1]*G->n[2]; // Total number of voxels in cuboid
@@ -626,32 +698,31 @@ void normalizeDeposition(struct beam const * const B, struct geometry const * co
     long L_FF = farfieldRes*farfieldRes; // Total number of pixels in the far field array
     // Normalize deposition to yield relative fluence rate (F). For fluorescence, the result is relative to
     // the incident excitation power (not emitted fluorescence power).
+    double normfactor = nPhotons;
     if(B->S) { // For a 3D source distribution (e.g., fluorescence)
-		if(F)    for(j=0;j<L   ;j++) F[j]    /= V*nPhotons*G->muav[G->M[j]]/B->power;
-		if(Fdet) for(j=0;j<L   ;j++) Fdet[j] /= V*nPhotons*G->muav[G->M[j]]/B->power;
-        if(FF)   for(j=0;j<L_FF;j++) FF[j]   /=   nPhotons                 /B->power;
-        if(Image) {
-            if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/B->power;
-            else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons/B->power;
-        }
+        normfactor /= B->power;
         free(B->S);
     } else if(B->beamType == 2 && G->boundaryType != 1) { // For infinite plane wave launched into volume without absorbing walls
-		if(F)    for(j=0;j<L   ;j++) F[j]    /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE);
-		if(Fdet) for(j=0;j<L   ;j++) Fdet[j] /= V*nPhotons*G->muav[G->M[j]]/(KILLRANGE*KILLRANGE);
-        if(FF)   for(j=0;j<L_FF;j++) FF[j]   /=   nPhotons; // Here we deliberately do not count only photons entering on the top cuboid boundary, but all simulated photons, since they can anyway also escape outside the cuboid.
-        if(Image) {
-            if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons/(KILLRANGE*KILLRANGE);
-            else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons/(KILLRANGE*KILLRANGE);
-        }
-	} else {
-		if(F)    for(j=0;j<L   ;j++) F[j]    /= V*nPhotons*G->muav[G->M[j]];
-		if(Fdet) for(j=0;j<L   ;j++) Fdet[j] /= V*nPhotons*G->muav[G->M[j]];
-        if(FF)   for(j=0;j<L_FF;j++) FF[j]   /=   nPhotons;
-        if(Image) {
-            if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*nPhotons;
-            else         for(j=0;j<     LC->res[1];j++) Image[j] /= nPhotons;
-        }
+        normfactor /= KILLRANGE*KILLRANGE;
 	}
+    
+    if(F)    for(j=0;j<L   ;j++) F[j]    /= V*normfactor*G->muav[G->M[j]];
+    if(Fdet) for(j=0;j<L   ;j++) Fdet[j] /= V*normfactor*G->muav[G->M[j]];
+    if(FF)   for(j=0;j<L_FF;j++) FF[j]   /=   normfactor;
+    if(Image) {
+        if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*normfactor;
+        else         for(j=0;j<     LC->res[1];j++) Image[j] /= normfactor;
+    }
+    if(G->boundaryType == 1) {
+        for(j=0;j<G->n[1]*G->n[2];j++) I_xpos[j] /= G->d[1]*G->d[2]*normfactor;
+        for(j=0;j<G->n[1]*G->n[2];j++) I_xneg[j] /= G->d[1]*G->d[2]*normfactor;
+        for(j=0;j<G->n[0]*G->n[2];j++) I_ypos[j] /= G->d[0]*G->d[2]*normfactor;
+        for(j=0;j<G->n[0]*G->n[2];j++) I_yneg[j] /= G->d[0]*G->d[2]*normfactor;
+        for(j=0;j<G->n[0]*G->n[1];j++) I_zpos[j] /= G->d[0]*G->d[1]*normfactor;
+        for(j=0;j<G->n[0]*G->n[1];j++) I_zneg[j] /= G->d[0]*G->d[1]*normfactor;
+    } else if(G->boundaryType == 2) {
+        for(j=0;j<KILLRANGE*G->n[0]*KILLRANGE*G->n[1];j++) I_zneg[j] /= G->d[0]*G->d[1]*normfactor;
+    }
 }
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
@@ -777,7 +848,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     long farfieldRes = *mxGetPr(mxGetField(prhs[0],0,"farfieldRes"));
     
     // Prepare output MATLAB struct
-    long nOutputs = 2 + useLightCollector + calcF + calcFdet + (Pa->nExamplePaths != 0) + (farfieldRes != 0);
+    long nOutputs = 2 + useLightCollector + calcF + calcFdet + (Pa->nExamplePaths != 0) + (farfieldRes != 0) + 6*(G->boundaryType == 1) + 1*(G->boundaryType == 2);
     char *fieldnames[nOutputs];
     idx = 0;
     fieldnames[idx++] = "nPhotons";
@@ -787,6 +858,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     if(calcFdet) fieldnames[idx++] = "Fdet";
     if(Pa->nExamplePaths) fieldnames[idx++] = "ExamplePaths";
     if(farfieldRes) fieldnames[idx++] = "FarField";
+    if(G->boundaryType == 1) {
+        fieldnames[idx++] = "I_xpos";
+        fieldnames[idx++] = "I_xneg";
+        fieldnames[idx++] = "I_ypos";
+        fieldnames[idx++] = "I_yneg";
+        fieldnames[idx++] = "I_zpos";
+        fieldnames[idx++] = "I_zneg";
+    } else if(G->boundaryType == 2) fieldnames[idx++] = "I_zneg";
     
     plhs[0] = mxCreateStructMatrix(1,1,nOutputs,(const char **)fieldnames);
 
@@ -794,6 +873,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     if(calcFdet)          mxSetField(plhs[0],0,"Fdet",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
     if(useLightCollector) mxSetField(plhs[0],0,"Image", mxCreateNumericArray(3,(mwSize[]){LC->res[0],LC->res[0],LC->res[1]},mxDOUBLE_CLASS,mxREAL));
     if(farfieldRes)       mxSetField(plhs[0],0,"FarField", mxCreateDoubleMatrix(farfieldRes,farfieldRes,mxREAL));
+    if(G->boundaryType == 1) {
+        mxSetField(plhs[0],0,"I_xpos", mxCreateDoubleMatrix(G->n[1],G->n[2],mxREAL));
+        mxSetField(plhs[0],0,"I_xneg", mxCreateDoubleMatrix(G->n[1],G->n[2],mxREAL));
+        mxSetField(plhs[0],0,"I_ypos", mxCreateDoubleMatrix(G->n[0],G->n[2],mxREAL));
+        mxSetField(plhs[0],0,"I_yneg", mxCreateDoubleMatrix(G->n[0],G->n[2],mxREAL));
+        mxSetField(plhs[0],0,"I_zpos", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
+        mxSetField(plhs[0],0,"I_zneg", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
+    } else if(G->boundaryType == 2) mxSetField(plhs[0],0,"I_zneg", mxCreateDoubleMatrix(KILLRANGE*G->n[0],KILLRANGE*G->n[1],mxREAL));
     mxSetField(plhs[0],0,"nPhotons",mxCreateDoubleMatrix(1,1,mxREAL));
     mxSetField(plhs[0],0,"nThreads",mxCreateDoubleMatrix(1,1,mxREAL));
     double *F           = calcF? mxGetPr(mxGetField(plhs[0],0,"F")): NULL;
@@ -802,6 +889,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     double *nPhotonsPtr = mxGetPr(mxGetField(plhs[0],0,"nPhotons"));
     double *nThreadsPtr = mxGetPr(mxGetField(plhs[0],0,"nThreads"));
     double *FF          = farfieldRes? mxGetPr(mxGetField(plhs[0],0,"FarField")): NULL;
+    double *I_xpos      = G->boundaryType == 1? mxGetPr(mxGetField(plhs[0],0,"I_xpos")): NULL;
+    double *I_xneg      = G->boundaryType == 1? mxGetPr(mxGetField(plhs[0],0,"I_xneg")): NULL;
+    double *I_ypos      = G->boundaryType == 1? mxGetPr(mxGetField(plhs[0],0,"I_ypos")): NULL;
+    double *I_yneg      = G->boundaryType == 1? mxGetPr(mxGetField(plhs[0],0,"I_yneg")): NULL;
+    double *I_zpos      = G->boundaryType == 1? mxGetPr(mxGetField(plhs[0],0,"I_zpos")): NULL;
+    double *I_zneg      = G->boundaryType != 0? mxGetPr(mxGetField(plhs[0],0,"I_zneg")): NULL;
     
 
     if(!silentMode) {
@@ -884,7 +977,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 			while(P->alive) {
 				while(P->stepLeft>0) {
 					if(!P->sameVoxel) {
-                        checkEscape(P,G,LC,Fdet,Image,farfieldRes,FF);
+                        checkEscape(P,G,LC,Fdet,Image,farfieldRes,FF,I_xpos,I_xneg,I_ypos,I_yneg,I_zpos,I_zneg);
                         if(!P->alive) break;
                         getNewVoxelProperties(P,G); // If photon has just entered a new voxel or has just been launched
                     }
@@ -936,8 +1029,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         printf("---------------------------------------------------------\n");
         mexEvalString("drawnow;");
     }
-    normalizeDeposition(B,G,LC,F,Fdet,Image,FF,farfieldRes,*nPhotonsPtr); // Convert data to relative fluence rate
-    
+    normalizeDeposition(B,G,LC,F,Fdet,Image,FF,farfieldRes,I_xpos,I_xneg,I_ypos,I_yneg,I_zpos,I_zneg,*nPhotonsPtr); // Convert data to relative fluence rate
+
     if(Pa->nExamplePaths) {
         mxSetField(plhs[0],0,"ExamplePaths",mxCreateNumericMatrix(4,Pa->pathsElems,mxDOUBLE_CLASS,mxREAL));
         memcpy(mxGetPr(mxGetField(plhs[0],0,"ExamplePaths")),Pa->data,4*sizeof(double)*Pa->pathsElems);

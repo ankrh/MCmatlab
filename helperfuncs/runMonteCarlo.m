@@ -45,7 +45,10 @@ end
 if isfield(MCinput,'LightCollector')
     %% Check to ensure that the light collector is not inside the cuboid and set res to 1 if using fiber
 	MCinput.useLightCollector = true;
-    if isfinite(MCinput.LightCollector.f)
+	if MCinput.G.boundaryType == 0
+		error('Error: If boundaryType == 0, no photons can escape to be registered on the light collector. Disable light collector or change boundaryType.');
+	end
+	if isfinite(MCinput.LightCollector.f)
         xLCC = MCinput.LightCollector.x - MCinput.LightCollector.f*sin(MCinput.LightCollector.theta)*cos(MCinput.LightCollector.phi); % x position of Light Collector Center
         yLCC = MCinput.LightCollector.y - MCinput.LightCollector.f*sin(MCinput.LightCollector.theta)*sin(MCinput.LightCollector.phi); % y position
         zLCC = MCinput.LightCollector.z - MCinput.LightCollector.f*cos(MCinput.LightCollector.theta);             % z position
@@ -64,8 +67,8 @@ if isfield(MCinput,'LightCollector')
         error('Error: Light collector center (%.4f,%.4f,%.4f) is inside cuboid',xLCC,yLCC,zLCC);
     end
 
-    %% If no time tagging start value was defined, assume no time tagging is to be performed
-	if ~isfield(MCinput.LightCollector,'tStart')
+    %% If no time tagging bins are defined, assume no time tagging is to be performed
+	if ~isfield(MCinput.LightCollector,'nTimeBins')
 		MCinput.LightCollector.tStart = 0;
 		MCinput.LightCollector.tEnd = 0;
 		MCinput.LightCollector.nTimeBins = 0;
@@ -99,6 +102,10 @@ if ~MCinput.calcF && ~MCinput.useLightCollector
 end
 if MCinput.calcFdet && ~MCinput.useLightCollector
     error('Error: calcFdet is true, but no light collector is defined');
+end
+
+if MCinput.farfieldRes && MCinput.G.boundaryType == 0
+	error('Error: If boundaryType == 0, no photons can escape to be registered in the far field. Set farfieldRes to zero or change boundaryType.');
 end
 
 if isfield(MCinput.Beam,'nearFieldType')

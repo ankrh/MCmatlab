@@ -21,7 +21,7 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 %% Geometry definition
 clear Ginput
 Ginput.matchedInterfaces = true; % Assumes all refractive indices are 1
-Ginput.boundaryType      = 1; % 0: No boundaries, 1: All cuboid boundaries, 2: Top cuboid boundary only
+Ginput.boundaryType      = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 
 Ginput.wavelength        = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 Ginput.wavelength_f      = 550; % [nm] Fluorescence wavelength, used for determination of optical properties for fluorescence light
