@@ -1,23 +1,24 @@
-calctype = 1; % 1: 1D, 2:2D, 3:3D
+%% User specified parameters
+calctype = 2; % 1: 1D, 2:2D, 3:3D
 
 heatsinkedboundary = false;
 
 dt = 0.0001;
 
 dx = 0.1;
-dy = 0.03;
+dy = 0.1;
 dz = 0.08;
 
 TC = [10 ; 1];
 
 VHC = [1 ; 2];
 
-nx = 20;
-ny = 10;
+nx = 40;
+ny = 40;
 nz = 30;
 nt = 500;
 
-%% Calculate matrices used for Douglas-Gunn ADI method
+%% Calculations
 nM = length(TC);
 x = dx*(-(nx-1)/2:(nx-1)/2);
 y = dy*(-(ny-1)/2:(ny-1)/2);
@@ -30,62 +31,83 @@ switch calctype
 %         ABS(10) = 100;
 		
 		A1 = NaN(nM,nM,1);
-		B = NaN(nM,nM,1);
-		s = zeros(nx,1);
+		s = zeros(N,1);
 		for i=1:nM
 			for j=1:nM
 				TC_eff = 2*TC(i)*TC(j)/(TC(i)+TC(j));
+				if isnan(TC_eff); TC_eff = 0; end
 				A1(i,j) = dt*TC_eff/(2*VHC(i)*dx^2); % A1 coupling factor for heat flow from medium j into medium i
-				B(i,j)  = dt*TC_eff/(2*VHC(i)*dx^2); % B coupling factor for heat flow from medium j into medium i
 			end
 		end
 		for i=1:N
-            heatsinkedvoxel = heatsinkedboundary && (ix == 1 || ix == nx);
-            if ~heatsinkedvoxel
-                s(i) = ABS(i)*dt/VHC(M(i));
+			xidx = i;
+            heatsinkedvoxel = heatsinkedboundary && (xidx == 1 || xidx == nx);
+			if ~heatsinkedvoxel
+				s(i) = ABS(i)*dt/VHC(M(i));
 			end
 		end
 
-        T = zeros(nx,1);
-		T(10) = 1;
+        T = zeros(N,1);
+		d = zeros(N,1);
+		T(20) = 1;
 		b = NaN(nx,1);
 		figure(1);clf;
         h_line = plot(T);
         h_title = title('0');
-        % ylim([0 1.5]);
         for tidx=1:nt
 			for xidx = 1:nx % construct d, the right hand side of the system of linear equations
-				delta = s(xidx);
-				if xidx ~= 1;  delta = delta + B(M(xidx),M(xidx-1))*(T(xidx-1)-T(xidx)); end
-				if xidx ~= nx; delta = delta + B(M(xidx),M(xidx+1))*(T(xidx+1)-T(xidx)); end
-				T(xidx) = T(xidx) + delta;
+				if ~(heatsinkedboundary && (xidx == 1 || xidx == nx))
+					delta = s(xidx);
+					if xidx ~= 1;  delta = delta + A1(M(xidx),M(xidx-1))*(T(xidx-1)-T(xidx)); end
+					if xidx ~= nx; delta = delta + A1(M(xidx),M(xidx+1))*(T(xidx+1)-T(xidx)); end
+				else
+					delta = 0;
+				end
+				d(xidx) = T(xidx) + delta;
 			end
 			
-			%% Thomas algorithm, sweeps up from 2 to N and then down from N to 1
+			%% Thomas algorithm, sweeps up from 2 to nx and then down from nx to 1
 			% Forward sweep, index 2:
-			b(1) = 1 + A1(M(1),M(2));
+			if heatsinkedboundary
+				b(1) = 1;
+			else
+				b(1) = 1 + A1(M(1),M(2));
+			end
 			w = -A1(M(2),M(1))/b(1);
-			b(2) = 1 + A1(M(2),M(3)) + A1(M(2),M(1)) + w*A1(M(1),M(2));
-			T(2) = T(2) - w*T(1);
+			if heatsinkedboundary
+				b(2) = 1 + A1(M(2),M(3)) + A1(M(2),M(1));
+			else
+				b(2) = 1 + A1(M(2),M(3)) + A1(M(2),M(1)) + w*A1(M(1),M(2));
+			end
+			d(2) = d(2) - w*d(1);
 			% Forward sweep, indices 3 to nx-1:
 			for xidx = 3:nx-1
 				w = -A1(M(xidx),M(xidx-1))/b(xidx-1);
 				b(xidx) = 1 + A1(M(xidx),M(xidx-1)) + A1(M(xidx),M(xidx+1));
 				b(xidx) = b(xidx) + w*A1(M(xidx-1),M(xidx));
-				T(xidx) = T(xidx) - w*T(xidx-1);
+				d(xidx) = d(xidx) - w*d(xidx-1);
 			end
 			% Forward sweep, index nx:
-			w = -A1(M(nx),M(nx-1))/b(nx-1);
-			b(nx) = 1 + A1(M(nx),M(nx-1));
-			b(nx) = b(nx) + w*A1(M(nx-1),M(nx));
-			T(nx) = T(nx) - w*T(nx-1);
+			if heatsinkedboundary
+				b(nx) = 1;
+			else
+				w = -A1(M(nx),M(nx-1))/b(nx-1);
+				b(nx) = 1 + A1(M(nx),M(nx-1));
+				b(nx) = b(nx) + w*A1(M(nx-1),M(nx));
+				d(nx) = d(nx) - w*d(nx-1);
+			end
 
 			% Back sweep, index nx:
-			T(nx) = T(nx)/b(nx);
-			% Back sweep, remaining indices:
-			for xidx = nx-1:-1:1
-				T(xidx) = (T(xidx) + A1(M(xidx),M(xidx+1))*T(xidx+1))/b(xidx);
+			T(nx) = d(nx)/b(nx);
+			% Back sweep, indices nx-1 to 2:
+			for xidx = nx-1:-1:2
+				T(xidx) = (d(xidx) + A1(M(xidx),M(xidx+1))*T(xidx+1))/b(xidx);
 			end
+			% Back sweep, index 1:
+			if ~heatsinkedboundary
+				T(1) = (d(1) + A1(M(1),M(2))*T(2))/b(1);
+			end
+			
 			h_line.YData = T;
             h_title.String = num2str(tidx);
             drawnow;
@@ -103,146 +125,169 @@ switch calctype
     case 2
         N = nx*ny;
         M = ones(nx,ny);
-%         M(5:15,23:30) = 2;
-%         M(1:2,1:2) = 2;
+        M(5:15,23:30) = 2;
         ABS = zeros(nx,ny); % Power deposited per unit length/area/volume per unit time
-%         ABS(16,22) = 100;
-        ABS(3,3) = 100;
+        ABS(5,20) = 100;
         
-        A1xy_full     = zeros(N); % In xy form
-        A2xy_full     = zeros(N); % In xy form
-        A2yx_full     = zeros(N); % In yx form
-        Bxy_full      = -eye(N); % In xy form
-        sxy           = zeros(N,1); % In xy form
-        for i=1:N % i is the xy linear index
-            [ix,iy] = ind2sub([nx,ny],i);
-            j = sub2ind([ny nx],iy,ix); % j is the yx linear index
-            heatsinkedvoxel = heatsinkedboundary && (ix == 1 || iy == 1 || ix == nx || iy == ny);
-            
-            %% x couplings
-            if ix ~= 1 && ix ~= nx
-                TC_eff_posx = 2*TC(M(i))*TC(M(i+1))/(TC(M(i))+TC(M(i+1)));
-                if isnan(TC_eff_posx)
-                    TC_eff_posx = 0;
-                end
-                TC_eff_negx = 2*TC(M(i))*TC(M(i-1))/(TC(M(i))+TC(M(i-1)));
-                if isnan(TC_eff_negx)
-                    TC_eff_negx = 0;
-                end
-                A1xy_full(i,i)   = A1xy_full(i,i)   + dt*(TC_eff_posx + TC_eff_negx)/(2*VHC(M(i))*dx^2);
-                A1xy_full(i,i-1) = A1xy_full(i,i-1) - dt*TC_eff_negx/(2*VHC(M(i))*dx^2);
-                A1xy_full(i,i+1) = A1xy_full(i,i+1) - dt*TC_eff_posx/(2*VHC(M(i))*dx^2);
-                Bxy_full(i,i)    = Bxy_full(i,i  )  + dt*(TC_eff_posx + TC_eff_negx)/(2*VHC(M(i))*dx^2);
-                Bxy_full(i,i-1)  = Bxy_full(i,i-1)  - dt*TC_eff_negx/(2*VHC(M(i))*dx^2);
-                Bxy_full(i,i+1)  = Bxy_full(i,i+1)  - dt*TC_eff_posx/(2*VHC(M(i))*dx^2);
-            elseif ~heatsinkedvoxel
-                if ix == 1
-                    TC_eff_posx = 2*TC(M(i))*TC(M(i+1))/(TC(M(i))+TC(M(i+1)));
-                    if isnan(TC_eff_posx)
-                        TC_eff_posx = 0;
-                    end
-                    A1xy_full(i,i)   = A1xy_full(i,i)   + dt*TC_eff_posx/(2*VHC(M(i))*dx^2);
-                    A1xy_full(i,i+1) = A1xy_full(i,i+1) - dt*TC_eff_posx/(2*VHC(M(i))*dx^2);
-                    Bxy_full(i,i)    = Bxy_full(i,i  )  + dt*TC_eff_posx/(2*VHC(M(i))*dx^2);
-                    Bxy_full(i,i+1)  = Bxy_full(i,i+1)  - dt*TC_eff_posx/(2*VHC(M(i))*dx^2);
-                else
-                    TC_eff_negx = 2*TC(M(i))*TC(M(i-1))/(TC(M(i))+TC(M(i-1)));
-                    if isnan(TC_eff_negx)
-                        TC_eff_negx = 0;
-                    end
-                    A1xy_full(i,i)   = A1xy_full(i,i)   + dt*TC_eff_negx/(2*VHC(M(i))*dx^2);
-                    A1xy_full(i,i-1) = A1xy_full(i,i-1) - dt*TC_eff_negx/(2*VHC(M(i))*dx^2);
-                    Bxy_full(i,i)    = Bxy_full(i,i  )  + dt*TC_eff_negx/(2*VHC(M(i))*dx^2);
-                    Bxy_full(i,i-1)  = Bxy_full(i,i-1)  - dt*TC_eff_negx/(2*VHC(M(i))*dx^2);
-                end
-            end
-            
-            %% y couplings
-            if iy ~= 1 && iy ~= ny
-                TC_eff_posy = 2*TC(M(i))*TC(M(i+nx))/(TC(M(i))+TC(M(i+nx)));
-                if isnan(TC_eff_posy)
-                    TC_eff_posy = 0;
-                end
-                TC_eff_negy = 2*TC(M(i))*TC(M(i-nx))/(TC(M(i))+TC(M(i-nx)));
-                if isnan(TC_eff_negy)
-                    TC_eff_negy = 0;
-                end
-                A2xy_full(i,i)    = A2xy_full(i,i)    + dt*(TC_eff_posy + TC_eff_negy)/(2*VHC(M(i))*dy^2);
-                A2xy_full(i,i-nx) = A2xy_full(i,i-nx) - dt*TC_eff_negy /(2*VHC(M(i))*dy^2);
-                A2xy_full(i,i+nx) = A2xy_full(i,i+nx) - dt*TC_eff_posy /(2*VHC(M(i))*dy^2);
-                A2yx_full(j,j)    = A2yx_full(j,j)    + dt*(TC_eff_posy + TC_eff_negy)/(2*VHC(M(i))*dy^2);
-                A2yx_full(j,j-1)  = A2yx_full(j,j-1)  - dt*TC_eff_negy /(2*VHC(M(i))*dy^2);
-                A2yx_full(j,j+1)  = A2yx_full(j,j+1)  - dt*TC_eff_posy /(2*VHC(M(i))*dy^2);
-                Bxy_full(i,i)     = Bxy_full(i,i   )  + dt*(TC_eff_posy + TC_eff_negy)/(2*VHC(M(i))*dy^2);
-                Bxy_full(i,i-nx)  = Bxy_full(i,i-nx)  - dt*TC_eff_negy /(2*VHC(M(i))*dy^2);
-                Bxy_full(i,i+nx)  = Bxy_full(i,i+nx)  - dt*TC_eff_posy /(2*VHC(M(i))*dy^2);
-            elseif ~heatsinkedvoxel
-                if iy == 1
-                    TC_eff_posy = 2*TC(M(i))*TC(M(i+nx))/(TC(M(i))+TC(M(i+nx)));
-                    if isnan(TC_eff_posy)
-                        TC_eff_posy = 0;
-                    end
-                    A2xy_full(i,i)    = A2xy_full(i,i)    + dt*TC_eff_posy/(2*VHC(M(i))*dy^2);
-                    A2xy_full(i,i+nx) = A2xy_full(i,i+nx) - dt*TC_eff_posy/(2*VHC(M(i))*dy^2);
-                    A2yx_full(j,j)    = A2yx_full(j,j)    + dt*TC_eff_posy/(2*VHC(M(i))*dy^2);
-                    A2yx_full(j,j+1)  = A2yx_full(j,j+1)  - dt*TC_eff_posy/(2*VHC(M(i))*dy^2);
-                    Bxy_full(i,i)     = Bxy_full(i,i   )  + dt*TC_eff_posy/(2*VHC(M(i))*dy^2);
-                    Bxy_full(i,i+nx)  = Bxy_full(i,i+nx)  - dt*TC_eff_posy/(2*VHC(M(i))*dy^2);
-                else
-                    TC_eff_negy = 2*TC(M(i))*TC(M(i-nx))/(TC(M(i))+TC(M(i-nx)));
-                    if isnan(TC_eff_negy)
-                        TC_eff_negy = 0;
-                    end
-                    A2xy_full(i,i)    = A2xy_full(i,i)    + dt*TC_eff_negy/(2*VHC(M(i))*dy^2);
-                    A2xy_full(i,i-nx) = A2xy_full(i,i-nx) - dt*TC_eff_negy/(2*VHC(M(i))*dy^2);
-                    A2yx_full(j,j)    = A2yx_full(j,j)    + dt*TC_eff_negy/(2*VHC(M(i))*dy^2);
-                    A2yx_full(j,j-1)  = A2yx_full(j,j-1)  - dt*TC_eff_negy/(2*VHC(M(i))*dy^2);
-                    Bxy_full(i,i)     = Bxy_full(i,i   )  + dt*TC_eff_negy/(2*VHC(M(i))*dy^2);
-                    Bxy_full(i,i-nx)  = Bxy_full(i,i-nx)  - dt*TC_eff_negy/(2*VHC(M(i))*dy^2);
-                end
-            end
-            
-            %% Absorption
-            if ~heatsinkedvoxel
-                sxy(i) = ABS(i)*dt/VHC(M(i));
-            end
-        end
-        A1xy = sparse(A1xy_full);
-        A2xy = sparse(A2xy_full);
-        A2yx = sparse(A2yx_full);
-        Bxy  = sparse(Bxy_full);
-        IplusA1xy = eye(N) + A1xy;
-        minusBxyminusA2xy = - Bxy - A2xy;
-        IplusA2yx = eye(N) + A2yx;
+		A1 = NaN(nM,nM);
+        A2 = NaN(nM,nM);
+		s = zeros(nx,ny);
+		for i=1:nM
+			for j=1:nM
+                TC_eff = 2*TC(i)*TC(j)/(TC(i)+TC(j));
+                if isnan(TC_eff); TC_eff = 0; end
+                A1(i,j) = dt/2*TC_eff/(2*VHC(i)*dx^2); % A1 coupling factor for heat flow along x from medium j into medium i
+                A2(i,j) = dt/2*TC_eff/(2*VHC(i)*dy^2); % A2 coupling factor for heat flow along y from medium j into medium i
+			end
+		end
+		for xidx = 1:nx
+			for yidx = 1:ny
+				heatsinkedvoxel = heatsinkedboundary && (xidx == 1 || xidx == nx || yidx == 1 || yidx == ny);
+				if ~heatsinkedvoxel
+					s(xidx,yidx) = ABS(xidx,yidx)*dt/VHC(M(xidx,yidx));
+				end
+			end
+		end
         
         figure(2);clf;
-        imagesc(M.');
+        imagesc(x,y,M.');
+		colorbar;
         axis equal
         axis tight
         axis xy
         
-        Txy = zeros(nx*ny,1); % In xy form
-        Txy([1 end]) = 0;
+        T = zeros(nx,ny);
+        d = zeros(nx,ny);
+		b = zeros(max(nx,ny),1);
         figure(1);clf;
-        h_im = imagesc(x,y,reshape(Txy,[nx ny]).');
+        h_im = imagesc(x,y,reshape(T,[nx ny]).');
         colorbar;
         axis equal
         axis tight
         axis xy
         h_title = title('0');
-%         caxis([0 0.2]);
-        for i=1:nt
-            v1xy = IplusA1xy\(minusBxyminusA2xy*Txy + sxy); % This is the intermediate temperature estimate in xy form
-            h_im.CData = reshape(v1xy,[nx ny]).';
-%             Txy = v1xy;
-            rhs2xy = v1xy + A2xy*Txy;
-            rhs2yx = reshape(permute(reshape(rhs2xy,[nx ny]),[2 1]),[N 1]);
-            Tyx = IplusA2yx\rhs2yx; % New temperature
-            h_im.CData = reshape(Tyx,[ny nx]);
-            Txy = reshape(permute(reshape(Tyx,[ny nx]),[2 1]),[N 1]);
-            colorbar;
-            h_title.String = num2str(i);
+
+        for tidx=1:nt
+			%% Explicit part of step 1
+			for yidx = 1:ny
+				for xidx = 1:nx % construct d, the right hand side of the system of linear equations
+					if ~(heatsinkedboundary && (xidx == 1 || xidx == nx || yidx == 1 || yidx == ny))
+						delta = s(xidx,yidx);
+						if xidx ~= 1;  delta = delta +   A1(M(xidx,yidx),M(xidx-1,yidx))*(T(xidx-1,yidx)-T(xidx,yidx)); end
+						if xidx ~= nx; delta = delta +   A1(M(xidx,yidx),M(xidx+1,yidx))*(T(xidx+1,yidx)-T(xidx,yidx)); end
+						if yidx ~= 1;  delta = delta + 2*A2(M(xidx,yidx),M(xidx,yidx-1))*(T(xidx,yidx-1)-T(xidx,yidx)); end
+						if yidx ~= ny; delta = delta + 2*A2(M(xidx,yidx),M(xidx,yidx+1))*(T(xidx,yidx+1)-T(xidx,yidx)); end
+					else
+						delta = 0;
+					end
+					d(xidx,yidx) = T(xidx,yidx) + delta;
+				end
+			end
+			
+			%% Implicit part of step 1, Thomas algorithm along x, sweeps up from 2 to nx and then down from nx to 1
+			for yidx = (1 + heatsinkedboundary):(ny - heatsinkedboundary) % heatsinkedboundary may be 0 or 1
+				% Forward sweep, index 2:
+				if heatsinkedboundary
+					b(1) = 1;
+				else
+					b(1) = 1 + A1(M(1,yidx),M(2,yidx));
+				end
+				w = -A1(M(2,yidx),M(1,yidx))/b(1);
+				if heatsinkedboundary
+					b(2) = 1 + A1(M(2,yidx),M(3,yidx)) + A1(M(2,yidx),M(1,yidx));
+				else
+					b(2) = 1 + A1(M(2,yidx),M(3,yidx)) + A1(M(2,yidx),M(1,yidx)) + w*A1(M(1,yidx),M(2,yidx));
+				end
+				d(2,yidx) = d(2,yidx) - w*d(1,yidx);
+				% Forward sweep, indices 3 to nx-1:
+				for xidx = 3:nx-1
+					w = -A1(M(xidx,yidx),M(xidx-1,yidx))/b(xidx-1);
+					b(xidx) = 1 + A1(M(xidx,yidx),M(xidx-1,yidx)) + A1(M(xidx,yidx),M(xidx+1,yidx));
+					b(xidx) = b(xidx) + w*A1(M(xidx-1,yidx),M(xidx,yidx));
+					d(xidx,yidx) = d(xidx,yidx) - w*d(xidx-1,yidx);
+				end
+				% Forward sweep, index nx:
+				if heatsinkedboundary
+					b(nx) = 1;
+				else
+					w = -A1(M(nx,yidx),M(nx-1,yidx))/b(nx-1);
+					b(nx) = 1 + A1(M(nx,yidx),M(nx-1,yidx));
+					b(nx) = b(nx) + w*A1(M(nx-1,yidx),M(nx,yidx));
+					d(nx,yidx) = d(nx,yidx) - w*d(nx-1,yidx);
+				end
+
+				% Back sweep, index nx:
+				d(nx,yidx) = d(nx,yidx)/b(nx);
+				% Back sweep, indices nx-1 to 2:
+				for xidx = nx-1:-1:2
+					d(xidx,yidx) = (d(xidx,yidx) + A1(M(xidx,yidx),M(xidx+1,yidx))*d(xidx+1,yidx))/b(xidx);
+				end
+				% Back sweep, index 1:
+				if ~heatsinkedboundary
+					d(1,yidx) = (d(1,yidx) + A1(M(1,yidx),M(2,yidx))*d(2,yidx))/b(1);
+				end
+			end
+			
+			%% Explicit part of step 2
+			for yidx = 1:ny
+				for xidx = 1:nx % construct d, the right hand side of the system of linear equations
+					if ~(heatsinkedboundary && (xidx == 1 || xidx == nx || yidx == 1 || yidx == ny))
+						delta = 0;
+						if yidx ~= 1;  delta = delta - A2(M(xidx,yidx),M(xidx,yidx-1))*(T(xidx,yidx-1)-T(xidx,yidx)); end
+						if yidx ~= ny; delta = delta - A2(M(xidx,yidx),M(xidx,yidx+1))*(T(xidx,yidx+1)-T(xidx,yidx)); end
+					else
+						delta = 0;
+					end
+					d(xidx,yidx) = d(xidx,yidx) + delta;
+				end
+			end
+			
+			%% Implicit part of step 2, Thomas algorithm along y, sweeps up from 2 to ny and then down from ny to 1
+			for xidx = (1 + heatsinkedboundary):(nx - heatsinkedboundary) % heatsinkedboundary may be 0 or 1
+				% Forward sweep, index 2:
+				if heatsinkedboundary
+					b(1) = 1;
+				else
+					b(1) = 1 + A2(M(xidx,1),M(xidx,2));
+				end
+				w = -A2(M(xidx,2),M(xidx,1))/b(1);
+				if heatsinkedboundary
+					b(2) = 1 + A2(M(xidx,2),M(xidx,3)) + A2(M(xidx,2),M(xidx,1));
+				else
+					b(2) = 1 + A2(M(xidx,2),M(xidx,3)) + A2(M(xidx,2),M(xidx,1)) + w*A2(M(xidx,1),M(xidx,2));
+				end
+				d(xidx,2) = d(xidx,2) - w*d(xidx,1);
+				% Forward sweep, indices 3 to ny-1:
+				for yidx = 3:ny-1
+					w = -A2(M(xidx,yidx),M(xidx,yidx-1))/b(yidx-1);
+					b(yidx) = 1 + A2(M(xidx,yidx),M(xidx,yidx-1)) + A2(M(xidx,yidx),M(xidx,yidx+1));
+					b(yidx) = b(yidx) + w*A2(M(xidx,yidx-1),M(xidx,yidx));
+					d(xidx,yidx) = d(xidx,yidx) - w*d(xidx,yidx-1);
+				end
+				% Forward sweep, index ny:
+				if heatsinkedboundary
+					b(ny) = 1;
+				else
+					w = -A2(M(xidx,ny),M(xidx,ny-1))/b(ny-1);
+					b(ny) = 1 + A2(M(xidx,ny),M(xidx,ny-1));
+					b(ny) = b(ny) + w*A2(M(xidx,ny-1),M(xidx,ny));
+					d(xidx,ny) = d(xidx,ny) - w*d(xidx,ny-1);
+				end
+
+				% Back sweep, index ny:
+				T(xidx,ny) = d(xidx,ny)/b(ny);
+				% Back sweep, indices ny-1 to 2:
+				for yidx = ny-1:-1:2
+					T(xidx,yidx) = (d(xidx,yidx) + A2(M(xidx,yidx),M(xidx,yidx+1))*T(xidx,yidx+1))/b(yidx);
+				end
+				% Back sweep, index 1:
+				if ~heatsinkedboundary
+					T(xidx,1) = (d(xidx,1) + A2(M(xidx,1),M(xidx,2))*T(xidx,2))/b(1);
+				end
+			end
+			
+            h_im.CData = reshape(T,[nx ny]).';
+            h_title.String = num2str(tidx);
             drawnow;
         end
-        
 end
