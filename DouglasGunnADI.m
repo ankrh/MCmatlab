@@ -1,4 +1,4 @@
-calctype = 2; % 1: 1D, 2:2D, 3:3D
+calctype = 1; % 1: 1D, 2:2D, 3:3D
 
 heatsinkedboundary = false;
 
@@ -18,6 +18,7 @@ nz = 30;
 nt = 500;
 
 %% Calculate matrices used for Douglas-Gunn ADI method
+nM = length(TC);
 x = dx*(-(nx-1)/2:(nx-1)/2);
 y = dy*(-(ny-1)/2:(ny-1)/2);
 switch calctype
@@ -26,67 +27,67 @@ switch calctype
         M   = ones(nx,1);
         M(12:13) = 2;
         ABS = zeros(nx,1); % Power deposited per unit length/area/volume per unit time
-        ABS(10) = 100;
-
-        A1xy_full = eye(N);
-        Bxy_full = eye(N);
-        B_rhs = zeros(N,1);
-        for i=1:N
-            ix = i;
+%         ABS(10) = 100;
+		
+		A1 = NaN(nM,nM,1);
+		B = NaN(nM,nM,1);
+		s = zeros(nx,1);
+		for i=1:nM
+			for j=1:nM
+				TC_eff = 2*TC(i)*TC(j)/(TC(i)+TC(j));
+				A1(i,j) = dt*TC_eff/(2*VHC(i)*dx^2); % A1 coupling factor for heat flow from medium j into medium i
+				B(i,j)  = dt*TC_eff/(2*VHC(i)*dx^2); % B coupling factor for heat flow from medium j into medium i
+			end
+		end
+		for i=1:N
             heatsinkedvoxel = heatsinkedboundary && (ix == 1 || ix == nx);
-            if ix ~= 1 && ix ~= nx
-                TC_eff_posx = 2*TC(M(i))*TC(M(i+1))/(TC(M(i))+TC(M(i+1)));
-                if isnan(TC_eff_posx)
-                    TC_eff_posx = 0;
-                end
-                TC_eff_negx = 2*TC(M(i))*TC(M(i-1))/(TC(M(i))+TC(M(i-1)));
-                if isnan(TC_eff_negx)
-                    TC_eff_negx = 0;
-                end
-                A1xy_full(i,i)   = A1xy_full(i,i)   + dt*(TC_eff_posx + TC_eff_negx)/(2*VHC(M(i))*dx^2);
-                A1xy_full(i,i-1) = A1xy_full(i,i-1) - dt*TC_eff_negx /(2*VHC(M(i))*dx^2);
-                A1xy_full(i,i+1) = A1xy_full(i,i+1) - dt*TC_eff_posx /(2*VHC(M(i))*dx^2);
-                Bxy_full(i,i)   = Bxy_full(i,i)   - dt*(TC_eff_posx + TC_eff_negx)/(2*VHC(M(i))*dx^2);
-                Bxy_full(i,i-1) = Bxy_full(i,i-1) + dt*TC_eff_negx /(2*VHC(M(i))*dx^2);
-                Bxy_full(i,i+1) = Bxy_full(i,i+1) + dt*TC_eff_posx /(2*VHC(M(i))*dx^2);
-            elseif ~heatsinkedvoxel
-                if ix == 1
-                    TC_eff_posx = 2*TC(M(i))*TC(M(i+1))/(TC(M(i))+TC(M(i+1)));
-                    if isnan(TC_eff_posx)
-                        TC_eff_posx = 0;
-                    end
-                    A1xy_full(i,i)   = A1xy_full(i,i)   + dt*TC_eff_posx/(2*VHC(M(i))*dx^2);
-                    A1xy_full(i,i+1) = A1xy_full(i,i+1) - dt*TC_eff_posx /(2*VHC(M(i))*dx^2);
-                    Bxy_full(i,i)   = Bxy_full(i,i)   - dt*TC_eff_posx/(2*VHC(M(i))*dx^2);
-                    Bxy_full(i,i+1) = Bxy_full(i,i+1) + dt*TC_eff_posx /(2*VHC(M(i))*dx^2);
-                else
-                    TC_eff_negx = 2*TC(M(i))*TC(M(i-1))/(TC(M(i))+TC(M(i-1)));
-                    if isnan(TC_eff_negx)
-                        TC_eff_negx = 0;
-                    end
-                    A1xy_full(i,i)   = A1xy_full(i,i)   + dt*TC_eff_negx /(2*VHC(M(i))*dx^2);
-                    A1xy_full(i,i-1) = A1xy_full(i,i-1) - dt*TC_eff_negx /(2*VHC(M(i))*dx^2);
-                    Bxy_full(i,i)   = Bxy_full(i,i)   - dt*TC_eff_negx /(2*VHC(M(i))*dx^2);
-                    Bxy_full(i,i-1) = Bxy_full(i,i-1) + dt*TC_eff_negx /(2*VHC(M(i))*dx^2);
-                end
-            end
             if ~heatsinkedvoxel
-                B_rhs(i) = ABS(i)*dt/VHC(M(i));
-            end
-        end
-        A1xy = sparse(A1xy_full);
-        Bxy = sparse(Bxy_full);
+                s(i) = ABS(i)*dt/VHC(M(i));
+			end
+		end
 
-        Txy = zeros(nx,1);
-        Txy([1 end]) = 0;
-        figure(1);clf;
-        h_line = plot(Txy);
+        T = zeros(nx,1);
+		T(10) = 1;
+		b = NaN(nx,1);
+		figure(1);clf;
+        h_line = plot(T);
         h_title = title('0');
         % ylim([0 1.5]);
-        for i=1:nt
-            Txy = A1xy\(Bxy*Txy + B_rhs);
-            h_line.YData = Txy;
-            h_title.String = num2str(i);
+        for tidx=1:nt
+			for xidx = 1:nx % construct d, the right hand side of the system of linear equations
+				delta = s(xidx);
+				if xidx ~= 1;  delta = delta + B(M(xidx),M(xidx-1))*(T(xidx-1)-T(xidx)); end
+				if xidx ~= nx; delta = delta + B(M(xidx),M(xidx+1))*(T(xidx+1)-T(xidx)); end
+				T(xidx) = T(xidx) + delta;
+			end
+			
+			%% Thomas algorithm, sweeps up from 2 to N and then down from N to 1
+			% Forward sweep, index 2:
+			b(1) = 1 + A1(M(1),M(2));
+			w = -A1(M(2),M(1))/b(1);
+			b(2) = 1 + A1(M(2),M(3)) + A1(M(2),M(1)) + w*A1(M(1),M(2));
+			T(2) = T(2) - w*T(1);
+			% Forward sweep, indices 3 to nx-1:
+			for xidx = 3:nx-1
+				w = -A1(M(xidx),M(xidx-1))/b(xidx-1);
+				b(xidx) = 1 + A1(M(xidx),M(xidx-1)) + A1(M(xidx),M(xidx+1));
+				b(xidx) = b(xidx) + w*A1(M(xidx-1),M(xidx));
+				T(xidx) = T(xidx) - w*T(xidx-1);
+			end
+			% Forward sweep, index nx:
+			w = -A1(M(nx),M(nx-1))/b(nx-1);
+			b(nx) = 1 + A1(M(nx),M(nx-1));
+			b(nx) = b(nx) + w*A1(M(nx-1),M(nx));
+			T(nx) = T(nx) - w*T(nx-1);
+
+			% Back sweep, index nx:
+			T(nx) = T(nx)/b(nx);
+			% Back sweep, remaining indices:
+			for xidx = nx-1:-1:1
+				T(xidx) = (T(xidx) + A1(M(xidx),M(xidx+1))*T(xidx+1))/b(xidx);
+			end
+			h_line.YData = T;
+            h_title.String = num2str(tidx);
             drawnow;
         end
         
