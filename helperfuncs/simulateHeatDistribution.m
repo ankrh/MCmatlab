@@ -61,7 +61,7 @@ G = HSinput.G;
 Temp = HSinput.initialTemp*ones(size(G.M)); % Initial temperature distribution
 nM = length(G.mediaProperties); % Number of different media in simulation
 
-HC = G.dx*G.dy*G.dz*[G.mediaProperties.VHC]; % Heat capacity array. Element i is the HC of medium i in the reduced mediaProperties list.
+VHC = [G.mediaProperties.VHC]; % Volumetric heat capacity array. Element i is the VHC of medium i in the reduced mediaProperties list.
 TC = [G.mediaProperties.TC]; % Thermal conductivity array. Element i is the TC of medium i in the reduced mediaProperties list.
 
 %% Prepare Arrhenius thermal damage parameters
@@ -84,7 +84,8 @@ if(HSinput.silentMode)
     HSinput.nUpdates = 1;
 end
 
-dtmax = calcdtmax(G.M,TC,HC,G.dx,G.dy,G.dz)/2; % Highest allowable time step duration
+% dtmax = calcdtmax(G.M,TC,HC,G.dx,G.dy,G.dz)/2; % Highest allowable time step duration
+dtmax = 0.01;
 
 if HSinput.durationOn ~= 0
     nUpdatesOn = max(1,round(HSinput.nUpdates*HSinput.durationOn/(HSinput.durationOn+HSinput.durationOff)));
@@ -126,14 +127,14 @@ HSoutput.sensorsTimeVector = [0 , ((HSinput.durationOn+HSinput.durationOff)*repe
 TC_eff = 2*(TC'*TC)./(ones(length(TC))*diag(TC)+diag(TC)*ones(length(TC))); % Same as TC_eff(i,j) = 2*TC_red(i)*TC_red(j)/(TC_red(i)+TC_red(j)) but without for loops
 TC_eff(isnan(TC_eff)) = 0; % Neighboring insulating voxels return NaN but should just be 0
 
-dTdtperdeltaT = cat(3,TC_eff./(diag(HC)*ones(nM))/G.dx*G.dy*G.dz,...
-                      TC_eff./(diag(HC)*ones(nM))*G.dx/G.dy*G.dz,...
-                      TC_eff./(diag(HC)*ones(nM))*G.dx*G.dy/G.dz); % [deg C /(s*deg C)] Time derivative of voxel temperature per voxel-to-voxel temperature difference. Third dimension corresponds to the different directions of heat diffusion (x, y and z)
+dTdtperdeltaT  = cat(3,TC_eff./(diag(VHC)*ones(nM))/G.dx^2,...
+                       TC_eff./(diag(VHC)*ones(nM))/G.dy^2,...
+                       TC_eff./(diag(VHC)*ones(nM))/G.dz^2); % [deg C /(s*deg C)] Time derivative of voxel temperature per voxel-to-voxel temperature difference. Third dimension corresponds to the different directions of heat diffusion (x, y and z)
 clear TC_eff
 
 %% Calculate temperature change due to absorbed heat per time step
 mua_vec = [G.mediaProperties.mua];
-dTdt_abs = mua_vec(G.M).*HSinput.MCoutput.F*G.dx*G.dy*G.dz*HSinput.P./HC(G.M); % [deg C/s] Time derivative of voxel temperature due to absorption. (mua_vec(G.M).*F is a 3D matrix of normalized volumetric powers)
+dTdt_abs = mua_vec(G.M).*HSinput.MCoutput.F*HSinput.P./VHC(G.M); % [deg C/s] Time derivative of voxel temperature due to absorption. (mua_vec(G.M).*F is a 3D matrix of normalized volumetric powers)
 
 %% Convert the temperature sensor positions to interpolation corner indices and weights used in the MEX function
 numTemperatureSensors = size(HSinput.tempSensorPositions,1);
@@ -190,11 +191,11 @@ for j=1:HSinput.nPulses
         if(~HSinput.silentMode)
             fprintf(['Illuminating pulse #' num2str(j) '... \n' repmat('-',1,nUpdatesOn)]);
             drawnow;
-        end
+		end
         
         heatSimParameters.lightsOn = true;
         heatSimParameters.steps = nTsPerUpdateOn;
-        heatSimParameters.dt = dtOn;
+		heatSimParameters.dt = dtOn;
         for i = 1:nUpdatesOn
             [Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator(Temp,HSoutput.Omega,heatSimParameters);
             
@@ -229,7 +230,7 @@ for j=1:HSinput.nPulses
         
         heatSimParameters.lightsOn = false;
         heatSimParameters.steps = nTsPerUpdateOff;
-        heatSimParameters.dt = dtOff;
+		heatSimParameters.dt = dtOff;
         for i = 1:nUpdatesOff
             [Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator(Temp,HSoutput.Omega,heatSimParameters);
             

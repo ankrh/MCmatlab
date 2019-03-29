@@ -47,6 +47,8 @@ extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing th
 
 #define R 8.3144598 // Gas constant [J/mol/K]
 #define CELSIUSZERO 273.15
+#define T1 (*srcTemp)
+#define b (*tgtTemp)
 
 void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     bool ctrlc_caught = false;           // Has a ctrl+c been passed from MATLAB?
@@ -65,7 +67,7 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     long nt               = *mxGetPr(mxGetField(prhs[2],0,"steps")); // nt is an integer (number of time steps to perform)
     double dt             = *mxGetPr(mxGetField(prhs[2],0,"dt")); // dt is a double (duration of time step)
     unsigned char *M      = mxGetData(mxGetField(prhs[2],0,"M")); // M is a nx*ny*nz array of uint8 (unsigned char) containing values from 0..nM-1
-    double *dTdtperdeltaT = mxGetPr(mxGetField(prhs[2],0,"dTdtperdeltaT")); // dTdtperdeltaT is an nM*nM*3 array of doubles
+    double *c             = mxGetPr(mxGetField(prhs[2],0,"dTdtperdeltaT")); // c is an nM*nM*3 array of doubles
     double *dTdt_abs      = mxGetPr(mxGetField(prhs[2],0,"dTdt_abs")); // dTdt_abs is an nx*ny*nz array of doubles
     double *A             = mxGetPr(mxGetField(prhs[2],0,"A")); // A is a nM array of doubles
     double *E             = mxGetPr(mxGetField(prhs[2],0,"E")); // E is a nM array of doubles
@@ -106,42 +108,96 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     
     #ifdef _WIN32
     bool useAllCPUs       = mxIsLogicalScalarTrue(mxGetField(prhs[2],0,"useAllCPUs"));
-    #pragma omp parallel num_threads(useAllCPUs || omp_get_num_procs() == 1? omp_get_num_procs(): omp_get_num_procs()-1)
+    #pragma omp parallel 1//num_threads(useAllCPUs || omp_get_num_procs() == 1? omp_get_num_procs(): omp_get_num_procs()-1)
     #endif
     {
         long ix,iy,iz;
         long n,i;
         double dTdt; // Time derivative of temperature
+		double b[nx>ny && nx>nz? nx: (ny>nz? ny: nz)]
         
         for(n=0; n<nt; n++) {
             if(ctrlc_caught) break;
-            #ifdef _WIN32
+			
+            // Explicit part of substep 1 out of 3
+			#ifdef _WIN32
             #pragma omp for schedule(auto)
             #endif
             for(iz=0; iz<nz; iz++) {
                 for(iy=0; iy<ny; iy++) {
                     for(ix=0; ix<nx; ix++) {
                         i = ix + iy*nx + iz*nx*ny;
-
+						
+						dTdt = 0;
+                        if(!(heatBoundaryType == 1 && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) { // If not constant-temperature boundary voxel
+                            if(ix != 0   ) dTdt += (T1[i-1]     - T1[i])*c[M[i] + M[i-1    ]*nM          ]/2; // Factor ½ is because the first substep splits the x heat flow over an explicit and an implicit part
+                            if(ix != nx-1) dTdt += (T1[i+1]     - T1[i])*c[M[i] + M[i+1    ]*nM          ]/2; // Factor ½ is because the first substep splits the x heat flow over an explicit and an implicit part
+                            if(iy != 0   ) dTdt += (T1[i-nx]    - T1[i])*c[M[i] + M[i-nx   ]*nM +   nM*nM];
+                            if(iy != ny-1) dTdt += (T1[i+nx]    - T1[i])*c[M[i] + M[i+nx   ]*nM +   nM*nM];
+                            if(iz != 0   ) dTdt += (T1[i-nx*ny] - T1[i])*c[M[i] + M[i-nx*ny]*nM + 2*nM*nM];
+                            if(iz != nz-1) dTdt += (T1[i+nx*ny] - T1[i])*c[M[i] + M[i+nx*ny]*nM + 2*nM*nM];
+                        }
+                        T2[i] = T1[i] + dt*dTdt;
+                    }
+                }
+            }
+			
+			// Implicit part of substep 1 out of 3
+			for(iz=heatBoundaryType; iz<nz-heatBoundaryType; iz++) {
+                for(iy=heatBoundaryType; iy<ny-heatBoundaryType; iy++) {
+					of = iy*nx + iz*ny*nx; // Index offset of this x-line
+					
+					// Thomson algorithm, sweeps up from 0 to nx-1 and then down from nx-1 to 0:
+					
+					// Forward sweep, indices 0 and 1:
+					b[0] = heatsinkedboundary? 1: 1 + c[M[of] + nM*M[1+of]];
+					w = -c[M[1+of] + nM*M[of]]/b[0];
+					b[1] = 1 + c[M[1+of] + nM*M[2+of]] + c[M[1+of] + nM*M[of]];
+					if(heatsinkedboundary) b[1] += w*c[M[of] + nM*M[1+of]];
+					T2[1+of] -= w*T2[of];
+					// Forward sweep, indices 2 to nx-2:
+					for(ix=2;ix<nx-1;ix++) {
+						w = -c[M[ix+of] + nM*M[ix-1+of]]/b[ix-1];
+						b[ix] = 1 + c[M[ix+of] + nM*M[ix-1+of]] + c[M[ix+of] + nM*M[ix+1+of]];
+						b[ix] += w*c[M[ix-1+of] + nM*M[ix+of]];
+						T2[ix+of] -= w*T2[ix-1+of];
+					}
+					// Forward sweep, index nx-1:
+					if(heatsinkedboundary) {
+						b[nx-1] = 1;
+					} else {
+						w = -c[M[nx+of] + nM*M[nx-1+of]]/b[nx-2];
+						b[nx-1] = 1 + c[M[nx-1+of] + nM*M[nx-1+of]];
+						b[nx-1] += w*c[M[nx-2+of] + nM*M[nx-1]];
+						T2[nx-1+of] -= w*T2[nx-2+of];
+					}
+					
+					// Back sweep, index nx-1:
+					T2[nx-1+of] /= b[nx-1];
+					// Back sweep, indices nx-2 to 1:
+					for(ix=nx-2;ix>0;ix--) T2[ix+of] = (T2[ix+of] + c[M[ix+of] + nM*M[ix+1+of]]*T2[ix+1+of])/b[ix];
+					// Back sweep, index 0:
+					if(~heatsinkedboundary)	T2[of] = (T2[of] + c[M[of] + nM*M[1+of]]*T2[1+of])/b[0];
+				}
+			}
+			
+			
+			
+			
                         if(heatBoundaryType == 1 && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1)) {
                             dTdt = 0; // Constant-temperature boundaries
                         } else {
                             dTdt = lightsOn? dTdt_abs[i]: 0;
-                            if(ix != 0   ) dTdt += ((*srcTemp)[i-1]     - (*srcTemp)[i])*dTdtperdeltaT[M[i] + M[i-1    ]*nM          ];
-                            if(ix != nx-1) dTdt += ((*srcTemp)[i+1]     - (*srcTemp)[i])*dTdtperdeltaT[M[i] + M[i+1    ]*nM          ];
-                            if(iy != 0   ) dTdt += ((*srcTemp)[i-nx]    - (*srcTemp)[i])*dTdtperdeltaT[M[i] + M[i-nx   ]*nM +   nM*nM];
-                            if(iy != ny-1) dTdt += ((*srcTemp)[i+nx]    - (*srcTemp)[i])*dTdtperdeltaT[M[i] + M[i+nx   ]*nM +   nM*nM];
-                            if(iz != 0   ) dTdt += ((*srcTemp)[i-nx*ny] - (*srcTemp)[i])*dTdtperdeltaT[M[i] + M[i-nx*ny]*nM + 2*nM*nM];
-                            if(iz != nz-1) dTdt += ((*srcTemp)[i+nx*ny] - (*srcTemp)[i])*dTdtperdeltaT[M[i] + M[i+nx*ny]*nM + 2*nM*nM];
-                        }
-                        (*tgtTemp)[i] = (*srcTemp)[i] + dt*dTdt;
+			
                         if(calcDamage) {
                             if(n == 0) outputOmega[i] = Omega[i];
-                            outputOmega[i] += dt*A[M[i]]*exp(-E[M[i]]/(R*(((*tgtTemp)[i] + (*srcTemp)[i])/2 + CELSIUSZERO)));
+                            outputOmega[i] += dt*A[M[i]]*exp(-E[M[i]]/(R*((T2[i] + T1[i])/2 + CELSIUSZERO)));
                         }
-                    }
-                }
-            }
+			
+			
+			
+			
+			
             #ifdef _WIN32
             #pragma omp master
             #endif
@@ -158,10 +214,10 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
                     double wx = tempSensorInterpWeights[j           ];
                     double wy = tempSensorInterpWeights[j+  nSensors];
                     double wz = tempSensorInterpWeights[j+2*nSensors];
-                    sensorTemps[j+(n+1)*nSensors] = (1-wx)*(1-wy)*(1-wz)*(*tgtTemp)[idx     ] + (1-wx)*(1-wy)*wz*(*tgtTemp)[idx     +nx*ny] +
-                                                    (1-wx)*   wy *(1-wz)*(*tgtTemp)[idx  +nx] + (1-wx)*   wy *wz*(*tgtTemp)[idx  +nx+nx*ny] +
-                                                       wx *(1-wy)*(1-wz)*(*tgtTemp)[idx+1   ] +    wx *(1-wy)*wz*(*tgtTemp)[idx+1   +nx*ny] +
-                                                       wx *   wy *(1-wz)*(*tgtTemp)[idx+1+nx] +    wx *   wy *wz*(*tgtTemp)[idx+1+nx+nx*ny];
+                    sensorTemps[j+(n+1)*nSensors] = (1-wx)*(1-wy)*(1-wz)*T2[idx     ] + (1-wx)*(1-wy)*wz*T2[idx     +nx*ny] +
+                                                    (1-wx)*   wy *(1-wz)*T2[idx  +nx] + (1-wx)*   wy *wz*T2[idx  +nx+nx*ny] +
+                                                       wx *(1-wy)*(1-wz)*T2[idx+1   ] +    wx *(1-wy)*wz*T2[idx+1   +nx*ny] +
+                                                       wx *   wy *(1-wz)*T2[idx+1+nx] +    wx *   wy *wz*T2[idx+1+nx+nx*ny];
                 }
                 
 
