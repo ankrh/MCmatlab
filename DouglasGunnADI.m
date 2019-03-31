@@ -1,22 +1,23 @@
 %% User specified parameters
-calctype = 3; % 1: 1D, 2:2D, 3:3D
+calctype = 4; % 1: 1D, 2:2D, 3:3D, 4:mex 3D
 
 heatsinkedboundary = false;
 
-dt = 0.003;
+dt = 0.0003;
 
-dx = 0.1;
-dy = 0.3;
-dz = 0.2;
+TC = [0.0037];
 
-TC = [10 ; 1];
+VHC = [3.7606];
 
-VHC = [1 ; 2];
+nx = 100;
+ny = 80;
+nz = 60;
 
-nx = 30;
-ny = 40;
-nz = 30;
-nt = 100;
+dx = 0.1/nx;
+dy = 0.11/ny;
+dz = 0.12/nz;
+
+nt = 10;
 
 %% Calculations
 nM = length(TC);
@@ -297,14 +298,14 @@ switch calctype
 		%% Initialize arrays
 		x = dx*(-(nx-1)/2:(nx-1)/2);
 		y = dy*(-(ny-1)/2:(ny-1)/2);
-		z = dz*(-(nz-1)/2:(nz-1)/2);
+		z = dz*(0.5:nz-0.5);
         N = nx*ny*nz;
         M = ones(nx,ny,nz);
-%         M(5:15,23:30,1:10) = 2;
+        M(1:end-6,:,10:end) = 2;
         ABS = zeros(nx,ny,nz); % Power deposited per unit length/area/volume per unit time
 %         ABS(5,20,5) = 100;
 % 		ABS(17,25,10) = 50;
-		ABS(round((nx-1)/2+1),round((ny-1)/2+1),round((nz-1)/2+1)) = 100;
+% 		ABS(round((nx-1)/2+1),round((ny-1)/2+1),round((nz-1)/2+1)) = 100;
         
 		A1 = NaN(nM,nM);
         A2 = NaN(nM,nM);
@@ -336,6 +337,7 @@ switch calctype
         axis tight
         
         T = zeros(nx,ny,nz);
+		T(16,16,16) = 1;
         d = zeros(nx,ny,nz);
 		b = zeros(max([nx ny nz]),1);
         h_heatfig = plotVolumetric(1,x,y,z,T,'MCmatlab_heat','slicePositions',[0.5 0.5 0.5]);
@@ -546,4 +548,81 @@ switch calctype
 				pause(0.1)
 			end
 		end
+	case 4
+		clear Ginput
+		Ginput.matchedInterfaces = true; % Assumes all refractive indices are 1
+		Ginput.boundaryType      = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+
+		Ginput.wavelength        = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
+
+		Ginput.nx                = nx; % Number of bins in the x direction
+		Ginput.ny                = ny; % Number of bins in the y direction
+		Ginput.nz                = nz; % Number of bins in the z direction
+		Ginput.Lx                = nx*dx; % [cm] x size of simulation cuboid
+		Ginput.Ly                = ny*dy; % [cm] y size of simulation cuboid
+		Ginput.Lz                = nz*dz; % [cm] z size of simulation cuboid
+
+		Ginput.GeomFunc          = @GeometryDefinition_StandardTissue; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
+
+		% Execution, do not modify the next two lines:
+		G = defineGeometry(Ginput);
+		
+		x = G.x;
+		y = G.y;
+		z = G.z;
+		nM = length(G.mediaProperties); % Number of different media in simulation
+
+		dTdt_abs = zeros(G.nx,G.ny,G.nz); % Power deposited per unit length/area/volume per unit time
+%         ABS(5,20,5) = 100;
+% 		ABS(17,25,10) = 50;
+% 		dTdt_abs(round((G.nx-1)/2+1),round((G.ny-1)/2+1),round((G.nz-1)/2+1)) = 100;
+
+		VHC = [G.mediaProperties.VHC]; % Volumetric heat capacity array. Element i is the VHC of medium i in the reduced mediaProperties list.
+		TC = [G.mediaProperties.TC]; % Thermal conductivity array. Element i is the TC of medium i in the reduced mediaProperties list.
+		A = [G.mediaProperties.A];
+		E = [G.mediaProperties.E];
+		if(any(A)) % If non-zero Arrhenius data exists, prepare to calculate thermal damage.
+			HSoutput.Omega = zeros(size(G.M));
+		else
+			HSoutput.Omega = NaN;
+		end
+		TC_eff = 2*(TC'*TC)./(ones(length(TC))*diag(TC)+diag(TC)*ones(length(TC))); % Same as TC_eff(i,j) = 2*TC_red(i)*TC_red(j)/(TC_red(i)+TC_red(j)) but without for loops
+		TC_eff(isnan(TC_eff)) = 0; % Neighboring insulating voxels return NaN but should just be 0
+
+		dTdtperdeltaT  = cat(3,TC_eff./(diag(VHC)*ones(nM))/G.dx^2,...
+							   TC_eff./(diag(VHC)*ones(nM))/G.dy^2,...
+							   TC_eff./(diag(VHC)*ones(nM))/G.dz^2); % [deg C /(s*deg C)] Time derivative of voxel temperature per voxel-to-voxel temperature difference. Third dimension corresponds to the different directions of heat diffusion (x, y and z)
+		clear TC_eff
+
+		heatSimParameters = struct('M',G.M-1,'A',A,'E',E,'dTdtperdeltaT',dTdtperdeltaT,'dTdt_abs',dTdt_abs,...
+                'useAllCPUs',true,'heatBoundaryType',double(heatsinkedboundary),...
+                'tempSensorCornerIdxs',[],'tempSensorInterpWeights',[]); % Contents of G.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
+        heatSimParameters.lightsOn = true;
+        heatSimParameters.steps = 1;
+		heatSimParameters.dt = dt;
+
+        plotVolumetric(1,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',[1 1 0.5]);
+        
+		T = ones(G.nx,G.ny,G.nz);
+% 		T(16,16,16) = 1;
+
+        h_heatfig = plotVolumetric(2,G.x,G.y,G.z,T,'MCmatlab_heat','slicePositions',[0.5 0.5 0.5]);
+        h_title = title('1');
+		caxis([0 1]);
+		clear totalenergy
+		for it=1:nt
+			[T,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator(T,HSoutput.Omega,heatSimParameters);
+			updateVolumetric(h_heatfig,T);
+			totalenergy(it) = sum(VHC(G.M(:)).*T(:)*G.dx*G.dy*G.dz);
+			h_title.String = num2str(it);
+		end
+		figure;plot(totalenergy);
+end
+
+function M = GeometryDefinition_StandardTissue(X,Y,Z,parameters)
+tissuedepth = 0.03;
+M = ones(size(X)); % Air
+M(Z > tissuedepth) = 3; % "Standard" tissue
+M(X > 0.03) = 1;
+M(:) = 3;
 end

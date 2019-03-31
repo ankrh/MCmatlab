@@ -84,8 +84,7 @@ if(HSinput.silentMode)
     HSinput.nUpdates = 1;
 end
 
-% dtmax = calcdtmax(G.M,TC,HC,G.dx,G.dy,G.dz)/2; % Highest allowable time step duration
-dtmax = 0.01;
+dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)*15; % Highest allowable time step duration (factor 15 is subjectively found to be the highest value for which there are no artifacts visible in the example 3 test case)
 
 if HSinput.durationOn ~= 0
     nUpdatesOn = max(1,round(HSinput.nUpdates*HSinput.durationOn/(HSinput.durationOn+HSinput.durationOff)));
@@ -215,7 +214,7 @@ for j=1:HSinput.nPulses
                 if(HSinput.makeMovie)
                     movieframes(updateIdx+2) = getframe(heatsimFigure);
                 end
-            end
+			end
         end
         
         if(~HSinput.silentMode); fprintf('\b\b Done\n'); end
