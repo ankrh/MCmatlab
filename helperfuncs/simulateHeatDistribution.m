@@ -13,7 +13,7 @@ function HSoutput = simulateHeatDistribution(HSinput)
 %       convertTempSensorPos.m
 %       plotVolumetric.m
 %       updateVolumetric.m
-%       finiteElementHeatPropagator.mex (architecture specific)
+%       finiteElementHeatPropagator_explicit.mex (architecture specific)
 %
 %	See also runMonteCarlo, plotMCmatlabHeat
 
@@ -59,6 +59,10 @@ end
 G = HSinput.G;
 
 Temp = HSinput.initialTemp*ones(size(G.M)); % Initial temperature distribution
+% Temp = repmat((1:G.nx).',1,G.ny,G.nz);
+% Temp = repmat((1:G.ny),G.nx,1,G.nz);
+% Temp = repmat(permute(1:G.ny,[1 3 2]),G.nx,G.ny,1);
+
 nM = length(G.mediaProperties); % Number of different media in simulation
 
 VHC = [G.mediaProperties.VHC]; % Volumetric heat capacity array. Element i is the VHC of medium i in the reduced mediaProperties list.
@@ -84,7 +88,9 @@ if(HSinput.silentMode)
     HSinput.nUpdates = 1;
 end
 
-dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)*15; % Highest allowable time step duration (factor 15 is subjectively found to be the highest value for which there are no artifacts visible in the example 3 test case)
+% dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)*15; % Highest allowable time step duration (factor 15 is subjectively found to be the highest value for which there are no artifacts visible in the example 3 test case)
+dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)/2; % Highest allowable time step duration (factor 15 is subjectively found to be the highest value for which there are no artifacts visible in the example 3 test case)
+% dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)/200; % Highest allowable time step duration (factor 15 is subjectively found to be the highest value for which there are no artifacts visible in the example 3 test case)
 
 if HSinput.durationOn ~= 0
     nUpdatesOn = max(1,round(HSinput.nUpdates*HSinput.durationOn/(HSinput.durationOn+HSinput.durationOff)));
@@ -183,6 +189,9 @@ heatSimParameters = struct('M',G.M-1,'A',A,'E',E,'dTdtperdeltaT',dTdtperdeltaT,'
                 'tempSensorCornerIdxs',tempSensorCornerIdxs,'tempSensorInterpWeights',tempSensorInterpWeights); % Contents of G.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
 
 %% Simulate heat transfer
+
+energy = NaN(1,length(updatesTimeVector));
+e_idx = 1;
 if(~HSinput.silentMode); tic; end
 for j=1:HSinput.nPulses
 	%% Illumination phase
@@ -196,8 +205,9 @@ for j=1:HSinput.nPulses
         heatSimParameters.steps = nTsPerUpdateOn;
 		heatSimParameters.dt = dtOn;
         for i = 1:nUpdatesOn
-            [Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator(Temp,HSoutput.Omega,heatSimParameters);
-            
+            [Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_explicit(Temp,HSoutput.Omega,heatSimParameters);
+            energy(e_idx) = sum(sum(sum(Temp.*VHC(G.M)*G.dx*G.dy*G.dz)));
+			e_idx = e_idx + 1;
             if isempty(HSoutput.sensorTemps)
                 HSoutput.sensorTemps = newSensorTemps;
             else
@@ -231,7 +241,9 @@ for j=1:HSinput.nPulses
         heatSimParameters.steps = nTsPerUpdateOff;
 		heatSimParameters.dt = dtOff;
         for i = 1:nUpdatesOff
-            [Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator(Temp,HSoutput.Omega,heatSimParameters);
+            [Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_explicit(Temp,HSoutput.Omega,heatSimParameters);
+            energy(e_idx) = sum(sum(sum(Temp.*VHC(G.M)*G.dx*G.dy*G.dz)));
+			e_idx = e_idx + 1;
             
             if isempty(HSoutput.sensorTemps)
                 HSoutput.sensorTemps = newSensorTemps;
@@ -249,8 +261,8 @@ for j=1:HSinput.nPulses
                 if(HSinput.makeMovie)
                     movieframes(updateIdx+2) = getframe(heatsimFigure);
                 end
-            end
-        end
+			end
+		end
         if(~HSinput.silentMode); fprintf('\b\b Done\n'); end
     end
 end
@@ -265,7 +277,9 @@ heatSimParameters.lightsOn = false;
 heatSimParameters.steps = nTsPerUpdateEnd;
 heatSimParameters.dt = dtEnd;
 for i = 1:nUpdatesEnd
-	[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator(Temp,HSoutput.Omega,heatSimParameters);
+	[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_explicit(Temp,HSoutput.Omega,heatSimParameters);
+	energy(e_idx) = sum(sum(sum(Temp.*VHC(G.M)*G.dx*G.dy*G.dz)));
+	e_idx = e_idx + 1;
 
 	if isempty(HSoutput.sensorTemps)
 		HSoutput.sensorTemps = newSensorTemps;

@@ -21,9 +21,9 @@ Ginput.boundaryType      = 1; % 0: No escaping boundaries, 1: All cuboid boundar
 
 Ginput.wavelength        = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
-Ginput.nx                = 100; % Number of bins in the x direction
-Ginput.ny                = 100; % Number of bins in the y direction
-Ginput.nz                = 100; % Number of bins in the z direction
+Ginput.nx                = 200; % Number of bins in the x direction
+Ginput.ny                = 200; % Number of bins in the y direction
+Ginput.nz                = 200; % Number of bins in the z direction
 Ginput.Lx                = .1; % [cm] x size of simulation cuboid
 Ginput.Ly                = .1; % [cm] y size of simulation cuboid
 Ginput.Lz                = .1; % [cm] z size of simulation cuboid
@@ -36,7 +36,7 @@ plotMCmatlabGeom(Goutput);
 
 %% Monte Carlo simulation
 clear MCinput
-MCinput.simulationTime           = .1; % [min] Time duration of the simulation
+MCinput.simulationTime           = 1; % [min] Time duration of the simulation
 
 MCinput.Beam.beamType            = 6; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
 MCinput.Beam.xFocus              = 0; % [cm] x position of focus
@@ -54,7 +54,7 @@ plotMCmatlab(MCinput,MCoutput);
 
 %% Heat simulation
 HSinput.useAllCPUs          = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
-HSinput.makeMovie           = true; % Requires silentMode = false.
+HSinput.makeMovie           = false; % Requires silentMode = false.
 
 HSinput.heatBoundaryType    = 0; % 0: Insulating boundaries, 1: Constant-temperature boundaries (heat-sinked)
 HSinput.P                   = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
@@ -66,7 +66,7 @@ HSinput.initialTemp         = 37; % [deg C] Initial temperature
 HSinput.nPulses             = 5; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
 
 HSinput.plotTempLimits      = [37 100]; % [deg C] Expected range of temperatures, used only for setting the color scale in the plot
-HSinput.nUpdates            = 100; % Number of times data is extracted for plots during each pulse. A minimum of 1 update is performed in each phase (2 for each pulse consisting of an illumination phase and a diffusion phase)
+HSinput.nUpdates            = 1; % Number of times data is extracted for plots during each pulse. A minimum of 1 update is performed in each phase (2 for each pulse consisting of an illumination phase and a diffusion phase)
 HSinput.slicePositions      = [.5 0.6 1]; % Relative slice positions [x y z] for the 3D plots on a scale from 0 to 1
 HSinput.tempSensorPositions = [0 0 0.038
                                0 0 0.04

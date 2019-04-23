@@ -47,23 +47,40 @@ extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing th
 
 #define R 8.3144598 // Gas constant [J/mol/K]
 #define CELSIUSZERO 273.15
-#define T1 (*srcTemp)
-#define T2 (*tgtTemp)
+#define T_xyz (firstStep? T_in: T_xyz_notfirststep)
+// #define BLOCKSIZE 256
+// 
+// void transpose(double *A, double *B, long N, long M) {
+// 	// Transposes the MxN matrix A and stores result in B
+// 	#ifdef _WIN32
+// 	#pragma omp for schedule(auto)
+// 	#endif
+// 	for(long i=0; i<N; i+=BLOCKSIZE) {
+// 		long max_i2 = i+BLOCKSIZE < N ? i + BLOCKSIZE : N;
+// 		for(long j=0; j<M; j+=BLOCKSIZE) {
+// 			long max_j2 = j+BLOCKSIZE < M ? j + BLOCKSIZE : M;
+// 			for(long i2=i; i2<max_i2; i2++) {
+// 				for(long j2=j; j2<max_j2; j2++) {
+// 					B[i2 + j2*N] = A[j2 + i2*M];
+// 				}
+// 			}
+// 		}
+// 	}
+// }
 
 void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     bool ctrlc_caught = false;           // Has a ctrl+c been passed from MATLAB?
-    long nx,ny,nz,nM;
+	bool firstStep = true;
     
     mwSize const *dimPtr = mxGetDimensions(prhs[0]);
-    nx = dimPtr[0];
-    ny = dimPtr[1];
-    nz = dimPtr[2];
-    nM = mxGetM(mxGetField(prhs[2],0,"dTdtperdeltaT")); // Number of media in the simulation.
+    long nx = dimPtr[0];
+    long ny = dimPtr[1];
+    long nz = dimPtr[2];
+    long nM = mxGetM(mxGetField(prhs[2],0,"dTdtperdeltaT")); // Number of media in the simulation.
     
     
-    double *Temp          = mxGetPr(prhs[0]); // Temp is an nx*ny*nz array of doubles
-    plhs[0] = mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL);
-    double *outputTemp    = mxGetPr(plhs[0]); // outputTemp is an nx*ny*nz array of doubles
+    double *T_in          = mxGetPr(prhs[0]); // T_in is an nx*ny*nz array of doubles
+    plhs[0]               = mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL);
     long nt               = *mxGetPr(mxGetField(prhs[2],0,"steps")); // nt is an integer (number of time steps to perform)
     double dt             = *mxGetPr(mxGetField(prhs[2],0,"dt")); // dt is a double (duration of time step)
     unsigned char *M      = mxGetData(mxGetField(prhs[2],0,"M")); // M is a nx*ny*nz array of uint8 (unsigned char) containing values from 0..nM-1
@@ -74,7 +91,11 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     bool lightsOn         = mxIsLogicalScalarTrue(mxGetField(prhs[2],0,"lightsOn"));
     long heatSinked       = *mxGetPr(mxGetField(prhs[2],0,"heatBoundaryType")); // 0: Insulating boundaries, 1: Constant-temperature boundaries
     
-    double *Omega       = mxGetPr(prhs[1]); // Omega is an nx*ny*nz array of doubles if we are supposed to calculate damage, a single NaN element otherwise
+    double *T_xyz_notfirststep = mxGetPr(plhs[0]); // T_xyz_notfirststep is a nx*ny*nz array of doubles, to be used both in each iteration and for final output. In most of the code it will be referred to as T_xyz, using a #define
+	double *T_yzx = malloc(nx*ny*nz*sizeof(double));
+	double *T_zxy = malloc(nx*ny*nz*sizeof(double));
+
+	double *Omega       = mxGetPr(prhs[1]); // Omega is an nx*ny*nz array of doubles if we are supposed to calculate damage, a single NaN element otherwise
     bool calcDamage     = !mxIsNaN(Omega[0]); // If the Omega input is just one NaN element then we shouldn't bother with thermal damage calculation
     plhs[1] = calcDamage? mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL): mxCreateDoubleMatrix(1,1,mxREAL); // outputOmega is the same dimensions as Omega
     double *outputOmega = mxGetPr(plhs[1]);
@@ -86,23 +107,16 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     
     plhs[2] = nSensors? mxCreateDoubleMatrix(nSensors,nt+1,mxREAL): mxCreateDoubleMatrix(0,0,mxREAL);
     double *sensorTemps = mxGetPr(plhs[2]);
-    
-    double *tempTemp = malloc(nx*ny*nz*sizeof(double)); // Temporary temperature matrix
-    
-    double **srcTemp = &Temp; // Pointer to the pointer to whichever temperature matrix is to be read from
-    double **tgtTemp; // Pointer to the pointer to whichever temperature matrix is to be written to
-    
-    tgtTemp = ((nt+lightsOn)%2)? &outputTemp: &tempTemp; // Number of times the memory location has to change is nt if no light is on or nt+1 is lights are on. If that number is odd then we can start by writing to the output temperature matrix (pointed to by plhs[0]), otherwise we start by writing to the temporary temperature matrix
-    
+	
     for(long j=0;j<nSensors;j++) { // Interpolate to get the starting temperatures on the temperature sensors
         long idx = tempSensorCornerIdxs[j];
         double wx = tempSensorInterpWeights[j           ];
         double wy = tempSensorInterpWeights[j+  nSensors];
         double wz = tempSensorInterpWeights[j+2*nSensors];
-        sensorTemps[j] = (1-wx)*(1-wy)*(1-wz)*Temp[idx     ] + (1-wx)*(1-wy)*wz*Temp[idx     +nx*ny] +
-                         (1-wx)*   wy *(1-wz)*Temp[idx  +nx] + (1-wx)*   wy *wz*Temp[idx  +nx+nx*ny] +
-                            wx *(1-wy)*(1-wz)*Temp[idx+1   ] +    wx *(1-wy)*wz*Temp[idx+1   +nx*ny] +
-                            wx *   wy *(1-wz)*Temp[idx+1+nx] +    wx *   wy *wz*Temp[idx+1+nx+nx*ny];
+        sensorTemps[j] = (1-wx)*(1-wy)*(1-wz)*T_in[idx     ] + (1-wx)*(1-wy)*wz*T_in[idx     +nx*ny] +
+                         (1-wx)*   wy *(1-wz)*T_in[idx  +nx] + (1-wx)*   wy *wz*T_in[idx  +nx+nx*ny] +
+                            wx *(1-wy)*(1-wz)*T_in[idx+1   ] +    wx *(1-wy)*wz*T_in[idx+1   +nx*ny] +
+                            wx *   wy *(1-wz)*T_in[idx+1+nx] +    wx *   wy *wz*T_in[idx+1+nx+nx*ny];
     }
     
     #ifdef _WIN32
@@ -110,296 +124,175 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     #pragma omp parallel num_threads(useAllCPUs || omp_get_num_procs() == 1? omp_get_num_procs(): omp_get_num_procs()-1)
     #endif
     {
-        long ix,iy,iz,of,jm1,j,jp1,jp2;
-        long n,i;
-        double dTdt,w; // Time derivative of temperature
-		double b[nx>ny && nx>nz? nx: (ny>nz? ny: nz)];
+		double w,b[nx>ny && nx>nz? nx: (ny>nz? ny: nz)]; // Length of b array is maximum of nx, ny and nz
+		double *dT_y_array = malloc(nx*sizeof(double));
+		double *T_xline = malloc(nx*sizeof(double));
         
-		
 		if(calcDamage) {
 			// Initialize omega array
 			#ifdef _WIN32
 			#pragma omp for schedule(auto)
 			#endif
-			for(long idx=0;idx<nx*ny*nz;idx++) outputOmega[idx] = Omega[idx];
+			for(long i_xyz=0;i_xyz<nx*ny*nz;i_xyz++) outputOmega[i_xyz] = Omega[i_xyz];
 		}
 		
-		if(lightsOn) {
-			// If lights are on, copy input temps to one of the modifiable memory locations, depositing half of the heat of this time step in the process
-			#ifdef _WIN32
-			#pragma omp for schedule(auto)
-			#endif
-			for(long idx=0;idx<nx*ny*nz;idx++) T2[idx] = T1[idx] + dt*dTdt_abs[idx]/2;
-			#ifdef _WIN32
-			#pragma omp master
-			#endif
-			{
-				if(tgtTemp == &outputTemp) {
-					tgtTemp = &tempTemp;
-					srcTemp = &outputTemp;
-				} else {
-					tgtTemp = &outputTemp;
-					srcTemp = &tempTemp;
-				}
-			}
-			#ifdef _WIN32
-			#pragma omp barrier
-			#endif
-		}
-		
-        for(n=0; n<nt; n++) {
+        for(long n=0; n<nt; n++) {
             if(ctrlc_caught) break;
 			
-			if(n && lightsOn) {
-				// If lights are on and this is not the first step, deposit half the heat of this time step
-				#ifdef _WIN32
-				#pragma omp for schedule(auto)
-				#endif
-				for(long idx=0;idx<nx*ny*nz;idx++) T1[idx] += dt*dTdt_abs[idx]/2;
-			}
-			
-            // Explicit part of substep 1 out of 3
+            // Substep 1 out of 3, includes explicit x, implicit x and explicit y
 			#ifdef _WIN32
             #pragma omp for schedule(auto)
             #endif
-            for(iz=0; iz<nz; iz++) {
-                for(iy=0; iy<ny; iy++) {
-                    for(ix=0; ix<nx; ix++) {
-                        i = ix + iy*nx + iz*nx*ny;
-						
-						dTdt = 0;
-                        if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) { // If not constant-temperature boundary voxel
-                            if(ix != 0   ) dTdt += (T1[i-1]     - T1[i])*c[M[i] + M[i-1    ]*nM          ]/2; // Factor ½ is because the first substep splits the x heat flow over an explicit and an implicit part
-                            if(ix != nx-1) dTdt += (T1[i+1]     - T1[i])*c[M[i] + M[i+1    ]*nM          ]/2; // Factor ½ is because the first substep splits the x heat flow over an explicit and an implicit part
-                            if(iy != 0   ) dTdt += (T1[i-nx]    - T1[i])*c[M[i] + M[i-nx   ]*nM +   nM*nM];
-                            if(iy != ny-1) dTdt += (T1[i+nx]    - T1[i])*c[M[i] + M[i+nx   ]*nM +   nM*nM];
-                            if(iz != 0   ) dTdt += (T1[i-nx*ny] - T1[i])*c[M[i] + M[i-nx*ny]*nM + 2*nM*nM];
-                            if(iz != nz-1) dTdt += (T1[i+nx*ny] - T1[i])*c[M[i] + M[i+nx*ny]*nM + 2*nM*nM];
-                        }
-                        T2[i] = T1[i] + dt*dTdt;
-                    }
-                }
-            }
-			
-			// Implicit part of substep 1 out of 3
-			#ifdef _WIN32
-            #pragma omp for schedule(auto)
-            #endif
-			for(iz=heatSinked; iz<nz-heatSinked; iz++) {
-                for(iy=heatSinked; iy<ny-heatSinked; iy++) {
-					of = iy*nx + iz*ny*nx; // Index offset of this x-line
-					
-					// Thomson algorithm, sweeps up from 0 to nx-1 and then down from nx-1 to 0:
-					// Algorithm is taken from https://en.wikipedia.org/wiki/Tridiagonal_matrix_algorithm
-					
-					// Forward sweep, indices 0 and 1:
-					j   = of;
-					jp1 = of+1;
-					jp2 = of+2;
-					b[0] = heatSinked? 1: 1 + dt/2*c[M[j] + nM*M[jp1]];
-					w = -dt/2*c[M[jp1] + nM*M[j]]/b[0];
-					b[1] = 1 + dt/2*c[M[jp1] + nM*M[jp2]] + dt/2*c[M[jp1] + nM*M[j]];
-					if(!heatSinked) b[1] += w*dt/2*c[M[j] + nM*M[jp1]];
-					T2[jp1] -= w*T2[j];
-					// Forward sweep, indices 2 to nx-2:
-					for(ix=2;ix<nx-1;ix++) {
-						jm1 = of+ix-1;
-						j   = of+ix;
-						jp1 = of+ix+1;
-						w = -dt/2*c[M[j] + nM*M[jm1]]/b[ix-1];
-						b[ix] = 1 + dt/2*c[M[j] + nM*M[jm1]] + dt/2*c[M[j] + nM*M[jp1]];
-						b[ix] += w*dt/2*c[M[jm1] + nM*M[j]];
-						T2[j] -= w*T2[jm1];
-					}
-					// Forward sweep, index nx-1:
-					jm1 = of+nx-2;
-					j   = of+nx-1;
-					if(heatSinked) {
-						b[nx-1] = 1;
-					} else {
-						w = -dt/2*c[M[j] + nM*M[jm1]]/b[nx-2];
-						b[nx-1] = 1 + dt/2*c[M[j] + nM*M[jm1]];
-						b[nx-1] += w*dt/2*c[M[jm1] + nM*M[j]];
-						T2[j] -= w*T2[jm1];
-					}
-					
-					// Back sweep, index nx-1:
-					T2[j] /= b[nx-1];
-					// Back sweep, indices nx-2 to 1:
-					for(ix=nx-2;ix>0;ix--) {
-						j   = of+ix;
-						jp1 = of+ix+1;
-						T2[j] = (T2[j] + dt/2*c[M[j] + nM*M[jp1]]*T2[jp1])/b[ix];
-					}
-					// Back sweep, index 0:
-					j   = of;
-					jp1 = of+1;
-					if(!heatSinked) {
-						T2[j] = (T2[j] + dt/2*c[M[j] + nM*M[jp1]]*T2[jp1])/b[0];
-					}
-				}
-			}
-			
-            // Explicit part of substep 2 out of 3
-			#ifdef _WIN32
-            #pragma omp for schedule(auto)
-            #endif
-            for(iz=0; iz<nz; iz++) {
-                for(iy=0; iy<ny; iy++) {
-                    for(ix=0; ix<nx; ix++) {
-                        i = ix + iy*nx + iz*nx*ny;
-						
-						dTdt = 0;
-                        if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) { // If not constant-temperature boundary voxel
-                            if(iy != 0   ) dTdt -= (T1[i-nx]    - T1[i])*c[M[i] + M[i-nx   ]*nM +   nM*nM]/2;
-                            if(iy != ny-1) dTdt -= (T1[i+nx]    - T1[i])*c[M[i] + M[i+nx   ]*nM +   nM*nM]/2;
-                        }
-                        T2[i] = T2[i] + dt*dTdt; // Note that we use T2 on the right hand side here
-                    }
-                }
-            }
-			
-			// Implicit part of substep 2 out of 3
-			#ifdef _WIN32
-            #pragma omp for schedule(auto)
-            #endif
-			for(iz=heatSinked; iz<nz-heatSinked; iz++) {
-                for(ix=heatSinked; ix<nx-heatSinked; ix++) {
-					of = ix + iz*ny*nx; // Index offset of this y-line
-					
-					// Thomson algorithm, sweeps up from 0 to ny-1 and then down from ny-1 to 0:
-					
-					// Forward sweep, indices 0 and 1:
-					j   = of;
-					jp1 = of+nx;
-					jp2 = of+nx*2;
-					b[0] = heatSinked? 1: 1 + dt/2*c[nM*nM + M[j] + nM*M[jp1]];
-					w = -dt/2*c[nM*nM + M[jp1] + nM*M[j]]/b[0];
-					b[1] = 1 + dt/2*c[nM*nM + M[jp1] + nM*M[jp2]] + dt/2*c[nM*nM + M[jp1] + nM*M[j]];
-					if(!heatSinked) b[1] += w*dt/2*c[nM*nM + M[j] + nM*M[jp1]];
-					T2[jp1] -= w*T2[j];
-					// Forward sweep, indices 2 to ny-2:
-					for(iy=2;iy<ny-1;iy++) {
-						jm1 = of+nx*(iy-1);
-						j   = of+nx*iy;
-						jp1 = of+nx*(iy+1);
-						w = -dt/2*c[nM*nM + M[j] + nM*M[jm1]]/b[iy-1];
-						b[iy] = 1 + dt/2*c[nM*nM + M[j] + nM*M[jm1]] + dt/2*c[nM*nM + M[j] + nM*M[jp1]];
-						b[iy] += w*dt/2*c[nM*nM + M[jm1] + nM*M[j]];
-						T2[j] -= w*T2[jm1];
-					}
-					// Forward sweep, index ny-1:
-					jm1 = of+nx*(ny-2);
-					j   = of+nx*(ny-1);
-					if(heatSinked) {
-						b[ny-1] = 1;
-					} else {
-						w = -dt/2*c[nM*nM + M[j] + nM*M[jm1]]/b[ny-2];
-						b[ny-1] = 1 + dt/2*c[nM*nM + M[j] + nM*M[jm1]];
-						b[ny-1] += w*dt/2*c[nM*nM + M[jm1] + nM*M[j]];
-						T2[j] -= w*T2[jm1];
-					}
-					
-					// Back sweep, index ny-1:
-					T2[j] /= b[ny-1];
-					// Back sweep, indices ny-2 to 1:
-					for(iy=ny-2;iy>0;iy--) {
-						j   = of+nx*iy;
-						jp1 = of+nx*(iy+1);
-						T2[j] = (T2[j] + dt/2*c[nM*nM + M[j] + nM*M[jp1]]*T2[jp1])/b[iy];
-					}
-					// Back sweep, index 0:
-					j   = of;
-					jp1 = of+nx;
-					if(!heatSinked) {
-						T2[j] = (T2[j] + dt/2*c[nM*nM + M[j] + nM*M[jp1]]*T2[jp1])/b[0];
-					}
-				}
-			}
-			
-            // Explicit part of substep 3 out of 3
-			#ifdef _WIN32
-            #pragma omp for schedule(auto)
-            #endif
-            for(iz=0; iz<nz; iz++) {
-                for(iy=0; iy<ny; iy++) {
-                    for(ix=0; ix<nx; ix++) {
-                        i = ix + iy*nx + iz*nx*ny;
-						
-						dTdt = 0;
-                        if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) { // If not constant-temperature boundary voxel
-                            if(iz != 0   ) dTdt -= (T1[i-nx*ny] - T1[i])*c[M[i] + M[i-nx*ny]*nM + 2*nM*nM]/2;
-                            if(iz != nz-1) dTdt -= (T1[i+nx*ny] - T1[i])*c[M[i] + M[i+nx*ny]*nM + 2*nM*nM]/2;
-                        }
-                        T2[i] = T2[i] + dt*dTdt; // Note that we use T2 on the right hand side here
-                    }
-                }
-            }
-			
-			// Implicit part of substep 3 out of 3
-			#ifdef _WIN32
-            #pragma omp for schedule(auto)
-            #endif
-			for(iy=heatSinked; iy<ny-heatSinked; iy++) {
-                for(ix=heatSinked; ix<nx-heatSinked; ix++) {
-					of = ix + iy*nx; // Index offset of this z-line
-					
-					// Thomson algorithm, sweeps up from 0 to nz-1 and then down from nz-1 to 0:
-					
-					// Forward sweep, indices 0 and 1:
-					j   = of;
-					jp1 = of+nx*ny;
-					jp2 = of+nx*ny*2;
-					b[0] = heatSinked? 1: 1 + dt/2*c[2*nM*nM + M[j] + nM*M[jp1]];
-					w = -dt/2*c[2*nM*nM + M[jp1] + nM*M[j]]/b[0];
-					b[1] = 1 + dt/2*c[2*nM*nM + M[jp1] + nM*M[jp2]] + dt/2*c[2*nM*nM + M[jp1] + nM*M[j]];
-					if(!heatSinked) b[1] += w*dt/2*c[2*nM*nM + M[j] + nM*M[jp1]];
-					T2[jp1] -= w*T2[j];
-					// Forward sweep, indices 2 to nz-2:
-					for(iz=2;iz<nz-1;iz++) {
-						jm1 = of+nx*ny*(iz-1);
-						j   = of+nx*ny* iz;
-						jp1 = of+nx*ny*(iz+1);
-						w = -dt/2*c[2*nM*nM + M[j] + nM*M[jm1]]/b[iz-1];
-						b[iz] = 1 + dt/2*c[2*nM*nM + M[j] + nM*M[jm1]] + dt/2*c[2*nM*nM + M[j] + nM*M[jp1]];
-						b[iz] += w*dt/2*c[2*nM*nM + M[jm1] + nM*M[j]];
-						T2[j] -= w*T2[jm1];
-					}
-					// Forward sweep, index nz-1:
-					jm1 = of+nx*ny*(nz-2);
-					j   = of+nx*ny*(nz-1);
-					if(heatSinked) {
-						b[nz-1] = 1;
-					} else {
-						w = -dt/2*c[2*nM*nM + M[j] + nM*M[jm1]]/b[nz-2];
-						b[nz-1] = 1 + dt/2*c[2*nM*nM + M[j] + nM*M[jm1]];
-						b[nz-1] += w*dt/2*c[2*nM*nM + M[jm1] + nM*M[j]];
-						T2[j] -= w*T2[jm1];
-					}
-					
-					// Back sweep, index nz-1:
-					T2[j] /= b[nz-1];
-					// Back sweep, indices nz-2 to 1:
-					for(iz=nz-2;iz>0;iz--) {
-						j   = of+nx*ny*iz;
-						jp1 = of+nx*ny*(iz+1);
-						T2[j] = (T2[j] + dt/2*c[2*nM*nM + M[j] + nM*M[jp1]]*T2[jp1])/b[iz];
-						if(lightsOn) T2[jp1] += dt*dTdt_abs[jp1]/2; // Deposition of half the heat of the step, strictly speaking not a part of the implicit step
-						if(calcDamage) outputOmega[j] += dt*A[M[j]]*exp(-E[M[j]]/(R*((T2[j] + T1[j])/2 + CELSIUSZERO))); // Arrhenius damage integral evaluation, also not a part of the implicit step
-					}
-					// Back sweep, index 0:
-					j   = of;
-					jp1 = of+nx*ny;
-					if(!heatSinked) {
-						T2[j] = (T2[j] + dt/2*c[2*nM*nM + M[j] + nM*M[jp1]]*T2[jp1])/b[0];
-					}
-					if(lightsOn) T2[jp1] += dt*dTdt_abs[jp1]/2; // Deposition of half the heat of the step, strictly speaking not a part of the implicit step
-					if(calcDamage) outputOmega[jp1] += dt*A[M[jp1]]*exp(-E[M[jp1]]/(R*((T2[jp1] + T1[jp1])/2 + CELSIUSZERO))); // Arrhenius damage integral evaluation, also not a part of the implicit step
-					if(lightsOn) T2[j] += dt*dTdt_abs[j]/2; // Deposition of half the heat of the step, strictly speaking not a part of the implicit step
-					if(calcDamage) outputOmega[j] += dt*A[M[j]]*exp(-E[M[j]]/(R*((T2[j] + T1[j])/2 + CELSIUSZERO))); // Arrhenius damage integral evaluation, also not a part of the implicit step
-				}
-			}
+            for(long iz=0; iz<nz; iz++) {
+                for(long iy=0; iy<ny; iy++) {
+					if(!(heatSinked && (iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) {
+						for(long ix=0; ix<nx; ix++) { // Sweep up in x
+							long i_xyz = ix + iy*nx + iz*nx*ny; // xyz index
+							long i_zxy = iz + ix*nz + iy*nz*nx; // zxy index
 
+							// Explicit x
+							double dTdt_x = 0, dTdt_y = 0, dTdt_z = 0;
+							bool heatSinkedVoxel = heatSinked && (ix == 0 || ix == nx-1);
+							if(!heatSinkedVoxel) { // If not constant-temperature boundary voxel
+								if(ix != 0   ) dTdt_x += (T_xyz[i_xyz-1]     - T_xyz[i_xyz])*c[M[i_xyz] + M[i_xyz-1    ]*nM          ];
+								if(ix != nx-1) dTdt_x += (T_xyz[i_xyz+1]     - T_xyz[i_xyz])*c[M[i_xyz] + M[i_xyz+1    ]*nM          ];
+								if(iy != 0   ) dTdt_y += (T_xyz[i_xyz-nx]    - T_xyz[i_xyz])*c[M[i_xyz] + M[i_xyz-nx   ]*nM +   nM*nM];
+								if(iy != ny-1) dTdt_y += (T_xyz[i_xyz+nx]    - T_xyz[i_xyz])*c[M[i_xyz] + M[i_xyz+nx   ]*nM +   nM*nM];
+								if(iz != 0   ) dTdt_z += (T_xyz[i_xyz-nx*ny] - T_xyz[i_xyz])*c[M[i_xyz] + M[i_xyz-nx*ny]*nM + 2*nM*nM];
+								if(iz != nz-1) dTdt_z += (T_xyz[i_xyz+nx*ny] - T_xyz[i_xyz])*c[M[i_xyz] + M[i_xyz+nx*ny]*nM + 2*nM*nM];
+							}
+							dT_y_array[ix] = dt*dTdt_y/2;
+							T_zxy[i_zxy] = -dt*dTdt_z/2; // Preparation for the z explicit step
+
+							T_xline[ix] = T_xyz[i_xyz] + dt*((lightsOn && !heatSinkedVoxel? dTdt_abs[i_xyz]: 0) + dTdt_x/2 + dTdt_y + dTdt_z);
+
+							// Implicit x up sweep
+							// Thomson algorithm, sweeps up from 0 to nx-1 and then down from nx-1 to 0:
+							// Algorithm is taken from https://en.wikipedia.org/wiki/Tridiagonal_matrix_algorithm
+							if(ix==0) {
+								b[0] = heatSinked? 1: 1 + dt/2*c[M[i_xyz] + nM*M[i_xyz+1]];
+							} else if(ix < nx-1) {
+								w = -dt/2*c[M[i_xyz] + nM*M[i_xyz-1]]/b[ix-1];
+								b[ix] = 1 + dt/2*c[M[i_xyz] + nM*M[i_xyz-1]] + dt/2*c[M[i_xyz] + nM*M[i_xyz+1]];
+								if(ix > 1 || !heatSinked) b[ix] += w*dt/2*c[M[i_xyz-1] + nM*M[i_xyz]];
+								T_xline[ix] -= w*T_xline[ix-1];
+							} else { // ix == nx-1
+								w = heatSinked? 0: -dt/2*c[M[i_xyz] + nM*M[i_xyz-1]]/b[ix-1];
+								b[ix] = heatSinked? 1: 1 + dt/2*c[M[i_xyz] + nM*M[i_xyz-1]];
+								b[ix] += w*dt/2*c[M[i_xyz-1] + nM*M[i_xyz]];
+								T_xline[ix] -= w*T_xline[ix-1];
+							}
+						}
+						
+						double T_temp = 0;
+						for(long ix=nx-1;ix>=0;ix--) { // Sweep down in x, implicit x and explicit y, store result in T_yzx
+							long i_xyz = ix + iy*nx + iz*nx*ny; // xyz index
+							long i_yzx = iy + iz*ny + ix*ny*nz; // yzx index
+							if(ix==nx-1) T_temp = T_xline[ix]/b[ix];
+							else if(ix > 0 || !heatSinked) T_temp = (T_xline[ix] + dt/2*c[M[i_xyz] + nM*M[i_xyz+1]]*T_temp)/b[ix]; // The T_temp on the right hand side is the one from the previous iteration
+							else T_temp = T_xline[ix];
+							T_yzx[i_yzx] = T_temp - dT_y_array[ix];
+						}
+					} else for(long ix=nx-1;ix>=0;ix--) { // Heatsinked x line
+						long i_xyz = ix + iy*nx + iz*nx*ny; // xyz index
+						long i_yzx = iy + iz*ny + ix*ny*nz; // yzx index
+						long i_zxy = iz + ix*nz + iy*nz*nx; // zxy index
+						T_zxy[i_zxy] = 0; // Prepare the zxy matrix with an explicit component (dTdt_z) of 0
+						T_yzx[i_yzx] = T_xyz[i_xyz];
+					}
+                }
+            }
+
+            // Substep 2 out of 3, includes implicit y and explicit z
+			#ifdef _WIN32
+            #pragma omp for schedule(auto)
+            #endif
+            for(long iz=0; iz<nz; iz++) {
+				for(long ix=0; ix<nx; ix++) {
+					if(!(heatSinked && (ix == 0 || ix == nx-1 || iz == 0 || iz == nz-1))) {
+						for(long iy=0; iy<ny; iy++) { // Sweep up in y
+							long i_xyz = ix + iy*nx + iz*nx*ny; // xyz index
+							long i_yzx = iy + iz*ny + ix*ny*nz; // yzx index
+							if(iy==0) {
+								b[0] = heatSinked? 1: 1 + dt/2*c[nM*nM + M[i_xyz] + nM*M[i_xyz+nx]];
+							} else if(iy < ny-1) {
+								w = -dt/2*c[nM*nM + M[i_xyz] + nM*M[i_xyz-nx]]/b[iy-1];
+								b[iy] = 1 + dt/2*c[nM*nM + M[i_xyz] + nM*M[i_xyz-nx]] + dt/2*c[nM*nM + M[i_xyz] + nM*M[i_xyz+nx]];
+								if(iy > 1 || !heatSinked) b[iy] += w*dt/2*c[nM*nM + M[i_xyz-nx] + nM*M[i_xyz]];
+								T_yzx[i_yzx] -= w*T_yzx[i_yzx-1];
+							} else { // iy == ny-1
+								w = heatSinked? 0: -dt/2*c[nM*nM + M[i_xyz] + nM*M[i_xyz-nx]]/b[iy-1];
+								b[iy] = heatSinked? 1: 1 + dt/2*c[nM*nM + M[i_xyz] + nM*M[i_xyz-nx]];
+								b[iy] += w*dt/2*c[nM*nM + M[i_xyz-nx] + nM*M[i_xyz]];
+								T_yzx[i_yzx] -= w*T_yzx[i_yzx-1];
+							}
+						}
+
+						double T_temp = 0;
+						for(long iy=ny-1;iy>=0;iy--) { // Sweep down in y, store result in T_zxy, which already contains -dTdt_z/2, the z explicit correction
+							long i_xyz = ix + iy*nx + iz*nx*ny; // xyz index
+							long i_yzx = iy + iz*ny + ix*ny*nz; // yzx index
+							long i_zxy = iz + ix*nz + iy*nz*nx; // zxy index
+							
+							if(iy==ny-1) T_temp = T_yzx[i_yzx]/b[iy];
+							else if(iy > 0 || !heatSinked) T_temp = (T_yzx[i_yzx] + dt/2*c[nM*nM + M[i_xyz] + nM*M[i_xyz+nx]]*T_temp)/b[iy];
+							else T_temp = T_yzx[i_yzx];
+							T_zxy[i_zxy] += T_temp;
+						}
+					} else for(long iy=ny-1;iy>=0;iy--) { // Heatsinked y line
+						long i_yzx = iy + iz*ny + ix*ny*nz; // yzx index
+						long i_zxy = iz + ix*nz + iy*nz*nx; // zxy index
+						T_zxy[i_zxy] += T_yzx[i_yzx];
+					}
+                }
+            }
+			
+            // Substep 3 out of 3, includes implicit z
+			#ifdef _WIN32
+            #pragma omp for schedule(auto)
+            #endif
+            for(long iy=0; iy<ny; iy++) {
+				for(long ix=0; ix<nx; ix++) {
+					if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1))) {
+						for(long iz=0; iz<nz; iz++) { // Sweep up in z
+							long i_xyz = ix + iy*nx + iz*nx*ny; // xyz index
+							long i_zxy = iz + ix*nz + iy*nz*nx; // zxy index
+							if(iz==0) {
+								b[0] = heatSinked? 1: 1 + dt/2*c[2*nM*nM + M[i_xyz] + nM*M[i_xyz+nx*ny]];
+							} else if(iz < nz-1) {
+								w = -dt/2*c[2*nM*nM + M[i_xyz] + nM*M[i_xyz-nx*ny]]/b[iz-1];
+								b[iz] = 1 + dt/2*c[2*nM*nM + M[i_xyz] + nM*M[i_xyz-nx*ny]] + dt/2*c[2*nM*nM + M[i_xyz] + nM*M[i_xyz+nx*ny]];
+								if(iz > 1 || !heatSinked) b[iz] += w*dt/2*c[2*nM*nM + M[i_xyz-nx*ny] + nM*M[i_xyz]];
+								T_zxy[i_zxy] -= w*T_zxy[i_zxy-1];
+							} else { // iz == nz-1
+								w = heatSinked? 0: -dt/2*c[2*nM*nM + M[i_xyz] + nM*M[i_xyz-nx*ny]]/b[iz-1];
+								b[iz] = heatSinked? 1: 1 + dt/2*c[2*nM*nM + M[i_xyz] + nM*M[i_xyz-nx*ny]];
+								b[iz] += w*dt/2*c[2*nM*nM + M[i_xyz-nx*ny] + nM*M[i_xyz]];
+								T_zxy[i_zxy] -= w*T_zxy[i_zxy-1];
+							}
+						}
+
+						for(long iz=nz-1;iz>=0;iz--) { // Sweep down in z, store result in T_xyz
+							long i_xyz = ix + iy*nx + iz*nx*ny; // xyz index
+							long i_zxy = iz + ix*nz + iy*nz*nx; // zxy index
+							
+							double T_new;
+							if(iz==nz-1) T_new = T_zxy[i_zxy]/b[iz];
+							else if(iz > 0 || !heatSinked) T_new = (T_zxy[i_zxy] + dt/2*c[2*nM*nM + M[i_xyz] + nM*M[i_xyz+nx*ny]]*T_xyz_notfirststep[i_xyz+nx*ny])/b[iz];
+							else T_new = T_zxy[i_zxy];
+
+							if(calcDamage) outputOmega[i_xyz] += dt*A[M[i_xyz]]*exp(-E[M[i_xyz]]/(R*((T_xyz[i_xyz] + T_new)/2 + CELSIUSZERO))); // Arrhenius damage integral evaluation
+							T_xyz_notfirststep[i_xyz] = T_new; // In the first step, T_xyz will be the matlab input, which we are not allowed to write to. Therefore we use T_xyz_notfirststep here. See the #define for T_xyz.
+						}
+					} else for(long iz=nz-1;iz>=0;iz--) { // Heatsinked z line
+						long i_xyz = ix + iy*nx + iz*nx*ny; // xyz index
+						long i_zxy = iz + ix*nz + iy*nz*nx; // zxy index
+						if(calcDamage) outputOmega[i_xyz] += dt*A[M[i_xyz]]*exp(-E[M[i_xyz]]/(R*(T_xyz[i_xyz] + CELSIUSZERO))); // Arrhenius damage integral evaluation
+						T_xyz_notfirststep[i_xyz] = T_zxy[i_zxy]; // In the first step, T_xyz will be the matlab input, which we are not allowed to write to. Therefore we use T_xyz_notfirststep here. See the #define for T_xyz.
+					}
+                }
+            }
+			
 			#ifdef _WIN32
 			#pragma omp master
 			#endif
@@ -411,31 +304,27 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
 				}
 				#endif
 
+				firstStep = false;
+
 				for(long j=0;j<nSensors;j++) { // Interpolate to get the new temperatures on the temperature sensors
 					long idx = tempSensorCornerIdxs[j];
 					double wx = tempSensorInterpWeights[j           ];
 					double wy = tempSensorInterpWeights[j+  nSensors];
 					double wz = tempSensorInterpWeights[j+2*nSensors];
-					sensorTemps[j+(n+1)*nSensors] = (1-wx)*(1-wy)*(1-wz)*T2[idx     ] + (1-wx)*(1-wy)*wz*T2[idx     +nx*ny] +
-													(1-wx)*   wy *(1-wz)*T2[idx  +nx] + (1-wx)*   wy *wz*T2[idx  +nx+nx*ny] +
-													   wx *(1-wy)*(1-wz)*T2[idx+1   ] +    wx *(1-wy)*wz*T2[idx+1   +nx*ny] +
-													   wx *   wy *(1-wz)*T2[idx+1+nx] +    wx *   wy *wz*T2[idx+1+nx+nx*ny];
-				}
-
-				if(tgtTemp == &outputTemp) {
-					tgtTemp = &tempTemp;
-					srcTemp = &outputTemp;
-				} else {
-					tgtTemp = &outputTemp;
-					srcTemp = &tempTemp;
+					sensorTemps[j+(n+1)*nSensors] = (1-wx)*(1-wy)*(1-wz)*T_xyz[idx     ] + (1-wx)*(1-wy)*wz*T_xyz[idx     +nx*ny] +
+													(1-wx)*   wy *(1-wz)*T_xyz[idx  +nx] + (1-wx)*   wy *wz*T_xyz[idx  +nx+nx*ny] +
+													   wx *(1-wy)*(1-wz)*T_xyz[idx+1   ] +    wx *(1-wy)*wz*T_xyz[idx+1   +nx*ny] +
+													   wx *   wy *(1-wz)*T_xyz[idx+1+nx] +    wx *   wy *wz*T_xyz[idx+1+nx+nx*ny];
 				}
 			}
 			#ifdef _WIN32
 			#pragma omp barrier
 			#endif
 		}
+		free(dT_y_array);
+		free(T_xline);
     }
-    
-    free(tempTemp);
+	free(T_yzx);
+	free(T_zxy);
     return;
 }
