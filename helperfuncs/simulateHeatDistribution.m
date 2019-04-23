@@ -36,6 +36,7 @@ function HSoutput = simulateHeatDistribution(HSinput)
 %   You should have received a copy of the GNU General Public License
 %   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
 %%%%%
+useexplicit = false;
 
 if ~isfield(HSinput,'silentMode')
 	HSinput.silentMode = false;
@@ -58,8 +59,8 @@ end
 
 G = HSinput.G;
 
-Temp = HSinput.initialTemp*ones(size(G.M)); % Initial temperature distribution
-% Temp = repmat((1:G.nx).',1,G.ny,G.nz);
+% Temp = HSinput.initialTemp*ones(size(G.M)); % Initial temperature distribution
+Temp = repmat((1:G.nx).',1,G.ny,G.nz);
 % Temp = repmat((1:G.ny),G.nx,1,G.nz);
 % Temp = repmat(permute(1:G.ny,[1 3 2]),G.nx,G.ny,1);
 
@@ -88,9 +89,11 @@ if(HSinput.silentMode)
     HSinput.nUpdates = 1;
 end
 
-% dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)*15; % Highest allowable time step duration (factor 15 is subjectively found to be the highest value for which there are no artifacts visible in the example 3 test case)
-dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)/2; % Highest allowable time step duration (factor 15 is subjectively found to be the highest value for which there are no artifacts visible in the example 3 test case)
-% dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)/200; % Highest allowable time step duration (factor 15 is subjectively found to be the highest value for which there are no artifacts visible in the example 3 test case)
+if useexplicit
+	dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)/2; % Highest allowable time step duration (factor 15 is subjectively found to be the highest value for which there are no artifacts visible in the example 3 test case)
+else
+	dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)*15; % Highest allowable time step duration (factor 15 is subjectively found to be the highest value for which there are no artifacts visible in the example 3 test case)
+end
 
 if HSinput.durationOn ~= 0
     nUpdatesOn = max(1,round(HSinput.nUpdates*HSinput.durationOn/(HSinput.durationOn+HSinput.durationOff)));
@@ -205,7 +208,11 @@ for j=1:HSinput.nPulses
         heatSimParameters.steps = nTsPerUpdateOn;
 		heatSimParameters.dt = dtOn;
         for i = 1:nUpdatesOn
-            [Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_explicit(Temp,HSoutput.Omega,heatSimParameters);
+			if useexplicit
+				[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_explicit(Temp,HSoutput.Omega,heatSimParameters);
+			else
+				[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_method2(Temp,HSoutput.Omega,heatSimParameters);
+			end
             energy(e_idx) = sum(sum(sum(Temp.*VHC(G.M)*G.dx*G.dy*G.dz)));
 			e_idx = e_idx + 1;
             if isempty(HSoutput.sensorTemps)
@@ -241,7 +248,11 @@ for j=1:HSinput.nPulses
         heatSimParameters.steps = nTsPerUpdateOff;
 		heatSimParameters.dt = dtOff;
         for i = 1:nUpdatesOff
-            [Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_explicit(Temp,HSoutput.Omega,heatSimParameters);
+			if useexplicit
+				[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_explicit(Temp,HSoutput.Omega,heatSimParameters);
+			else
+				[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_method2(Temp,HSoutput.Omega,heatSimParameters);
+			end
             energy(e_idx) = sum(sum(sum(Temp.*VHC(G.M)*G.dx*G.dy*G.dz)));
 			e_idx = e_idx + 1;
             
@@ -277,9 +288,11 @@ heatSimParameters.lightsOn = false;
 heatSimParameters.steps = nTsPerUpdateEnd;
 heatSimParameters.dt = dtEnd;
 for i = 1:nUpdatesEnd
-	[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_explicit(Temp,HSoutput.Omega,heatSimParameters);
-	energy(e_idx) = sum(sum(sum(Temp.*VHC(G.M)*G.dx*G.dy*G.dz)));
-	e_idx = e_idx + 1;
+	if useexplicit
+		[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_explicit(Temp,HSoutput.Omega,heatSimParameters);
+	else
+		[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_method2(Temp,HSoutput.Omega,heatSimParameters);
+	end
 
 	if isempty(HSoutput.sensorTemps)
 		HSoutput.sensorTemps = newSensorTemps;
@@ -305,6 +318,8 @@ if(~HSinput.silentMode)
     toc;
 end
 
+max(Temp(:))
+min(Temp(:))
 clear Temp heatSimParameters;
 
 %% Finalize and write movie

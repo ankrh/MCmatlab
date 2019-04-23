@@ -36,9 +36,9 @@ plotMCmatlabGeom(Goutput);
 
 %% Monte Carlo simulation
 clear MCinput
-MCinput.simulationTime           = 1; % [min] Time duration of the simulation
+MCinput.simulationTime           = .1; % [min] Time duration of the simulation
 
-MCinput.Beam.beamType            = 6; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
+MCinput.Beam.beamType            = 2; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
 MCinput.Beam.xFocus              = 0; % [cm] x position of focus
 MCinput.Beam.yFocus              = 0; % [cm] y position of focus
 MCinput.Beam.zFocus              = 0; % [cm] z position of focus
@@ -58,12 +58,12 @@ HSinput.makeMovie           = false; % Requires silentMode = false.
 
 HSinput.heatBoundaryType    = 0; % 0: Insulating boundaries, 1: Constant-temperature boundaries (heat-sinked)
 HSinput.P                   = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
-HSinput.durationOn          = 0.001; % [s] Pulse on-duration
-HSinput.durationOff         = 0.004; % [s] Pulse off-duration
-HSinput.durationEnd         = 0.02; % [s] Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train
-HSinput.initialTemp         = 37; % [deg C] Initial temperature
+HSinput.durationOn          = 0.0; % [s] Pulse on-duration
+HSinput.durationOff         = 0.01; % [s] Pulse off-duration
+HSinput.durationEnd         = 0.0; % [s] Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train
+HSinput.initialTemp         = 50; % [deg C] Initial temperature
 
-HSinput.nPulses             = 5; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
+HSinput.nPulses             = 1; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
 
 HSinput.plotTempLimits      = [37 100]; % [deg C] Expected range of temperatures, used only for setting the color scale in the plot
 HSinput.nUpdates            = 1; % Number of times data is extracted for plots during each pulse. A minimum of 1 update is performed in each phase (2 for each pulse consisting of an illumination phase and a diffusion phase)
@@ -79,6 +79,8 @@ HSinput.MCoutput = MCoutput;
 HSoutput = simulateHeatDistribution(HSinput);
 plotMCmatlabHeat(HSinput,HSoutput);
 
+max(HSoutput.Omega(:))
+
 %% Post-processing
 
 %% Geometry function(s)
@@ -93,8 +95,9 @@ zsurf = 0.01;
 epd_thick = 0.006;
 vesselradius  = 0.0100;
 vesseldepth = 0.04;
-M = 2*ones(size(X)); % fill background with water (gel)
-M(Z > zsurf) = 4; % epidermis
-M(Z > zsurf + epd_thick) = 5; % dermis
-M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 6; % blood
+M = 5*ones(size(X)); % fill background with water (gel)
+% M = 2*ones(size(X)); % fill background with water (gel)
+% M(Z > zsurf) = 4; % epidermis
+% M(Z > zsurf + epd_thick) = 5; % dermis
+% M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 6; % blood
 end

@@ -136,15 +136,15 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
                     for(ix=0; ix<nx; ix++) {
                         i = ix + iy*nx + iz*nx*ny;
 						
-						dTdt = lightsOn? dTdt_abs[i]: 0; // This is where the heat is deposited
                         if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) { // If not constant-temperature boundary voxel
+							dTdt = lightsOn? dTdt_abs[i]: 0; // This is where the heat is deposited
                             if(ix != 0   ) dTdt += (T1[i-1]     - T1[i])*c[M[i] + M[i-1    ]*nM          ]/2; // Factor ½ is because the first substep splits the x heat flow over an explicit and an implicit part
                             if(ix != nx-1) dTdt += (T1[i+1]     - T1[i])*c[M[i] + M[i+1    ]*nM          ]/2; // Factor ½ is because the first substep splits the x heat flow over an explicit and an implicit part
                             if(iy != 0   ) dTdt += (T1[i-nx]    - T1[i])*c[M[i] + M[i-nx   ]*nM +   nM*nM];
                             if(iy != ny-1) dTdt += (T1[i+nx]    - T1[i])*c[M[i] + M[i+nx   ]*nM +   nM*nM];
                             if(iz != 0   ) dTdt += (T1[i-nx*ny] - T1[i])*c[M[i] + M[i-nx*ny]*nM + 2*nM*nM];
                             if(iz != nz-1) dTdt += (T1[i+nx*ny] - T1[i])*c[M[i] + M[i+nx*ny]*nM + 2*nM*nM];
-                        }
+                        } else dTdt = 0;
                         T2[i] = T1[i] + dt*dTdt;
 						
                     }
@@ -363,7 +363,6 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
 					if(!heatSinked) {
 						T2[j] = (T2[j] + dt/2*c[2*nM*nM + M[j] + nM*M[jp1]]*T2[jp1])/b[0];
 					}
-					if(calcDamage) outputOmega[jp1] += dt*A[M[jp1]]*exp(-E[M[jp1]]/(R*((T2[jp1] + T1[jp1])/2 + CELSIUSZERO))); // Arrhenius damage integral evaluation, not a part of the implicit step
 					if(calcDamage) outputOmega[j] += dt*A[M[j]]*exp(-E[M[j]]/(R*((T2[j] + T1[j])/2 + CELSIUSZERO))); // Arrhenius damage integral evaluation, not a part of the implicit step
 				}
 			}
