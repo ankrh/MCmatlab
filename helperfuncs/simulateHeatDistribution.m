@@ -36,7 +36,7 @@ function HSoutput = simulateHeatDistribution(HSinput)
 %   You should have received a copy of the GNU General Public License
 %   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
 %%%%%
-useexplicit = false;
+method = 1;
 
 if ~isfield(HSinput,'silentMode')
 	HSinput.silentMode = false;
@@ -89,9 +89,10 @@ if(HSinput.silentMode)
     HSinput.nUpdates = 1;
 end
 
-if useexplicit
+switch method
+	case 0
 	dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)/2; % Highest allowable time step duration (factor 15 is subjectively found to be the highest value for which there are no artifacts visible in the example 3 test case)
-else
+	case {1,2}
 	dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)*15; % Highest allowable time step duration (factor 15 is subjectively found to be the highest value for which there are no artifacts visible in the example 3 test case)
 end
 
@@ -208,9 +209,12 @@ for j=1:HSinput.nPulses
         heatSimParameters.steps = nTsPerUpdateOn;
 		heatSimParameters.dt = dtOn;
         for i = 1:nUpdatesOn
-			if useexplicit
+			switch method
+				case 0
 				[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_explicit(Temp,HSoutput.Omega,heatSimParameters);
-			else
+				case 1
+				[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_method1(Temp,HSoutput.Omega,heatSimParameters);
+				case 2
 				[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_method2(Temp,HSoutput.Omega,heatSimParameters);
 			end
             energy(e_idx) = sum(sum(sum(Temp.*VHC(G.M)*G.dx*G.dy*G.dz)));
@@ -248,9 +252,12 @@ for j=1:HSinput.nPulses
         heatSimParameters.steps = nTsPerUpdateOff;
 		heatSimParameters.dt = dtOff;
         for i = 1:nUpdatesOff
-			if useexplicit
+			switch method
+				case 0
 				[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_explicit(Temp,HSoutput.Omega,heatSimParameters);
-			else
+				case 1
+				[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_method1(Temp,HSoutput.Omega,heatSimParameters);
+				case 2
 				[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_method2(Temp,HSoutput.Omega,heatSimParameters);
 			end
             energy(e_idx) = sum(sum(sum(Temp.*VHC(G.M)*G.dx*G.dy*G.dz)));
@@ -288,9 +295,12 @@ heatSimParameters.lightsOn = false;
 heatSimParameters.steps = nTsPerUpdateEnd;
 heatSimParameters.dt = dtEnd;
 for i = 1:nUpdatesEnd
-	if useexplicit
+	switch method
+		case 0
 		[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_explicit(Temp,HSoutput.Omega,heatSimParameters);
-	else
+		case 1
+		[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_method1(Temp,HSoutput.Omega,heatSimParameters);
+		case 2
 		[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator_method2(Temp,HSoutput.Omega,heatSimParameters);
 	end
 

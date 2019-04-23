@@ -158,55 +158,24 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
             #endif
 			for(iz=heatSinked; iz<nz-heatSinked; iz++) {
                 for(iy=heatSinked; iy<ny-heatSinked; iy++) {
-					of = iy*nx + iz*ny*nx; // Index offset of this x-line
-					
 					// Thomson algorithm, sweeps up from 0 to nx-1 and then down from nx-1 to 0:
 					// Algorithm is taken from https://en.wikipedia.org/wiki/Tridiagonal_matrix_algorithm
-					
-					// Forward sweep, indices 0 and 1:
-					j   = of;
-					jp1 = of+1;
-					jp2 = of+2;
-					b[0] = heatSinked? 1: 1 + dt/2*c[M[j] + nM*M[jp1]];
-					w = -dt/2*c[M[jp1] + nM*M[j]]/b[0];
-					b[1] = 1 + dt/2*c[M[jp1] + nM*M[jp2]] + dt/2*c[M[jp1] + nM*M[j]];
-					if(!heatSinked) b[1] += w*dt/2*c[M[j] + nM*M[jp1]];
-					T2[jp1] -= w*T2[j];
-					// Forward sweep, indices 2 to nx-2:
-					for(ix=2;ix<nx-1;ix++) {
-						jm1 = of+ix-1;
-						j   = of+ix;
-						jp1 = of+ix+1;
-						w = -dt/2*c[M[j] + nM*M[jm1]]/b[ix-1];
-						b[ix] = 1 + dt/2*c[M[j] + nM*M[jm1]] + dt/2*c[M[j] + nM*M[jp1]];
-						b[ix] += w*dt/2*c[M[jm1] + nM*M[j]];
-						T2[j] -= w*T2[jm1];
+					for(ix=0;ix<nx;ix++) {
+						long i = ix + iy*nx + iz*nx*ny;
+						b[ix] = 1;
+						if(ix < nx-1) b[ix] += dt/2*c[M[i] + nM*M[i+1]];
+						if(ix > 0) {
+							b[ix] +=  dt/2*c[M[i] + nM*M[i-1]];
+							w      = -dt/2*c[M[i] + nM*M[i-1]]/b[ix-1];
+							if(ix > 1 || !heatSinked) b[ix] += w*dt/2*c[M[i-1] + nM*M[i]];
+							T2[i] -= w*T2[i-1];
+						}
 					}
-					// Forward sweep, index nx-1:
-					jm1 = of+nx-2;
-					j   = of+nx-1;
-					if(heatSinked) {
-						b[nx-1] = 1;
-					} else {
-						w = -dt/2*c[M[j] + nM*M[jm1]]/b[nx-2];
-						b[nx-1] = 1 + dt/2*c[M[j] + nM*M[jm1]];
-						b[nx-1] += w*dt/2*c[M[jm1] + nM*M[j]];
-						T2[j] -= w*T2[jm1];
-					}
-					
-					// Back sweep, index nx-1:
-					T2[j] /= b[nx-1];
-					// Back sweep, indices nx-2 to 1:
-					for(ix=nx-2;ix>0;ix--) {
-						j   = of+ix;
-						jp1 = of+ix+1;
-						T2[j] = (T2[j] + dt/2*c[M[j] + nM*M[jp1]]*T2[jp1])/b[ix];
-					}
-					// Back sweep, index 0:
-					j   = of;
-					jp1 = of+1;
-					if(!heatSinked) {
-						T2[j] = (T2[j] + dt/2*c[M[j] + nM*M[jp1]]*T2[jp1])/b[0];
+
+					T2[nx-1 + iy*nx + iz*nx*ny] /= b[nx-1];
+					for(long ix=nx-2;ix>=heatSinked;ix--) {
+						long i = ix + iy*nx + iz*nx*ny;
+						T2[i] = (T2[i] + dt/2*c[M[i] + nM*M[i+1]]*T2[i+1])/b[ix];
 					}
 				}
 			}
@@ -236,54 +205,22 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
             #endif
 			for(iz=heatSinked; iz<nz-heatSinked; iz++) {
                 for(ix=heatSinked; ix<nx-heatSinked; ix++) {
-					of = ix + iz*ny*nx; // Index offset of this y-line
-					
-					// Thomson algorithm, sweeps up from 0 to ny-1 and then down from ny-1 to 0:
-					
-					// Forward sweep, indices 0 and 1:
-					j   = of;
-					jp1 = of+nx;
-					jp2 = of+nx*2;
-					b[0] = heatSinked? 1: 1 + dt/2*c[nM*nM + M[j] + nM*M[jp1]];
-					w = -dt/2*c[nM*nM + M[jp1] + nM*M[j]]/b[0];
-					b[1] = 1 + dt/2*c[nM*nM + M[jp1] + nM*M[jp2]] + dt/2*c[nM*nM + M[jp1] + nM*M[j]];
-					if(!heatSinked) b[1] += w*dt/2*c[nM*nM + M[j] + nM*M[jp1]];
-					T2[jp1] -= w*T2[j];
-					// Forward sweep, indices 2 to ny-2:
-					for(iy=2;iy<ny-1;iy++) {
-						jm1 = of+nx*(iy-1);
-						j   = of+nx*iy;
-						jp1 = of+nx*(iy+1);
-						w = -dt/2*c[nM*nM + M[j] + nM*M[jm1]]/b[iy-1];
-						b[iy] = 1 + dt/2*c[nM*nM + M[j] + nM*M[jm1]] + dt/2*c[nM*nM + M[j] + nM*M[jp1]];
-						b[iy] += w*dt/2*c[nM*nM + M[jm1] + nM*M[j]];
-						T2[j] -= w*T2[jm1];
+					for(iy=0;iy<ny;iy++) {
+						long i = ix + iy*nx + iz*nx*ny;
+						b[iy] = 1;
+						if(iy < ny-1) b[iy] += dt/2*c[M[i] + nM*M[i+nx]];
+						if(iy > 0) {
+							b[iy] +=  dt/2*c[M[i] + nM*M[i-nx]];
+							w      = -dt/2*c[M[i] + nM*M[i-nx]]/b[iy-1];
+							if(iy > 1 || !heatSinked) b[iy] += w*dt/2*c[M[i-nx] + nM*M[i]];
+							T2[i] -= w*T2[i-nx];
+						}
 					}
-					// Forward sweep, index ny-1:
-					jm1 = of+nx*(ny-2);
-					j   = of+nx*(ny-1);
-					if(heatSinked) {
-						b[ny-1] = 1;
-					} else {
-						w = -dt/2*c[nM*nM + M[j] + nM*M[jm1]]/b[ny-2];
-						b[ny-1] = 1 + dt/2*c[nM*nM + M[j] + nM*M[jm1]];
-						b[ny-1] += w*dt/2*c[nM*nM + M[jm1] + nM*M[j]];
-						T2[j] -= w*T2[jm1];
-					}
-					
-					// Back sweep, index ny-1:
-					T2[j] /= b[ny-1];
-					// Back sweep, indices ny-2 to 1:
-					for(iy=ny-2;iy>0;iy--) {
-						j   = of+nx*iy;
-						jp1 = of+nx*(iy+1);
-						T2[j] = (T2[j] + dt/2*c[nM*nM + M[j] + nM*M[jp1]]*T2[jp1])/b[iy];
-					}
-					// Back sweep, index 0:
-					j   = of;
-					jp1 = of+nx;
-					if(!heatSinked) {
-						T2[j] = (T2[j] + dt/2*c[nM*nM + M[j] + nM*M[jp1]]*T2[jp1])/b[0];
+
+					T2[ix + (ny-1)*nx + iz*nx*ny] /= b[ny-1];
+					for(long iy=ny-2;iy>=heatSinked;iy--) {
+						long i = ix + iy*nx + iz*nx*ny;
+						T2[i] = (T2[i] + dt/2*c[M[i] + nM*M[i+nx]]*T2[i+nx])/b[iy];
 					}
 				}
 			}
