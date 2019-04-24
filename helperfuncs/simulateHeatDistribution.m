@@ -58,18 +58,18 @@ end
 
 G = HSinput.G;
 
-Temp = HSinput.initialTemp*ones(size(G.M)); % Initial temperature distribution
+Temp = HSinput.initialTemp*ones(size(G.M),'single'); % Initial temperature distribution
 
 nM = length(G.mediaProperties); % Number of different media in simulation
 
-VHC = [G.mediaProperties.VHC]; % Volumetric heat capacity array. Element i is the VHC of medium i in the reduced mediaProperties list.
-TC = [G.mediaProperties.TC]; % Thermal conductivity array. Element i is the TC of medium i in the reduced mediaProperties list.
+VHC = single([G.mediaProperties.VHC]); % Volumetric heat capacity array. Element i is the VHC of medium i in the reduced mediaProperties list.
+TC = single([G.mediaProperties.TC]); % Thermal conductivity array. Element i is the TC of medium i in the reduced mediaProperties list.
 
 %% Prepare Arrhenius thermal damage parameters
 A = [G.mediaProperties.A];
 E = [G.mediaProperties.E];
 if(any(A)) % If non-zero Arrhenius data exists, prepare to calculate thermal damage.
-    HSoutput.Omega = zeros(size(G.M));
+    HSoutput.Omega = zeros(size(G.M),'single');
 else
     HSoutput.Omega = NaN;
 end
@@ -180,15 +180,15 @@ end
 
 %% Put heatSim parameters into a struct
 heatSimParameters = struct('M',G.M-1,'A',A,'E',E,'dTdtperdeltaT',dTdtperdeltaT,'dTdt_abs',dTdt_abs,...
-                'useAllCPUs',HSinput.useAllCPUs,'heatBoundaryType',HSinput.heatBoundaryType,...
-                'tempSensorCornerIdxs',tempSensorCornerIdxs,'tempSensorInterpWeights',tempSensorInterpWeights); % Contents of G.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
+				'useAllCPUs',HSinput.useAllCPUs,'heatBoundaryType',HSinput.heatBoundaryType,...
+				'tempSensorCornerIdxs',tempSensorCornerIdxs,'tempSensorInterpWeights',tempSensorInterpWeights); % Contents of G.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
 
 %% Simulate heat transfer
 if(~HSinput.silentMode); tic; end
 for j=1:HSinput.nPulses
 	%% Illumination phase
     if HSinput.durationOn ~= 0
-        if(~HSinput.silentMode)
+		if(~HSinput.silentMode)
             fprintf(['Illuminating pulse #' num2str(j) '... \n' repmat('-',1,nUpdatesOn)]);
             drawnow;
 		end
@@ -203,9 +203,9 @@ for j=1:HSinput.nPulses
                 HSoutput.sensorTemps = newSensorTemps;
             else
                 HSoutput.sensorTemps = [HSoutput.sensorTemps(:,1:end-1) newSensorTemps];
-            end
+			end
             
-            if(~HSinput.silentMode)
+			if(~HSinput.silentMode)
                 fprintf(1,'\b');
                 updateIdx = i+(j-1)*(nUpdatesOn+nUpdatesOff); % Index of the update
                 updateVolumetric(heatsimFigure,Temp);
@@ -231,16 +231,16 @@ for j=1:HSinput.nPulses
         heatSimParameters.lightsOn = false;
         heatSimParameters.steps = nTsPerUpdateOff;
 		heatSimParameters.dt = dtOff;
-        for i = 1:nUpdatesOff
+		for i = 1:nUpdatesOff
 			[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator(Temp,HSoutput.Omega,heatSimParameters);
             
-            if isempty(HSoutput.sensorTemps)
+			if isempty(HSoutput.sensorTemps)
                 HSoutput.sensorTemps = newSensorTemps;
             else
                 HSoutput.sensorTemps = [HSoutput.sensorTemps(:,1:end-1) newSensorTemps];
-            end
+			end
             
-            if(~HSinput.silentMode)
+			if(~HSinput.silentMode)
                 fprintf(1,'\b');
                 updateIdx = nUpdatesOn+i+(j-1)*(nUpdatesOn+nUpdatesOff); % Index of the update
                 updateVolumetric(heatsimFigure,Temp);

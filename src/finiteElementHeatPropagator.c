@@ -55,28 +55,28 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     long nx,ny,nz,nM;
     
     mwSize const *dimPtr = mxGetDimensions(prhs[0]);
-    plhs[0] = mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL);
+    plhs[0] = mxCreateNumericArray(3,dimPtr,mxSINGLE_CLASS,mxREAL);
     nx = dimPtr[0];
     ny = dimPtr[1];
     nz = dimPtr[2];
     nM = mxGetM(mxGetField(prhs[2],0,"dTdtperdeltaT")); // Number of media in the simulation.
     
-    double *Temp          = mxGetPr(prhs[0]); // Temp is an nx*ny*nz array of doubles
-    double *outputTemp    = mxGetPr(plhs[0]); // outputTemp is an nx*ny*nz array of doubles
+    float *Temp           = mxGetData(prhs[0]); // Temp is an nx*ny*nz array of floats (singles)
+    float *outputTemp     = mxGetData(plhs[0]); // outputTemp is an nx*ny*nz array of floats
     long nt               = *mxGetPr(mxGetField(prhs[2],0,"steps")); // nt is an integer (number of time steps to perform)
-    double dt             = *mxGetPr(mxGetField(prhs[2],0,"dt")); // dt is a double (duration of time step)
+    float dt              = *mxGetPr(mxGetField(prhs[2],0,"dt")); // dt is a float (duration of time step)
     unsigned char *M      = mxGetData(mxGetField(prhs[2],0,"M")); // M is a nx*ny*nz array of uint8 (unsigned char) containing values from 0..nM-1
-    double *c             = mxGetPr(mxGetField(prhs[2],0,"dTdtperdeltaT")); // c is an nM*nM*3 array of doubles
-    double *dTdt_abs      = mxGetPr(mxGetField(prhs[2],0,"dTdt_abs")); // dTdt_abs is an nx*ny*nz array of doubles
+    float *c              = mxGetData(mxGetField(prhs[2],0,"dTdtperdeltaT")); // c is an nM*nM*3 array of floats
+    float *dTdt_abs       = mxGetData(mxGetField(prhs[2],0,"dTdt_abs")); // dTdt_abs is an nx*ny*nz array of floats
     double *A             = mxGetPr(mxGetField(prhs[2],0,"A")); // A is a nM array of doubles
     double *E             = mxGetPr(mxGetField(prhs[2],0,"E")); // E is a nM array of doubles
     bool lightsOn         = mxIsLogicalScalarTrue(mxGetField(prhs[2],0,"lightsOn"));
     long heatSinked       = *mxGetPr(mxGetField(prhs[2],0,"heatBoundaryType")); // 0: Insulating boundaries, 1: Constant-temperature boundaries
     
-    double *Omega       = mxGetPr(prhs[1]); // Omega is an nx*ny*nz array of doubles if we are supposed to calculate damage, a single NaN element otherwise
+    float *Omega        = mxGetData(prhs[1]); // Omega is an nx*ny*nz array of doubles if we are supposed to calculate damage, a single NaN element otherwise
     bool calcDamage     = !mxIsNaN(Omega[0]); // If the Omega input is just one NaN element then we shouldn't bother with thermal damage calculation
-    plhs[1] = calcDamage? mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL): mxCreateDoubleMatrix(1,1,mxREAL); // outputOmega is the same dimensions as Omega
-    double *outputOmega = mxGetPr(plhs[1]);
+    plhs[1] = calcDamage? mxCreateNumericArray(3,dimPtr,mxSINGLE_CLASS,mxREAL): mxCreateDoubleMatrix(1,1,mxREAL); // outputOmega is the same dimensions as Omega
+    float *outputOmega = mxGetData(plhs[1]);
     if(!calcDamage) outputOmega[0] = NAN;
     
     double *tempSensorCornerIdxs = mxGetPr(mxGetField(prhs[2],0,"tempSensorCornerIdxs"));
@@ -86,10 +86,10 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     plhs[2] = nSensors? mxCreateDoubleMatrix(nSensors,nt+1,mxREAL): mxCreateDoubleMatrix(0,0,mxREAL);
     double *sensorTemps = mxGetPr(plhs[2]);
     
-    double *tempTemp = malloc(nx*ny*nz*sizeof(double)); // Temporary temperature matrix
+    float *tempTemp = malloc(nx*ny*nz*sizeof(float)); // Temporary temperature matrix
     
-    double **srcTemp = &Temp; // Pointer to the pointer to whichever temperature matrix is to be read from
-    double **tgtTemp; // Pointer to the pointer to whichever temperature matrix is to be written to
+    float **srcTemp = &Temp; // Pointer to the pointer to whichever temperature matrix is to be read from
+    float **tgtTemp; // Pointer to the pointer to whichever temperature matrix is to be written to
     tgtTemp = (nt%2)? &outputTemp: &tempTemp; // If nt is odd then we can start by writing to the output temperature matrix (pointed to by plhs[0]), otherwise we start by writing to the temporary temperature matrix
     
     for(long j=0;j<nSensors;j++) { // Interpolate to get the starting temperatures on the temperature sensors
@@ -109,8 +109,8 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     #endif
     {
         long i,ix,iy,iz,n;
-        double dTdt,w;
-		double b[nx>ny && nx>nz? nx: (ny>nz? ny: nz)];
+        float dTdt,w;
+		float b[nx>ny && nx>nz? nx: (ny>nz? ny: nz)];
 		
 		if(calcDamage) {
 			// Initialize omega array
@@ -263,7 +263,7 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
 					for(iz=nz-1;iz>=heatSinked;iz--) {
 						i = ix + iy*nx + iz*nx*ny;
 						T2[i] = (T2[i] + (iz == nz-1? 0: dt/2*c[M[i] + nM*M[i+nx*ny] + 2*nM*nM]*T2[i+nx*ny]))/b[iz];
-						if(calcDamage) outputOmega[i] += dt*A[M[i]]*exp(-E[M[i]]/(R*((T2[i] + T1[i])/2 + CELSIUSZERO))); // Arrhenius damage integral evaluation
+						if(calcDamage) outputOmega[i] += (float)(dt*A[M[i]]*exp(-E[M[i]]/(R*((T2[i] + T1[i])/2 + CELSIUSZERO)))); // Arrhenius damage integral evaluation
 					}
 				}
 			}
