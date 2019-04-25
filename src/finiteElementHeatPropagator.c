@@ -112,6 +112,10 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
         float dTdt,w;
 		float b[nx>ny? nx: ny];
 		float bz[nx*nz];
+		if(heatSinked) {
+			b[0] = 1;
+			for(ix=0;ix<nx;ix++) bz[ix] = 1;
+		}
 		
 		if(calcDamage) {
 			// Initialize omega array
@@ -151,13 +155,13 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
 			#ifdef _WIN32
             #pragma omp for schedule(auto)
             #endif
-			for(iz=heatSinked; iz<nz-heatSinked; iz++) {
-                for(iy=heatSinked; iy<ny-heatSinked; iy++) {
+			for(iz=0; iz<nz; iz++) {
+                for(iy=0; iy<ny; iy++) {
 					// Thomson algorithm, sweeps up from 0 to nx-1 and then down from nx-1 to 0:
 					// Algorithm is taken from https://en.wikipedia.org/wiki/Tridiagonal_matrix_algorithm
 					for(ix=0;ix<nx;ix++) {
-						b[ix] = 1;
-						if(!(heatSinked && (ix == 0 || ix == nx-1))) {
+						if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) {
+							b[ix] = 1;
 							i = ix + iy*nx + iz*nx*ny;
 							if(ix < nx-1) b[ix] += dt/2*c[M[i] + nM*M[i+1]];
 							if(ix > 0) {
@@ -169,9 +173,11 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
 						}
 					}
 					
-					for(ix=nx-1;ix>=heatSinked;ix--) {
-						i = ix + iy*nx + iz*nx*ny;
-						T2[i] = (T2[i] + (ix == nx-1? 0: dt/2*c[M[i] + nM*M[i+1]]*T2[i+1]))/b[ix];
+					for(ix=nx-1;ix>=0;ix--) {
+						if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) {
+							i = ix + iy*nx + iz*nx*ny;
+							T2[i] = (T2[i] + (ix == nx-1? 0: dt/2*c[M[i] + nM*M[i+1]]*T2[i+1]))/b[ix];
+						}
 					}
 				}
 			}
@@ -183,14 +189,13 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
             for(iz=0; iz<nz; iz++) {
                 for(iy=0; iy<ny; iy++) {
                     for(ix=0; ix<nx; ix++) {
-                        i = ix + iy*nx + iz*nx*ny;
-						
-						dTdt = 0;
                         if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) { // If not constant-temperature boundary voxel
+							i = ix + iy*nx + iz*nx*ny;
+							dTdt = 0;
                             if(iy != 0   ) dTdt -= (T1[i-nx]    - T1[i])*c[M[i] + M[i-nx   ]*nM +   nM*nM]/2;
                             if(iy != ny-1) dTdt -= (T1[i+nx]    - T1[i])*c[M[i] + M[i+nx   ]*nM +   nM*nM]/2;
+							T2[i] = T2[i] + dt*dTdt;
                         }
-                        T2[i] = T2[i] + dt*dTdt;
                     }
                 }
             }
@@ -199,11 +204,11 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
 			#ifdef _WIN32
             #pragma omp for schedule(auto)
             #endif
-			for(iz=heatSinked; iz<nz-heatSinked; iz++) {
-                for(ix=heatSinked; ix<nx-heatSinked; ix++) {
+			for(iz=0; iz<nz; iz++) {
+                for(ix=0; ix<nx; ix++) {
 					for(iy=0;iy<ny;iy++) {
-						b[iy] = 1;
-						if(!(heatSinked && (iy == 0 || iy == ny-1))) {
+						if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) {
+							b[iy] = 1;
 							i = ix + iy*nx + iz*nx*ny;
 							if(iy < ny-1) b[iy] += dt/2*c[M[i] + nM*M[i+nx] + nM*nM];
 							if(iy > 0) {
@@ -215,9 +220,11 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
 						}
 					}
 
-					for(iy=ny-1;iy>=heatSinked;iy--) {
-						i = ix + iy*nx + iz*nx*ny;
-						T2[i] = (T2[i] + (iy == ny-1? 0: dt/2*c[M[i] + nM*M[i+nx] + nM*nM]*T2[i+nx]))/b[iy];
+					for(iy=ny-1;iy>=0;iy--) {
+						if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) {
+							i = ix + iy*nx + iz*nx*ny;
+							T2[i] = (T2[i] + (iy == ny-1? 0: dt/2*c[M[i] + nM*M[i+nx] + nM*nM]*T2[i+nx]))/b[iy];
+						}
 					}
 				}
 			}
@@ -229,14 +236,13 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
             for(iz=0; iz<nz; iz++) {
                 for(iy=0; iy<ny; iy++) {
                     for(ix=0; ix<nx; ix++) {
-                        i = ix + iy*nx + iz*nx*ny;
-						
-						dTdt = 0;
                         if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) { // If not constant-temperature boundary voxel
+							i = ix + iy*nx + iz*nx*ny;
+							dTdt = 0;
                             if(iz != 0   ) dTdt -= (T1[i-nx*ny] - T1[i])*c[M[i] + M[i-nx*ny]*nM + 2*nM*nM]/2;
                             if(iz != nz-1) dTdt -= (T1[i+nx*ny] - T1[i])*c[M[i] + M[i+nx*ny]*nM + 2*nM*nM]/2;
+							T2[i] = T2[i] + dt*dTdt;
                         }
-                        T2[i] = T2[i] + dt*dTdt;
                     }
                 }
             }
@@ -245,12 +251,12 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
 			#ifdef _WIN32
             #pragma omp for schedule(auto)
             #endif
-			for(iy=heatSinked; iy<ny-heatSinked; iy++) {
+			for(iy=0; iy<ny; iy++) {
 				for(iz=0;iz<nz;iz++) {
-					for(ix=heatSinked; ix<nx-heatSinked; ix++) {
-						ib = ix + iz*nx;
-						bz[ib] = 1;
-						if(!(heatSinked && (iz == 0 || iz == nz-1))) {
+					for(ix=0; ix<nx; ix++) {
+						if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) {
+							ib = ix + iz*nx;
+							bz[ib] = 1;
 							i = ix + iy*nx + iz*nx*ny;
 							if(iz < nz-1) bz[ib] += dt/2*c[M[i] + nM*M[i+nx*ny] + 2*nM*nM];
 							if(iz > 0) {
@@ -262,11 +268,13 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
 						}
 					}
 				}
-				for(iz=nz-1;iz>=heatSinked;iz--) {
-					for(ix=heatSinked; ix<nx-heatSinked; ix++) {
-						ib = ix + iz*nx;
+				for(iz=nz-1;iz>=0;iz--) {
+					for(ix=0; ix<nx; ix++) {
 						i = ix + iy*nx + iz*nx*ny;
-						T2[i] = (T2[i] + (iz == nz-1? 0: dt/2*c[M[i] + nM*M[i+nx*ny] + 2*nM*nM]*T2[i+nx*ny]))/bz[ib];
+						if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) {
+							ib = ix + iz*nx;
+							T2[i] = (T2[i] + (iz == nz-1? 0: dt/2*c[M[i] + nM*M[i+nx*ny] + 2*nM*nM]*T2[i+nx*ny]))/bz[ib];
+						}
 						if(calcDamage) outputOmega[i] += (float)(dt*A[M[i]]*exp(-E[M[i]]/(R*((T2[i] + T1[i])/2 + CELSIUSZERO)))); // Arrhenius damage integral evaluation
 					}
 				}
