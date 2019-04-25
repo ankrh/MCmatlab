@@ -71,7 +71,7 @@ E = [G.mediaProperties.E];
 if(any(A)) % If non-zero Arrhenius data exists, prepare to calculate thermal damage.
     HSoutput.Omega = zeros(size(G.M),'single');
 else
-    HSoutput.Omega = NaN;
+    HSoutput.Omega = single(NaN);
 end
 
 %% Calculate amount and duration of time steps in each phase

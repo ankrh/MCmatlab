@@ -75,7 +75,7 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     
     float *Omega        = mxGetData(prhs[1]); // Omega is an nx*ny*nz array of doubles if we are supposed to calculate damage, a single NaN element otherwise
     bool calcDamage     = !mxIsNaN(Omega[0]); // If the Omega input is just one NaN element then we shouldn't bother with thermal damage calculation
-    plhs[1] = calcDamage? mxCreateNumericArray(3,dimPtr,mxSINGLE_CLASS,mxREAL): mxCreateDoubleMatrix(1,1,mxREAL); // outputOmega is the same dimensions as Omega
+    plhs[1] = calcDamage? mxCreateNumericArray(3,dimPtr,mxSINGLE_CLASS,mxREAL): mxCreateNumericArray(2,(mwSize[]){1, 1},mxSINGLE_CLASS,mxREAL); // outputOmega is the same dimensions as Omega
     float *outputOmega = mxGetData(plhs[1]);
     if(!calcDamage) outputOmega[0] = NAN;
     
@@ -108,9 +108,10 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     #pragma omp parallel num_threads(useAllCPUs || omp_get_num_procs() == 1? omp_get_num_procs(): omp_get_num_procs()-1)
     #endif
     {
-        long i,ix,iy,iz,n;
+        long i,ix,iy,iz,ib,n;
         float dTdt,w;
-		float b[nx>ny && nx>nz? nx: (ny>nz? ny: nz)];
+		float b[nx>ny? nx: ny];
+		float bz[nx*nz];
 		
 		if(calcDamage) {
 			// Initialize omega array
@@ -245,29 +246,32 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
             #pragma omp for schedule(auto)
             #endif
 			for(iy=heatSinked; iy<ny-heatSinked; iy++) {
-                for(ix=heatSinked; ix<nx-heatSinked; ix++) {
-					for(iz=0;iz<nz;iz++) {
-						b[iz] = 1;
+				for(iz=0;iz<nz;iz++) {
+					for(ix=heatSinked; ix<nx-heatSinked; ix++) {
+						ib = ix + iz*nx;
+						bz[ib] = 1;
 						if(!(heatSinked && (iz == 0 || iz == nz-1))) {
 							i = ix + iy*nx + iz*nx*ny;
-							if(iz < nz-1) b[iz] += dt/2*c[M[i] + nM*M[i+nx*ny] + 2*nM*nM];
+							if(iz < nz-1) bz[ib] += dt/2*c[M[i] + nM*M[i+nx*ny] + 2*nM*nM];
 							if(iz > 0) {
-								b[iz] +=  dt/2*c[M[i] + nM*M[i-nx*ny] + 2*nM*nM];
-								w      = -dt/2*c[M[i] + nM*M[i-nx*ny] + 2*nM*nM]/b[iz-1];
-								if(iz > 1 || !heatSinked) b[iz] += w*dt/2*c[M[i-nx*ny] + nM*M[i] + 2*nM*nM];
+								bz[ib] +=  dt/2*c[M[i] + nM*M[i-nx*ny] + 2*nM*nM];
+								w       = -dt/2*c[M[i] + nM*M[i-nx*ny] + 2*nM*nM]/bz[ib-nx];
+								if(iz > 1 || !heatSinked) bz[ib] += w*dt/2*c[M[i-nx*ny] + nM*M[i] + 2*nM*nM];
 								T2[i] -= w*T2[i-nx*ny];
 							}
 						}
 					}
-					
-					for(iz=nz-1;iz>=heatSinked;iz--) {
+				}
+				for(iz=nz-1;iz>=heatSinked;iz--) {
+					for(ix=heatSinked; ix<nx-heatSinked; ix++) {
+						ib = ix + iz*nx;
 						i = ix + iy*nx + iz*nx*ny;
-						T2[i] = (T2[i] + (iz == nz-1? 0: dt/2*c[M[i] + nM*M[i+nx*ny] + 2*nM*nM]*T2[i+nx*ny]))/b[iz];
+						T2[i] = (T2[i] + (iz == nz-1? 0: dt/2*c[M[i] + nM*M[i+nx*ny] + 2*nM*nM]*T2[i+nx*ny]))/bz[ib];
 						if(calcDamage) outputOmega[i] += (float)(dt*A[M[i]]*exp(-E[M[i]]/(R*((T2[i] + T1[i])/2 + CELSIUSZERO)))); // Arrhenius damage integral evaluation
 					}
 				}
 			}
-
+			
 			#ifdef _WIN32
 			#pragma omp master
 			#endif
