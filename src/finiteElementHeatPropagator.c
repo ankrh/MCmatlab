@@ -40,6 +40,7 @@
 
 #include <math.h>
 #include "mex.h"
+#include "expint.c" // For calculating the special function E1 (scaled by exp), adapted from the GNU Scientific Library
 #ifdef _WIN32 // This is defined on both win32 and win64 systems. We use this preprocessor condition to avoid loading openmp or libut on, e.g., Mac
 #include "omp.h"
 extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing the mex function
@@ -275,7 +276,15 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
 							ib = ix + iz*nx;
 							T2[i] = (T2[i] + (iz == nz-1? 0: dt/2*c[M[i] + nM*M[i+nx*ny] + 2*nM*nM]*T2[i+nx*ny]))/bz[ib];
 						}
-						if(calcDamage) outputOmega[i] += (float)(dt*A[M[i]]*exp(-E[M[i]]/(R*((T2[i] + T1[i])/2 + CELSIUSZERO)))); // Arrhenius damage integral evaluation
+						if(calcDamage && E[M[i]]) { // Arrhenius damage integral evaluation
+							if(T2[i] == T1[i]) outputOmega[i] += (float)(dt*A[M[i]]*exp(-E[M[i]]/(R*(T2[i] + CELSIUSZERO))));
+							else {
+								float a = -R/E[M[i]]*(T2[i] - T1[i])/dt;
+								float b = -R/E[M[i]]*(T1[i] + CELSIUSZERO);
+								outputOmega[i] += (float)(A[M[i]]/a*(exp(1/(a*dt+b))*(a*dt+b+expint_E1_scaled(-1/(a*dt+b))) -
+																	 exp(1/      b )*(     b+expint_E1_scaled(-1/      b))));
+							}
+						}
 					}
 				}
 			}
