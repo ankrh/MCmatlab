@@ -87,6 +87,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     plhs[2] = nSensors? mxCreateDoubleMatrix(nSensors,nt+1,mxREAL): mxCreateDoubleMatrix(0,0,mxREAL);
     double *sensorTemps = mxGetPr(plhs[2]);
     
+    plhs[3] = mxCreateNumericArray(2,(mwSize[]){nM, 1},mxSINGLE_CLASS,mxREAL);
+    float *maxMediaTemps = mxGetData(plhs[3]);
+    
     float *tempTemp = malloc(nx*ny*nz*sizeof(float)); // Temporary temperature matrix
     
     float **srcTemp = &Temp; // Pointer to the pointer to whichever temperature matrix is to be read from
@@ -287,6 +290,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 																	 exp(1/      b )*(     b+expint_E1_scaled(-1/      b)))); // The expint_E1_scaled(x) function is equal to -Ei(-x)*exp(x)
 							}
 						}
+                        if(maxMediaTemps[M[i]] < T2[i]) maxMediaTemps[M[i]] = T2[i]; // If the temperature in this voxel is a new record high for this medium, write the value into the maxMediaTemps array
 					}
 				}
 			}

@@ -155,6 +155,8 @@ else
 end
 HSoutput.sensorTemps = [];
 
+HSoutput.maxMediaTemps = HSinput.initialTemp*ones(nM,1);
+
 %% Output some diagnostics info and prepare the temperature evolution plot. If making a movie, put a geometry illustration into the beginning of the movie.
 if(~HSinput.silentMode)
     if HSinput.durationOn ~= 0
@@ -200,8 +202,9 @@ for j=1:HSinput.nPulses
         heatSimParameters.steps = nTsPerUpdateOn;
 		heatSimParameters.dt = dtOn;
         for i = 1:nUpdatesOn
-			[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator(Temp,HSoutput.Omega,heatSimParameters);
+			[Temp,HSoutput.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(Temp,HSoutput.Omega,heatSimParameters);
 			
+            HSoutput.maxMediaTemps = max(HSoutput.maxMediaTemps,double(newMaxMediaTemps));
 			if isempty(HSoutput.sensorTemps)
                 HSoutput.sensorTemps = newSensorTemps;
             else
@@ -233,8 +236,9 @@ for j=1:HSinput.nPulses
         heatSimParameters.steps = nTsPerUpdateOff;
 		heatSimParameters.dt = dtOff;
 		for i = 1:nUpdatesOff
-			[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator(Temp,HSoutput.Omega,heatSimParameters);
+			[Temp,HSoutput.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(Temp,HSoutput.Omega,heatSimParameters);
             
+            HSoutput.maxMediaTemps = max(HSoutput.maxMediaTemps,double(newMaxMediaTemps));
 			if isempty(HSoutput.sensorTemps)
                 HSoutput.sensorTemps = newSensorTemps;
             else
@@ -266,8 +270,9 @@ heatSimParameters.lightsOn = false;
 heatSimParameters.steps = nTsPerUpdateEnd;
 heatSimParameters.dt = dtEnd;
 for i = 1:nUpdatesEnd
-	[Temp,HSoutput.Omega,newSensorTemps] = finiteElementHeatPropagator(Temp,HSoutput.Omega,heatSimParameters);
+	[Temp,HSoutput.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(Temp,HSoutput.Omega,heatSimParameters);
 
+    HSoutput.maxMediaTemps = max(HSoutput.maxMediaTemps,double(newMaxMediaTemps));
 	if isempty(HSoutput.sensorTemps)
 		HSoutput.sensorTemps = newSensorTemps;
 	else
@@ -293,6 +298,10 @@ clear Temp heatSimParameters;
 
 %% Finalize and write movie
 if(~HSinput.silentMode && HSinput.makeMovie)
+    for idx=1:nM
+        fprintf('Highest temperature obtained in %s is %.2f°C\n',G.mediaProperties(idx).name,HSoutput.maxMediaTemps(idx));
+    end
+    
     [resy,resx,~] = size(movieframes(1).cdata);
     for idx = 1:length(movieframes)
         movieframes(idx).cdata = movieframes(idx).cdata(1:end-rem(resy,2),1:end-rem(resx,2),:); % Crop frames by one pixel if x or y size is odd
