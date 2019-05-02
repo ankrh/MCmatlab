@@ -51,7 +51,7 @@ extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing th
 #define T1 (*srcTemp)
 #define T2 (*tgtTemp)
 
-void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
+void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     bool ctrlc_caught = false;           // Has a ctrl+c been passed from MATLAB?
     long nx,ny,nz,nM;
     
@@ -62,7 +62,7 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     nz = dimPtr[2];
     nM = mxGetM(mxGetField(prhs[2],0,"dTdtperdeltaT")); // Number of media in the simulation.
     
-    float *Temp           = mxGetData(prhs[0]); // Temp is an nx*ny*nz array of floats (singles)
+    float *Temp           = mxGetData(prhs[0]); // Temp is an nx*ny*nz array of floats (singles in MATLAB)
     float *outputTemp     = mxGetData(plhs[0]); // outputTemp is an nx*ny*nz array of floats
     long nt               = *mxGetPr(mxGetField(prhs[2],0,"steps")); // nt is an integer (number of time steps to perform)
     float dt              = *mxGetPr(mxGetField(prhs[2],0,"dt")); // dt is a float (duration of time step)
@@ -74,7 +74,7 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     bool lightsOn         = mxIsLogicalScalarTrue(mxGetField(prhs[2],0,"lightsOn"));
     long heatSinked       = *mxGetPr(mxGetField(prhs[2],0,"heatBoundaryType")); // 0: Insulating boundaries, 1: Constant-temperature boundaries
     
-    float *Omega        = mxGetData(prhs[1]); // Omega is an nx*ny*nz array of doubles if we are supposed to calculate damage, a single NaN element otherwise
+    float *Omega        = mxGetData(prhs[1]); // Omega is an nx*ny*nz array of floats if we are supposed to calculate damage, a single NaN element otherwise
     bool calcDamage     = !mxIsNaN(Omega[0]); // If the Omega input is just one NaN element then we shouldn't bother with thermal damage calculation
     plhs[1] = calcDamage? mxCreateNumericArray(3,dimPtr,mxSINGLE_CLASS,mxREAL): mxCreateNumericArray(2,(mwSize[]){1, 1},mxSINGLE_CLASS,mxREAL); // outputOmega is the same dimensions as Omega
     float *outputOmega = mxGetData(plhs[1]);
@@ -93,7 +93,7 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
     float **tgtTemp; // Pointer to the pointer to whichever temperature matrix is to be written to
     tgtTemp = (nt%2)? &outputTemp: &tempTemp; // If nt is odd then we can start by writing to the output temperature matrix (pointed to by plhs[0]), otherwise we start by writing to the temporary temperature matrix
     
-    for(long j=0;j<nSensors;j++) { // Interpolate to get the starting temperatures on the temperature sensors
+    for(long j=0; j<nSensors; j++) { // Interpolate to get the starting temperatures on the temperature sensors
         long idx = tempSensorCornerIdxs[j];
         double wx = tempSensorInterpWeights[j           ];
         double wy = tempSensorInterpWeights[j+  nSensors];
@@ -115,7 +115,7 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
 		float bz[nx*nz];
 		if(heatSinked) {
 			b[0] = 1;
-			for(ix=0;ix<nx;ix++) bz[ix] = 1;
+			for(ix=0; ix<nx; ix++) bz[ix] = 1;
 		}
 		
 		if(calcDamage) {
@@ -123,12 +123,14 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
 			#ifdef _WIN32
 			#pragma omp for schedule(auto)
 			#endif
-			for(long idx=0;idx<nx*ny*nz;idx++) outputOmega[idx] = Omega[idx];
+			for(long idx=0; idx<nx*ny*nz; idx++) outputOmega[idx] = Omega[idx];
 		}
 		
         for(n=0; n<nt; n++) {
             if(ctrlc_caught) break;
 			
+            // In the following, the Douglas-Gunn Alternating Direction Implicit (DG-ADI) method is used to propagate the heat. This is based on equations (3.23a) and (3.23b) in me690-lctr-nts.pdf.
+            
             // Explicit part of substep 1 out of 3
 			#ifdef _WIN32
             #pragma omp for schedule(auto)
@@ -160,7 +162,7 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
                 for(iy=0; iy<ny; iy++) {
 					// Thomson algorithm, sweeps up from 0 to nx-1 and then down from nx-1 to 0:
 					// Algorithm is taken from https://en.wikipedia.org/wiki/Tridiagonal_matrix_algorithm
-					for(ix=0;ix<nx;ix++) {
+					for(ix=0; ix<nx; ix++) {
 						if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) {
 							b[ix] = 1;
 							i = ix + iy*nx + iz*nx*ny;
@@ -174,7 +176,7 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
 						}
 					}
 					
-					for(ix=nx-1;ix>=0;ix--) {
+					for(ix=nx-1; ix>=0; ix--) {
 						if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) {
 							i = ix + iy*nx + iz*nx*ny;
 							T2[i] = (T2[i] + (ix == nx-1? 0: dt/2*c[M[i] + nM*M[i+1]]*T2[i+1]))/b[ix];
@@ -207,7 +209,7 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
             #endif
 			for(iz=0; iz<nz; iz++) {
                 for(ix=0; ix<nx; ix++) {
-					for(iy=0;iy<ny;iy++) {
+					for(iy=0; iy<ny; iy++) {
 						if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) {
 							b[iy] = 1;
 							i = ix + iy*nx + iz*nx*ny;
@@ -221,7 +223,7 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
 						}
 					}
 
-					for(iy=ny-1;iy>=0;iy--) {
+					for(iy=ny-1; iy>=0; iy--) {
 						if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) {
 							i = ix + iy*nx + iz*nx*ny;
 							T2[i] = (T2[i] + (iy == ny-1? 0: dt/2*c[M[i] + nM*M[i+nx] + nM*nM]*T2[i+nx]))/b[iy];
@@ -253,8 +255,8 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
             #pragma omp for schedule(auto)
             #endif
 			for(iy=0; iy<ny; iy++) {
-				for(iz=0;iz<nz;iz++) {
-					for(ix=0; ix<nx; ix++) {
+				for(iz=0; iz<nz; iz++) {
+					for(ix=0; ix<nx; ix++) { // The x sweep is put inside the z sweep on purpose, since it improves performance a lot in this step. The b coefficients used here for the Thomson algorithm are stored in a 2D (x,z) matrix called bz.
 						if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) {
 							ib = ix + iz*nx;
 							bz[ib] = 1;
@@ -269,7 +271,7 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
 						}
 					}
 				}
-				for(iz=nz-1;iz>=0;iz--) {
+				for(iz=nz-1; iz>=0; iz--) {
 					for(ix=0; ix<nx; ix++) {
 						i = ix + iy*nx + iz*nx*ny;
 						if(!(heatSinked && (ix == 0 || ix == nx-1 || iy == 0 || iy == ny-1 || iz == 0 || iz == nz-1))) {
@@ -277,12 +279,12 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
 							T2[i] = (T2[i] + (iz == nz-1? 0: dt/2*c[M[i] + nM*M[i+nx*ny] + 2*nM*nM]*T2[i+nx*ny]))/bz[ib];
 						}
 						if(calcDamage && E[M[i]]) { // Arrhenius damage integral evaluation
-							if(T2[i] == T1[i]) outputOmega[i] += (float)(dt*A[M[i]]*exp(-E[M[i]]/(R*(T2[i] + CELSIUSZERO))));
-							else {
-								float a = -R/E[M[i]]*(T2[i] - T1[i])/dt;
-								float b = -R/E[M[i]]*(T1[i] + CELSIUSZERO);
+							if(T2[i] == T1[i]) outputOmega[i] += (float)(dt*A[M[i]]*exp(-E[M[i]]/(R*(T2[i] + CELSIUSZERO)))); // For use when the temperature in a voxel (extremely rarely) is constant to float precision
+                            else { // Assume a linear temperature slope from the previous to the current time step and use the mathematical integral, see for example https://www.wolframalpha.com/input/?i=int(A*exp(1%2F(a*t%2Bb)),t)
+								float a = -R/E[M[i]]*(T2[i] - T1[i])/dt; // "a" parameter in the Wolfram Alpha evaluation above
+								float b = -R/E[M[i]]*(T1[i] + CELSIUSZERO); // "b" parameter in the Wolfram Alpha evaluation above
 								outputOmega[i] += (float)(A[M[i]]/a*(exp(1/(a*dt+b))*(a*dt+b+expint_E1_scaled(-1/(a*dt+b))) -
-																	 exp(1/      b )*(     b+expint_E1_scaled(-1/      b))));
+																	 exp(1/      b )*(     b+expint_E1_scaled(-1/      b)))); // The expint_E1_scaled(x) function is equal to -Ei(-x)*exp(x)
 							}
 						}
 					}
@@ -300,7 +302,7 @@ void mexFunction( int nlhs, mxArray *plhs[],int nrhs, mxArray const *prhs[] ) {
 				}
 				#endif
 
-				for(long j=0;j<nSensors;j++) { // Interpolate to get the new temperatures on the temperature sensors
+				for(long j=0; j<nSensors; j++) { // Interpolate to get the new temperatures on the temperature sensors
 					long idx = tempSensorCornerIdxs[j];
 					double wx = tempSensorInterpWeights[j           ];
 					double wy = tempSensorInterpWeights[j+  nSensors];

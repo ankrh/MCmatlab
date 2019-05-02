@@ -295,7 +295,7 @@ double cheb_eval(const cheb_series * cs, const double x) {
 	return y*d - dd + 0.5 * cs->c[0];
 }
 
-/* implementation for E1, scaled by exp(x) */
+/* implementation for E1, scaled by exp(x). expint_E1_scaled(x) = E1(x)*exp(x) = -Ei(-x)*exp(x) */
 double expint_E1_scaled(const double x) {
   if(x <= -10.0)     return (cheb_eval(&AE11_cs,  20.0/x+1.0     ) + 1.0                      )/x;
   else if(x <= -4.0) return (cheb_eval(&AE12_cs, (40.0/x+7.0)/3.0) + 1.0                      )/x;

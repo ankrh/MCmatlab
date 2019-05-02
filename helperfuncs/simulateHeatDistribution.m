@@ -96,6 +96,7 @@ else
     nTsPerUpdateOn = 1;
     dtOn = 1;
 end
+nDigitsOn = 1+floor(log10(nUpdatesOn));
 
 if HSinput.durationOff ~= 0
     nUpdatesOff = max(1,HSinput.nUpdates - nUpdatesOn);
@@ -106,6 +107,7 @@ else
     nTsPerUpdateOff = 1;
     dtOff = 1;
 end
+nDigitsOff = 1+floor(log10(nUpdatesOff));
 
 if HSinput.durationEnd ~= 0
     nUpdatesEnd = max(1,round(HSinput.nUpdates*HSinput.durationEnd/(HSinput.durationOn+HSinput.durationOff)));
@@ -116,6 +118,7 @@ else
     nTsPerUpdateEnd = 1;
     dtEnd = 1;
 end
+nDigitsEnd = 1+floor(log10(nUpdatesEnd));
 
 % Array of times associated with the updates
 updatesTimeVector = [0 , ((HSinput.durationOn+HSinput.durationOff)*repelem(0:(HSinput.nPulses-1),nUpdatesOn                + nUpdatesOff                ) + repmat([(1:nUpdatesOn)*nTsPerUpdateOn*dtOn , (HSinput.durationOn + ((1:nUpdatesOff)*nTsPerUpdateOff*dtOff))],1,HSinput.nPulses)) , (HSinput.durationOn + HSinput.durationOff)*HSinput.nPulses + (1:nUpdatesEnd)*nTsPerUpdateEnd*dtEnd];
@@ -189,7 +192,7 @@ for j=1:HSinput.nPulses
 	%% Illumination phase
     if HSinput.durationOn ~= 0
 		if(~HSinput.silentMode)
-            fprintf(['Illuminating pulse #' num2str(j) '... \n' repmat('-',1,nUpdatesOn)]);
+            fprintf(['Illuminating pulse #%d... %' num2str(nDigitsOn) 'd/%d\n'],j,0,nUpdatesOn);
             drawnow;
 		end
         
@@ -206,7 +209,7 @@ for j=1:HSinput.nPulses
 			end
             
 			if(~HSinput.silentMode)
-                fprintf(1,'\b');
+                fprintf(1,[repmat('\b',1,2*nDigitsOn+2) '%' num2str(nDigitsOn) 'd/%d\n'],i,nUpdatesOn);
                 updateIdx = i+(j-1)*(nUpdatesOn+nUpdatesOff); % Index of the update
                 updateVolumetric(heatsimFigure,Temp);
                 h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
@@ -217,14 +220,12 @@ for j=1:HSinput.nPulses
                 end
 			end
         end
-        
-        if(~HSinput.silentMode); fprintf('\b\b Done\n'); end
     end
     
 	%% Diffusion phase
     if HSinput.durationOff ~= 0
         if(~HSinput.silentMode)
-            fprintf(['Diffusing heat... \n' repmat('-',1,nUpdatesOff)]);
+            fprintf(['Diffusing heat... %' num2str(nDigitsOff) 'd/%d\n'],0,nUpdatesOff);
             drawnow;
         end
         
@@ -241,7 +242,7 @@ for j=1:HSinput.nPulses
 			end
             
 			if(~HSinput.silentMode)
-                fprintf(1,'\b');
+                fprintf(1,[repmat('\b',1,2*nDigitsOff+2) '%' num2str(nDigitsOff) 'd/%d\n'],i,nUpdatesOff);
                 updateIdx = nUpdatesOn+i+(j-1)*(nUpdatesOn+nUpdatesOff); % Index of the update
                 updateVolumetric(heatsimFigure,Temp);
                 h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
@@ -252,13 +253,12 @@ for j=1:HSinput.nPulses
                 end
 			end
 		end
-        if(~HSinput.silentMode); fprintf('\b\b Done\n'); end
     end
 end
 
 %% End relaxation phase
 if(~HSinput.silentMode)
-	fprintf(['Diffusing heat in end relaxation phase... \n' repmat('-',1,nUpdatesEnd)]);
+    fprintf(['Diffusing heat in end relaxation phase... %' num2str(nDigitsEnd) 'd/%d\n'],0,nUpdatesEnd);
 	drawnow;
 end
 
@@ -275,7 +275,7 @@ for i = 1:nUpdatesEnd
 	end
 
 	if(~HSinput.silentMode)
-		fprintf(1,'\b');
+        fprintf(1,[repmat('\b',1,2*nDigitsEnd+2) '%' num2str(nDigitsEnd) 'd/%d\n'],i,nUpdatesEnd);
 		updateIdx = i + HSinput.nPulses*(nUpdatesOn+nUpdatesOff); % Index of the update
 		updateVolumetric(heatsimFigure,Temp);
 		h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
@@ -287,10 +287,7 @@ for i = 1:nUpdatesEnd
 	end
 end
 
-if(~HSinput.silentMode)
-    fprintf('\b\b Done\n');
-    toc;
-end
+if(~HSinput.silentMode) toc; end
 
 clear Temp heatSimParameters;
 
