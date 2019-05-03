@@ -159,6 +159,7 @@ HSoutput.maxMediaTemps = HSinput.initialTemp*ones(nM,1);
 
 %% Output some diagnostics info and prepare the temperature evolution plot. If making a movie, put a geometry illustration into the beginning of the movie.
 if(~HSinput.silentMode)
+    fprintf('\n');
     if HSinput.durationOn ~= 0
         fprintf('Illumination phase consists of %d steps of %0.2e s.\n',nUpdatesOn*nTsPerUpdateOn,dtOn);
     end
@@ -297,30 +298,33 @@ if(~HSinput.silentMode) toc; end
 clear Temp heatSimParameters;
 
 %% Finalize and write movie
-if(~HSinput.silentMode && HSinput.makeMovie)
+if(~HSinput.silentMode)
+    fprintf('\n');
     for idx=1:nM
         fprintf('Highest temperature obtained in %s is %.2f°C\n',G.mediaProperties(idx).name,HSoutput.maxMediaTemps(idx));
     end
     
-    [resy,resx,~] = size(movieframes(1).cdata);
-    for idx = 1:length(movieframes)
-        movieframes(idx).cdata = movieframes(idx).cdata(1:end-rem(resy,2),1:end-rem(resx,2),:); % Crop frames by one pixel if x or y size is odd
+    if(HSinput.makeMovie)
+        [resy,resx,~] = size(movieframes(1).cdata);
+        for idx = 1:length(movieframes)
+            movieframes(idx).cdata = movieframes(idx).cdata(1:end-rem(resy,2),1:end-rem(resx,2),:); % Crop frames by one pixel if x or y size is odd
+        end
+        movieframes = [repmat(movieframes(1),1,30) movieframes(1:end) repmat(movieframes(end),1,30)];
+        caller = dbstack(1,'-completenames');
+        writerObj = VideoWriter([fileparts(caller(1).file) '/temp.avi'],'Uncompressed AVI');
+        fprintf('Writing video...\n');
+        open(writerObj);
+        writeVideo(writerObj,movieframes);
+        close(writerObj);
+        if contains(computer, 'MAC') % macOS operating system
+            [~,~] = system(['./helperfuncs/x264_macOS -o "' fileparts(caller(1).file) '/' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '/temp.avi"']);
+        elseif contains(computer, 'WIN') % Windows operating system
+            [~,~] = system(['.\helperfuncs\x264_win64.exe -o "' fileparts(caller(1).file) '\' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '\temp.avi"']);
+        else % Linux operating system
+            [~,~] = system(['./helperfuncs/x264_linux -o "' fileparts(caller(1).file) '/' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '/temp.avi"']);        
+        end
+        delete([fileparts(caller(1).file) '/temp.avi']);
+        fprintf('\b Done\n');
     end
-    movieframes = [repmat(movieframes(1),1,30) movieframes(1:end) repmat(movieframes(end),1,30)];
-	caller = dbstack(1,'-completenames');
-	writerObj = VideoWriter([fileparts(caller(1).file) '/temp.avi'],'Uncompressed AVI');
-	fprintf('Writing video...\n');
-    open(writerObj);
-    writeVideo(writerObj,movieframes);
-    close(writerObj);
-    if contains(computer, 'MAC') % macOS operating system
-        [~,~] = system(['./helperfuncs/x264_macOS -o "' fileparts(caller(1).file) '/' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '/temp.avi"']);
-    elseif contains(computer, 'WIN') % Windows operating system
-        [~,~] = system(['.\helperfuncs\x264_win64.exe -o "' fileparts(caller(1).file) '\' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '\temp.avi"']);
-    else % Linux operating system
-        [~,~] = system(['./helperfuncs/x264_linux -o "' fileparts(caller(1).file) '/' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '/temp.avi"']);        
-    end
-    delete([fileparts(caller(1).file) '/temp.avi']);
-    fprintf('\b Done\n');
 end
 end
