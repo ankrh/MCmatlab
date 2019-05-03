@@ -104,6 +104,7 @@ plotMCmatlabGeom(Goutput);
 % % HSinput.silentMode          = false; % (Default: false) Disables command window text and progress indication
 % % HSinput.useAllCPUs          = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 % % HSinput.makeMovie           = true; % (Default: false) Requires silentMode = false.
+% % HSinput.largeTimeSteps      = true; % (Default: false) If true, calculations will be faster, but some voxel temperatures may be slightly less precise. Test for yourself whether this precision is acceptable for your application.
 % 
 % HSinput.heatBoundaryType    = 0; % 0: Insulating boundaries, 1: Constant-temperature boundaries (heat-sinked)
 % HSinput.P                   = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)

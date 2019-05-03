@@ -52,6 +52,9 @@ end
 if ~isfield(HSinput,'tempSensorPositions')
 	HSinput.tempSensorPositions = [];
 end
+if ~isfield(HSinput,'largeTimeSteps')
+    HSinput.largeTimeSteps = false;
+end
 if ~isfield(HSinput.MCoutput,'F')
     error('Error: F matrix not calculated');
 end
@@ -85,7 +88,11 @@ if(HSinput.silentMode)
     HSinput.nUpdates = 1;
 end
 
-dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)*15; % Highest allowable time step duration (factor 15 is found to be the highest value for which there are no artifacts visible in the example 3 test case)
+if HSinput.largeTimeSteps
+    dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)*15; % Highest allowable time step duration for low precision (factor 15 is found to be the highest value for which there are no artifacts visible in the example 3 test case)
+else
+    dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)*1.5; % Highest allowable time step duration for normal precision
+end
 
 if HSinput.durationOn ~= 0
     nUpdatesOn = max(1,round(HSinput.nUpdates*HSinput.durationOn/(HSinput.durationOn+HSinput.durationOff)));
