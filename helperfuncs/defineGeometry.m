@@ -77,7 +77,7 @@ if(~G.matchedInterfaces)
     n_vec = [G.mediaProperties.n];
     for j=1:G.nz % Check that each xy slice has constant refractive index, so refractive index is only a function of z
         if(length(unique(n_vec(G.M(:,:,j)))) > 1)
-            error('matchedInterfaces is false, but refractive index isn''t constant for z index %d (z = %f).\nEach xy slice must have constant refractive index.',j,z(j));
+            error('matchedInterfaces is false, but refractive index isn''t constant for z index %d (z = %f).\nEach xy slice must have constant refractive index.',j,G.z(j));
         end
     end
     G.RI = n_vec(G.M(1,1,:));
