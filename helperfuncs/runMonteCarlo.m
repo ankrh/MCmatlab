@@ -94,6 +94,9 @@ end
 if xor(isfield(MCinput.Beam,'nearFieldType'), isfield(MCinput.Beam,'farFieldType'))
 	error('Error: nearFieldType and farFieldType must either both be specified, or neither');
 end
+if isfield(MCinput,'simulationTime') && isfield(MCinput,'nPhotons')
+	error('Error: simulationTime and nPhotons may not both be specified');
+end
 if isfield(MCinput.Beam,'nearFieldType') && isfield(MCinput.Beam,'beamType')
 	error('Error: nearFieldType and beamType may not both be specified');
 end

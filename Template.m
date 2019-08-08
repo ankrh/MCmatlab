@@ -27,6 +27,7 @@ plotMCmatlabGeom(Goutput);
 %% Monte Carlo simulation
 % clear MCinput
 % MCinput.simulationTime           = .1; % [min] Time duration of the simulation
+% MCinput.nPhotons                 = 1e5; % # of photons to launch
 % 
 % % MCinput.silentMode               = false; % (Default: false) Disables command window text and progress indication
 % % MCinput.useAllCPUs               = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
@@ -72,6 +73,7 @@ plotMCmatlabGeom(Goutput);
 %% Fluorescence Monte Carlo
 % clear FMCinput
 % FMCinput.simulationTime           = .1; % [min] Time duration of the simulation
+% FMCinput.nPhotons                 = 1e5; % # of photons to launch
 % 
 % % FMCinput.silentMode               = false; % (Default: false) Disables command window text and progress indication
 % % FMCinput.useAllCPUs               = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.

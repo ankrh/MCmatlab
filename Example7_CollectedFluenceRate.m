@@ -9,6 +9,10 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 % 
 % In the fluence rate plot for collected light, you can see how the photons
 % all start at the source and end at the light collector.
+% 
+% This example also shows that the Monte Carlo simulation can be set to
+% launch a set number of photons rather than run for a set time using the
+% MCinput.nPhotons and FMCinput.nPhotons field.
 
 %% Geometry definition
 clear Ginput
@@ -33,7 +37,7 @@ plotMCmatlabGeom(Goutput);
 
 %% Monte Carlo simulation
 clear MCinput
-MCinput.simulationTime           = .5; % [min] Time duration of the simulation
+MCinput.nPhotons                 = 5e6; % # of photons to launch
 MCinput.calcF                    = true; % (Default: true) If true, the 3D fluence rate output matrix F will be calculated. Set to false if you have a light collector and you're only interested in the Image output.
 MCinput.calcFdet                 = true; % (Default: false) If true, the 3D fluence rate output matrix Fdet will be calculated. Only photons that end up on the light collector are counted in Fdet.
 
@@ -67,7 +71,7 @@ plotMCmatlab(MCinput,MCoutput);
 
 %% Fluorescence Monte Carlo
 clear FMCinput
-FMCinput.simulationTime           = .1; % [min] Time duration of the simulation
+FMCinput.nPhotons                 = 2e6; % # of photons to launch
 FMCinput.calcF                    = true; % (Default: true) If true, the 3D fluence rate output matrix F will be calculated. Set to false if you have a light collector and you're only interested in the Image output.
 FMCinput.calcFdet                 = true; % (Default: false) If true, the 3D fluence rate output matrix Fdet will be calculated. Only photons that end up on the light collector are counted in Fdet.
 
