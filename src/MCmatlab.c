@@ -740,7 +740,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   double          simulationTimeRequested = simulationTimed? *mxGetPr(mxGetField(prhs[0],0,"simulationTime")): INFINITY;
   double          simulationTimeSpent;
   struct timespec simulationTimeStart, simulationTimeCurrent;
-  long long       nPhotonsRequested = simulationTimed? INFINITY: *mxGetPr(mxGetField(prhs[0],0,"nPhotons"));
+  long long       nPhotonsRequested = simulationTimed? -1: *mxGetPr(mxGetField(prhs[0],0,"nPhotons"));
 
   // Geometry struct definition
   mxArray *MatlabG         = mxGetField(prhs[0],0,"G");
@@ -973,7 +973,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     #endif
     dsfmt_init_gen_rand(&P->dsfmt,simulationTimeStart.tv_nsec + threadnum); // Seed the photon's random number generator
     
-    while((pctProgress < 100) && (*nPhotonsPtr < nPhotonsRequested - threadnum) && !ctrlc_caught) {
+    while((simulationTimed? (pctProgress < 100) : (*nPhotonsPtr < nPhotonsRequested - threadnum)) && !ctrlc_caught) {
       #ifdef _WIN32
       #pragma omp atomic
       #endif

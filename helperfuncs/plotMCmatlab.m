@@ -36,7 +36,92 @@ function plotMCmatlab(MCinput,MCoutput)
 %%%%%
 
 G = MCinput.G;
+
+%% Plot boundary fluences
+if G.boundaryType == 1
+    fprintf('%.3g%% of incident light hits the cuboid boundaries.\n',100*(sum(sum((MCoutput.I_xpos + MCoutput.I_xneg)*G.dy*G.dz)) + sum(sum((MCoutput.I_ypos + MCoutput.I_yneg)*G.dx*G.dz)) + sum(sum((MCoutput.I_zpos + MCoutput.I_zneg)*G.dx*G.dy))));
     
+    if(~ishandle(11))
+        h_f = figure(11);
+        h_f.Position = [40 80 1100 650];
+    else
+        h_f = figure(11);
+    end
+    h_f.Color = 'w';
+    h_f.Name = 'Boundary fluence rate';
+    clf;
+    h_a = axes;
+    title('Boundary fluence rate [W/cm^2/W.incident]');
+    
+    x = round([(G.x - G.dx/2) , (max(G.x) + G.dx/2)],15);
+    y = round([(G.y - G.dy/2) , (max(G.y) + G.dy/2)],15);
+    z = round([(G.z - G.dz/2) , (max(G.z) + G.dz/2)],15);
+    xl = x(1); % x low
+    xh = x(end); % x high
+    yl = y(1); % y low
+    yh = y(end); % y high
+    zl = z(1); % z low
+    zh = z(end); % z high
+    I_xneg_pad = MCoutput.I_xneg;
+    I_xneg_pad(G.ny+1,G.nz+1) = 0;
+    I_yneg_pad = MCoutput.I_yneg;
+    I_yneg_pad(G.nx+1,G.nz+1) = 0;
+    I_zneg_pad = MCoutput.I_zneg;
+    I_zneg_pad(G.nx+1,G.ny+1) = 0;
+    I_xpos_pad = MCoutput.I_xpos;
+    I_xpos_pad(G.ny+1,G.nz+1) = 0;
+    I_ypos_pad = MCoutput.I_ypos;
+    I_ypos_pad(G.nx+1,G.nz+1) = 0;
+    I_zpos_pad = MCoutput.I_zpos;
+    I_zpos_pad(G.nx+1,G.ny+1) = 0;
+
+    surface(repmat(xl,G.ny+1,G.nz+1),repmat(y',     1,G.nz+1),repmat(z ,G.ny+1,     1),I_xneg_pad,'LineStyle','none');
+    surface(repmat(x',     1,G.nz+1),repmat(yl,G.nx+1,G.nz+1),repmat(z ,G.nx+1,     1),I_yneg_pad,'LineStyle','none');
+    surface(repmat(x',     1,G.ny+1),repmat(y ,G.nx+1,     1),repmat(zl,G.nx+1,G.ny+1),I_zneg_pad,'LineStyle','none');
+    surface(repmat(xh,G.ny+1,G.nz+1),repmat(y',     1,G.nz+1),repmat(z ,G.ny+1,     1),I_xpos_pad,'LineStyle','none');
+    surface(repmat(x',     1,G.nz+1),repmat(yh,G.nx+1,G.nz+1),repmat(z ,G.nx+1,     1),I_ypos_pad,'LineStyle','none');
+    surface(repmat(x',     1,G.ny+1),repmat(y ,G.nx+1,     1),repmat(zh,G.nx+1,G.ny+1),I_zpos_pad,'LineStyle','none');
+    set(gca,'ZDir','reverse');
+    colormap(inferno);
+    colorbar;
+    axis tight
+    axis equal
+    xlabel('x [cm]');
+    ylabel('y [cm]');
+    zlabel('z [cm]');
+    set(gca,'fontsize',18)
+    view(3)
+    rotate3d on
+    if ~verLessThan('matlab','9.0')
+        setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera');
+    end
+elseif G.boundaryType == 2
+    if ~(isfield(MCinput.Beam,'beamType') && MCinput.Beam.beamType == 2) 
+        fprintf('%.3g%% of incident light hits the top cuboid boundary.\n',100*(sum(sum(MCoutput.I_zneg*G.dx*G.dy))));
+    end
+    
+    if(~ishandle(11))
+        h_f = figure(11);
+        h_f.Position = [40 80 1100 650];
+    else
+        h_f = figure(11);
+    end
+    h_f.Color = 'w';
+    h_f.Name = 'Boundary fluence rate';
+    clf;
+    imagesc(size(MCoutput.I_zneg,1)/2*[-G.dx G.dx],size(MCoutput.I_zneg,2)/2*[-G.dy G.dy],MCoutput.I_zneg.');
+	line(G.Lx/2*[-1 -1 1 1 -1],G.Ly/2*[-1 1 1 -1 -1],'Color',[1 1 1],'Linestyle','--');
+    set(gca,'YDir','normal');
+    title('Boundary fluence rate [W/cm^2/W.incident]');
+    colormap(inferno);
+    colorbar;
+    axis tight
+    axis equal
+    xlabel('x [cm]');
+    ylabel('y [cm]');
+    set(gca,'fontsize',18)
+end
+
 if isfield(MCoutput,'F')
     %% Make power absorption plot
     mua_vec = [G.mediaProperties.mua];
@@ -218,90 +303,6 @@ if isfield(MCoutput,'FarField')
             setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera');
         end
     end
-end
-
-if G.boundaryType == 1
-    fprintf('%.3g%% of incident light hits the cuboid boundaries.\n',100*(sum(sum((MCoutput.I_xpos + MCoutput.I_xneg)*G.dy*G.dz)) + sum(sum((MCoutput.I_ypos + MCoutput.I_yneg)*G.dx*G.dz)) + sum(sum((MCoutput.I_zpos + MCoutput.I_zneg)*G.dx*G.dy))));
-    
-    if(~ishandle(11))
-        h_f = figure(11);
-        h_f.Position = [40 80 1100 650];
-    else
-        h_f = figure(11);
-    end
-    h_f.Color = 'w';
-    h_f.Name = 'Boundary fluence rate';
-    clf;
-    h_a = axes;
-    title('Boundary fluence rate [W/cm^2/W.incident]');
-    
-    x = round([(G.x - G.dx/2) , (max(G.x) + G.dx/2)],15);
-    y = round([(G.y - G.dy/2) , (max(G.y) + G.dy/2)],15);
-    z = round([(G.z - G.dz/2) , (max(G.z) + G.dz/2)],15);
-    xl = x(1); % x low
-    xh = x(end); % x high
-    yl = y(1); % y low
-    yh = y(end); % y high
-    zl = z(1); % z low
-    zh = z(end); % z high
-    I_xneg_pad = MCoutput.I_xneg;
-    I_xneg_pad(G.ny+1,G.nz+1) = 0;
-    I_yneg_pad = MCoutput.I_yneg;
-    I_yneg_pad(G.nx+1,G.nz+1) = 0;
-    I_zneg_pad = MCoutput.I_zneg;
-    I_zneg_pad(G.nx+1,G.ny+1) = 0;
-    I_xpos_pad = MCoutput.I_xpos;
-    I_xpos_pad(G.ny+1,G.nz+1) = 0;
-    I_ypos_pad = MCoutput.I_ypos;
-    I_ypos_pad(G.nx+1,G.nz+1) = 0;
-    I_zpos_pad = MCoutput.I_zpos;
-    I_zpos_pad(G.nx+1,G.ny+1) = 0;
-
-    surface(repmat(xl,G.ny+1,G.nz+1),repmat(y',     1,G.nz+1),repmat(z ,G.ny+1,     1),I_xneg_pad,'LineStyle','none');
-    surface(repmat(x',     1,G.nz+1),repmat(yl,G.nx+1,G.nz+1),repmat(z ,G.nx+1,     1),I_yneg_pad,'LineStyle','none');
-    surface(repmat(x',     1,G.ny+1),repmat(y ,G.nx+1,     1),repmat(zl,G.nx+1,G.ny+1),I_zneg_pad,'LineStyle','none');
-    surface(repmat(xh,G.ny+1,G.nz+1),repmat(y',     1,G.nz+1),repmat(z ,G.ny+1,     1),I_xpos_pad,'LineStyle','none');
-    surface(repmat(x',     1,G.nz+1),repmat(yh,G.nx+1,G.nz+1),repmat(z ,G.nx+1,     1),I_ypos_pad,'LineStyle','none');
-    surface(repmat(x',     1,G.ny+1),repmat(y ,G.nx+1,     1),repmat(zh,G.nx+1,G.ny+1),I_zpos_pad,'LineStyle','none');
-    set(gca,'ZDir','reverse');
-    colormap(inferno);
-    colorbar;
-    axis tight
-    axis equal
-    xlabel('x [cm]');
-    ylabel('y [cm]');
-    zlabel('z [cm]');
-    set(gca,'fontsize',18)
-    view(3)
-    rotate3d on
-    if ~verLessThan('matlab','9.0')
-        setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera');
-    end
-elseif G.boundaryType == 2
-    if ~(isfield(MCinput.Beam,'beamType') && MCinput.Beam.beamType == 2) 
-        fprintf('%.3g%% of incident light hits the top cuboid boundary.\n',100*(sum(sum(MCoutput.I_zneg*G.dx*G.dy))));
-    end
-    
-    if(~ishandle(11))
-        h_f = figure(11);
-        h_f.Position = [40 80 1100 650];
-    else
-        h_f = figure(11);
-    end
-    h_f.Color = 'w';
-    h_f.Name = 'Boundary fluence rate';
-    clf;
-    imagesc(size(MCoutput.I_zneg,1)/2*[-G.dx G.dx],size(MCoutput.I_zneg,2)/2*[-G.dy G.dy],MCoutput.I_zneg.');
-	line(G.Lx/2*[-1 -1 1 1 -1],G.Ly/2*[-1 1 1 -1 -1],'Color',[1 1 1],'Linestyle','--');
-    set(gca,'YDir','normal');
-    title('Boundary fluence rate [W/cm^2/W.incident]');
-    colormap(inferno);
-    colorbar;
-    axis tight
-    axis equal
-    xlabel('x [cm]');
-    ylabel('y [cm]');
-    set(gca,'fontsize',18)
 end
 drawnow;
 end
