@@ -284,15 +284,15 @@ static cheb_series AE14_cs = {
 
 // Chebychev evaluation routine, copied in and slightly modified from "cheb_eval.c" of the GSL
 double cheb_eval(const cheb_series * cs, const double x) {
-	double d  = 0.0, dd = 0.0;
-	double y  = (2.0*x - cs->a - cs->b) / (cs->b - cs->a);
-	
-	for(int j = cs->order; j>=1; j--) {
-		double temp = d;
-		d = (2.0*y)*d - dd + cs->c[j];
-		dd = temp;
-	}
-	return y*d - dd + 0.5 * cs->c[0];
+  double d  = 0.0, dd = 0.0;
+  double y  = (2.0*x - cs->a - cs->b) / (cs->b - cs->a);
+  
+  for(int j = cs->order; j>=1; j--) {
+    double temp = d;
+    d = (2.0*y)*d - dd + cs->c[j];
+    dd = temp;
+  }
+  return y*d - dd + 0.5 * cs->c[0];
 }
 
 /* implementation for E1, scaled by exp(x). expint_E1_scaled(x) = E1(x)*exp(x) = -Ei(-x)*exp(x) */

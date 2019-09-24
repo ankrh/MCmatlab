@@ -15,7 +15,7 @@ function HSoutput = simulateHeatDistribution(HSinput)
 %       updateVolumetric.m
 %       finiteElementHeatPropagator.mex (architecture specific)
 %
-%	See also runMonteCarlo, plotMCmatlabHeat
+%   See also runMonteCarlo, plotMCmatlabHeat
 
 %%%%%
 %   Copyright 2017, 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
@@ -38,25 +38,25 @@ function HSoutput = simulateHeatDistribution(HSinput)
 %%%%%
 
 if ~isfield(HSinput,'silentMode')
-	HSinput.silentMode = false;
+  HSinput.silentMode = false;
 end
 if ~isfield(HSinput,'useAllCPUs')
-	HSinput.useAllCPUs = false;
+  HSinput.useAllCPUs = false;
 end
 if ~isfield(HSinput,'makeMovie')
-	HSinput.makeMovie = false;
+  HSinput.makeMovie = false;
 end
 if ~isfield(HSinput,'slicePositions')
-	HSinput.slicePositions = [0.5 1 1];
+  HSinput.slicePositions = [0.5 1 1];
 end
 if ~isfield(HSinput,'tempSensorPositions')
-	HSinput.tempSensorPositions = [];
+  HSinput.tempSensorPositions = [];
 end
 if ~isfield(HSinput,'largeTimeSteps')
-    HSinput.largeTimeSteps = false;
+  HSinput.largeTimeSteps = false;
 end
 if ~isfield(HSinput.MCoutput,'F')
-    error('Error: F matrix not calculated');
+  error('Error: F matrix not calculated');
 end
 
 G = HSinput.G;
@@ -72,58 +72,58 @@ TC = single([G.mediaProperties.TC]); % Thermal conductivity array. Element i is 
 A = [G.mediaProperties.A];
 E = [G.mediaProperties.E];
 if(any(A)) % If non-zero Arrhenius data exists, prepare to calculate thermal damage.
-    HSoutput.Omega = zeros(size(G.M),'single');
+  HSoutput.Omega = zeros(size(G.M),'single');
 else
-    HSoutput.Omega = single(NaN);
+  HSoutput.Omega = single(NaN);
 end
 
 %% Calculate amount and duration of time steps in each phase
 % If either pulse on-duration or off-duration is 0, it doesn't make sense to talk of multiple pulses
 if HSinput.nPulses ~= 1 && (HSinput.durationOn == 0 || HSinput.durationOff == 0)
-    HSinput.nPulses = 1;
-    fprintf('\nWarning: Number of pulses changed to 1 since either on-duration or off-duration is 0.\n\n');
+  HSinput.nPulses = 1;
+  fprintf('\nWarning: Number of pulses changed to 1 since either on-duration or off-duration is 0.\n\n');
 end
 
 if(HSinput.silentMode)
-    HSinput.nUpdates = 1;
+  HSinput.nUpdates = 1;
 end
 
 if HSinput.largeTimeSteps
-    dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)*15; % Highest allowable time step duration for low precision (factor 15 is found to be the highest value for which there are no artifacts visible in the example 3 test case)
+  dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)*15; % Highest allowable time step duration for low precision (factor 15 is found to be the highest value for which there are no artifacts visible in the example 3 test case)
 else
-    dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)*1.5; % Highest allowable time step duration for normal precision
+  dtmax = calcdtmax(G.M,TC,VHC,G.dx,G.dy,G.dz)*1.5; % Highest allowable time step duration for normal precision
 end
 
 if HSinput.durationOn ~= 0
-    nUpdatesOn = max(1,round(HSinput.nUpdates*HSinput.durationOn/(HSinput.durationOn+HSinput.durationOff)));
-    nTsPerUpdateOn = ceil(HSinput.durationOn/nUpdatesOn/dtmax); % Number of time steps per update in illumination phase
-    dtOn = HSinput.durationOn/nUpdatesOn/nTsPerUpdateOn; % Time step size during illumination
+  nUpdatesOn = max(1,round(HSinput.nUpdates*HSinput.durationOn/(HSinput.durationOn+HSinput.durationOff)));
+  nTsPerUpdateOn = ceil(HSinput.durationOn/nUpdatesOn/dtmax); % Number of time steps per update in illumination phase
+  dtOn = HSinput.durationOn/nUpdatesOn/nTsPerUpdateOn; % Time step size during illumination
 else
-    nUpdatesOn = 0;
-    nTsPerUpdateOn = 1;
-    dtOn = 1;
+  nUpdatesOn = 0;
+  nTsPerUpdateOn = 1;
+  dtOn = 1;
 end
 nDigitsOn = 1+floor(log10(nUpdatesOn));
 
 if HSinput.durationOff ~= 0
-    nUpdatesOff = max(1,HSinput.nUpdates - nUpdatesOn);
-    nTsPerUpdateOff = ceil(HSinput.durationOff/nUpdatesOff/dtmax); % Number of time steps per update in diffusion phase
-    dtOff = HSinput.durationOff/nUpdatesOff/nTsPerUpdateOff; % Time step size during diffusion
+  nUpdatesOff = max(1,HSinput.nUpdates - nUpdatesOn);
+  nTsPerUpdateOff = ceil(HSinput.durationOff/nUpdatesOff/dtmax); % Number of time steps per update in diffusion phase
+  dtOff = HSinput.durationOff/nUpdatesOff/nTsPerUpdateOff; % Time step size during diffusion
 else
-    nUpdatesOff = 0;
-    nTsPerUpdateOff = 1;
-    dtOff = 1;
+  nUpdatesOff = 0;
+  nTsPerUpdateOff = 1;
+  dtOff = 1;
 end
 nDigitsOff = 1+floor(log10(nUpdatesOff));
 
 if HSinput.durationEnd ~= 0
-    nUpdatesEnd = max(1,round(HSinput.nUpdates*HSinput.durationEnd/(HSinput.durationOn+HSinput.durationOff)));
-    nTsPerUpdateEnd = ceil(HSinput.durationEnd/nUpdatesEnd/dtmax); % Number of time steps per update in end relaxation phase
-    dtEnd = HSinput.durationEnd/nUpdatesEnd/nTsPerUpdateEnd; % Time step size during end relaxation phase
+  nUpdatesEnd = max(1,round(HSinput.nUpdates*HSinput.durationEnd/(HSinput.durationOn+HSinput.durationOff)));
+  nTsPerUpdateEnd = ceil(HSinput.durationEnd/nUpdatesEnd/dtmax); % Number of time steps per update in end relaxation phase
+  dtEnd = HSinput.durationEnd/nUpdatesEnd/nTsPerUpdateEnd; % Time step size during end relaxation phase
 else
-    nUpdatesEnd = 0;
-    nTsPerUpdateEnd = 1;
-    dtEnd = 1;
+  nUpdatesEnd = 0;
+  nTsPerUpdateEnd = 1;
+  dtEnd = 1;
 end
 nDigitsEnd = 1+floor(log10(nUpdatesEnd));
 
@@ -149,16 +149,16 @@ dTdt_abs = mua_vec(G.M).*HSinput.MCoutput.F*HSinput.P./VHC(G.M); % [deg C/s] Tim
 %% Convert the temperature sensor positions to interpolation corner indices and weights used in the MEX function
 numTemperatureSensors = size(HSinput.tempSensorPositions,1);
 if(numTemperatureSensors)
-    if(any(abs(HSinput.tempSensorPositions(:,1))               > G.dx*G.nx/2) || ...
-       any(abs(HSinput.tempSensorPositions(:,2))               > G.dy*G.ny/2) || ...
-       any(abs(HSinput.tempSensorPositions(:,3)) - G.dz*G.nz/2 > G.dz*G.nz/2))
-        error('Error: A temperature sensor is outside the cuboid.');
-    end
+  if(any(abs(HSinput.tempSensorPositions(:,1))               > G.dx*G.nx/2) || ...
+     any(abs(HSinput.tempSensorPositions(:,2))               > G.dy*G.ny/2) || ...
+     any(abs(HSinput.tempSensorPositions(:,3)) - G.dz*G.nz/2 > G.dz*G.nz/2))
+    error('Error: A temperature sensor is outside the cuboid.');
+  end
 
-    [tempSensorCornerIdxs , tempSensorInterpWeights] = convertTempSensorPos(HSinput.tempSensorPositions,G.x,G.y,G.z);
+  [tempSensorCornerIdxs , tempSensorInterpWeights] = convertTempSensorPos(HSinput.tempSensorPositions,G.x,G.y,G.z);
 else
-    tempSensorCornerIdxs = [];
-    tempSensorInterpWeights = [];
+  tempSensorCornerIdxs = [];
+  tempSensorInterpWeights = [];
 end
 HSoutput.sensorTemps = [];
 
@@ -166,138 +166,138 @@ HSoutput.maxMediaTemps = HSinput.initialTemp*ones(nM,1);
 
 %% Output some diagnostics info and prepare the temperature evolution plot. If making a movie, put a geometry illustration into the beginning of the movie.
 if(~HSinput.silentMode)
-    fprintf('\n');
-    if HSinput.durationOn ~= 0
-        fprintf('Illumination phase consists of %d steps of %0.2e s.\n',nUpdatesOn*nTsPerUpdateOn,dtOn);
-    end
-    if HSinput.durationOff ~= 0
-        fprintf('Diffusion phase consists of %d steps of %0.2e s.\n',nUpdatesOff*nTsPerUpdateOff,dtOff);
-    end
-    if HSinput.durationEnd ~= 0
-        fprintf('End phase consists of %d steps of %0.2e s.\n',nUpdatesEnd*nTsPerUpdateEnd,dtEnd);
-    end
-    
-    if(HSinput.makeMovie) % Make a temporary figure showing the geometry illustration to put into the beginning of the movie
-        heatsimFigure = plotVolumetric(21,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',HSinput.slicePositions);
-        title('Geometry illustration');
-        drawnow;
-        movieframes(1) = getframe(heatsimFigure);
-    end
-    
-    heatsimFigure = plotVolumetric(21,G.x,G.y,G.z,Temp,'MCmatlab_heat','slicePositions',HSinput.slicePositions);
-    heatsimFigure.Name = 'Temperature evolution';
-    h_title = title('Temperature evolution, t = 0 s');
-    caxis(HSinput.plotTempLimits); % User-defined color scale limits
-    if(HSinput.makeMovie); movieframes(2) = getframe(heatsimFigure); end
+  fprintf('\n');
+  if HSinput.durationOn ~= 0
+    fprintf('Illumination phase consists of %d steps of %0.2e s.\n',nUpdatesOn*nTsPerUpdateOn,dtOn);
+  end
+  if HSinput.durationOff ~= 0
+    fprintf('Diffusion phase consists of %d steps of %0.2e s.\n',nUpdatesOff*nTsPerUpdateOff,dtOff);
+  end
+  if HSinput.durationEnd ~= 0
+    fprintf('End phase consists of %d steps of %0.2e s.\n',nUpdatesEnd*nTsPerUpdateEnd,dtEnd);
+  end
+  
+  if(HSinput.makeMovie) % Make a temporary figure showing the geometry illustration to put into the beginning of the movie
+    heatsimFigure = plotVolumetric(21,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',HSinput.slicePositions);
+    title('Geometry illustration');
+    drawnow;
+    movieframes(1) = getframe(heatsimFigure);
+  end
+  
+  heatsimFigure = plotVolumetric(21,G.x,G.y,G.z,Temp,'MCmatlab_heat','slicePositions',HSinput.slicePositions);
+  heatsimFigure.Name = 'Temperature evolution';
+  h_title = title('Temperature evolution, t = 0 s');
+  caxis(HSinput.plotTempLimits); % User-defined color scale limits
+  if(HSinput.makeMovie); movieframes(2) = getframe(heatsimFigure); end
 end
 
 %% Put heatSim parameters into a struct
 heatSimParameters = struct('M',G.M-1,'A',A,'E',E,'dTdtperdeltaT',dTdtperdeltaT,'dTdt_abs',dTdt_abs,...
-				'useAllCPUs',HSinput.useAllCPUs,'heatBoundaryType',HSinput.heatBoundaryType,...
-				'tempSensorCornerIdxs',tempSensorCornerIdxs,'tempSensorInterpWeights',tempSensorInterpWeights); % Contents of G.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
+        'useAllCPUs',HSinput.useAllCPUs,'heatBoundaryType',HSinput.heatBoundaryType,...
+        'tempSensorCornerIdxs',tempSensorCornerIdxs,'tempSensorInterpWeights',tempSensorInterpWeights); % Contents of G.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
 
 %% Simulate heat transfer
 if(~HSinput.silentMode); tic; end
 for j=1:HSinput.nPulses
-	%% Illumination phase
-    if HSinput.durationOn ~= 0
-		if(~HSinput.silentMode)
-            fprintf(['Illuminating pulse #%d... %' num2str(nDigitsOn) 'd/%d\n'],j,0,nUpdatesOn);
-            drawnow;
-		end
-        
-        heatSimParameters.lightsOn = true;
-        heatSimParameters.steps = nTsPerUpdateOn;
-		heatSimParameters.dt = dtOn;
-        for i = 1:nUpdatesOn
-			[Temp,HSoutput.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(Temp,HSoutput.Omega,heatSimParameters);
-			
-            HSoutput.maxMediaTemps = max(HSoutput.maxMediaTemps,double(newMaxMediaTemps));
-			if isempty(HSoutput.sensorTemps)
-                HSoutput.sensorTemps = newSensorTemps;
-            else
-                HSoutput.sensorTemps = [HSoutput.sensorTemps(:,1:end-1) newSensorTemps];
-			end
-            
-			if(~HSinput.silentMode)
-                fprintf(1,[repmat('\b',1,2*nDigitsOn+2) '%' num2str(nDigitsOn) 'd/%d\n'],i,nUpdatesOn);
-                updateIdx = i+(j-1)*(nUpdatesOn+nUpdatesOff); % Index of the update
-                updateVolumetric(heatsimFigure,Temp);
-                h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
-                drawnow;
-                
-                if(HSinput.makeMovie)
-                    movieframes(updateIdx+2) = getframe(heatsimFigure);
-                end
-			end
-        end
+  %% Illumination phase
+  if HSinput.durationOn ~= 0
+    if(~HSinput.silentMode)
+      fprintf(['Illuminating pulse #%d... %' num2str(nDigitsOn) 'd/%d\n'],j,0,nUpdatesOn);
+      drawnow;
     end
     
-	%% Diffusion phase
-    if HSinput.durationOff ~= 0
-        if(~HSinput.silentMode)
-            fprintf(['Diffusing heat... %' num2str(nDigitsOff) 'd/%d\n'],0,nUpdatesOff);
-            drawnow;
-        end
+    heatSimParameters.lightsOn = true;
+    heatSimParameters.steps = nTsPerUpdateOn;
+    heatSimParameters.dt = dtOn;
+    for i = 1:nUpdatesOn
+      [Temp,HSoutput.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(Temp,HSoutput.Omega,heatSimParameters);
+      
+      HSoutput.maxMediaTemps = max(HSoutput.maxMediaTemps,double(newMaxMediaTemps));
+      if isempty(HSoutput.sensorTemps)
+        HSoutput.sensorTemps = newSensorTemps;
+      else
+        HSoutput.sensorTemps = [HSoutput.sensorTemps(:,1:end-1) newSensorTemps];
+      end
+      
+      if(~HSinput.silentMode)
+        fprintf(1,[repmat('\b',1,2*nDigitsOn+2) '%' num2str(nDigitsOn) 'd/%d\n'],i,nUpdatesOn);
+        updateIdx = i+(j-1)*(nUpdatesOn+nUpdatesOff); % Index of the update
+        updateVolumetric(heatsimFigure,Temp);
+        h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
+        drawnow;
         
-        heatSimParameters.lightsOn = false;
-        heatSimParameters.steps = nTsPerUpdateOff;
-		heatSimParameters.dt = dtOff;
-		for i = 1:nUpdatesOff
-			[Temp,HSoutput.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(Temp,HSoutput.Omega,heatSimParameters);
-            
-            HSoutput.maxMediaTemps = max(HSoutput.maxMediaTemps,double(newMaxMediaTemps));
-			if isempty(HSoutput.sensorTemps)
-                HSoutput.sensorTemps = newSensorTemps;
-            else
-                HSoutput.sensorTemps = [HSoutput.sensorTemps(:,1:end-1) newSensorTemps];
-			end
-            
-			if(~HSinput.silentMode)
-                fprintf(1,[repmat('\b',1,2*nDigitsOff+2) '%' num2str(nDigitsOff) 'd/%d\n'],i,nUpdatesOff);
-                updateIdx = nUpdatesOn+i+(j-1)*(nUpdatesOn+nUpdatesOff); % Index of the update
-                updateVolumetric(heatsimFigure,Temp);
-                h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
-                drawnow;
-                
-                if(HSinput.makeMovie)
-                    movieframes(updateIdx+2) = getframe(heatsimFigure);
-                end
-			end
-		end
+        if(HSinput.makeMovie)
+          movieframes(updateIdx+2) = getframe(heatsimFigure);
+        end
+      end
     end
+  end
+  
+  %% Diffusion phase
+  if HSinput.durationOff ~= 0
+    if(~HSinput.silentMode)
+      fprintf(['Diffusing heat... %' num2str(nDigitsOff) 'd/%d\n'],0,nUpdatesOff);
+      drawnow;
+    end
+    
+    heatSimParameters.lightsOn = false;
+    heatSimParameters.steps = nTsPerUpdateOff;
+    heatSimParameters.dt = dtOff;
+    for i = 1:nUpdatesOff
+      [Temp,HSoutput.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(Temp,HSoutput.Omega,heatSimParameters);
+      
+      HSoutput.maxMediaTemps = max(HSoutput.maxMediaTemps,double(newMaxMediaTemps));
+      if isempty(HSoutput.sensorTemps)
+        HSoutput.sensorTemps = newSensorTemps;
+      else
+        HSoutput.sensorTemps = [HSoutput.sensorTemps(:,1:end-1) newSensorTemps];
+      end
+      
+      if(~HSinput.silentMode)
+        fprintf(1,[repmat('\b',1,2*nDigitsOff+2) '%' num2str(nDigitsOff) 'd/%d\n'],i,nUpdatesOff);
+        updateIdx = nUpdatesOn+i+(j-1)*(nUpdatesOn+nUpdatesOff); % Index of the update
+        updateVolumetric(heatsimFigure,Temp);
+        h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
+        drawnow;
+        
+        if(HSinput.makeMovie)
+          movieframes(updateIdx+2) = getframe(heatsimFigure);
+        end
+      end
+    end
+  end
 end
 
 %% End relaxation phase
 if(~HSinput.silentMode)
-    fprintf(['Diffusing heat in end relaxation phase... %' num2str(nDigitsEnd) 'd/%d\n'],0,nUpdatesEnd);
-	drawnow;
+  fprintf(['Diffusing heat in end relaxation phase... %' num2str(nDigitsEnd) 'd/%d\n'],0,nUpdatesEnd);
+  drawnow;
 end
 
 heatSimParameters.lightsOn = false;
 heatSimParameters.steps = nTsPerUpdateEnd;
 heatSimParameters.dt = dtEnd;
 for i = 1:nUpdatesEnd
-	[Temp,HSoutput.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(Temp,HSoutput.Omega,heatSimParameters);
+  [Temp,HSoutput.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(Temp,HSoutput.Omega,heatSimParameters);
 
-    HSoutput.maxMediaTemps = max(HSoutput.maxMediaTemps,double(newMaxMediaTemps));
-	if isempty(HSoutput.sensorTemps)
-		HSoutput.sensorTemps = newSensorTemps;
-	else
-		HSoutput.sensorTemps = [HSoutput.sensorTemps(:,1:end-1) newSensorTemps];
-	end
+  HSoutput.maxMediaTemps = max(HSoutput.maxMediaTemps,double(newMaxMediaTemps));
+  if isempty(HSoutput.sensorTemps)
+    HSoutput.sensorTemps = newSensorTemps;
+  else
+    HSoutput.sensorTemps = [HSoutput.sensorTemps(:,1:end-1) newSensorTemps];
+  end
 
-	if(~HSinput.silentMode)
-        fprintf(1,[repmat('\b',1,2*nDigitsEnd+2) '%' num2str(nDigitsEnd) 'd/%d\n'],i,nUpdatesEnd);
-		updateIdx = i + HSinput.nPulses*(nUpdatesOn+nUpdatesOff); % Index of the update
-		updateVolumetric(heatsimFigure,Temp);
-		h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
-		drawnow;
+  if(~HSinput.silentMode)
+    fprintf(1,[repmat('\b',1,2*nDigitsEnd+2) '%' num2str(nDigitsEnd) 'd/%d\n'],i,nUpdatesEnd);
+    updateIdx = i + HSinput.nPulses*(nUpdatesOn+nUpdatesOff); % Index of the update
+    updateVolumetric(heatsimFigure,Temp);
+    h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
+    drawnow;
 
-		if(HSinput.makeMovie)
-			movieframes(updateIdx+2) = getframe(heatsimFigure);
-		end
-	end
+    if(HSinput.makeMovie)
+      movieframes(updateIdx+2) = getframe(heatsimFigure);
+    end
+  end
 end
 
 if(~HSinput.silentMode) toc; end
@@ -306,32 +306,32 @@ clear Temp heatSimParameters;
 
 %% Finalize and write movie
 if(~HSinput.silentMode)
-    fprintf('\n');
-    for idx=1:nM
-        fprintf('Highest temperature obtained in %s is %.2f°C\n',G.mediaProperties(idx).name,HSoutput.maxMediaTemps(idx));
+  fprintf('\n');
+  for idx=1:nM
+    fprintf('Highest temperature obtained in %s is %.2f°C\n',G.mediaProperties(idx).name,HSoutput.maxMediaTemps(idx));
+  end
+  
+  if(HSinput.makeMovie)
+    [resy,resx,~] = size(movieframes(1).cdata);
+    for idx = 1:length(movieframes)
+      movieframes(idx).cdata = movieframes(idx).cdata(1:end-rem(resy,2),1:end-rem(resx,2),:); % Crop frames by one pixel if x or y size is odd
     end
-    
-    if(HSinput.makeMovie)
-        [resy,resx,~] = size(movieframes(1).cdata);
-        for idx = 1:length(movieframes)
-            movieframes(idx).cdata = movieframes(idx).cdata(1:end-rem(resy,2),1:end-rem(resx,2),:); % Crop frames by one pixel if x or y size is odd
-        end
-        movieframes = [repmat(movieframes(1),1,30) movieframes(1:end) repmat(movieframes(end),1,30)];
-        caller = dbstack(1,'-completenames');
-        writerObj = VideoWriter([fileparts(caller(1).file) '/temp.avi'],'Uncompressed AVI');
-        fprintf('Writing video...\n');
-        open(writerObj);
-        writeVideo(writerObj,movieframes);
-        close(writerObj);
-        if contains(computer, 'MAC') % macOS operating system
-            [~,~] = system(['./helperfuncs/x264_macOS -o "' fileparts(caller(1).file) '/' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '/temp.avi"']);
-        elseif contains(computer, 'WIN') % Windows operating system
-            [~,~] = system(['.\helperfuncs\x264_win64.exe -o "' fileparts(caller(1).file) '\' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '\temp.avi"']);
-        else % Linux operating system
-            [~,~] = system(['./helperfuncs/x264_linux -o "' fileparts(caller(1).file) '/' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '/temp.avi"']);        
-        end
-        delete([fileparts(caller(1).file) '/temp.avi']);
-        fprintf('\b Done\n');
+    movieframes = [repmat(movieframes(1),1,30) movieframes(1:end) repmat(movieframes(end),1,30)];
+    caller = dbstack(1,'-completenames');
+    writerObj = VideoWriter([fileparts(caller(1).file) '/temp.avi'],'Uncompressed AVI');
+    fprintf('Writing video...\n');
+    open(writerObj);
+    writeVideo(writerObj,movieframes);
+    close(writerObj);
+    if contains(computer, 'MAC') % macOS operating system
+      [~,~] = system(['./helperfuncs/x264_macOS -o "' fileparts(caller(1).file) '/' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '/temp.avi"']);
+    elseif contains(computer, 'WIN') % Windows operating system
+      [~,~] = system(['.\helperfuncs\x264_win64.exe -o "' fileparts(caller(1).file) '\' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '\temp.avi"']);
+    else % Linux operating system
+      [~,~] = system(['./helperfuncs/x264_linux -o "' fileparts(caller(1).file) '/' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '/temp.avi"']);
     end
+    delete([fileparts(caller(1).file) '/temp.avi']);
+    fprintf('\b Done\n');
+  end
 end
 end

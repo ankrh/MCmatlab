@@ -1,10 +1,10 @@
 function h_f = plotMediaProperties(nFig,mediaProperties,matchedInterfaces)
 
 if(~ishandle(nFig))
-    h_f = figure(nFig);
-    h_f.Position = [40 80 1100 650];
+  h_f = figure(nFig);
+  h_f.Position = [40 80 1100 650];
 else
-    h_f = figure(nFig);
+  h_f = figure(nFig);
 end
 h_f.Color = 'w';
 
@@ -17,11 +17,11 @@ plotThermalProperties = (isfield(mediaProperties,'VHC') && isfield(mediaProperti
 plotFluorescenceProperties = any([mediaProperties.Y] > 0);
 
 if plotThermalProperties && plotFluorescenceProperties
-    rows = 3;
+  rows = 3;
 elseif plotThermalProperties || plotFluorescenceProperties
-    rows = 2;
+  rows = 2;
 else
-    rows = 1;
+  rows = 1;
 end
 columns = 4;
 subplotIndex = 1;
@@ -29,7 +29,7 @@ subplotIndex = 1;
 subplot(rows,columns,subplotIndex);
 hold on;
 for i=1:nM
-    bar(i,mediaProperties(i).mua,'FaceColor',cmap(i,:));
+  bar(i,mediaProperties(i).mua,'FaceColor',cmap(i,:));
 end
 set(gca,'XTick',1:nM,'XTickLabel',{mediaProperties.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
 title('\mu_a [cm^{-1}]');
@@ -38,7 +38,7 @@ subplotIndex = subplotIndex + 1;
 subplot(rows,columns,subplotIndex);
 hold on;
 for i=1:nM
-    bar(i,mediaProperties(i).mus,'FaceColor',cmap(i,:));
+  bar(i,mediaProperties(i).mus,'FaceColor',cmap(i,:));
 end
 set(gca,'XTick',1:nM,'XTickLabel',{mediaProperties.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
 title('\mu_s [cm^{-1}]');
@@ -47,7 +47,7 @@ subplotIndex = subplotIndex + 1;
 subplot(rows,columns,subplotIndex);
 hold on;
 for i=1:nM
-    bar(i,mediaProperties(i).g,'FaceColor',cmap(i,:));
+  bar(i,mediaProperties(i).g,'FaceColor',cmap(i,:));
 end
 set(gca,'XTick',1:nM,'XTickLabel',{mediaProperties.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
 title('g');
@@ -56,48 +56,48 @@ subplotIndex = subplotIndex + 1;
 subplot(rows,columns,subplotIndex);
 hold on;
 if ~matchedInterfaces
-    for i=1:nM
-        bar(i,mediaProperties(i).n,'FaceColor',cmap(i,:));
-    end
-    set(gca,'XTick',1:nM,'XTickLabel',{mediaProperties.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
+  for i=1:nM
+    bar(i,mediaProperties(i).n,'FaceColor',cmap(i,:));
+  end
+  set(gca,'XTick',1:nM,'XTickLabel',{mediaProperties.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
 else
-    ax = gca;
-    ax.XAxis.Visible = 'off';
-    ax.YAxis.Visible = 'off';
-    str = {'Assuming','index','matched','interfaces:','n = 1'};
-    text(0.5,0.5,str,'FontSize',18,'HorizontalAlignment','center');
+  ax = gca;
+  ax.XAxis.Visible = 'off';
+  ax.YAxis.Visible = 'off';
+  str = {'Assuming','index','matched','interfaces:','n = 1'};
+  text(0.5,0.5,str,'FontSize',18,'HorizontalAlignment','center');
 end
 title('n');
 subplotIndex = subplotIndex + 1;
 
 if plotThermalProperties
-    subplot(rows,columns,subplotIndex);
-    hold on;
-    for i=1:nM
-        bar(i,mediaProperties(i).VHC,'FaceColor',cmap(i,:));
-    end
-    set(gca,'XTick',1:nM,'XTickLabel',{mediaProperties.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
-    title('VHC [J/(cm^3*K)]');
-    subplotIndex = subplotIndex + 1;
+  subplot(rows,columns,subplotIndex);
+  hold on;
+  for i=1:nM
+    bar(i,mediaProperties(i).VHC,'FaceColor',cmap(i,:));
+  end
+  set(gca,'XTick',1:nM,'XTickLabel',{mediaProperties.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
+  title('VHC [J/(cm^3*K)]');
+  subplotIndex = subplotIndex + 1;
 
-    subplot(rows,columns,subplotIndex);
-    hold on;
-    for i=1:nM
-        bar(i,mediaProperties(i).TC,'FaceColor',cmap(i,:));
-    end
-    set(gca,'XTick',1:nM,'XTickLabel',{mediaProperties.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
-    title('TC [W/(cm*K)]');
-    subplotIndex = subplotIndex + 1 + 2;
+  subplot(rows,columns,subplotIndex);
+  hold on;
+  for i=1:nM
+    bar(i,mediaProperties(i).TC,'FaceColor',cmap(i,:));
+  end
+  set(gca,'XTick',1:nM,'XTickLabel',{mediaProperties.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
+  title('TC [W/(cm*K)]');
+  subplotIndex = subplotIndex + 1 + 2;
 end
 
 if  plotFluorescenceProperties
-    subplot(rows,columns,subplotIndex);
-    hold on;
-    for i=1:nM
-        bar(i,mediaProperties(i).Y,'FaceColor',cmap(i,:));
-    end
-    set(gca,'XTick',1:nM,'XTickLabel',{mediaProperties.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
-    title('Y');
-    subplotIndex = subplotIndex + 1;
+  subplot(rows,columns,subplotIndex);
+  hold on;
+  for i=1:nM
+    bar(i,mediaProperties(i).Y,'FaceColor',cmap(i,:));
+  end
+  set(gca,'XTick',1:nM,'XTickLabel',{mediaProperties.name},'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
+  title('Y');
+  subplotIndex = subplotIndex + 1;
 end
 end

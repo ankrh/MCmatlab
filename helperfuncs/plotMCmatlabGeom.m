@@ -31,8 +31,8 @@ function plotMCmatlabGeom(G)
 
 %% Make fluorescence media properties plot
 if(~isnan(G.wavelength_f))
-    h_f = plotMediaProperties(3,G.mediaProperties_f,G.matchedInterfaces);
-    h_f.Name = 'Fluorescence media properties';
+  h_f = plotMediaProperties(3,G.mediaProperties_f,G.matchedInterfaces);
+  h_f.Name = 'Fluorescence media properties';
 end
 
 %% Make media properties plot

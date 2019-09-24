@@ -223,8 +223,8 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
         P->i[2] = 0;
         P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) +
-                  pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
-                  pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
+                                    pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
+                                    pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
         break;
       case 0: // pencil beam
         P->i[0] = (B->focus[0] - B->focus[2]*B->u[0]/B->u[2])/G->d[0] + G->n[0]/2.0;
@@ -232,8 +232,8 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->i[2] = 0;
         for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
         P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - B->focus[0],2) +
-                  pow((P->i[1] - G->n[1]/2.0)*G->d[1] - B->focus[1],2) +
-                  pow((P->i[2]              )*G->d[2] - B->focus[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
+                                    pow((P->i[1] - G->n[1]/2.0)*G->d[1] - B->focus[1],2) +
+                                    pow((P->i[2]              )*G->d[2] - B->focus[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
         break;
       case 1: // isotropically emitting point source
         P->i[0] = B->focus[0]/G->d[0] + G->n[0]/2.0;
@@ -253,8 +253,8 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->i[2] = 0;
         for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
         P->time = G->RIv[0]/C*((P->i[0] - G->n[0]/2.0)*G->d[0]*B->u[0] +
-                  (P->i[1] - G->n[1]/2.0)*G->d[1]*B->u[1] +
-                  (P->i[2]              )*G->d[2]*B->u[2]); // Starting time is set so that the wave crosses (x=0,y=0,z=0) at time = 0
+                               (P->i[1] - G->n[1]/2.0)*G->d[1]*B->u[1] +
+                               (P->i[2]              )*G->d[2]*B->u[2]); // Starting time is set so that the wave crosses (x=0,y=0,z=0) at time = 0
         break;
       case 3: // Gaussian focus, Gaussian far field beam
         phi     = RandomNum*2*PI;
@@ -269,8 +269,8 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
         P->i[2] = 0;
         P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) +
-                  pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
-                  pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
+                                    pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
+                                    pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
         break;
       case 4: // Gaussian focus, top-hat far field beam
         phi     = RandomNum*2*PI;
@@ -285,8 +285,8 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
         P->i[2] = 0;
         P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) +
-                  pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
-                  pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
+                                    pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
+                                    pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
         break;
       case 5: // top-hat focus, Gaussian far field beam
         phi     = RandomNum*2*PI;
@@ -301,8 +301,8 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
         P->i[2] = 0;
         P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) +
-                  pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
-                  pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
+                                    pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
+                                    pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
         break;
       case 6: // top-hat focus, top-hat far field beam
         phi    = RandomNum*2*PI;
@@ -317,8 +317,8 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
         P->i[2] = 0;
         P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) +
-                  pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
-                  pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
+                                    pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
+                                    pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
         break;
       case 7: // Laguerre-Gaussian LG01 beam
         phi     = RandomNum*2*PI;
@@ -331,8 +331,8 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0;
         P->i[2] = 0;
         P->time = -G->RIv[0]/C*sqrt(pow((P->i[0] - G->n[0]/2.0)*G->d[0] - target[0],2) +
-                  pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
-                  pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
+                                    pow((P->i[1] - G->n[1]/2.0)*G->d[1] - target[1],2) +
+                                    pow((P->i[2]              )*G->d[2] - target[2],2)); // Starting time is set so that the wave crosses the focal plane at time = 0
         break;
     }
     
@@ -377,7 +377,7 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
       Pa->data[4*Pa->pathsElems  ] = (P->i[0] - G->n[0]/2.0)*G->d[0]; // Store x
       Pa->data[4*Pa->pathsElems+1] = (P->i[1] - G->n[1]/2.0)*G->d[1]; // Store y
       Pa->data[4*Pa->pathsElems+2] = (P->i[2]              )*G->d[2]; // Store z
-      Pa->data[4*Pa->pathsElems+3] = P->weight;                     // Store photon weight
+      Pa->data[4*Pa->pathsElems+3] = P->weight;                       // Store photon weight
       Pa->pathsElems++;
     }
   }
@@ -389,8 +389,8 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
   
   if(U[2] < 0) { // If the Z component of U is negative then the photon is moving towards the light collector plane
     double resc[3] = {(P->i[0] - G->n[0]/2.0)*G->d[0] - LC->r[0],
-    (P->i[1] - G->n[1]/2.0)*G->d[1] - LC->r[1],
-    (P->i[2]              )*G->d[2] - LC->r[2]}; // Photon position relative to the light collector focal plane center when it escapes the cuboid, in the (x,y,z) basis
+                      (P->i[1] - G->n[1]/2.0)*G->d[1] - LC->r[1],
+                      (P->i[2]              )*G->d[2] - LC->r[2]}; // Photon position relative to the light collector focal plane center when it escapes the cuboid, in the (x,y,z) basis
     
     double Resc[3];
     xyztoXYZ(resc,LC->theta,LC->phi,Resc); // Resc is now the photon position in the light collector frame (X,Y,Z) when it escapes the cuboid
@@ -640,7 +640,7 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, d
       Pa->data[4*Pa->pathsElems  ] = (P->i[0] - G->n[0]/2.0)*G->d[0]; // Store x
       Pa->data[4*Pa->pathsElems+1] = (P->i[1] - G->n[1]/2.0)*G->d[1]; // Store y
       Pa->data[4*Pa->pathsElems+2] = (P->i[2]              )*G->d[2]; // Store z
-      Pa->data[4*Pa->pathsElems+3] = P->weight;                     // Store photon weight
+      Pa->data[4*Pa->pathsElems+3] = P->weight;                       // Store photon weight
       Pa->pathsElems++;
     }
   }

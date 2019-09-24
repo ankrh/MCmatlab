@@ -24,45 +24,45 @@ li = zeros(nS,1); % Linear index of interpolation group corner voxel
 w = zeros(nS,3); % Weights in the x, y and z directions used in the interpolation
 
 for i=1:nS
-    relposx = tempSensorPositions(i,1) - x(1);
-    if relposx < 0
-        ix = 0;
-        w(i,1) = 0;
-    elseif relposx < x(end) - x(1)
-        ix = floor(relposx/dx);
-        w(i,1) = mod(relposx/dx,1);
-    else
-        ix = nx-2;
-        w(i,1) = 1;
-    end
+  relposx = tempSensorPositions(i,1) - x(1);
+  if relposx < 0
+    ix = 0;
+    w(i,1) = 0;
+  elseif relposx < x(end) - x(1)
+    ix = floor(relposx/dx);
+    w(i,1) = mod(relposx/dx,1);
+  else
+    ix = nx-2;
+    w(i,1) = 1;
+  end
 
-    relposy = tempSensorPositions(i,2) - y(1);
-    if relposy < 0
-        iy = 0;
-        w(i,2) = 0;
-    elseif relposy < y(end) - y(1)
-        iy = floor(relposy/dy);
-        w(i,2) = mod(relposy/dy,1);
-    else
-        iy = ny-2;
-        w(i,2) = 1;
-    end
+  relposy = tempSensorPositions(i,2) - y(1);
+  if relposy < 0
+    iy = 0;
+    w(i,2) = 0;
+  elseif relposy < y(end) - y(1)
+    iy = floor(relposy/dy);
+    w(i,2) = mod(relposy/dy,1);
+  else
+    iy = ny-2;
+    w(i,2) = 1;
+  end
 
-    relposz = tempSensorPositions(i,3) - z(1);
-    if relposz < 0
-        iz = 0;
-        w(i,3) = 0;
-    elseif relposz < z(end) - z(1)
-        iz = floor(relposz/dz);
-        w(i,3) = mod(relposz/dz,1);
-    else
-        iz = nz-2;
-        w(i,3) = 1;
-    end
+  relposz = tempSensorPositions(i,3) - z(1);
+  if relposz < 0
+    iz = 0;
+    w(i,3) = 0;
+  elseif relposz < z(end) - z(1)
+    iz = floor(relposz/dz);
+    w(i,3) = mod(relposz/dz,1);
+  else
+    iz = nz-2;
+    w(i,3) = 1;
+  end
 
-    li(i) = ix + ...
-            iy*nx + ...
-            iz*nx*ny;
+  li(i) = ix    + ...
+          iy*nx + ...
+          iz*nx*ny;
 end
 
 end

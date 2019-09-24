@@ -5,15 +5,15 @@ function [M, mediaProperties] = getMediaProperties(M,wavelength,parameters)
 %   Many parameters, formulas and the spectralLIB library is from mcxyz and
 %   other work by Steven Jacques and collaborators.
 %
-%	Pay attention to the section with the header that says "USER SPECIFIED:"
-%	That's where you fill in the parameters relevant for your simulation.
+%    Pay attention to the section with the header that says "USER SPECIFIED:"
+%    That's where you fill in the parameters relevant for your simulation.
 %
 %   For each medium, mediaProperties must contain mua, mus and g;
 %       mua is the absorption coefficient [cm^-1] and must be positive (not zero)
 %       mus is the scattering coefficient [cm^-1] and must be positive (not zero)
 %       g is the anisotropy factor and must satisfy -1 <= g <= 1
 %   the following parameters are optional:
-%	mediaProperties may contain the refractive index for simulating non-matched interfaces such as reflection and refraction;
+%    mediaProperties may contain the refractive index for simulating non-matched interfaces such as reflection and refraction;
 %       n is the refractive index and can be from 1 to Inf, where Inf means the medium is a perfect reflector
 %   and parameters for simulating thermal diffusion;
 %       VHC is volumetric heat capacity [J/(cm^3*K)] and must be positive
@@ -27,7 +27,7 @@ function [M, mediaProperties] = getMediaProperties(M,wavelength,parameters)
 %   Requires
 %       SpectralLIB.mat
 %
-%	See also defineGeometry
+%    See also defineGeometry
 
 %%%%%
 %   Copyright 2017, 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
@@ -268,28 +268,28 @@ mediaProperties(j).TC  = 0.37e-2;
 j=16;
 mediaProperties(j).name  = 'test fluorescer';
 if(wavelength<500)
-    mediaProperties(j).mua = 100;
-    mediaProperties(j).mus = 100;
-    mediaProperties(j).g   = 0.9;
+  mediaProperties(j).mua = 100;
+  mediaProperties(j).mus = 100;
+  mediaProperties(j).g   = 0.9;
 
-    mediaProperties(j).Y   = 0.5;
+  mediaProperties(j).Y   = 0.5;
 else
-    mediaProperties(j).mua = 1;
-    mediaProperties(j).mus = 100;
-    mediaProperties(j).g   = 0.9;
+  mediaProperties(j).mua = 1;
+  mediaProperties(j).mus = 100;
+  mediaProperties(j).g   = 0.9;
 end
 mediaProperties(j).n   = 1.3;
 
 j=17;
 mediaProperties(j).name  = 'test fluorescence absorber';
 if(wavelength<500)
-    mediaProperties(j).mua = 1;
-    mediaProperties(j).mus = 100;
-    mediaProperties(j).g   = 0.9;
+  mediaProperties(j).mua = 1;
+  mediaProperties(j).mus = 100;
+  mediaProperties(j).g   = 0.9;
 else
-    mediaProperties(j).mua = 100;
-    mediaProperties(j).mus = 100;
-    mediaProperties(j).g   = 0.9;
+  mediaProperties(j).mua = 100;
+  mediaProperties(j).mus = 100;
+  mediaProperties(j).g   = 0.9;
 end
 mediaProperties(j).n   = 1.3;
 
@@ -317,9 +317,9 @@ mediaProperties(j).name  = 'variable g medium';
 mediaProperties(j).mua   = 10;
 mediaProperties(j).mus   = 100;
 if ~isempty(parameters)
-	mediaProperties(j).g = parameters{1};
+  mediaProperties(j).g = parameters{1};
 else
-	mediaProperties(j).g = 0;
+  mediaProperties(j).g = 0;
 end
 
 %% Trim mediaProperties down to use only the media included in the input matrix M, and reduce M accordingly
@@ -333,46 +333,46 @@ M = mediumMap(M); % Reduced medium matrix, using only numbers from 1 up to the n
 % activation energy E or Arrhenius pre-exponential factor A was not 
 % specified, assume they are zero.
 for j=1:length(mediaProperties)
-    if(~isfield(mediaProperties,'Y') || isempty(mediaProperties(j).Y))
-        mediaProperties(j).Y = 0;
-    end
-    if(~isfield(mediaProperties,'E') || isempty(mediaProperties(j).E))
-        mediaProperties(j).E = 0;
-    end
-    if(~isfield(mediaProperties,'A') || isempty(mediaProperties(j).A))
-        mediaProperties(j).A = 0;
-    end
+  if(~isfield(mediaProperties,'Y') || isempty(mediaProperties(j).Y))
+    mediaProperties(j).Y = 0;
+  end
+  if(~isfield(mediaProperties,'E') || isempty(mediaProperties(j).E))
+    mediaProperties(j).E = 0;
+  end
+  if(~isfield(mediaProperties,'A') || isempty(mediaProperties(j).A))
+    mediaProperties(j).A = 0;
+  end
 end
 
 %% Throw an error if a variable doesn't conform to its required interval
 for j=1:length(mediaProperties)
-    if(~isfield(mediaProperties,'mua') || isempty(mediaProperties(j).mua))
-        error('Medium %s has no mua.',mediaProperties(j).name);
-    elseif(~isfield(mediaProperties,'mus') || isempty(mediaProperties(j).mus))
-        error('Medium %s has no mus.',mediaProperties(j).name);
-    elseif(~isfield(mediaProperties,'g') || isempty(mediaProperties(j).g))
-        error('Medium %s has no g.',mediaProperties(j).name);
-    end
+  if(~isfield(mediaProperties,'mua') || isempty(mediaProperties(j).mua))
+    error('Medium %s has no mua.',mediaProperties(j).name);
+  elseif(~isfield(mediaProperties,'mus') || isempty(mediaProperties(j).mus))
+    error('Medium %s has no mus.',mediaProperties(j).name);
+  elseif(~isfield(mediaProperties,'g') || isempty(mediaProperties(j).g))
+    error('Medium %s has no g.',mediaProperties(j).name);
+  end
 
-    if(mediaProperties(j).mua <= 0)
-        error('Medium %s has mua <= 0',mediaProperties(j).name);
-    elseif(mediaProperties(j).mus <= 0)
-        error('Medium %s has mus <= 0',mediaProperties(j).name);
-    elseif(abs(mediaProperties(j).g) > 1)
-        error('Medium %s has abs(g) > 1',mediaProperties(j).name);
-    elseif(mediaProperties(j).n < 1)
-        error('Medium %s has n < 1',mediaProperties(j).name);
-    elseif(mediaProperties(j).VHC <= 0)
-        error('Medium %s has VHC <= 0',mediaProperties(j).name);
-    elseif(mediaProperties(j).TC < 0)
-        error('Medium %s has TC < 0',mediaProperties(j).name);
-    elseif(mediaProperties(j).Y < 0)
-        error('Medium %s has Y < 0',mediaProperties(j).name);
-    elseif(mediaProperties(j).E < 0)
-        error('Medium %s has E < 0',mediaProperties(j).name);
-    elseif(mediaProperties(j).A < 0)
-        error('Medium %s has A < 0',mediaProperties(j).name);
-    end
+  if(mediaProperties(j).mua <= 0)
+    error('Medium %s has mua <= 0',mediaProperties(j).name);
+  elseif(mediaProperties(j).mus <= 0)
+    error('Medium %s has mus <= 0',mediaProperties(j).name);
+  elseif(abs(mediaProperties(j).g) > 1)
+    error('Medium %s has abs(g) > 1',mediaProperties(j).name);
+  elseif(mediaProperties(j).n < 1)
+    error('Medium %s has n < 1',mediaProperties(j).name);
+  elseif(mediaProperties(j).VHC <= 0)
+    error('Medium %s has VHC <= 0',mediaProperties(j).name);
+  elseif(mediaProperties(j).TC < 0)
+    error('Medium %s has TC < 0',mediaProperties(j).name);
+  elseif(mediaProperties(j).Y < 0)
+    error('Medium %s has Y < 0',mediaProperties(j).name);
+  elseif(mediaProperties(j).E < 0)
+    error('Medium %s has E < 0',mediaProperties(j).name);
+  elseif(mediaProperties(j).A < 0)
+    error('Medium %s has A < 0',mediaProperties(j).name);
+  end
 end
 
 end
