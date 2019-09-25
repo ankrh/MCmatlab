@@ -1,18 +1,18 @@
 addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
 
 %% Decription
-% This example simulates a collimated top hat beam of radius 300 µm
-% incident on skin, with some gel (water) on the top. This example is
-% constructed identically to that on the mcxyz website, except that photons
-% escape on all boundaries and the voxel grid is only 100x100x100:
-% https://omlc.org/software/mc/mcxyz/
-%
-% The found absorption distribution is then passed into the heat simulator,
-% assuming the light is on for 5 pulses of 1 ms on time and 4 ms off time
-% each, with 4 W of peak power. Some demonstration values of the Arrhenius
-% E and A parameters for blood coagulation exist in getMediaProperties and
-% are used to calculate the distribution of coagulated blood. Temperature
-% sensors outputs and movie generation is also demonstrated.
+% This example is very similar to example 3, the geometry and light
+% propagation part being the same. It illustrates the ability to sequence
+% together multiple pulse trains in the form of separate heat simulations,
+% carrying over the temperature and thermal damage from one simulation to
+% the next. A movie is generated that shows all the heat simulations.
+% 
+% The first heat simulation has a single light pulse of 2 ms on-time
+% followed by 3 ms off-time. The second heat simulation adds nine more
+% pulses onto that with 0.5 ms on-time and 4.5 ms off-time.
+% 
+% In these heat simulations, largeTimeSteps is set to true and nUpdates set
+% to 10 rather than 100, which speeds up the simulations considerably.
 
 %% Geometry definition
 clear Ginput
@@ -52,23 +52,24 @@ MCinput.G = Goutput;
 MCoutput = runMonteCarlo(MCinput);
 plotMCmatlab(MCinput,MCoutput);
 
-%% Heat simulation
+%% First pulse heat simulation
 clear HSinput
 HSinput.useAllCPUs          = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 HSinput.makeMovie           = true; % Requires silentMode = false.
-HSinput.largeTimeSteps      = false; % (Default: false) If true, calculations will be faster, but some voxel temperatures may be slightly less precise. Test for yourself whether this precision is acceptable for your application.
+HSinput.deferMovieWrite     = true; % (Default: false) If true, will not write the movie to file upon completion, but will store the raw frames in HSoutput for future writing
+HSinput.largeTimeSteps      = true; % (Default: false) If true, calculations will be faster, but some voxel temperatures may be slightly less precise. Test for yourself whether this precision is acceptable for your application.
 
 HSinput.heatBoundaryType    = 0; % 0: Insulating boundaries, 1: Constant-temperature boundaries (heat-sinked)
 HSinput.P                   = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
-HSinput.durationOn          = 0.001; % [s] Pulse on-duration
-HSinput.durationOff         = 0.004; % [s] Pulse off-duration
-HSinput.durationEnd         = 0.02; % [s] Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train
+HSinput.durationOn          = 0.002; % [s] Pulse on-duration
+HSinput.durationOff         = 0.003; % [s] Pulse off-duration
+HSinput.durationEnd         = 0.000; % [s] Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train
 HSinput.initialTemp         = 37; % [deg C] Initial temperature
 
-HSinput.nPulses             = 5; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
+HSinput.nPulses             = 1; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
 
 HSinput.plotTempLimits      = [37 100]; % [deg C] Expected range of temperatures, used only for setting the color scale in the plot
-HSinput.nUpdates            = 100; % Number of times data is extracted for plots during each pulse. A minimum of 1 update is performed in each phase (2 for each pulse consisting of an illumination phase and a diffusion phase)
+HSinput.nUpdates            = 10; % Number of times data is extracted for plots during each pulse. A minimum of 1 update is performed in each phase (2 for each pulse consisting of an illumination phase and a diffusion phase)
 HSinput.slicePositions      = [.5 0.6 1]; % Relative slice positions [x y z] for the 3D plots on a scale from 0 to 1
 HSinput.tempSensorPositions = [0 0 0.038
                                0 0 0.04
@@ -76,6 +77,22 @@ HSinput.tempSensorPositions = [0 0 0.038
                                0 0 0.044]; % Each row is a temperature sensor's absolute [x y z] coordinates. Leave the matrix empty ([]) to disable temperature sensors.
 
 % Execution, do not modify the next four lines:
+HSinput.G = Goutput;
+HSinput.MCoutput = MCoutput;
+HSoutput = simulateHeatDistribution(HSinput);
+% plotMCmatlabHeat(HSinput,HSoutput);
+
+%% Remaining pulse train heat simulation
+% The HSinput struct carries over from the previous section and is modified slightly
+HSinput.prevHSoutput        = HSoutput; % The HSoutput of the previous heat simulation, to use as the new initial condition
+HSinput.deferMovieWrite     = false; % (Default: false) If true, will not write the movie to file upon completion, but will store the raw frames in HSoutput for future writing
+HSinput.durationOn          = 0.0005; % [s] Pulse on-duration
+HSinput.durationOff         = 0.0045; % [s] Pulse off-duration
+HSinput.durationEnd         = 0.01; % [s] Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train
+
+HSinput.nPulses             = 9; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
+
+% Execution
 HSinput.G = Goutput;
 HSinput.MCoutput = MCoutput;
 HSoutput = simulateHeatDistribution(HSinput);

@@ -55,15 +55,23 @@ end
 if ~isfield(HSinput,'largeTimeSteps')
   HSinput.largeTimeSteps = false;
 end
+if ~isfield(HSinput,'deferMovieWrite')
+  HSinput.deferMovieWrite = false;
+end
 if ~isfield(HSinput.MCoutput,'F')
   error('Error: F matrix not calculated');
 end
 
 G = HSinput.G;
-
-Temp = HSinput.initialTemp*ones(size(G.M),'single'); % Initial temperature distribution
-
 nM = length(G.mediaProperties); % Number of different media in simulation
+
+if isfield(HSinput,'prevHSoutput')
+  Temp = HSinput.prevHSoutput.finalTemp;
+  HSoutput.maxMediaTemps = HSinput.prevHSoutput.maxMediaTemps;
+else
+  Temp = HSinput.initialTemp*ones(size(G.M),'single'); % Initial temperature distribution
+  HSoutput.maxMediaTemps = HSinput.initialTemp*ones(nM,1);
+end
 
 VHC = single([G.mediaProperties.VHC]); % Volumetric heat capacity array. Element i is the VHC of medium i in the reduced mediaProperties list.
 TC = single([G.mediaProperties.TC]); % Thermal conductivity array. Element i is the TC of medium i in the reduced mediaProperties list.
@@ -72,7 +80,11 @@ TC = single([G.mediaProperties.TC]); % Thermal conductivity array. Element i is 
 A = [G.mediaProperties.A];
 E = [G.mediaProperties.E];
 if(any(A)) % If non-zero Arrhenius data exists, prepare to calculate thermal damage.
-  HSoutput.Omega = zeros(size(G.M),'single');
+  if isfield(HSinput,'prevHSoutput')
+    HSoutput.Omega = HSinput.prevHSoutput.Omega;
+  else
+    HSoutput.Omega = zeros(size(G.M),'single');
+  end
 else
   HSoutput.Omega = single(NaN);
 end
@@ -127,11 +139,18 @@ else
 end
 nDigitsEnd = 1+floor(log10(nUpdatesEnd));
 
+% If a previous heat simulation was performed, we need to offset the time
+if isfield(HSinput,'prevHSoutput')
+  t_offset = HSinput.prevHSoutput.sensorsTimeVector(end);
+else
+  t_offset = 0;
+end
+
 % Array of times associated with the updates
-updatesTimeVector = [0 , ((HSinput.durationOn+HSinput.durationOff)*repelem(0:(HSinput.nPulses-1),nUpdatesOn                + nUpdatesOff                ) + repmat([(1:nUpdatesOn)*nTsPerUpdateOn*dtOn , (HSinput.durationOn + ((1:nUpdatesOff)*nTsPerUpdateOff*dtOff))],1,HSinput.nPulses)) , (HSinput.durationOn + HSinput.durationOff)*HSinput.nPulses + (1:nUpdatesEnd)*nTsPerUpdateEnd*dtEnd];
+updatesTimeVector = t_offset + [0 , ((HSinput.durationOn+HSinput.durationOff)*repelem(0:(HSinput.nPulses-1),nUpdatesOn                + nUpdatesOff                ) + repmat([(1:nUpdatesOn)*nTsPerUpdateOn*dtOn , (HSinput.durationOn + ((1:nUpdatesOff)*nTsPerUpdateOff*dtOff))],1,HSinput.nPulses)) , (HSinput.durationOn + HSinput.durationOff)*HSinput.nPulses + (1:nUpdatesEnd)*nTsPerUpdateEnd*dtEnd];
 
 % Array of times associated with the steps
-HSoutput.sensorsTimeVector = [0 , ((HSinput.durationOn+HSinput.durationOff)*repelem(0:(HSinput.nPulses-1),nUpdatesOn*nTsPerUpdateOn + nUpdatesOff*nTsPerUpdateOff) + repmat([(1:nUpdatesOn*nTsPerUpdateOn)*dtOn , (HSinput.durationOn + ((1:nUpdatesOff*nTsPerUpdateOff)*dtOff))],1,HSinput.nPulses)) , (HSinput.durationOn + HSinput.durationOff)*HSinput.nPulses + (1:nUpdatesEnd*nTsPerUpdateEnd)*dtEnd];
+HSoutput.sensorsTimeVector = t_offset + [0 , ((HSinput.durationOn+HSinput.durationOff)*repelem(0:(HSinput.nPulses-1),nUpdatesOn*nTsPerUpdateOn + nUpdatesOff*nTsPerUpdateOff) + repmat([(1:nUpdatesOn*nTsPerUpdateOn)*dtOn , (HSinput.durationOn + ((1:nUpdatesOff*nTsPerUpdateOff)*dtOff))],1,HSinput.nPulses)) , (HSinput.durationOn + HSinput.durationOff)*HSinput.nPulses + (1:nUpdatesEnd*nTsPerUpdateEnd)*dtEnd];
 
 %% Calculate proportionality between voxel-to-voxel temperature difference DeltaT and time step temperature change dT
 TC_eff = 2*(TC'*TC)./(ones(length(TC))*diag(TC)+diag(TC)*ones(length(TC))); % Same as TC_eff(i,j) = 2*TC_red(i)*TC_red(j)/(TC_red(i)+TC_red(j)) but without for loops
@@ -162,8 +181,6 @@ else
 end
 HSoutput.sensorTemps = [];
 
-HSoutput.maxMediaTemps = HSinput.initialTemp*ones(nM,1);
-
 %% Output some diagnostics info and prepare the temperature evolution plot. If making a movie, put a geometry illustration into the beginning of the movie.
 if(~HSinput.silentMode)
   fprintf('\n');
@@ -177,18 +194,23 @@ if(~HSinput.silentMode)
     fprintf('End phase consists of %d steps of %0.2e s.\n',nUpdatesEnd*nTsPerUpdateEnd,dtEnd);
   end
   
-  if(HSinput.makeMovie) % Make a temporary figure showing the geometry illustration to put into the beginning of the movie
+  movieFrameidx = 1;
+  if(HSinput.makeMovie && ~isfield(HSinput,'prevHSoutput')) % Make a temporary figure showing the geometry illustration to put into the beginning of the movie
     heatsimFigure = plotVolumetric(21,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',HSinput.slicePositions);
     title('Geometry illustration');
     drawnow;
-    movieframes(1) = getframe(heatsimFigure);
+    movieframes(movieFrameidx) = getframe(heatsimFigure);
+    movieFrameidx = movieFrameidx + 1;
   end
   
   heatsimFigure = plotVolumetric(21,G.x,G.y,G.z,Temp,'MCmatlab_heat','slicePositions',HSinput.slicePositions);
   heatsimFigure.Name = 'Temperature evolution';
-  h_title = title('Temperature evolution, t = 0 s');
+  h_title = title(['Temperature evolution, t = ' num2str(updatesTimeVector(1),'%#.2g') ' s']);
   caxis(HSinput.plotTempLimits); % User-defined color scale limits
-  if(HSinput.makeMovie); movieframes(2) = getframe(heatsimFigure); end
+  if(HSinput.makeMovie && ~isfield(HSinput,'prevHSoutput'))
+    movieframes(movieFrameidx) = getframe(heatsimFigure);
+    movieFrameidx = movieFrameidx + 1;
+  end
 end
 
 %% Put heatSim parameters into a struct
@@ -227,7 +249,8 @@ for j=1:HSinput.nPulses
         drawnow;
         
         if(HSinput.makeMovie)
-          movieframes(updateIdx+2) = getframe(heatsimFigure);
+          movieframes(movieFrameidx) = getframe(heatsimFigure);
+          movieFrameidx = movieFrameidx + 1;
         end
       end
     end
@@ -261,7 +284,8 @@ for j=1:HSinput.nPulses
         drawnow;
         
         if(HSinput.makeMovie)
-          movieframes(updateIdx+2) = getframe(heatsimFigure);
+          movieframes(movieFrameidx) = getframe(heatsimFigure);
+          movieFrameidx = movieFrameidx + 1;
         end
       end
     end
@@ -295,12 +319,19 @@ for i = 1:nUpdatesEnd
     drawnow;
 
     if(HSinput.makeMovie)
-      movieframes(updateIdx+2) = getframe(heatsimFigure);
+      movieframes(movieFrameidx) = getframe(heatsimFigure);
+      movieFrameidx = movieFrameidx + 1;
     end
   end
 end
+HSoutput.finalTemp = Temp;
 
-if(~HSinput.silentMode) toc; end
+if isfield(HSinput,'prevHSoutput') % If there exists prior heat simulation data, append sensorTemps and sensorsTimeVector data
+  HSoutput.sensorTemps = [HSinput.prevHSoutput.sensorTemps(:,1:end-1) HSoutput.sensorTemps];
+  HSoutput.sensorsTimeVector = [HSinput.prevHSoutput.sensorsTimeVector(:,1:end-1) HSoutput.sensorsTimeVector];
+end
+
+if(~HSinput.silentMode); toc; end
 
 clear Temp heatSimParameters;
 
@@ -312,26 +343,34 @@ if(~HSinput.silentMode)
   end
   
   if(HSinput.makeMovie)
-    [resy,resx,~] = size(movieframes(1).cdata);
-    for idx = 1:length(movieframes)
-      movieframes(idx).cdata = movieframes(idx).cdata(1:end-rem(resy,2),1:end-rem(resx,2),:); % Crop frames by one pixel if x or y size is odd
+    if isfield(HSinput,'prevHSoutput') % If there exists prior heat simulation movieframes, append to them
+      movieframes = [HSinput.prevHSoutput.movieframes movieframes];
     end
-    movieframes = [repmat(movieframes(1),1,30) movieframes(1:end) repmat(movieframes(end),1,30)];
-    caller = dbstack(1,'-completenames');
-    writerObj = VideoWriter([fileparts(caller(1).file) '/temp.avi'],'Uncompressed AVI');
-    fprintf('Writing video...\n');
-    open(writerObj);
-    writeVideo(writerObj,movieframes);
-    close(writerObj);
-    if contains(computer, 'MAC') % macOS operating system
-      [~,~] = system(['./helperfuncs/x264_macOS -o "' fileparts(caller(1).file) '/' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '/temp.avi"']);
-    elseif contains(computer, 'WIN') % Windows operating system
-      [~,~] = system(['.\helperfuncs\x264_win64.exe -o "' fileparts(caller(1).file) '\' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '\temp.avi"']);
-    else % Linux operating system
-      [~,~] = system(['./helperfuncs/x264_linux -o "' fileparts(caller(1).file) '/' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '/temp.avi"']);
+
+    if(HSinput.deferMovieWrite)
+      HSoutput.movieframes = movieframes;
+    else
+      [resy,resx,~] = size(movieframes(1).cdata);
+      for idx = 1:length(movieframes)
+        movieframes(idx).cdata = movieframes(idx).cdata(1:end-rem(resy,2),1:end-rem(resx,2),:); % Crop frames by one pixel if x or y size is odd
+      end
+      movieframes = [repmat(movieframes(1),1,30) movieframes(1:end) repmat(movieframes(end),1,30)];
+      caller = dbstack(1,'-completenames');
+      writerObj = VideoWriter([fileparts(caller(1).file) '/temp.avi'],'Uncompressed AVI');
+      fprintf('Writing video...\n');
+      open(writerObj);
+      writeVideo(writerObj,movieframes);
+      close(writerObj);
+      if contains(computer, 'MAC') % macOS operating system
+        [~,~] = system(['./helperfuncs/x264_macOS -o "' fileparts(caller(1).file) '/' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '/temp.avi"']);
+      elseif contains(computer, 'WIN') % Windows operating system
+        [~,~] = system(['.\helperfuncs\x264_win64.exe -o "' fileparts(caller(1).file) '\' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '\temp.avi"']);
+      else % Linux operating system
+        [~,~] = system(['./helperfuncs/x264_linux -o "' fileparts(caller(1).file) '/' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '/temp.avi"']);
+      end
+      delete([fileparts(caller(1).file) '/temp.avi']);
+      fprintf('\b Done\n');
     end
-    delete([fileparts(caller(1).file) '/temp.avi']);
-    fprintf('\b Done\n');
   end
 end
 end
