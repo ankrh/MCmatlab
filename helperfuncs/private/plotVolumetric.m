@@ -45,25 +45,34 @@ directmapping = false; % Assume CDataMapping should not be set to direct
 reverseZ = false; % Assume z axis is not inverted
 fromZero = false; % Assume that the minimum of the color scale should not necessarily be zero
 colormap(inferno); % Assume we want to use the inferno colormap
-colorbar;
 linecolor = [0.5 0.5 0.5]; % Assume gray lines around all slices
 if(any(strcmp(varargin,'MCmatlab_GeometryIllustration')))
+  mediaProperties = varargin{2};
+  nM = length(mediaProperties);
+  h_legendobjects = zeros(nM,1);
+  for i=1:nM
+    h_legendobjects(i) = surface(zeros(2),zeros(2),zeros(2),i*ones(2)); % A hack to get MATLAB to display the legend the way I want
+  end
+  legend(h_legendobjects,{mediaProperties.name},'FontSize',12,'AutoUpdate','off');%,'Location','northeastoutside');
+
   xyzaxes = true;
   reverseZ = true;
-  mediaProperties = varargin{2};
   checkboxvisible = false;
   directmapping = true;
-  colormap(lines(length(mediaProperties)));
-  colorbar('TickLabels',{mediaProperties.name},'Ticks',(1:length(mediaProperties))+0.5);
+  colormap(lines(nM));
   linecolor = [0 0 0]; % Black lines around slices
 elseif(any(strcmp(varargin,'MCmatlab_fromZero')))
   xyzaxes = true;
   reverseZ = true;
   fromZero = true;
+  colorbar;
 elseif(any(strcmp(varargin,'MCmatlab_heat')))
   xyzaxes = true;
   reverseZ = true;
   colormap(hot);
+  colorbar;
+else
+  colorbar;
 end
 
 slicePositionVarargin = find(strcmpi(varargin,'slicePositions'),1); % Empty array if no slicePositions
@@ -133,6 +142,7 @@ h_surfzslice = surface(repmat(x', 1,ny),repmat(y ,nx, 1),repmat(zs,nx,ny),squeez
 
 if directmapping
   set([h_surfxback h_surfyback h_surfzback h_surfxslice h_surfyslice h_surfzslice],'CDataMapping','direct');
+  set(gca,'CLimMode','manual');
 end
 
 line([xh xh xh xh xh],[yl yh yh yl yl],[zh zh zl zl zh],'Color',linecolor);
@@ -172,7 +182,6 @@ set(h_slider2,'Callback',{@callback,vars});
 set(h_slider3,'Callback',{@callback,vars});
 
 rotate3d on
-return
 end
 
 function callback(src,event,vars)

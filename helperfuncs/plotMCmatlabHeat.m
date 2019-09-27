@@ -41,9 +41,13 @@ if(numTemperatureSensors)
   title('Temperature sensor illustration');
 
   for i=numTemperatureSensors:-1:1
-    sensorLabels{i,1} = num2str(i);
+    indices = round((HSinput.tempSensorPositions(i,:)+[G.Lx G.Ly 0]/2)./[G.dx G.dy G.dz] + [0.5 0.5 0.5]); % +[1 1 1] to go from zero-index reference to one-index reference and -[0.5 0.5 0.5] to go from voxel corner position to voxel center positions
+    indices = min([G.nx G.ny G.nz],max([1 1 1],indices)); % Coerce to the cuboid
+    linindex = sub2ind(size(G.M),indices(1),indices(2),indices(3));
+    sensorNumbers{i,1} = num2str(i);
+    sensorLabels{i,1} = [num2str(i) ', ' G.mediaProperties(G.M(linindex)).name];
   end
-  text(HSinput.tempSensorPositions(:,1),HSinput.tempSensorPositions(:,2),HSinput.tempSensorPositions(:,3),sensorLabels,'HorizontalAlignment','center','FontSize',18);
+  text(HSinput.tempSensorPositions(:,1),HSinput.tempSensorPositions(:,2),HSinput.tempSensorPositions(:,3),sensorNumbers,'HorizontalAlignment','center','VerticalAlignment','middle','FontSize',18);
 
   if(~ishandle(23))
     temperatureSensorFigure = figure(23);

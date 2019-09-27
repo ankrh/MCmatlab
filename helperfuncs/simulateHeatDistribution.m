@@ -64,6 +64,9 @@ end
 
 G = HSinput.G;
 nM = length(G.mediaProperties); % Number of different media in simulation
+if length([G.mediaProperties.VHC]) < nM || length([G.mediaProperties.TC]) < nM
+  error('Error: Not all media have VHC or TC defined');
+end
 
 if isfield(HSinput,'prevHSoutput')
   Temp = HSinput.prevHSoutput.finalTemp;
