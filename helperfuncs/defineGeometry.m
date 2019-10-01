@@ -6,7 +6,7 @@ function G = defineGeometry(G)
 %   Requires
 %       getMediaProperties.m
 %
-%   See also getMediaProperties, runMonteCarlo
+%   See also getMediaProperties, mediaPropertiesLibrary, runMonteCarlo
 
 %%%%%
 %   Copyright 2017, 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
