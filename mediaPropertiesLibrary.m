@@ -179,22 +179,6 @@ mediaProperties(j).VHC = 1530*1.3e-3; % Thermal data has been approximated using
 mediaProperties(j).TC  = 6.3e-3;
 
 j=11;
-mediaProperties(j).name  = 'glassfiber';
-mediaProperties(j).mua   = 0.0001;
-mediaProperties(j).mus   = 0.6666;
-mediaProperties(j).g     = 0;
-mediaProperties(j).VHC   = 703*2.203e-3;
-mediaProperties(j).TC    = 13.8e-3;
-
-j=12;
-mediaProperties(j).name  = 'patch';
-mediaProperties(j).mua   = 1119;
-mediaProperties(j).mus   = 15;
-mediaProperties(j).g     = 0.8;
-mediaProperties(j).VHC   = 5.363*1.048e-3;
-mediaProperties(j).TC    = 4.6e-3;
-
-j=13;
 mediaProperties(j).name  = 'skull';
 % ONLY PLACEHOLDER DATA!
 B = 0.0005;
@@ -213,7 +197,7 @@ mediaProperties(j).g   = gg;
 mediaProperties(j).VHC = 3391*1.109e-3;
 mediaProperties(j).TC  = 0.37e-2;
 
-j=14;
+j=12;
 mediaProperties(j).name = 'gray matter';
 % ONLY PLACEHOLDER DATA!
 B = 0.01;
@@ -233,7 +217,7 @@ mediaProperties(j).n   = 1.3;
 mediaProperties(j).VHC = 3391*1.109e-3;
 mediaProperties(j).TC  = 0.37e-2;
 
-j=15;
+j=13;
 mediaProperties(j).name  = 'white matter';
 % ONLY PLACEHOLDER DATA!
 B = 0.01;
@@ -252,61 +236,3 @@ mediaProperties(j).g   = gg;
 mediaProperties(j).n   = 1.3;
 mediaProperties(j).VHC = 3391*1.109e-3;
 mediaProperties(j).TC  = 0.37e-2;
-
-j=16;
-mediaProperties(j).name  = 'test fluorescer';
-if(wavelength<500)
-  mediaProperties(j).mua = 100;
-  mediaProperties(j).mus = 100;
-  mediaProperties(j).g   = 0.9;
-
-  mediaProperties(j).Y   = 0.5;
-else
-  mediaProperties(j).mua = 1;
-  mediaProperties(j).mus = 100;
-  mediaProperties(j).g   = 0.9;
-end
-mediaProperties(j).n   = 1.3;
-
-j=17;
-mediaProperties(j).name  = 'test fluorescence absorber';
-if(wavelength<500)
-  mediaProperties(j).mua = 1;
-  mediaProperties(j).mus = 100;
-  mediaProperties(j).g   = 0.9;
-else
-  mediaProperties(j).mua = 100;
-  mediaProperties(j).mus = 100;
-  mediaProperties(j).g   = 0.9;
-end
-mediaProperties(j).n   = 1.3;
-
-j=18;
-mediaProperties(j).name  = 'testscatterer';
-mediaProperties(j).mua   = 0.0000001;
-mediaProperties(j).mus   = 100;
-mediaProperties(j).g     = 0;
-
-j=19;
-mediaProperties(j).name  = 'testabsorber';
-mediaProperties(j).mua   = 10000000000;
-mediaProperties(j).mus   = 1;
-mediaProperties(j).g     = 0;
-
-j=20;
-mediaProperties(j).name  = 'reflector';
-mediaProperties(j).mua   = 1;
-mediaProperties(j).mus   = 1;
-mediaProperties(j).g     = 0;
-mediaProperties(j).n     = Inf;
-
-j=21;
-mediaProperties(j).name  = 'variable g medium';
-mediaProperties(j).mua   = 10;
-mediaProperties(j).mus   = 100;
-if ~isempty(parameters)
-  mediaProperties(j).g = parameters{1};
-else
-  mediaProperties(j).g = 0;
-end
-

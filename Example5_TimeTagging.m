@@ -28,6 +28,8 @@ Ginput.Lx                = .1; % [cm] x size of simulation cuboid
 Ginput.Ly                = .1; % [cm] y size of simulation cuboid
 Ginput.Lz                = .1; % [cm] z size of simulation cuboid
 
+Ginput.getCustomMediaProperties = @customMediaProperties; % Custom media properties defined as a function at the bottom of this file
+
 Ginput.GeomFunc          = @GeometryDefinition_TimeTaggingExample; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
 % Execution, do not modify the next two lines:
@@ -82,6 +84,17 @@ plotMCmatlab(MCinput,MCoutput);
 function M = GeometryDefinition_TimeTaggingExample(X,Y,Z,parameters)
 [nx,ny,~] = size(X);
 M = ones(size(X)); % Air background
-M(1:(nx*(ny+1)+1):end) = 18; % Set xyz diagonal positions to testscatterer
-M(1:(nx*(ny+1)):end) = 18; % Set yz diagonal positions to testscatterer
+M(1:(nx*(ny+1)+1):end) = 2; % Set xyz diagonal positions to testscatterer
+M(1:(nx*(ny+1)):end) = 2; % Set yz diagonal positions to testscatterer
+end
+
+%% Custom media properties
+% a function returning struct containing custom media properties for the model.
+% For more details on how to define them, check mediaPropertiesLibrary.m
+function mediaProperties = customMediaProperties(wavelength,parameters)
+j=2;
+mediaProperties(j).name  = 'testscatterer';
+mediaProperties(j).mua   = 0.0000001;
+mediaProperties(j).mus   = 100;
+mediaProperties(j).g     = 0;
 end

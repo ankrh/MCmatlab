@@ -35,6 +35,8 @@ Ginput.Lx                = .1; % [cm] x size of simulation cuboid
 Ginput.Ly                = .1; % [cm] y size of simulation cuboid
 Ginput.Lz                = .1; % [cm] z size of simulation cuboid
 
+Ginput.getCustomMediaProperties = @customMediaProperties; % Custom media properties defined as a function at the bottom of this file
+
 Ginput.GeomFunc          = @GeometryDefinition_RefractionReflectionExample; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
 % Execution, do not modify the next two lines:
@@ -72,5 +74,17 @@ plotMCmatlab(MCinput,MCoutput);
 function M = GeometryDefinition_RefractionReflectionExample(X,Y,Z,parameters)
 M = ones(size(X)); % Air background
 M(Z>0.03) = 2; % Water
-M(Z>0.09) = 20; % Reflector
+M(Z>0.09) = 3; % Reflector
+end
+
+%% Custom media properties
+% a function returning struct containing custom media properties for the model.
+% For more details on how to define them, check mediaPropertiesLibrary.m
+function mediaProperties = customMediaProperties(wavelength,parameters)
+j=3;
+mediaProperties(j).name  = 'reflector';
+mediaProperties(j).mua   = 1;
+mediaProperties(j).mus   = 1;
+mediaProperties(j).g     = 0;
+mediaProperties(j).n     = Inf;
 end

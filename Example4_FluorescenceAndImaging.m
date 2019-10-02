@@ -33,6 +33,8 @@ Ginput.Lx                = .1; % [cm] x size of simulation cuboid
 Ginput.Ly                = .1; % [cm] y size of simulation cuboid
 Ginput.Lz                = .1; % [cm] z size of simulation cuboid
 
+Ginput.getCustomMediaProperties = @customMediaProperties; % Custom media properties defined as a function at the bottom of this file
+
 Ginput.GeomFunc          = @GeometryDefinition_FluorescingCylinder; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
 % Execution, do not modify the next two lines:
@@ -109,6 +111,40 @@ plotMCmatlabFluorescence(FMCinput,FMCoutput);
 % getMediaProperties) at each voxel location.
 function M = GeometryDefinition_FluorescingCylinder(X,Y,Z,parameters)
 cylinderradius  = 0.0100;
-M = 17*ones(size(X)); % fill background with fluorescence absorber
-M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 16; % fluorescer
+M = ones(size(X)); % fill background with fluorescence absorber
+M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 2; % fluorescer
+end
+
+%% Custom media properties
+% a function returning struct containing custom media properties for the model.
+% For more details on how to define them, check mediaPropertiesLibrary.m
+function mediaProperties = customMediaProperties(wavelength,parameters)
+j=1;
+mediaProperties(j).name  = 'test fluorescence absorber';
+if(wavelength<500)
+  mediaProperties(j).mua = 1;
+  mediaProperties(j).mus = 100;
+  mediaProperties(j).g   = 0.9;
+else
+  mediaProperties(j).mua = 100;
+  mediaProperties(j).mus = 100;
+  mediaProperties(j).g   = 0.9;
+end
+mediaProperties(j).n   = 1.3;
+
+j=2;
+mediaProperties(j).name  = 'test fluorescer';
+if(wavelength<500)
+  mediaProperties(j).mua = 100;
+  mediaProperties(j).mus = 100;
+  mediaProperties(j).g   = 0.9;
+
+  mediaProperties(j).Y   = 0.5;
+else
+  mediaProperties(j).mua = 1;
+  mediaProperties(j).mus = 100;
+  mediaProperties(j).g   = 0.9;
+end
+mediaProperties(j).n   = 1.3;
+
 end

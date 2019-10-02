@@ -38,6 +38,8 @@ Ginput.Lx                = .1; % [cm] x size of simulation cuboid
 Ginput.Ly                = .1; % [cm] y size of simulation cuboid
 Ginput.Lz                = .01; % [cm] z size of simulation cuboid
 
+Ginput.getCustomMediaProperties = @customMediaProperties; % Custom media properties defined as a function at the bottom of this file
+
 Ginput.GeomFunc          = @GeometryDefinition_MediaPropertyParametricSweep; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
 % Execution, do not modify the next two lines:
@@ -97,5 +99,20 @@ set(gca,'FontSize',18);grid on; grid minor;
 % containing numerical values indicating the media type (as defined in
 % getMediaProperties) at each voxel location.
 function M = GeometryDefinition_MediaPropertyParametricSweep(X,Y,Z,parameters)
-M = 21*ones(size(X)); % Variable g medium
+M = ones(size(X)); % Variable g medium
+end
+
+%% Custom media properties
+% a function returning struct containing custom media properties for the model.
+% For more details on how to define them, check mediaPropertiesLibrary.m
+function mediaProperties = customMediaProperties(wavelength,parameters)
+j=1;
+mediaProperties(j).name  = 'variable g medium';
+mediaProperties(j).mua   = 10;
+mediaProperties(j).mus   = 100;
+if ~isempty(parameters)
+  mediaProperties(j).g = parameters{1};
+else
+  mediaProperties(j).g = 0;
+end
 end

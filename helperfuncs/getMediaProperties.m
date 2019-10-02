@@ -1,4 +1,4 @@
-function [M, mediaProperties] = getMediaProperties(M,wavelength,parameters)
+function [M, mediaProperties] = getMediaProperties(M,wavelength,parameters,getCustomMediaProperties)
 %   Returns the reduced medium matrix, using only numbers from 1 up to the number of used media, and
 %   the known media properties (optical, thermal and/or fluorescence) at the specified wavelength.
 %
@@ -25,6 +25,16 @@ function [M, mediaProperties] = getMediaProperties(M,wavelength,parameters)
 %%%%%
 
 mediaProperties = mediaPropertiesLibrary(wavelength,parameters);
+if ~isempty(getCustomMediaProperties)
+  customMediaProperties = getCustomMediaProperties(wavelength,parameters);
+  for index = 1:length(customMediaProperties)
+    if ~isempty(customMediaProperties(index).name)
+      for fieldName = fieldnames(customMediaProperties)'
+        mediaProperties(index).(cell2mat(fieldName)) = customMediaProperties(index).(cell2mat(fieldName));
+      end
+    end
+  end
+end
 
 %% Trim mediaProperties down to use only the media included in the input matrix M, and reduce M accordingly
 mediumMap = zeros(1,length(mediaProperties),'uint8');
