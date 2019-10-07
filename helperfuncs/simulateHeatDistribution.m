@@ -63,8 +63,9 @@ if ~isfield(HSinput.MCoutput,'F')
 end
 
 G = HSinput.G;
-nM = length(G.mediaProperties); % Number of different media in simulation
-if length([G.mediaProperties.VHC]) < nM || length([G.mediaProperties.TC]) < nM
+mediaProperties = HSinput.MCoutput.mediaProperties;
+nM = length(mediaProperties); % Number of different media in simulation
+if length([mediaProperties.VHC]) < nM || length([mediaProperties.TC]) < nM
   error('Error: Not all media have VHC or TC defined');
 end
 
@@ -76,12 +77,12 @@ else
   HSoutput.maxMediaTemps = HSinput.initialTemp*ones(nM,1);
 end
 
-VHC = single([G.mediaProperties.VHC]); % Volumetric heat capacity array. Element i is the VHC of medium i in the reduced mediaProperties list.
-TC = single([G.mediaProperties.TC]); % Thermal conductivity array. Element i is the TC of medium i in the reduced mediaProperties list.
+VHC = single([mediaProperties.VHC]); % Volumetric heat capacity array. Element i is the VHC of medium i in the reduced mediaProperties list.
+TC = single([mediaProperties.TC]); % Thermal conductivity array. Element i is the TC of medium i in the reduced mediaProperties list.
 
 %% Prepare Arrhenius thermal damage parameters
-A = [G.mediaProperties.A];
-E = [G.mediaProperties.E];
+A = [mediaProperties.A];
+E = [mediaProperties.E];
 if(any(A)) % If non-zero Arrhenius data exists, prepare to calculate thermal damage.
   if isfield(HSinput,'prevHSoutput')
     HSoutput.Omega = HSinput.prevHSoutput.Omega;
@@ -165,7 +166,7 @@ dTdtperdeltaT  = cat(3,TC_eff./(diag(VHC)*ones(nM))/G.dx^2,...
 clear TC_eff
 
 %% Calculate temperature change due to absorbed heat per time step
-mua_vec = [G.mediaProperties.mua];
+mua_vec = [mediaProperties.mua];
 dTdt_abs = mua_vec(G.M).*HSinput.MCoutput.F*HSinput.P./VHC(G.M); % [deg C/s] Time derivative of voxel temperature due to absorption. (mua_vec(G.M).*F is a 3D matrix of normalized volumetric powers)
 
 %% Convert the temperature sensor positions to interpolation corner indices and weights used in the MEX function
@@ -199,7 +200,7 @@ if(~HSinput.silentMode)
   
   movieFrameidx = 1;
   if(HSinput.makeMovie && ~isfield(HSinput,'prevHSoutput')) % Make a temporary figure showing the geometry illustration to put into the beginning of the movie
-    heatsimFigure = plotVolumetric(21,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',HSinput.slicePositions);
+    heatsimFigure = plotVolumetric(21,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',mediaProperties,'slicePositions',HSinput.slicePositions);
     title('Geometry illustration');
     drawnow;
     movieframes(movieFrameidx) = getframe(heatsimFigure);
@@ -342,7 +343,7 @@ clear Temp heatSimParameters;
 if(~HSinput.silentMode)
   fprintf('\n');
   for idx=1:nM
-    fprintf('Highest temperature obtained in %s is %.2f°C\n',G.mediaProperties(idx).name,HSoutput.maxMediaTemps(idx));
+    fprintf('Highest temperature obtained in %s is %.2f°C\n',mediaProperties(idx).name,HSoutput.maxMediaTemps(idx));
   end
   
   if(HSinput.makeMovie)

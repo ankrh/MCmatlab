@@ -16,11 +16,6 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 
 %% Geometry definition
 clear Ginput
-Ginput.matchedInterfaces = true; % Assumes all refractive indices are 1
-Ginput.boundaryType      = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
-
-Ginput.wavelength        = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
-
 Ginput.nx                = 100; % Number of bins in the x direction
 Ginput.ny                = 100; % Number of bins in the y direction
 Ginput.nz                = 100; % Number of bins in the z direction
@@ -28,15 +23,21 @@ Ginput.Lx                = .1; % [cm] x size of simulation cuboid
 Ginput.Ly                = .1; % [cm] y size of simulation cuboid
 Ginput.Lz                = .1; % [cm] z size of simulation cuboid
 
+Ginput.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 Ginput.GeomFunc          = @GeometryDefinition_BloodVessel; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
-% Execution, do not modify the next two lines:
+% Execution, do not modify the next line:
 Goutput = defineGeometry(Ginput);
+
 plotMCmatlabGeom(Goutput);
 
 %% Monte Carlo simulation
 clear MCinput
 MCinput.simulationTime           = .1; % [min] Time duration of the simulation
+
+MCinput.matchedInterfaces        = true; % Assumes all refractive indices are 1
+MCinput.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+MCinput.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
 MCinput.Beam.beamType            = 6; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
 MCinput.Beam.xFocus              = 0; % [cm] x position of focus
@@ -47,9 +48,10 @@ MCinput.Beam.phi                 = 0; % [rad] Azimuthal angle of beam center axi
 MCinput.Beam.waist               = 0.03; % [cm] Beam waist 1/e^2 radius
 MCinput.Beam.divergence          = 0/180*pi; % [rad] Beam divergence 1/e^2 half-angle of beam (for a diffraction limited Gaussian beam, this is G.wavelength*1e-9/(pi*MCinput.Beam.waist*1e-2))
 
-% Execution, do not modify the next three lines:
+% Execution, do not modify the next two lines:
 MCinput.G = Goutput;
 MCoutput = runMonteCarlo(MCinput);
+
 plotMCmatlab(MCinput,MCoutput);
 
 %% Heat simulation
@@ -75,10 +77,11 @@ HSinput.tempSensorPositions = [0 0 0.038
                                0 0 0.042
                                0 0 0.044]; % Each row is a temperature sensor's absolute [x y z] coordinates. Leave the matrix empty ([]) to disable temperature sensors.
 
-% Execution, do not modify the next four lines:
+% Execution, do not modify the next three lines:
 HSinput.G = Goutput;
 HSinput.MCoutput = MCoutput;
 HSoutput = simulateHeatDistribution(HSinput);
+
 plotMCmatlabHeat(HSinput,HSoutput);
 
 %% Post-processing
@@ -95,8 +98,91 @@ zsurf = 0.01;
 epd_thick = 0.006;
 vesselradius  = 0.0100;
 vesseldepth = 0.04;
-M = 2*ones(size(X)); % fill background with water (gel)
-M(Z > zsurf) = 4; % epidermis
-M(Z > zsurf + epd_thick) = 5; % dermis
-M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 6; % blood
+M = ones(size(X)); % fill background with water (gel)
+M(Z > zsurf) = 2; % epidermis
+M(Z > zsurf + epd_thick) = 3; % dermis
+M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 4; % blood
+end
+
+%% Media Properties function
+% The media properties function defines all the optical and thermal
+% properties of the media involved by constructing and returning a
+% "mediaProperties" struct with various fields. As its input, the function
+% takes the wavelength as well as any other parameters you might specify
+% above in the model file, for example parameters that you might loop over
+% in a for loop.
+function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
+load spectralLIB.mat
+MU(:,1) = interp1(nmLIB,muaoxy,wavelength);
+MU(:,2) = interp1(nmLIB,muadeoxy,wavelength);
+MU(:,3) = interp1(nmLIB,muawater,wavelength);
+MU(:,4) = interp1(nmLIB,muamel,wavelength);
+
+j=1;
+mediaProperties(j).name  = 'water';
+mediaProperties(j).mua   = 0.00036;
+mediaProperties(j).mus   = 10;
+mediaProperties(j).g     = 1.0;
+mediaProperties(j).n     = 1.3;
+mediaProperties(j).VHC   = 4.19;
+mediaProperties(j).TC    = 5.8e-3;
+
+j=2;
+mediaProperties(j).name  = 'epidermis';
+B = 0;
+S = 0.75;
+W = 0.75;
+Me = 0.03;
+musp500 = 40;
+fray    = 0.0;
+bmie    = 1.0;
+gg      = 0.90;
+musp = musp500*(fray*(wavelength/500).^-4 + (1-fray)*(wavelength/500).^-bmie);
+X = [B*S B*(1-S) W Me]';
+mediaProperties(j).mua = MU*X;
+mediaProperties(j).mus = musp/(1-gg);
+mediaProperties(j).g   = gg;
+mediaProperties(j).n   = 1.3;
+mediaProperties(j).VHC = 3391*1.109e-3;
+mediaProperties(j).TC  = 0.37e-2;
+
+j=3;
+mediaProperties(j).name = 'dermis';
+B = 0.002;
+S = 0.67;
+W = 0.65;
+Me = 0;
+musp500 = 42.4;
+fray    = 0.62;
+bmie    = 1.0;
+gg      = 0.90;
+musp = musp500*(fray*(wavelength/500).^-4 + (1-fray)*(wavelength/500).^-bmie);
+X = [B*S B*(1-S) W Me]';
+mediaProperties(j).mua = MU*X;
+mediaProperties(j).mus = musp/(1-gg);
+mediaProperties(j).g   = gg;
+mediaProperties(j).n   = 1.3;
+mediaProperties(j).VHC = 3391*1.109e-3;
+mediaProperties(j).TC  = 0.37e-2;
+
+j=4;
+mediaProperties(j).name  = 'blood';
+B       = 1.00;
+S       = 0.75;
+W       = 0.95;
+Me      = 0;
+musp500 = 10;
+fray    = 0.0;
+bmie    = 1.0;
+gg      = 0.90;
+musp = musp500*(fray*(wavelength/500).^-4 + (1-fray)*(wavelength/500).^-bmie);
+X = [B*S B*(1-S) W Me]';
+mediaProperties(j).mua = MU*X;
+mediaProperties(j).mus = musp/(1-gg);
+mediaProperties(j).g   = gg;
+mediaProperties(j).n   = 1.3;
+mediaProperties(j).VHC = 3617*1.050e-3;
+mediaProperties(j).TC  = 0.52e-2;
+mediaProperties(j).E   = 422.5e3; % J/mol    PLACEHOLDER DATA ONLY
+mediaProperties(j).A   = 7.6e66; % 1/s        PLACEHOLDER DATA ONLY
 end

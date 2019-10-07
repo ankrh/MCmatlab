@@ -31,12 +31,13 @@ if ~isfield(HSinput,'tempSensorPositions')
 end
 
 G = HSinput.G;
-nM = length(G.mediaProperties); % Number of different media in simulation
+mediaProperties = HSinput.MCoutput.mediaProperties;
+nM = length(mediaProperties); % Number of different media in simulation
 numTemperatureSensors = size(HSinput.tempSensorPositions,1);
 
 %% Plot the geometry showing the temperature sensor locations and the sensor data
 if(numTemperatureSensors)
-  geometryFigure = plotVolumetric(22,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',HSinput.slicePositions);
+  geometryFigure = plotVolumetric(22,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',mediaProperties,'slicePositions',HSinput.slicePositions);
   geometryFigure.Name = 'Temperature sensor illustration';
   title('Temperature sensor illustration');
 
@@ -45,7 +46,7 @@ if(numTemperatureSensors)
     indices = min([G.nx G.ny G.nz],max([1 1 1],indices)); % Coerce to the cuboid
     linindex = sub2ind(size(G.M),indices(1),indices(2),indices(3));
     sensorNumbers{i,1} = num2str(i);
-    sensorLabels{i,1} = [num2str(i) ', ' G.mediaProperties(G.M(linindex)).name];
+    sensorLabels{i,1} = [num2str(i) ', ' mediaProperties(G.M(linindex)).name];
   end
   text(HSinput.tempSensorPositions(:,1),HSinput.tempSensorPositions(:,2),HSinput.tempSensorPositions(:,3),sensorNumbers,'HorizontalAlignment','center','VerticalAlignment','middle','FontSize',18);
 
@@ -72,8 +73,8 @@ end
 if ~isnan(HSoutput.Omega(1))
   M_damage = G.M;
   M_damage(HSoutput.Omega > 1) = nM + 1;
-  G.mediaProperties(nM + 1).name = 'damage';
-  damageFigure = plotVolumetric(25,G.x,G.y,G.z,M_damage,'MCmatlab_GeometryIllustration',G.mediaProperties,'slicePositions',HSinput.slicePositions);
+  mediaProperties(nM + 1).name = 'damage';
+  damageFigure = plotVolumetric(25,G.x,G.y,G.z,M_damage,'MCmatlab_GeometryIllustration',mediaProperties,'slicePositions',HSinput.slicePositions);
   damageFigure.Name = 'Thermal damage illustration';
   title('Thermal damage illustration');
   fprintf('%.2e cm^3 was thermally damaged.\n',G.dx*G.dy*G.dz*sum(sum(sum(HSoutput.Omega > 1))));

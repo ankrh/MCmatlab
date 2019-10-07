@@ -16,11 +16,6 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 
 %% Geometry definition
 clear Ginput
-Ginput.matchedInterfaces = true; % Assumes all refractive indices are 1
-Ginput.boundaryType      = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
-
-Ginput.wavelength        = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
-
 Ginput.nx                = 20; % Number of bins in the x direction
 Ginput.ny                = 20; % Number of bins in the y direction
 Ginput.nz                = 20; % Number of bins in the z direction
@@ -28,18 +23,22 @@ Ginput.Lx                = .1; % [cm] x size of simulation cuboid
 Ginput.Ly                = .1; % [cm] y size of simulation cuboid
 Ginput.Lz                = .1; % [cm] z size of simulation cuboid
 
-Ginput.getCustomMediaProperties = @customMediaProperties; % Custom media properties defined as a function at the bottom of this file
-
+Ginput.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 Ginput.GeomFunc          = @GeometryDefinition_TimeTaggingExample; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
-% Execution, do not modify the next two lines:
+% Execution, do not modify the next line:
 Goutput = defineGeometry(Ginput);
+
 plotMCmatlabGeom(Goutput);
 
 %% Monte Carlo simulation
 clear MCinput
 MCinput.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 MCinput.simulationTime           = .5; % [min] Time duration of the simulation
+
+MCinput.matchedInterfaces        = true; % Assumes all refractive indices are 1
+MCinput.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+MCinput.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
 MCinput.Beam.beamType            = 2; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
 MCinput.Beam.xFocus              = 0; % [cm] x position of focus
@@ -68,9 +67,10 @@ MCinput.LightCollector.tStart    = -1.5e-13; % [s] Start of the detection time i
 MCinput.LightCollector.tEnd      = 5.5e-12; % [s] End of the detection time interval
 MCinput.LightCollector.nTimeBins = 100; % Number of bins between tStart and tEnd. If zero, the measurement is not time-resolved.
 
-% Execution, do not modify the next three lines:
+% Execution, do not modify the next two lines:
 MCinput.G = Goutput;
 MCoutput = runMonteCarlo(MCinput);
+
 plotMCmatlab(MCinput,MCoutput);
 
 %% Post-processing
@@ -84,16 +84,26 @@ plotMCmatlab(MCinput,MCoutput);
 function M = GeometryDefinition_TimeTaggingExample(X,Y,Z,parameters)
 [nx,ny,~] = size(X);
 M = ones(size(X)); % Air background
-M(1:(nx*(ny+1)+1):end) = 2; % Set xyz diagonal positions to testscatterer
-M(1:(nx*(ny+1)):end) = 2; % Set yz diagonal positions to testscatterer
+M(1:(nx*(ny+1)+1):end) = 2; % Set xyz diagonal positions to test scatterer
+M(1:(nx*(ny+1)):end) = 2; % Set yz diagonal positions to test scatterer
 end
 
-%% Custom media properties
-% a function returning struct containing custom media properties for the model.
-% For more details on how to define them, check mediaPropertiesLibrary.m
-function mediaProperties = customMediaProperties(wavelength,parameters)
+%% Media Properties function
+% The media properties function defines all the optical and thermal
+% properties of the media involved by constructing and returning a
+% "mediaProperties" struct with various fields. As its input, the function
+% takes the wavelength as well as any other parameters you might specify
+% above in the model file, for example parameters that you might loop over
+% in a for loop.
+function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
+j=1;
+mediaProperties(j).name  = 'air';
+mediaProperties(j).mua   = 1e-8;
+mediaProperties(j).mus   = 1e-8;
+mediaProperties(j).g     = 1;
+
 j=2;
-mediaProperties(j).name  = 'testscatterer';
+mediaProperties(j).name  = 'test scatterer';
 mediaProperties(j).mua   = 0.0000001;
 mediaProperties(j).mus   = 100;
 mediaProperties(j).g     = 0;

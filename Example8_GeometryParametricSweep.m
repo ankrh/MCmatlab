@@ -36,10 +36,6 @@ fprintf('\b\b\b\b\b\b%2d/%2d\n',i,length(t_vec)); % Simple progress indicator
 %% Geometry definition
 clear Ginput
 Ginput.silentMode        = true; % Disables command window text and progress indication
-Ginput.matchedInterfaces = true; % Assumes all refractive indices are 1
-Ginput.boundaryType      = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
-
-Ginput.wavelength        = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
 Ginput.nx                = 21; % Number of bins in the x direction
 Ginput.ny                = 21; % Number of bins in the y direction
@@ -48,11 +44,13 @@ Ginput.Lx                = .1; % [cm] x size of simulation cuboid
 Ginput.Ly                = .1; % [cm] y size of simulation cuboid
 Ginput.Lz                = .1; % [cm] z size of simulation cuboid
 
+Ginput.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 Ginput.GeomFunc          = @GeometryDefinition_VariableThicknessStandardTissue; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 Ginput.GeomFuncParams    = {Ginput.Lz-t_vec(i)}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
 
-% Execution, do not modify the next two lines:
+% Execution, do not modify the next line:
 Goutput = defineGeometry(Ginput);
+
 % plotMCmatlabGeom(Goutput);
 
 %% Monte Carlo simulation
@@ -61,6 +59,10 @@ MCinput.silentMode               = true; % Disables command window text and prog
 MCinput.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 MCinput.simulationTime           = 2/60; % [min] Time duration of the simulation
 MCinput.calcF                    = false; % (Default: true) If true, the 3D fluence rate output matrix F will be calculated. Set to false if you have a light collector and you're only interested in the Image output.
+
+MCinput.matchedInterfaces        = true; % Assumes all refractive indices are 1
+MCinput.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+MCinput.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
 MCinput.Beam.beamType            = 0; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
 MCinput.Beam.xFocus              = 0; % [cm] x position of focus
@@ -85,9 +87,10 @@ MCinput.LightCollector.NA        = 0.22; % [-] Fiber NA. Only used for infinite 
 
 MCinput.LightCollector.res       = 1; % X and Y resolution of light collector in pixels, only used for finite f
 
-% Execution, do not modify the next three lines:
+% Execution, do not modify the next two lines:
 MCinput.G = Goutput;
 MCoutput = runMonteCarlo(MCinput);
+
 % plotMCmatlab(MCinput,MCoutput);
 
 %% Post-processing
@@ -109,5 +112,32 @@ set(gca,'FontSize',18);grid on; grid minor;
 % getMediaProperties) at each voxel location.
 function M = GeometryDefinition_VariableThicknessStandardTissue(X,Y,Z,parameters)
 M = ones(size(X)); % Air
-M(Z > parameters{1}) = 3; % "Standard" tissue
+M(Z > parameters{1}) = 2; % "Standard" tissue
+end
+
+%% Media Properties function
+% The media properties function defines all the optical and thermal
+% properties of the media involved by constructing and returning a
+% "mediaProperties" struct with various fields. As its input, the function
+% takes the wavelength as well as any other parameters you might specify
+% above in the model file, for example parameters that you might loop over
+% in a for loop.
+function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
+j=1;
+mediaProperties(j).name  = 'air';
+mediaProperties(j).mua   = 1e-8;
+mediaProperties(j).mus   = 1e-8;
+mediaProperties(j).g     = 1;
+mediaProperties(j).n     = 1;
+mediaProperties(j).VHC   = 1.2e-3;
+mediaProperties(j).TC    = 0; % Real value is 2.6e-4, but we set it to zero to neglect the heat transport to air
+
+j=2;
+mediaProperties(j).name  = 'standard tissue';
+mediaProperties(j).mua   = 1;
+mediaProperties(j).mus   = 100;
+mediaProperties(j).g     = 0.9;
+mediaProperties(j).n     = 1.3;
+mediaProperties(j).VHC   = 3391*1.109e-3;
+mediaProperties(j).TC    = 0.37e-2;
 end

@@ -37,8 +37,12 @@ function plotMCmatlab(MCinput,MCoutput)
 
 G = MCinput.G;
 
+%% Make media properties plot
+h_f = plotMediaProperties(2,MCoutput.mediaProperties,MCinput.matchedInterfaces);
+h_f.Name = 'Media properties';
+
 %% Plot boundary fluences
-if G.boundaryType == 1
+if MCinput.boundaryType == 1
   fprintf('%.3g%% of incident light hits the cuboid boundaries.\n',100*(sum(sum((MCoutput.I_xpos + MCoutput.I_xneg)*G.dy*G.dz)) + sum(sum((MCoutput.I_ypos + MCoutput.I_yneg)*G.dx*G.dz)) + sum(sum((MCoutput.I_zpos + MCoutput.I_zneg)*G.dx*G.dy))));
   
   if(~ishandle(11))
@@ -50,7 +54,6 @@ if G.boundaryType == 1
   h_f.Color = 'w';
   h_f.Name = 'Boundary fluence rate';
   clf;
-  h_a = axes;
   title('Boundary fluence rate [W/cm^2/W.incident]');
   
   x = round([(G.x - G.dx/2) , (max(G.x) + G.dx/2)],15);
@@ -81,6 +84,9 @@ if G.boundaryType == 1
   surface(repmat(xh,G.ny+1,G.nz+1),repmat(y',     1,G.nz+1),repmat(z ,G.ny+1,     1),I_xpos_pad,'LineStyle','none');
   surface(repmat(x',     1,G.nz+1),repmat(yh,G.nx+1,G.nz+1),repmat(z ,G.nx+1,     1),I_ypos_pad,'LineStyle','none');
   surface(repmat(x',     1,G.ny+1),repmat(y ,G.nx+1,     1),repmat(zh,G.nx+1,G.ny+1),I_zpos_pad,'LineStyle','none');
+  line(G.Lx/2*[1 1 1 1 -1 -1 -1 -1 1],G.Ly/2*[1 1 -1 -1 -1 -1 1 1 1],G.Lz*[1 0 0 1 1 0 0 1 1],'Color',[0.5 0.5 0.5]);
+  line(G.Lx/2*[1 1 1 1 -1 -1 -1 -1 1],G.Ly/2*[1 1 -1 -1 -1 -1 1 1 1],G.Lz*[0 1 1 0 0 1 1 0 0],'Color',[0.5 0.5 0.5]);
+
   set(gca,'ZDir','reverse');
   colormap(inferno);
   colorbar;
@@ -95,7 +101,7 @@ if G.boundaryType == 1
   if ~verLessThan('matlab','9.0')
     setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera');
   end
-elseif G.boundaryType == 2
+elseif MCinput.boundaryType == 2
   if ~(isfield(MCinput.Beam,'beamType') && MCinput.Beam.beamType == 2) 
     fprintf('%.3g%% of incident light hits the top cuboid boundary.\n',100*(sum(sum(MCoutput.I_zneg*G.dx*G.dy))));
   end
@@ -124,7 +130,7 @@ end
 
 if isfield(MCoutput,'F')
   %% Make power absorption plot
-  mua_vec = [G.mediaProperties.mua];
+  mua_vec = [MCoutput.mediaProperties.mua];
   h_f = plotVolumetric(4,G.x,G.y,G.z,mua_vec(G.M).*MCoutput.F,'MCmatlab_fromZero');
   h_f.Name = 'Normalized power absorption';
   title('Normalized absorbed power per unit volume [W/cm^3/W.incident] ')
@@ -138,7 +144,7 @@ if isfield(MCoutput,'F')
 end
 
 if isfield(MCoutput,'ExamplePaths')
-  h_f = plotVolumetric(6,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties);
+  h_f = plotVolumetric(6,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',MCoutput.mediaProperties);
   h_f.Name = 'Photon paths';
   title('Photon paths');
   box on;grid on;grid minor;
@@ -169,7 +175,7 @@ end
 
 if(isfield(MCinput,'LightCollector'))
   %% If there's a light collector, show its orientation and the detected light
-  h_f = plotVolumetric(7,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties);
+  h_f = plotVolumetric(7,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',MCoutput.mediaProperties);
   h_f.Name = 'Light collector illustration';
   title('Light collector illustration');
   box on;grid on;grid minor;

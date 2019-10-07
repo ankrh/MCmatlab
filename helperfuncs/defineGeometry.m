@@ -32,20 +32,11 @@ function G = defineGeometry(G)
 if ~isfield(G,'silentMode')
   G.silentMode = false;
 end
-if ~isfield(G,'matchedInterfaces')
-  G.matchedInterfaces = true;
-end
-if ~isfield(G,'wavelength_f')
-  G.wavelength_f = NaN;
-end
 if ~isfield(G,'GeomFuncParams')
   G.GeomFuncParams = {};
 end
 if ~isfield(G,'mediaPropParams')
   G.mediaPropParams = {};
-end
-if ~isfield(G,'getCustomMediaProperties')
-  G.getCustomMediaProperties = {};
 end
 
 %% Calculate basic cuboid variables and call geometry function to create the media matrix M
@@ -57,35 +48,4 @@ G.y  = ((0:G.ny-1)-(G.ny-1)/2)*G.dy; % [cm] y position of centers of voxels
 G.z  = ((0:G.nz-1)+1/2)*G.dz;      % [cm] z position of centers of voxels
 [X,Y,Z] = ndgrid(single(G.x),single(G.y),single(G.z)); % The single data type is used to conserve memory
 G.M = uint8(G.GeomFunc(X,Y,Z,G.GeomFuncParams));
-
-%% Get the mediaProperties and the reduced M matrix
-if(~isnan(G.wavelength_f))
-  [~,G.mediaProperties_f] = getMediaProperties(G.M,G.wavelength_f,G.mediaPropParams,G.getCustomMediaProperties);
-  [G.M, G.mediaProperties] = getMediaProperties(G.M,G.wavelength,G.mediaPropParams,G.getCustomMediaProperties);
-  if(~any([G.mediaProperties.Y]>0))
-    error('Fluorescence wavelength isn''t NaN, but none of the media have Y > 0');
-  end
-else
-  G.mediaProperties_f = NaN;
-  [G.M, G.mediaProperties] = getMediaProperties(G.M,G.wavelength,G.mediaPropParams,G.getCustomMediaProperties);
-end
-
-%% Extract the refractive indices if not assuming matched interfaces, otherwise assume all 1's
-if(~G.matchedInterfaces)
-  for j=1:length(G.mediaProperties) % Check that all media have a refractive index defined
-    if(~isfield(G.mediaProperties,'n') || any(isempty(G.mediaProperties(j).n)))
-      error('matchedInterfaces is false, but refractive index isn''t defined for all media');
-    end
-  end
-  n_vec = [G.mediaProperties.n];
-  for j=1:G.nz % Check that each xy slice has constant refractive index, so refractive index is only a function of z
-    if(length(unique(n_vec(G.M(:,:,j)))) > 1)
-      error('matchedInterfaces is false, but refractive index isn''t constant for z index %d (z = %f).\nEach xy slice must have constant refractive index.',j,G.z(j));
-    end
-  end
-  G.RI = n_vec(G.M(1,1,:));
-else
-  [G.mediaProperties.n] = deal(1);
-  G.RI = ones(G.nz,1);
-end
 end

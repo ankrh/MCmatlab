@@ -1,4 +1,4 @@
-function MCoutput = runMonteCarlo(MCinput)
+function MCoutput = runMonteCarlo(mexMCinput)
 %   Requires
 %       MCmatlab.mex (architecture specific)
 %
@@ -23,115 +23,145 @@ function MCoutput = runMonteCarlo(MCinput)
 %   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
 %%%%%
 
-if ~isfield(MCinput,'silentMode')
-  MCinput.silentMode = false;
+G = mexMCinput.G;
+
+if ~isfield(mexMCinput,'wavelength')
+  error('Error: No wavelength defined');
 end
-if ~isfield(MCinput,'useAllCPUs')
-  MCinput.useAllCPUs = false;
+if ~isfield(mexMCinput,'matchedInterfaces')
+  mexMCinput.matchedInterfaces = true;
 end
-if ~isfield(MCinput,'calcF')
-  MCinput.calcF = true;
+if ~isfield(mexMCinput,'silentMode')
+  mexMCinput.silentMode = false;
 end
-if ~isfield(MCinput,'calcFdet')
-  MCinput.calcFdet = false;
+if ~isfield(mexMCinput,'useAllCPUs')
+  mexMCinput.useAllCPUs = false;
 end
-if ~isfield(MCinput,'nExamplePaths')
-  MCinput.nExamplePaths = 0;
+if ~isfield(mexMCinput,'calcF')
+  mexMCinput.calcF = true;
 end
-if ~isfield(MCinput,'farfieldRes')
-  MCinput.farfieldRes = 0;
+if ~isfield(mexMCinput,'calcFdet')
+  mexMCinput.calcFdet = false;
+end
+if ~isfield(mexMCinput,'nExamplePaths')
+  mexMCinput.nExamplePaths = 0;
+end
+if ~isfield(mexMCinput,'farfieldRes')
+  mexMCinput.farfieldRes = 0;
 end
 
-if isfield(MCinput,'LightCollector')
+mexMCinput.mediaProperties = getMediaProperties(G.mediaPropertiesFunc,mexMCinput.wavelength,G.mediaPropParams);
+
+%% Extract the refractive indices if not assuming matched interfaces, otherwise assume all 1's
+if(~mexMCinput.matchedInterfaces)
+  for j=1:length(mexMCinput.mediaProperties) % Check that all media have a refractive index defined
+    if(~isfield(mexMCinput.mediaProperties,'n') || any(isempty(mexMCinput.mediaProperties(j).n)))
+      error('matchedInterfaces is false, but refractive index isn''t defined for all media');
+    end
+  end
+  n_vec = [mexMCinput.mediaProperties.n];
+  for j=1:G.nz % Check that each xy slice has constant refractive index, so refractive index is only a function of z
+    if(length(unique(n_vec(G.M(:,:,j)))) > 1)
+      error('matchedInterfaces is false, but refractive index isn''t constant for z index %d (z = %f).\nEach xy slice must have constant refractive index.',j,G.z(j));
+    end
+  end
+  mexMCinput.RI = n_vec(G.M(1,1,:));
+else
+  [mexMCinput.mediaProperties.n] = deal(1);
+  mexMCinput.RI = ones(G.nz,1);
+end
+
+if isfield(mexMCinput,'LightCollector')
   %% Check to ensure that the light collector is not inside the cuboid and set res to 1 if using fiber
-  MCinput.useLightCollector = true;
-  if MCinput.G.boundaryType == 0
+  mexMCinput.useLightCollector = true;
+  if mexMCinput.boundaryType == 0
     error('Error: If boundaryType == 0, no photons can escape to be registered on the light collector. Disable light collector or change boundaryType.');
   end
-  if isfinite(MCinput.LightCollector.f)
-    xLCC = MCinput.LightCollector.x - MCinput.LightCollector.f*sin(MCinput.LightCollector.theta)*cos(MCinput.LightCollector.phi); % x position of Light Collector Center
-    yLCC = MCinput.LightCollector.y - MCinput.LightCollector.f*sin(MCinput.LightCollector.theta)*sin(MCinput.LightCollector.phi); % y position
-    zLCC = MCinput.LightCollector.z - MCinput.LightCollector.f*cos(MCinput.LightCollector.theta);                                 % z position
+  if isfinite(mexMCinput.LightCollector.f)
+    xLCC = mexMCinput.LightCollector.x - mexMCinput.LightCollector.f*sin(mexMCinput.LightCollector.theta)*cos(mexMCinput.LightCollector.phi); % x position of Light Collector Center
+    yLCC = mexMCinput.LightCollector.y - mexMCinput.LightCollector.f*sin(mexMCinput.LightCollector.theta)*sin(mexMCinput.LightCollector.phi); % y position
+    zLCC = mexMCinput.LightCollector.z - mexMCinput.LightCollector.f*cos(mexMCinput.LightCollector.theta);                                 % z position
   else
-    xLCC = MCinput.LightCollector.x;
-    yLCC = MCinput.LightCollector.y;
-    zLCC = MCinput.LightCollector.z;
-    if MCinput.LightCollector.res ~= 1
+    xLCC = mexMCinput.LightCollector.x;
+    yLCC = mexMCinput.LightCollector.y;
+    zLCC = mexMCinput.LightCollector.z;
+    if mexMCinput.LightCollector.res ~= 1
       error('Error: LightCollector.res must be 1 when LightCollector.f is Inf');
     end
   end
 
-  if (abs(xLCC)                           < MCinput.G.nx*MCinput.G.dx/2 && ...
-      abs(yLCC)                           < MCinput.G.ny*MCinput.G.dy/2 && ...
-      abs(zLCC - MCinput.G.nz*MCinput.G.dz/2) < MCinput.G.nz*MCinput.G.dz/2)
+  if (abs(xLCC)               < G.nx*G.dx/2 && ...
+      abs(yLCC)               < G.ny*G.dy/2 && ...
+      abs(zLCC - G.nz*G.dz/2) < G.nz*G.dz/2)
     error('Error: Light collector center (%.4f,%.4f,%.4f) is inside cuboid',xLCC,yLCC,zLCC);
   end
 
   %% If no time tagging bins are defined, assume no time tagging is to be performed
-  if ~isfield(MCinput.LightCollector,'nTimeBins')
-    MCinput.LightCollector.tStart = 0;
-    MCinput.LightCollector.tEnd = 0;
-    MCinput.LightCollector.nTimeBins = 0;
+  if ~isfield(mexMCinput.LightCollector,'nTimeBins')
+    mexMCinput.LightCollector.tStart = 0;
+    mexMCinput.LightCollector.tEnd = 0;
+    mexMCinput.LightCollector.nTimeBins = 0;
   end
 else
   %% Assume no light collector is present
-  MCinput.useLightCollector = false;
-  MCinput.LightCollector.x = 0;
-  MCinput.LightCollector.y = 0;
-  MCinput.LightCollector.z = 0;
-  MCinput.LightCollector.theta = 0;
-  MCinput.LightCollector.phi = 0;
-  MCinput.LightCollector.f = 0;
-  MCinput.LightCollector.diam = 0;
-  MCinput.LightCollector.FieldSize = 0;
-  MCinput.LightCollector.NA = 0;
-  MCinput.LightCollector.res = 0;
-  MCinput.LightCollector.tStart = 0;
-  MCinput.LightCollector.tEnd = 0;
-  MCinput.LightCollector.nTimeBins = 0;
+  mexMCinput.useLightCollector = false;
+  mexMCinput.LightCollector.x = 0;
+  mexMCinput.LightCollector.y = 0;
+  mexMCinput.LightCollector.z = 0;
+  mexMCinput.LightCollector.theta = 0;
+  mexMCinput.LightCollector.phi = 0;
+  mexMCinput.LightCollector.f = 0;
+  mexMCinput.LightCollector.diam = 0;
+  mexMCinput.LightCollector.FieldSize = 0;
+  mexMCinput.LightCollector.NA = 0;
+  mexMCinput.LightCollector.res = 0;
+  mexMCinput.LightCollector.tStart = 0;
+  mexMCinput.LightCollector.tEnd = 0;
+  mexMCinput.LightCollector.nTimeBins = 0;
 end
 
-if xor(isfield(MCinput.Beam,'nearFieldType'), isfield(MCinput.Beam,'farFieldType'))
+if xor(isfield(mexMCinput.Beam,'nearFieldType'), isfield(mexMCinput.Beam,'farFieldType'))
   error('Error: nearFieldType and farFieldType must either both be specified, or neither');
 end
-if isfield(MCinput,'simulationTime') && isfield(MCinput,'nPhotons')
+if isfield(mexMCinput,'simulationTime') && isfield(mexMCinput,'nPhotons')
   error('Error: simulationTime and nPhotons may not both be specified');
 end
-if isfield(MCinput.Beam,'nearFieldType') && isfield(MCinput.Beam,'beamType')
+if isfield(mexMCinput.Beam,'nearFieldType') && isfield(mexMCinput.Beam,'beamType')
   error('Error: nearFieldType and beamType may not both be specified');
 end
-if ~MCinput.calcF && ~MCinput.useLightCollector
+if ~mexMCinput.calcF && ~mexMCinput.useLightCollector
   error('Error: calcF is false, but no light collector is defined');
 end
-if MCinput.calcFdet && ~MCinput.useLightCollector
+if mexMCinput.calcFdet && ~mexMCinput.useLightCollector
   error('Error: calcFdet is true, but no light collector is defined');
 end
-
-if MCinput.farfieldRes && MCinput.G.boundaryType == 0
+if mexMCinput.farfieldRes && mexMCinput.boundaryType == 0
   error('Error: If boundaryType == 0, no photons can escape to be registered in the far field. Set farfieldRes to zero or change boundaryType.');
 end
 
-if isfield(MCinput.Beam,'nearFieldType')
-  MCinput.Beam.beamType = -1;
+if isfield(mexMCinput.Beam,'nearFieldType')
+  mexMCinput.Beam.beamType = -1;
 else
-  MCinput.Beam.nearFieldType = -1;
-  MCinput.Beam.farFieldType = -1;
+  mexMCinput.Beam.nearFieldType = -1;
+  mexMCinput.Beam.farFieldType = -1;
 end
 
 %% Call Monte Carlo C script (MEX file) to get fluence rate (intensity) distribution
-MCinput.G.M = MCinput.G.M-1; % Convert to C-style indexing
-MCoutput = MCmatlab(MCinput);
+mexMCinput.G.M = mexMCinput.G.M-1; % Convert to C-style indexing
+MCoutput = MCmatlab(mexMCinput);
 
 % Add positions of the centers of the pixels in the light collector image
-if MCinput.useLightCollector && MCinput.LightCollector.res > 1
-  MCoutput.X = linspace(MCinput.LightCollector.FieldSize*(1/MCinput.LightCollector.res-1),MCinput.LightCollector.FieldSize*(1-1/MCinput.LightCollector.res),MCinput.LightCollector.res)/2;
+if mexMCinput.useLightCollector && mexMCinput.LightCollector.res > 1
+  MCoutput.X = linspace(mexMCinput.LightCollector.FieldSize*(1/mexMCinput.LightCollector.res-1),mexMCinput.LightCollector.FieldSize*(1-1/mexMCinput.LightCollector.res),mexMCinput.LightCollector.res)/2;
   MCoutput.Y = MCoutput.X;
 end
 
 % Add angles of the centers of the far field pixels
-if MCinput.farfieldRes
-  MCoutput.FarFieldTheta = linspace(pi/MCinput.farfieldRes/2,pi-pi/MCinput.farfieldRes/2,MCinput.farfieldRes);
-  MCoutput.FarFieldPhi   = linspace(-pi+(2*pi)/MCinput.farfieldRes/2,pi-(2*pi)/MCinput.farfieldRes/2,MCinput.farfieldRes);
+if mexMCinput.farfieldRes
+  MCoutput.FarFieldTheta = linspace(pi/mexMCinput.farfieldRes/2,pi-pi/mexMCinput.farfieldRes/2,mexMCinput.farfieldRes);
+  MCoutput.FarFieldPhi   = linspace(-pi+(2*pi)/mexMCinput.farfieldRes/2,pi-(2*pi)/mexMCinput.farfieldRes/2,mexMCinput.farfieldRes);
 end
 
+% Also put the mediaProperties into the MCoutput struct for later use by other functions
+MCoutput.mediaProperties = mexMCinput.mediaProperties;
 end

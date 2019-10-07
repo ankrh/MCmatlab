@@ -29,18 +29,9 @@ function plotMCmatlabGeom(G)
 %   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
 %%%%%
 
-%% Make fluorescence media properties plot
-if(~isnan(G.wavelength_f))
-  h_f = plotMediaProperties(3,G.mediaProperties_f,G.matchedInterfaces);
-  h_f.Name = 'Fluorescence media properties';
-end
-
-%% Make media properties plot
-h_f = plotMediaProperties(2,G.mediaProperties,G.matchedInterfaces);
-h_f.Name = 'Media properties';
-
 %% Make geometry plot
-h_f = plotVolumetric(1,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties);
+mediaProperties = getMediaProperties(G.mediaPropertiesFunc,500,G.mediaPropParams); % We don't know what wavelength the user wants yet, but since we just need the names of the media we can input an arbitrary wavelength of 500 nm
+h_f = plotVolumetric(1,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',mediaProperties);
 h_f.Name = 'Geometry illustration';
 title('Geometry illustration');
 

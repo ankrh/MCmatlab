@@ -3,12 +3,6 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 %% Geometry definition
 clear Ginput
 Ginput.silentMode        = false; % (Default: false) Disables command window text and progress indication
-Ginput.matchedInterfaces = true; % (Default: true) If true, assumes all refractive indices are 1. If false, uses the refractive indices defined in getMediaProperties
-Ginput.boundaryType      = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
-
-Ginput.wavelength        = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
-% Ginput.wavelength_f      = 550; % [nm] Fluorescence wavelength, used for determination of optical properties for fluorescence light
-% Ginput.mediaPropParams   = {0.6}; % Cell array containing any additional parameters to be passed to the getMediaProperties function
 
 Ginput.nx                = 100; % Number of bins in the x direction
 Ginput.ny                = 100; % Number of bins in the y direction
@@ -17,6 +11,9 @@ Ginput.Lx                = .1; % [cm] x size of simulation cuboid
 Ginput.Ly                = .1; % [cm] y size of simulation cuboid
 Ginput.Lz                = .1; % [cm] z size of simulation cuboid
 
+% Ginput.mediaPropParams   = {0.6}; % Cell array containing any additional parameters to be passed to the getMediaProperties function
+
+Ginput.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 Ginput.GeomFunc          = @GeometryDefinition_FluorescingCylinder; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 % Ginput.GeomFuncParams    = {0.03}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
 
@@ -35,6 +32,10 @@ plotMCmatlabGeom(Goutput);
 % % MCinput.calcFdet                 = false; % (Default: false) If true, the 3D fluence rate output matrix Fdet will be calculated. Only photons that end up on the light collector are counted in Fdet.
 % % MCinput.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
 % % MCinput.farfieldRes              = 50; % (Default: 0) If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
+% 
+% MCinput.matchedInterfaces        = true; % (Default: true) If true, assumes all refractive indices are 1. If false, uses the refractive indices defined in getMediaProperties
+% MCinput.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+% MCinput.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 % 
 % MCinput.Beam.beamType            = 2; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
 % MCinput.Beam.nearFieldType       = 2; % 0: Gaussian, 1: Circular top-hat, 2: Square top-hat
@@ -81,6 +82,10 @@ plotMCmatlabGeom(Goutput);
 % % FMCinput.calcFdet                 = false; % (Default: false) If true, the 3D fluence rate output matrix Fdet will be calculated. Only photons that end up on the light collector are counted in Fdet.
 % % FMCinput.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
 % % FMCinput.farfieldRes              = 50; % (Default: 0) If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
+% 
+% FMCinput.matchedInterfaces        = true; % (Default: true) If true, assumes all refractive indices are 1. If false, uses the refractive indices defined in getMediaProperties
+% FMCinput.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+% FMCinput.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 % 
 % % FMCinput.LightCollector.x         = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
 % % FMCinput.LightCollector.y         = 0; % [cm] y position
@@ -209,3 +214,29 @@ M(Z>0.03) = 2; % Water
 M(Z>0.09) = 20; % Reflector
 end
 
+%% Media Properties function
+% The media properties function defines all the optical and thermal
+% properties of the media involved by constructing and returning a
+% "mediaProperties" struct with various fields. As its input, the function
+% takes the wavelength as well as any other parameters you might specify
+% above in the model file, for example parameters that you might loop over
+% in a for loop.
+function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
+j=1;
+mediaProperties(j).name  = 'air';
+mediaProperties(j).mua   = 1e-8;
+mediaProperties(j).mus   = 1e-8;
+mediaProperties(j).g     = 1;
+mediaProperties(j).n     = 1;
+mediaProperties(j).VHC   = 1.2e-3;
+mediaProperties(j).TC    = 0; % Real value is 2.6e-4, but we set it to zero to neglect the heat transport to air
+
+j=2;
+mediaProperties(j).name  = 'standard tissue';
+mediaProperties(j).mua   = 1;
+mediaProperties(j).mus   = 100;
+mediaProperties(j).g     = 0.9;
+mediaProperties(j).n     = 1.3;
+mediaProperties(j).VHC   = 3391*1.109e-3;
+mediaProperties(j).TC    = 0.37e-2;
+end

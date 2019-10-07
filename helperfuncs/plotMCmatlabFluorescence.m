@@ -37,10 +37,14 @@ function plotMCmatlabFluorescence(FMCinput,FMCoutput)
 %%%%%
 
 G = FMCinput.G;
-mua_vec = [G.mediaProperties.mua];
+
+%% Make fluorescence media properties plot
+h_f = plotMediaProperties(3,FMCoutput.mediaProperties,FMCinput.matchedInterfaces);
+h_f.Name = 'Fluorescence media properties';
 
 %% Plot emitter distribution
-Y_vec = [G.mediaProperties.Y]; % The media's fluorescence power efficiencies
+mua_vec = [FMCinput.MCoutput.mediaProperties.mua]; % Excitation absorption coefficients
+Y_vec = [FMCinput.MCoutput.mediaProperties.Y]; % The media's fluorescence power efficiencies
 FluorescenceEmitters = Y_vec(G.M).*mua_vec(G.M).*FMCinput.MCoutput.F; % [W/cm^3]
 h_f = plotVolumetric(12,G.x,G.y,G.z,FluorescenceEmitters,'MCmatlab_fromZero');
 h_f.Name = 'Fluorescence emitters';
@@ -51,7 +55,7 @@ P_flu_emit = G.dx*G.dy*G.dz*sum(sum(sum(FluorescenceEmitters)));
 fprintf('\n%.3g%% of absorbed excitation light was re-emitted as fluorescence.\n',100*P_flu_emit/P_exc_abs);
 
 %% Plot boundary fluences
-if G.boundaryType == 1
+if FMCinput.boundaryType == 1
   fprintf('%.3g%% of fluorescence light hits the cuboid boundaries.\n',100*(sum(sum((FMCoutput.I_xpos + FMCoutput.I_xneg)*G.dy*G.dz)) + sum(sum((FMCoutput.I_ypos + FMCoutput.I_yneg)*G.dx*G.dz)) + sum(sum((FMCoutput.I_zpos + FMCoutput.I_zneg)*G.dx*G.dy)))/P_flu_emit);
   
   if(~ishandle(20))
@@ -63,7 +67,6 @@ if G.boundaryType == 1
   h_f.Color = 'w';
   h_f.Name = 'Boundary fluorescence fluence rate';
   clf;
-  h_a = axes;
   title('Boundary fluorescence fluence rate [W/cm^2/W.incident]');
   
   x = round([(G.x - G.dx/2) , (max(G.x) + G.dx/2)],15);
@@ -94,6 +97,9 @@ if G.boundaryType == 1
   surface(repmat(xh,G.ny+1,G.nz+1),repmat(y',     1,G.nz+1),repmat(z ,G.ny+1,     1),I_xpos_pad,'LineStyle','none');
   surface(repmat(x',     1,G.nz+1),repmat(yh,G.nx+1,G.nz+1),repmat(z ,G.nx+1,     1),I_ypos_pad,'LineStyle','none');
   surface(repmat(x',     1,G.ny+1),repmat(y ,G.nx+1,     1),repmat(zh,G.nx+1,G.ny+1),I_zpos_pad,'LineStyle','none');
+  line(G.Lx/2*[1 1 1 1 -1 -1 -1 -1 1],G.Ly/2*[1 1 -1 -1 -1 -1 1 1 1],G.Lz*[1 0 0 1 1 0 0 1 1],'Color',[0.5 0.5 0.5]);
+  line(G.Lx/2*[1 1 1 1 -1 -1 -1 -1 1],G.Ly/2*[1 1 -1 -1 -1 -1 1 1 1],G.Lz*[0 1 1 0 0 1 1 0 0],'Color',[0.5 0.5 0.5]);
+
   set(gca,'ZDir','reverse');
   colormap(inferno);
   colorbar;
@@ -108,7 +114,7 @@ if G.boundaryType == 1
   if ~verLessThan('matlab','9.0')
     setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera');
   end
-elseif G.boundaryType == 2
+elseif FMCinput.boundaryType == 2
   fprintf('%.3g%% of fluorescence light hits the top cuboid boundary.\n',100*(sum(sum(FMCoutput.I_zneg*G.dx*G.dy)))/P_flu_emit);
   
   if(~ishandle(20))
@@ -135,7 +141,7 @@ end
 
 if isfield(FMCoutput,'F')
   %% Make power absorption plot
-  mua_vec = [G.mediaProperties_f.mua];
+  mua_vec = [FMCoutput.mediaProperties.mua];
   h_f = plotVolumetric(13,G.x,G.y,G.z,mua_vec(G.M).*FMCoutput.F,'MCmatlab_fromZero');
   h_f.Name = 'Fluorescence power absorption';
   title('Normalized absorbed fluorescence power per unit volume [W/cm^3/W.incident] ')
@@ -150,7 +156,7 @@ if isfield(FMCoutput,'F')
 end
 
 if isfield(FMCoutput,'ExamplePaths')
-  h_f = plotVolumetric(15,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_f);
+  h_f = plotVolumetric(15,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',FMCoutput.mediaProperties);
   h_f.Name = 'Fluorescence photon paths';
   title('Fluorescence photon paths');
   box on;grid on;grid minor;
@@ -181,7 +187,7 @@ end
 
 if(isfield(FMCinput,'LightCollector'))
   %% If there's a fluorescence light collector, show its orientation and the detected light
-  h_f = plotVolumetric(16,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',G.mediaProperties_f);
+  h_f = plotVolumetric(16,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',FMCoutput.mediaProperties);
   h_f.Name = 'Fluorescence light collector illustration';
   title('Fluorescence light collector illustration');
   box on;grid on;grid minor;

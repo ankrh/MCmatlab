@@ -1,4 +1,4 @@
-function [M, mediaProperties] = getMediaProperties(M,wavelength,parameters,getCustomMediaProperties)
+function mediaProperties = getMediaProperties(mediaPropertiesFunc,wavelength,parameters)
 %   Returns the reduced medium matrix, using only numbers from 1 up to the number of used media, and
 %   the known media properties (optical, thermal and/or fluorescence) at the specified wavelength.
 %
@@ -24,23 +24,7 @@ function [M, mediaProperties] = getMediaProperties(M,wavelength,parameters,getCu
 %   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
 %%%%%
 
-mediaProperties = mediaPropertiesLibrary(wavelength,parameters);
-if ~isempty(getCustomMediaProperties)
-  customMediaProperties = getCustomMediaProperties(wavelength,parameters);
-  for index = 1:length(customMediaProperties)
-    if ~isempty(customMediaProperties(index).name)
-      for fieldName = fieldnames(customMediaProperties)'
-        mediaProperties(index).(cell2mat(fieldName)) = customMediaProperties(index).(cell2mat(fieldName));
-      end
-    end
-  end
-end
-
-%% Trim mediaProperties down to use only the media included in the input matrix M, and reduce M accordingly
-mediumMap = zeros(1,length(mediaProperties),'uint8');
-mediumMap(unique(M)) = 1:length(unique(M));
-mediaProperties = mediaProperties(unique(M)); % Reduced medium list, containing only the used media
-M = mediumMap(M); % Reduced medium matrix, using only numbers from 1 up to the number of used media
+mediaProperties = mediaPropertiesFunc(wavelength,parameters);
 
 %% Fill in fluorescence and Arrhenius parameter assumptions
 % For all media for which the fluorescence power yield Y, Arrhenius
@@ -74,11 +58,11 @@ for j=1:length(mediaProperties)
     error('Medium %s has mus <= 0',mediaProperties(j).name);
   elseif(abs(mediaProperties(j).g) > 1)
     error('Medium %s has abs(g) > 1',mediaProperties(j).name);
-  elseif(mediaProperties(j).n < 1)
+  elseif(isfield(mediaProperties,'n') && ~isempty(mediaProperties(j).n) && mediaProperties(j).n < 1)
     error('Medium %s has n < 1',mediaProperties(j).name);
-  elseif(mediaProperties(j).VHC <= 0)
+  elseif(isfield(mediaProperties,'VHC') && ~isempty(mediaProperties(j).VHC) && mediaProperties(j).VHC <= 0)
     error('Medium %s has VHC <= 0',mediaProperties(j).name);
-  elseif(mediaProperties(j).TC < 0)
+  elseif(isfield(mediaProperties,'TC') && ~isempty(mediaProperties(j).TC) && mediaProperties(j).TC < 0)
     error('Medium %s has TC < 0',mediaProperties(j).name);
   elseif(mediaProperties(j).Y < 0)
     error('Medium %s has Y < 0',mediaProperties(j).name);

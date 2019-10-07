@@ -25,11 +25,6 @@ fprintf('\b\b\b\b\b\b%2d/%2d\n',i,length(g_vec)); % Simple progress indicator
 %% Geometry definition
 clear Ginput
 Ginput.silentMode        = true; % Disables command window text and progress indication
-Ginput.matchedInterfaces = true; % Assumes all refractive indices are 1
-Ginput.boundaryType      = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
-
-Ginput.wavelength        = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
-Ginput.mediaPropParams   = {g_vec(i)}; % Cell array containing any additional parameters to be passed to the getMediaProperties function
 
 Ginput.nx                = 21; % Number of bins in the x direction
 Ginput.ny                = 21; % Number of bins in the y direction
@@ -38,12 +33,14 @@ Ginput.Lx                = .1; % [cm] x size of simulation cuboid
 Ginput.Ly                = .1; % [cm] y size of simulation cuboid
 Ginput.Lz                = .01; % [cm] z size of simulation cuboid
 
-Ginput.getCustomMediaProperties = @customMediaProperties; % Custom media properties defined as a function at the bottom of this file
+Ginput.mediaPropParams   = {g_vec(i)}; % Cell array containing any additional parameters to be passed to the getMediaProperties function
 
+Ginput.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 Ginput.GeomFunc          = @GeometryDefinition_MediaPropertyParametricSweep; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
-% Execution, do not modify the next two lines:
+% Execution, do not modify the next line:
 Goutput = defineGeometry(Ginput);
+
 % plotMCmatlabGeom(Goutput);
 
 %% Monte Carlo simulation
@@ -52,6 +49,10 @@ MCinput.silentMode               = true; % Disables command window text and prog
 MCinput.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 MCinput.simulationTime           = 2/60; % [min] Time duration of the simulation
 MCinput.calcF                    = false; % (Default: true) If true, the 3D fluence rate output matrix F will be calculated. Set to false if you have a light collector and you're only interested in the Image output.
+
+MCinput.matchedInterfaces        = true; % Assumes all refractive indices are 1
+MCinput.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+MCinput.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
 MCinput.Beam.beamType            = 0; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
 MCinput.Beam.xFocus              = 0; % [cm] x position of focus
@@ -76,9 +77,10 @@ MCinput.LightCollector.NA        = 0.22; % [-] Fiber NA. Only used for infinite 
 
 MCinput.LightCollector.res       = 1; % X and Y resolution of light collector in pixels, only used for finite f
 
-% Execution, do not modify the next three lines:
+% Execution, do not modify the next two lines:
 MCinput.G = Goutput;
 MCoutput = runMonteCarlo(MCinput);
+
 % plotMCmatlab(MCinput,MCoutput);
 
 %% Post-processing
@@ -102,17 +104,17 @@ function M = GeometryDefinition_MediaPropertyParametricSweep(X,Y,Z,parameters)
 M = ones(size(X)); % Variable g medium
 end
 
-%% Custom media properties
-% a function returning struct containing custom media properties for the model.
-% For more details on how to define them, check mediaPropertiesLibrary.m
-function mediaProperties = customMediaProperties(wavelength,parameters)
+%% Media Properties function
+% The media properties function defines all the optical and thermal
+% properties of the media involved by constructing and returning a
+% "mediaProperties" struct with various fields. As its input, the function
+% takes the wavelength as well as any other parameters you might specify
+% above in the model file, for example parameters that you might loop over
+% in a for loop.
+function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 j=1;
 mediaProperties(j).name  = 'variable g medium';
 mediaProperties(j).mua   = 10;
 mediaProperties(j).mus   = 100;
-if ~isempty(parameters)
-  mediaProperties(j).g = parameters{1};
-else
-  mediaProperties(j).g = 0;
-end
+mediaProperties(j).g = parameters{1};
 end

@@ -16,12 +16,6 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 
 %% Geometry definition
 clear Ginput
-Ginput.matchedInterfaces = true; % Assumes all refractive indices are 1
-Ginput.boundaryType      = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
-
-Ginput.wavelength        = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
-Ginput.wavelength_f      = 550; % [nm] Fluorescence wavelength, used for determination of optical properties for fluorescence light
-
 Ginput.nx                = 100; % Number of bins in the x direction
 Ginput.ny                = 100; % Number of bins in the y direction
 Ginput.nz                = 100; % Number of bins in the z direction
@@ -29,12 +23,12 @@ Ginput.Lx                = .1; % [cm] x size of simulation cuboid
 Ginput.Ly                = .1; % [cm] y size of simulation cuboid
 Ginput.Lz                = .1; % [cm] z size of simulation cuboid
 
-Ginput.getCustomMediaProperties = @customMediaProperties; % Custom media properties defined as a function at the bottom of this file
-
+Ginput.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 Ginput.GeomFunc          = @GeometryDefinition_FluorescingCylinder; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
-% Execution, do not modify the next two lines:
+% Execution, do not modify the next line:
 Goutput = defineGeometry(Ginput);
+
 plotMCmatlabGeom(Goutput);
 
 %% Monte Carlo simulation
@@ -42,6 +36,10 @@ clear MCinput
 MCinput.nPhotons                 = 5e6; % # of photons to launch
 MCinput.calcF                    = true; % (Default: true) If true, the 3D fluence rate output matrix F will be calculated. Set to false if you have a light collector and you're only interested in the Image output.
 MCinput.calcFdet                 = true; % (Default: false) If true, the 3D fluence rate output matrix Fdet will be calculated. Only photons that end up on the light collector are counted in Fdet.
+
+MCinput.matchedInterfaces        = true; % Assumes all refractive indices are 1
+MCinput.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+MCinput.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
 MCinput.Beam.beamType            = 3; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
 MCinput.Beam.xFocus              = 0.02; % [cm] x position of focus
@@ -66,9 +64,10 @@ MCinput.LightCollector.NA        = 0.22; % [-] Fiber NA. Only used for infinite 
 
 MCinput.LightCollector.res       = 50; % X and Y resolution of light collector in pixels, only used for finite f
 
-% Execution, do not modify the next three lines:
+% Execution, do not modify the next two lines:
 MCinput.G = Goutput;
 MCoutput = runMonteCarlo(MCinput);
+
 plotMCmatlab(MCinput,MCoutput);
 
 %% Fluorescence Monte Carlo
@@ -76,6 +75,10 @@ clear FMCinput
 FMCinput.nPhotons                 = 2e6; % # of photons to launch
 FMCinput.calcF                    = true; % (Default: true) If true, the 3D fluence rate output matrix F will be calculated. Set to false if you have a light collector and you're only interested in the Image output.
 FMCinput.calcFdet                 = true; % (Default: false) If true, the 3D fluence rate output matrix Fdet will be calculated. Only photons that end up on the light collector are counted in Fdet.
+
+FMCinput.matchedInterfaces        = true; % Assumes all refractive indices are 1
+FMCinput.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+FMCinput.wavelength               = 550; % [nm] Fluorescence wavelength, used for determination of optical properties for fluorescence light
 
 FMCinput.LightCollector.x         = -0.02; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
 FMCinput.LightCollector.y         = 0; % [cm] y position
@@ -91,10 +94,11 @@ FMCinput.LightCollector.NA        = 0.22; % [-] Fiber NA. Only used for infinite
 
 FMCinput.LightCollector.res       = 50; % X and Y resolution of light collector in pixels, only used for finite f
 
-% Execution, do not modify the next four lines:
+% Execution, do not modify the next three lines:
 FMCinput.G = Goutput;
 FMCinput.MCoutput = MCoutput;
 FMCoutput = runMonteCarloFluorescence(FMCinput);
+
 plotMCmatlabFluorescence(FMCinput,FMCoutput);
 
 %% Post-processing
@@ -111,10 +115,14 @@ M = ones(size(X)); % fill background with fluorescence absorber
 M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 2; % fluorescer
 end
 
-%% Custom media properties
-% a function returning struct containing custom media properties for the model.
-% For more details on how to define them, check mediaPropertiesLibrary.m
-function mediaProperties = customMediaProperties(wavelength,parameters)
+%% Media Properties function
+% The media properties function defines all the optical and thermal
+% properties of the media involved by constructing and returning a
+% "mediaProperties" struct with various fields. As its input, the function
+% takes the wavelength as well as any other parameters you might specify
+% above in the model file, for example parameters that you might loop over
+% in a for loop.
+function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 j=1;
 mediaProperties(j).name  = 'test fluorescence absorber';
 if(wavelength<500)

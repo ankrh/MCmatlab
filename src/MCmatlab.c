@@ -63,7 +63,7 @@ extern bool utIsInterruptPending(); // Allows catching ctrl+c while executing th
      * launching an infinite plane wave without boundaries, photons will be
      * launched in this whole extended region. */
 
-struct geometry { // Struct type for the constant geometry definitions
+struct geometry { // Struct type for the constant geometry definitions, including the wavelength-dependent optical properties and the boundary type
   double         d[3];
   long           n[3];
   int            boundaryType;
@@ -744,7 +744,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 
   // Geometry struct definition
   mxArray *MatlabG         = mxGetField(prhs[0],0,"G");
-  mxArray *mediaProperties = mxGetField(MatlabG,0,S_PDF? "mediaProperties_f": "mediaProperties"); // If S_PDF is NULL then there was no sourceDistribution field, so we are not simulating fluorescence
+  mxArray *mediaProperties = mxGetField(prhs[0],0,"mediaProperties");
   int     nM = mxGetN(mediaProperties);
   double   muav[nM];            // muav[0:nM-1], absorption coefficient of ith medium
   double   musv[nM];            // scattering coeff.
@@ -761,12 +761,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
           *mxGetPr(mxGetField(MatlabG,0,"dy")),
           *mxGetPr(mxGetField(MatlabG,0,"dz"))},
     .n = {dimPtr[0], dimPtr[1], dimPtr[2]},
-    .boundaryType = *mxGetPr(mxGetField(MatlabG,0,"boundaryType")),
+    .boundaryType = *mxGetPr(mxGetField(prhs[0],0,"boundaryType")),
     .muav = muav,
     .musv = musv,
     .gv = gv,
     .M = mxGetData(mxGetField(MatlabG,0,"M")),
-    .RIv = mxGetData(mxGetField(MatlabG,0,"RI"))
+    .RIv = mxGetData(mxGetField(prhs[0],0,"RI"))
   };
   struct geometry const *G = &G_var;
   
