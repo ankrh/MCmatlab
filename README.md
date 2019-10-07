@@ -32,13 +32,13 @@ Requirements:
 - MATLAB R2017a or newer
 
 HELPER FILES:
-All the helper functions needed for running MCmatlab are located in the folder "helperfuncs", which therefore has to be on your MATLAB path. You will not need to modify any of these files (except for "getMediaProperties.m" as mentioned below). The example model files automatically add "helperfuncs" to the MATLAB path as the first command, and you should keep that practice also in your own model files.
+All the helper functions needed for running MCmatlab are located in the folder "helperfuncs", which therefore has to be on your MATLAB path. You will not need to modify any of these files. The example model files automatically add "helperfuncs" to the MATLAB path as the first command, and you should keep that practice also in your own model files.
 
 MODEL FILES:
 In MCmatlab, you set up your model in a single m-file. You can find a few examples to get you started in the root folder of MCmatlab. Once you're familiar with those, you can check the model file "Template.m" for all the possible switches you might use, but it is itself not a valid model file, as it also contains some mutually exclusive switches.
 
 MEDIA PROPERTIES:
-The optical properties of all media are defined in the file "getMediaProperties.m" in the folder "helperfuncs". Many media are already defined therein, and you can either modify the properties of those, or add more media types to this file. Make sure that each media has its distinct "j"-number, as this is the number you will refer to when building your model.
+The optical properties of all media are defined in the end of the model file. The examples contain some media you can modify or copy-paste to your own model file, or you define your own media from scratch in your own models. Make sure that each media in a single model file has its distinct "j"-number, as this is the number you will refer to when building your model.
 
 ## How do I use MCmatlab?
 ### Compilation
@@ -47,26 +47,26 @@ The optical properties of all media are defined in the file "getMediaProperties.
 ### Building the model
 You build a model in a seperate m-file. Each model requires the first two and optionally more of the following steps:
 1. Build geometry (check out "Example1_StandardTissue.m", section "%% Geometry definition")
- - Modify or add to "helperfuncs/getMediaProperties.m" to include the definitions of the media you're interested in. You may optionally include thermal and/or fluorescence properties.
+ - Modify or add to "mediaPropertiesFunc" at the end of the model file to include the definitions of the media you're interested in. You may optionally include thermal and/or fluorescence properties.
  - In your model file, specify the geometry of your model.
- - The "GeomFunc" you define in the model file simply defines a 3D-matrix containing the media definition for each voxel in the model cube. The media are referred to by a number, corresponding to the "j" defined in "helperfuncs/getMediaProperties.m".
- - After this step, you will be shown two figures with the geometry you defined and an overview of the optical properties.
+ - The "GeomFunc" you define in the model file simply defines a 3D-matrix containing the media definition for each voxel in the model cube. The media are referred to by a number, corresponding to the "j" defined in "mediaPropertiesFunc" at the end of the model file.
+ - After this step, you will be shown a figure with the geometry you defined.
 
 2. Calculate light distribution (check out "Example1_StandardTissue.m", section "%% Monte Carlo simulation")
  - This section in the model file contains the definitions for the Monte Carlo simulation.
- - After this step, you will be shown three figures, with the normalized fluence rate, the absorbed light in the cube, and the fluence rate at the cuboid boundaries (taking into account only the *exiting* photon packages, not the incident beam). The last figure will only be shown if some of your cuboid boundaries are "escaping" boundaries, i.e., boundary type 1 (all boundaries are escaping boundaries) or 2 (top boundary only is escaping boundary).
+ - After this step, you will be shown four figures; one with an overview of the optical properties, one with the normalized fluence rate, one with the absorbed light in the cube, and one showing the fluence rate at the cuboid boundaries (taking into account only the *exiting* photon packages, not the incident beam). The last figure will only be shown if some of your cuboid boundaries are "escaping" boundaries, i.e., boundary type 1 (all boundaries are escaping boundaries) or 2 (top boundary only is escaping boundary).
 
 3. (Optional) Include Fresnel reflection and refraction
  - Check out "Example2_RefractionReflection.m" on how to implement changing refractive indices in your model.
 
 4. (Optional) Simulate heat distribution (check out "Example3_BloodVessel.m", section "%% Heat simulation")
- - To simulate the heat diffusion, all media involved in the simulation must have the thermal properties volumetric heat capacity (VHC) and thermal conductivity (TC) defined in "helperfuncs/getMediaProperties.m".
+ - To simulate the heat diffusion, all media involved in the simulation must have the thermal properties volumetric heat capacity (VHC) and thermal conductivity (TC) defined in "mediaPropertiesFunc" at the end of your model file.
  - If you want to model chemical changes such as tissue damage, the media that might undergo such change need to have the Arrhenius activation energy (E) and the Arrhenius pre-exponential factor (A) defined.
  - During the heat simulation, you will see an illustration of the temperature in your modelled cube.
  - After this step, you will be shown three figures with the position of virtual temperature sensors in the cube, the temperature evolution at these positions, and whether there was some chemical change (based on the Arrhenius integral) in your cube.
 
 5. (Optional) Calculate fluorescence light distribution (check out "Example4_FluorescenceAndImaging.m", section "%% Fluorescence Monte Carlo")
- - To be able to run this step, your geometry definitions needs to include the fluorescence wavelength, "wavelength_f". Additionally, at least one of your media should be defined fluoerscent, by defining its fluorescent yield Y in "helperfuncs/getMediaProperties.m".
+ - To be able to run this step, your geometry definitions needs to include the fluorescence wavelength, "wavelength_f". Additionally, at least one of your media should be defined fluoerscent, by defining its fluorescent yield Y in "mediaPropertiesFunc" at the end of your model file.
  - "Example4_FluorescenceAndImaging.m" also contains the definitions for a "LightCollector" for both the incident light Monte Carlo and the fluorescence Monte Carlo. This enables simulating a light collection and imaging system, presented in a figure after this step. This is not required if you are only interested in the fluorescence light distribution in the cube.
  - After this step, you will be shown four figures, with the fluorescence emitters distribution, the fluorescent light fluence rate, the absorption within the cube, and the fluorescent light fluence rate at the cuboid boundaries. If you have chosen to use the LightCollector, you will additionally see an illustration of the geometry of your imaging system and the image of the fluorescent light.
   - You can also choose to show the light impinging on the LightCollector in a time-resolved manner. Check out "Example5_TimeTagging.m" on how to do so.
