@@ -25,32 +25,18 @@ function MCoutput = runMonteCarlo(mexMCinput)
 
 G = mexMCinput.G;
 
-if ~isfield(mexMCinput,'wavelength')
-  error('Error: No wavelength defined');
+mexMCinput = checkMCinputFields(mexMCinput);
+mexMCinput = getMediaProperties_funcHandles(mexMCinput); % Calls the mediaPropertiesFunc and converts those fields that are specified as cell array formulas into function handles taking intensity and temperature as input
+if mexMCinput.temperatureDependent && ~isfield(mexMCinput,'Tinitial')
+  error('Error: Parameters are temperature dependent but no initial temperature is provided');
+else
+  mexMCinput.Tinitial = zeros(size(G.M)); % If there's no temperature dependence then it doesn't matter what we set these values to
 end
-if ~isfield(mexMCinput,'matchedInterfaces')
-  mexMCinput.matchedInterfaces = true;
+if ~isfield(mexMCinput,'Iinitial')
+  mexMCinput.Iinitial = zeros(size(G.M));
 end
-if ~isfield(mexMCinput,'silentMode')
-  mexMCinput.silentMode = false;
-end
-if ~isfield(mexMCinput,'useAllCPUs')
-  mexMCinput.useAllCPUs = false;
-end
-if ~isfield(mexMCinput,'calcF')
-  mexMCinput.calcF = true;
-end
-if ~isfield(mexMCinput,'calcFdet')
-  mexMCinput.calcFdet = false;
-end
-if ~isfield(mexMCinput,'nExamplePaths')
-  mexMCinput.nExamplePaths = 0;
-end
-if ~isfield(mexMCinput,'farfieldRes')
-  mexMCinput.farfieldRes = 0;
-end
+[M_split, mexMCinput.mediaProperties] = getMediaProperties(G.M,mexMCinput.mediaProperties_funcHandles,mexMCinput.Iinitial,mexMCinput.Tinitial);
 
-mexMCinput.mediaProperties = getMediaProperties(G.mediaPropertiesFunc,mexMCinput.wavelength,G.mediaPropParams);
 
 %% Extract the refractive indices if not assuming matched interfaces, otherwise assume all 1's
 if(~mexMCinput.matchedInterfaces)
@@ -69,81 +55,6 @@ if(~mexMCinput.matchedInterfaces)
 else
   [mexMCinput.mediaProperties.n] = deal(1);
   mexMCinput.RI = ones(G.nz,1);
-end
-
-if isfield(mexMCinput,'LightCollector')
-  %% Check to ensure that the light collector is not inside the cuboid and set res to 1 if using fiber
-  mexMCinput.useLightCollector = true;
-  if mexMCinput.boundaryType == 0
-    error('Error: If boundaryType == 0, no photons can escape to be registered on the light collector. Disable light collector or change boundaryType.');
-  end
-  if isfinite(mexMCinput.LightCollector.f)
-    xLCC = mexMCinput.LightCollector.x - mexMCinput.LightCollector.f*sin(mexMCinput.LightCollector.theta)*cos(mexMCinput.LightCollector.phi); % x position of Light Collector Center
-    yLCC = mexMCinput.LightCollector.y - mexMCinput.LightCollector.f*sin(mexMCinput.LightCollector.theta)*sin(mexMCinput.LightCollector.phi); % y position
-    zLCC = mexMCinput.LightCollector.z - mexMCinput.LightCollector.f*cos(mexMCinput.LightCollector.theta);                                 % z position
-  else
-    xLCC = mexMCinput.LightCollector.x;
-    yLCC = mexMCinput.LightCollector.y;
-    zLCC = mexMCinput.LightCollector.z;
-    if mexMCinput.LightCollector.res ~= 1
-      error('Error: LightCollector.res must be 1 when LightCollector.f is Inf');
-    end
-  end
-
-  if (abs(xLCC)               < G.nx*G.dx/2 && ...
-      abs(yLCC)               < G.ny*G.dy/2 && ...
-      abs(zLCC - G.nz*G.dz/2) < G.nz*G.dz/2)
-    error('Error: Light collector center (%.4f,%.4f,%.4f) is inside cuboid',xLCC,yLCC,zLCC);
-  end
-
-  %% If no time tagging bins are defined, assume no time tagging is to be performed
-  if ~isfield(mexMCinput.LightCollector,'nTimeBins')
-    mexMCinput.LightCollector.tStart = 0;
-    mexMCinput.LightCollector.tEnd = 0;
-    mexMCinput.LightCollector.nTimeBins = 0;
-  end
-else
-  %% Assume no light collector is present
-  mexMCinput.useLightCollector = false;
-  mexMCinput.LightCollector.x = 0;
-  mexMCinput.LightCollector.y = 0;
-  mexMCinput.LightCollector.z = 0;
-  mexMCinput.LightCollector.theta = 0;
-  mexMCinput.LightCollector.phi = 0;
-  mexMCinput.LightCollector.f = 0;
-  mexMCinput.LightCollector.diam = 0;
-  mexMCinput.LightCollector.FieldSize = 0;
-  mexMCinput.LightCollector.NA = 0;
-  mexMCinput.LightCollector.res = 0;
-  mexMCinput.LightCollector.tStart = 0;
-  mexMCinput.LightCollector.tEnd = 0;
-  mexMCinput.LightCollector.nTimeBins = 0;
-end
-
-if xor(isfield(mexMCinput.Beam,'nearFieldType'), isfield(mexMCinput.Beam,'farFieldType'))
-  error('Error: nearFieldType and farFieldType must either both be specified, or neither');
-end
-if isfield(mexMCinput,'simulationTime') && isfield(mexMCinput,'nPhotons')
-  error('Error: simulationTime and nPhotons may not both be specified');
-end
-if isfield(mexMCinput.Beam,'nearFieldType') && isfield(mexMCinput.Beam,'beamType')
-  error('Error: nearFieldType and beamType may not both be specified');
-end
-if ~mexMCinput.calcF && ~mexMCinput.useLightCollector
-  error('Error: calcF is false, but no light collector is defined');
-end
-if mexMCinput.calcFdet && ~mexMCinput.useLightCollector
-  error('Error: calcFdet is true, but no light collector is defined');
-end
-if mexMCinput.farfieldRes && mexMCinput.boundaryType == 0
-  error('Error: If boundaryType == 0, no photons can escape to be registered in the far field. Set farfieldRes to zero or change boundaryType.');
-end
-
-if isfield(mexMCinput.Beam,'nearFieldType')
-  mexMCinput.Beam.beamType = -1;
-else
-  mexMCinput.Beam.nearFieldType = -1;
-  mexMCinput.Beam.farFieldType = -1;
 end
 
 %% Call Monte Carlo C script (MEX file) to get fluence rate (intensity) distribution

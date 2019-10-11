@@ -30,7 +30,7 @@ function plotMCmatlabGeom(G)
 %%%%%
 
 %% Make geometry plot
-mediaProperties = getMediaProperties(G.mediaPropertiesFunc,500,G.mediaPropParams); % We don't know what wavelength the user wants yet, but since we just need the names of the media we can input an arbitrary wavelength of 500 nm
+mediaProperties = G.mediaPropertiesFunc(500,G.mediaPropParams); % We don't know what wavelength the user wants yet, but since we just need the names of the media we can input an arbitrary wavelength of 500 nm
 h_f = plotVolumetric(1,G.x,G.y,G.z,G.M,'MCmatlab_GeometryIllustration',mediaProperties);
 h_f.Name = 'Geometry illustration';
 title('Geometry illustration');
