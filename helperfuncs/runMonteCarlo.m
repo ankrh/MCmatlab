@@ -1,4 +1,4 @@
-function MCoutput = runMonteCarlo(mexMCinput)
+function model = runMonteCarlo(model,varargin)
 %   Requires
 %       MCmatlab.mex (architecture specific)
 %
@@ -23,56 +23,185 @@ function MCoutput = runMonteCarlo(mexMCinput)
 %   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
 %%%%%
 
-G = mexMCinput.G;
+G = model.G;
 
-mexMCinput = checkMCinputFields(mexMCinput);
-mexMCinput = getMediaProperties_funcHandles(mexMCinput); % Calls the mediaPropertiesFunc and converts those fields that are specified as cell array formulas into function handles taking intensity and temperature as input
-if mexMCinput.temperatureDependent && ~isfield(mexMCinput,'Tinitial')
-  error('Error: Parameters are temperature dependent but no initial temperature is provided');
+if ~isempty(varargin) && strcmp(varargin{1},'fluorescence')
+  simType = 2;
 else
-  mexMCinput.Tinitial = zeros(size(G.M)); % If there's no temperature dependence then it doesn't matter what we set these values to
+  simType = 1;
 end
-if ~isfield(mexMCinput,'Iinitial')
-  mexMCinput.Iinitial = zeros(size(G.M));
-end
-[M_split, mexMCinput.mediaProperties] = getMediaProperties(G.M,mexMCinput.mediaProperties_funcHandles,mexMCinput.Iinitial,mexMCinput.Tinitial);
 
+checkMCinputFields(model,simType);
+model = getMediaProperties_funcHandles(model,simType); % Calls the mediaPropertiesFunc and converts those fields that are specified as char array formulas into function handles taking intensity and temperature as input
 
-%% Extract the refractive indices if not assuming matched interfaces, otherwise assume all 1's
-if(~mexMCinput.matchedInterfaces)
-  for j=1:length(mexMCinput.mediaProperties) % Check that all media have a refractive index defined
-    if(~isfield(mexMCinput.mediaProperties,'n') || any(isempty(mexMCinput.mediaProperties(j).n)))
-      error('matchedInterfaces is false, but refractive index isn''t defined for all media');
+if ((simType == 2 && model.FMC.Tdependent) || (simType == 1 && model.MC.Tdependent))
+  if ~isnan(model.HS.T(1))
+    T = model.HS.T;
+  elseif isnan(model.HS.Tinitial(1))
+    error('Error: Parameters are temperature dependent but no initial temperature is provided');
+  else
+    if numel(model.HS.Tinitial) == 1
+      T = model.HS.Tinitial*ones(size(G.M_raw),'single');
+    else
+      T = single(model.HS.Tinitial);
     end
   end
-  n_vec = [mexMCinput.mediaProperties.n];
-  for j=1:G.nz % Check that each xy slice has constant refractive index, so refractive index is only a function of z
-    if(length(unique(n_vec(G.M(:,:,j)))) > 1)
-      error('matchedInterfaces is false, but refractive index isn''t constant for z index %d (z = %f).\nEach xy slice must have constant refractive index.',j,G.z(j));
-    end
-  end
-  mexMCinput.RI = n_vec(G.M(1,1,:));
 else
-  [mexMCinput.mediaProperties.n] = deal(1);
-  mexMCinput.RI = ones(G.nz,1);
+  T = zeros(size(G.M_raw),'single');
 end
 
-%% Call Monte Carlo C script (MEX file) to get fluence rate (intensity) distribution
-mexMCinput.G.M = mexMCinput.G.M-1; % Convert to C-style indexing
-MCoutput = MCmatlab(mexMCinput);
+if ~isnan(model.HS.Omega(1))
+  FD = 1 - exp(-model.HS.Omega); % Fractional damage of molecules/cells
+else
+  FD = zeros(size(G.M_raw),'single');
+end
+
+if (simType == 2 && model.FMC.FRdependent) || (simType == 1 && model.MC.FRdependent)
+  if isnan(model.MC.P)
+    error('Error: Media properties are fluence rate dependent, but no power (model.MC.P) was specified');
+  elseif ~isnan(model.MC.NFR(1))
+    model.MC.FR = model.MC.P*model.MC.NFR; % If the MC simulations have been run before, use the most recent NFR
+  elseif ~isnan(model.MC.FRinitial(1))
+    model.MC.FR = model.MC.FRinitial; % Otherwise if it exists, use FRinitial as the initial guess
+  else
+    model.MC.FR = zeros(size(G.M_raw)); % Otherwise just start with no light
+  end
+end
+
+%% Call Monte Carlo C code (MEX file) to get fluence rate distribution, possibly inside an iterative loop in the case of fluence rate dependent excitation light
+iterate = simType == 1 && model.MC.FRdependent;
+
+if iterate
+  nIterations = model.MC.FRdepIterations;
+  if isnan(model.MC.nPhotonsRequested)
+    t = model.MC.simulationTime;
+    t_array = t*(1/2).^(nIterations-1:-1:0);
+  else
+    nPhotons = model.MC.nPhotonsRequested;
+    nPhotons_array = nPhotons*(1/2).^(nIterations-1:-1:0);
+  end
+  for i=1:nIterations
+    if isnan(model.MC.nPhotonsRequested)
+      model.MC.simulationTime = t_array(i);
+    else
+      model.MC.nPhotonsRequested = nPhotons_array(i);
+    end
+    model = getOpticalMediaProperties(model,simType); % Also performs splitting of mediaProperties and M_raw, if necessary
+    model = MCmatlab(model,simType);
+    if i<nIterations; model.MC.FR = model.MC.P*model.MC.NFR; end
+  end
+  if isnan(model.MC.nPhotonsRequested)
+    model.MC.simulationTime = t;
+  else
+    model.MC.nPhotonsRequested = nPhotons;
+  end
+else
+  model = getOpticalMediaProperties(model,simType); % Also performs splitting of mediaProperties and M_raw, if necessary
+  if simType == 2 % Since we're not iterating, we might be simulating fluorescence
+    %% Calculate 3D fluorescence source distribution
+    mua_vec = [model.MC.mediaProperties.mua];
+    Y_3d = NaN(size(G.M_raw));
+    for i=1:length(model.MC.mediaProperties_funcHandles)
+      if isa(model.MC.mediaProperties_funcHandles(i).Y,'function_handle')
+        Y_3d(G.M_raw == i) = model.MC.mediaProperties_funcHandles(i).Y(model.MC.FR(G.M_raw == i),T(G.M_raw == i),FD(G.M_raw(:) == i));
+      else
+        Y_3d(G.M_raw == i) = model.MC.mediaProperties_funcHandles(i).Y;
+      end
+    end
+    Y_3d(isnan(Y_3d)) = 0; % Set any media that have no Y specified to be non-fluorescing
+    if any(isinf(Y_3d(:)) | Y_3d(:) < 0)
+      error('Error: Invalid Y');
+    end
+    model.FMC.beam.sourceDistribution = Y_3d.*mua_vec(model.MC.M).*model.MC.NFR; % [W/cm^3/W.incident]
+    clear Y_3d
+    if max(model.FMC.beam.sourceDistribution(:)) == 0; error('Error: No fluorescence emitters'); end
+  end
+  model = MCmatlab(model,simType);
+end
 
 % Add positions of the centers of the pixels in the light collector image
-if mexMCinput.useLightCollector && mexMCinput.LightCollector.res > 1
-  MCoutput.X = linspace(mexMCinput.LightCollector.FieldSize*(1/mexMCinput.LightCollector.res-1),mexMCinput.LightCollector.FieldSize*(1-1/mexMCinput.LightCollector.res),mexMCinput.LightCollector.res)/2;
-  MCoutput.Y = MCoutput.X;
+if simType == 2
+  if model.FMC.useLightCollector && model.FMC.LC.res > 1
+    model.FMC.LC.X = linspace(model.FMC.LC.fieldSize*(1/model.FMC.LC.res-1),model.FMC.LC.fieldSize*(1-1/model.FMC.LC.res),model.FMC.LC.res)/2;
+    model.FMC.LC.Y = model.FMC.LC.X;
+  end
+
+  % Add angles of the centers of the far field pixels
+  if model.FMC.farFieldRes
+    model.FMC.farFieldTheta = linspace(pi/model.FMC.farFieldRes/2,pi-pi/model.FMC.farFieldRes/2,model.FMC.farFieldRes);
+    model.FMC.farFieldPhi   = linspace(-pi+(2*pi)/model.FMC.farFieldRes/2,pi-(2*pi)/model.FMC.farFieldRes/2,model.FMC.farFieldRes);
+  end
+else
+  if model.MC.useLightCollector && model.MC.LC.res > 1
+    model.MC.LC.X = linspace(model.MC.LC.fieldSize*(1/model.MC.LC.res-1),model.MC.LC.fieldSize*(1-1/model.MC.LC.res),model.MC.LC.res)/2;
+    model.MC.LC.Y = model.MC.LC.X;
+  end
+
+  % Add angles of the centers of the far field pixels
+  if model.MC.farFieldRes
+    model.MC.farFieldTheta = linspace(pi/model.MC.farFieldRes/2,pi-pi/model.MC.farFieldRes/2,model.MC.farFieldRes);
+    model.MC.farFieldPhi   = linspace(-pi+(2*pi)/model.MC.farFieldRes/2,pi-(2*pi)/model.MC.farFieldRes/2,model.MC.farFieldRes);
+  end
+end
 end
 
-% Add angles of the centers of the far field pixels
-if mexMCinput.farfieldRes
-  MCoutput.FarFieldTheta = linspace(pi/mexMCinput.farfieldRes/2,pi-pi/mexMCinput.farfieldRes/2,mexMCinput.farfieldRes);
-  MCoutput.FarFieldPhi   = linspace(-pi+(2*pi)/mexMCinput.farfieldRes/2,pi-(2*pi)/mexMCinput.farfieldRes/2,mexMCinput.farfieldRes);
+function checkMCinputFields(model,simType)
+G = model.G;
+
+if simType == 2
+  MCorFMC = model.FMC;
+else
+  MCorFMC = model.MC;
 end
 
-% Also put the mediaProperties into the MCoutput struct for later use by other functions
-MCoutput.mediaProperties = mexMCinput.mediaProperties;
+if isnan(MCorFMC.wavelength)
+  error('Error: No wavelength defined');
+end
+if ~MCorFMC.calcNFR && ~MCorFMC.useLightCollector
+  error('Error: calcNFR is false, but no light collector is defined');
+end
+if MCorFMC.calcNFRdet && ~MCorFMC.useLightCollector
+  error('Error: calcNFRdet is true, but no light collector is defined');
+end
+if MCorFMC.farFieldRes && MCorFMC.boundaryType == 0
+  error('Error: If boundaryType == 0, no photons can escape to be registered in the far field. Set farFieldRes to zero or change boundaryType.');
+end
+
+if simType == 2
+  if isnan(model.MC.NFR(1))
+    error('Error: NFR matrix not calculated for excitation light');
+  end
+else
+  if xor(isnan(MCorFMC.beam.nearFieldType), isnan(MCorFMC.beam.farFieldType))
+    error('Error: nearFieldType and farFieldType must either both be specified, or neither');
+  end
+  if isnan(MCorFMC.beam.nearFieldType) && isnan(MCorFMC.beam.beamType)
+    error('Error: nearFieldType and beamType may not both be specified');
+  end
+end
+
+if MCorFMC.useLightCollector
+  %% Check to ensure that the light collector is not inside the cuboid and set res to 1 if using fiber
+  if MCorFMC.boundaryType == 0
+    error('Error: If boundaryType == 0, no photons can escape to be registered on the light collector. Disable light collector or change boundaryType.');
+  end
+  if isfinite(MCorFMC.LC.f)
+    xLCC = MCorFMC.LC.x - MCorFMC.LC.f*sin(MCorFMC.LC.theta)*cos(MCorFMC.LC.phi); % x position of Light Collector Center
+    yLCC = MCorFMC.LC.y - MCorFMC.LC.f*sin(MCorFMC.LC.theta)*sin(MCorFMC.LC.phi); % y position
+    zLCC = MCorFMC.LC.z - MCorFMC.LC.f*cos(MCorFMC.LC.theta);                     % z position
+  else
+    xLCC = MCorFMC.LC.x;
+    yLCC = MCorFMC.LC.y;
+    zLCC = MCorFMC.LC.z;
+    if MCorFMC.LC.res ~= 1
+      error('Error: LC.res must be 1 when LC.f is Inf');
+    end
+  end
+
+  if (abs(xLCC)               < G.nx*G.dx/2 && ...
+      abs(yLCC)               < G.ny*G.dy/2 && ...
+      abs(zLCC - G.nz*G.dz/2) < G.nz*G.dz/2)
+    error('Error: Light collector center (%.4f,%.4f,%.4f) is inside cuboid',xLCC,yLCC,zLCC);
+  end
+end
 end

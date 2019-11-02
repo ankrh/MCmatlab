@@ -1,156 +1,172 @@
 addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
+fprintf('\n');
+
+%% Description
+%
+%
 
 %% Geometry definition
-clear Ginput
-Ginput.silentMode        = false; % (Default: false) Disables command window text and progress indication
+model = initializeMCmatlabModel();
 
-Ginput.nx                = 100; % Number of bins in the x direction
-Ginput.ny                = 100; % Number of bins in the y direction
-Ginput.nz                = 100; % Number of bins in the z direction
-Ginput.Lx                = .1; % [cm] x size of simulation cuboid
-Ginput.Ly                = .1; % [cm] y size of simulation cuboid
-Ginput.Lz                = .1; % [cm] z size of simulation cuboid
+model.G.silentMode        = false; % (Default: false) Disables command window text and progress indication
 
-% Ginput.mediaPropParams   = {0.6}; % Cell array containing any additional parameters to be passed to the getMediaProperties function
+model.G.nx                = 100; % Number of bins in the x direction
+model.G.ny                = 100; % Number of bins in the y direction
+model.G.nz                = 100; % Number of bins in the z direction
+model.G.Lx                = .1; % [cm] x size of simulation cuboid
+model.G.Ly                = .1; % [cm] y size of simulation cuboid
+model.G.Lz                = .1; % [cm] z size of simulation cuboid
 
-Ginput.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
-Ginput.GeomFunc          = @GeometryDefinition_FluorescingCylinder; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
-% Ginput.GeomFuncParams    = {0.03}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
+% model.G.mediaPropParams   = {0.6}; % Cell array containing any additional parameters to be passed to the getMediaProperties function
 
-% Execution, do not modify the next two lines:
-Goutput = defineGeometry(Ginput);
-plotMCmatlabGeom(Goutput);
+model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
+model.G.geomFunc          = @geometryDefinition_StandardTissue; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
+% model.G.geomFuncParams    = {0.03}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
+
+% Execution, do not modify the next line:
+model = defineGeometry(model);
+plotMCmatlabGeom(model);
 
 %% Monte Carlo simulation
-% clear MCinput
-% MCinput.simulationTime           = .1; % [min] Time duration of the simulation
-% MCinput.nPhotons                 = 1e5; % # of photons to launch
+% model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
 % 
-% % MCinput.silentMode               = false; % (Default: false) Disables command window text and progress indication
-% % MCinput.useAllCPUs               = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
-% % MCinput.calcF                    = true; % (Default: true) If true, the 3D fluence rate output matrix F will be calculated. Set to false if you have a light collector and you're only interested in the Image output.
-% % MCinput.calcFdet                 = false; % (Default: false) If true, the 3D fluence rate output matrix Fdet will be calculated. Only photons that end up on the light collector are counted in Fdet.
-% % MCinput.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
-% % MCinput.farfieldRes              = 50; % (Default: 0) If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
+% model.MC.simulationTime           = .1; % [min] Time duration of the simulation
+% model.MC.nPhotonsRequested        = 1e5; % # of photons to launch
 % 
-% MCinput.matchedInterfaces        = true; % (Default: true) If true, assumes all refractive indices are 1. If false, uses the refractive indices defined in getMediaProperties
-% MCinput.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
-% MCinput.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
+% % model.MC.silentMode               = false; % (Default: false) Disables command window text and progress indication
+% % model.MC.useAllCPUs               = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
+% % model.MC.calcNFR                  = true; % (Default: true) If true, the 3D fluence rate output array NFR will be calculated. Set to false if you have a light collector and you're only interested in the image output.
+% % model.MC.calcNFRdet               = false; % (Default: false) If true, the 3D fluence rate output array NFRdet will be calculated. Only photons that end up on the light collector are counted in NFRdet.
+% % model.MC.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
+% % model.MC.farFieldRes              = 50; % (Default: 0) If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
 % 
-% MCinput.Beam.beamType            = 2; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
-% MCinput.Beam.nearFieldType       = 2; % 0: Gaussian, 1: Circular top-hat, 2: Square top-hat
-% MCinput.Beam.farFieldType        = 2; % 0: Gaussian, 1: Circular top-hat, 2: Cosine distribution (Lambertian)
-% MCinput.Beam.xFocus              = 0; % [cm] x position of focus
-% MCinput.Beam.yFocus              = 0; % [cm] y position of focus
-% MCinput.Beam.zFocus              = Ginput.Lz/2; % [cm] z position of focus
-% MCinput.Beam.theta               = 0; % [rad] Polar angle of beam center axis
-% MCinput.Beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
-% MCinput.Beam.waist               = 0.005; % [cm] Beam waist 1/e^2 radius
-% MCinput.Beam.divergence          = 5/180*pi; % [rad] Beam divergence 1/e^2 half-angle of beam (for a diffraction limited Gaussian beam, this is G.wavelength*1e-9/(pi*MCinput.Beam.waist*1e-2))
+% model.MC.matchedInterfaces        = true; % (Default: true) If true, assumes all refractive indices are 1. If false, uses the refractive indices defined in getMediaProperties
+% model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+% model.MC.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 % 
-% % MCinput.LightCollector.x         = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
-% % MCinput.LightCollector.y         = 0; % [cm] y position
-% % MCinput.LightCollector.z         = 0.03; % [cm] z position
+% model.MC.beam.beamType            = 2; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
+% model.MC.beam.nearFieldType       = 2; % 0: Gaussian, 1: Circular top-hat, 2: Square top-hat
+% model.MC.beam.farFieldType        = 2; % 0: Gaussian, 1: Circular top-hat, 2: Cosine distribution (Lambertian)
+% model.MC.beam.xFocus              = 0; % [cm] x position of focus
+% model.MC.beam.yFocus              = 0; % [cm] y position of focus
+% model.MC.beam.zFocus              = model.G.Lz/2; % [cm] z position of focus
+% model.MC.beam.theta               = 0; % [rad] Polar angle of beam center axis
+% model.MC.beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
+% model.MC.beam.waist               = 0.005; % [cm] Beam waist 1/e^2 radius
+% model.MC.beam.divergence          = 5/180*pi; % [rad] Beam divergence 1/e^2 half-angle of beam (for a diffraction limited Gaussian beam, this is G.wavelength*1e-9/(pi*model.MC.beam.waist*1e-2))
+% 
+% % model.MC.P                        = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
+% % model.MC.FRinitial = zeros(model.G.nx,model.G.ny,model.G.nz); % [W/cm^2] Initial guess for the intensity distribution, to be used for fluence rate dependent simulations
+% % model.MC.FRdepIterations = 20;
+% 
+% % model.MC.useLightCollector      = true;
+% % model.MC.LC.x         = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
+% % model.MC.LC.y         = 0; % [cm] y position
+% % model.MC.LC.z         = 0.03; % [cm] z position
 % % 
-% % MCinput.LightCollector.theta     = 0; % [rad] Polar angle of direction the light collector is facing
-% % MCinput.LightCollector.phi       = pi/2; % [rad] Azimuthal angle of direction the light collector is facing
+% % model.MC.LC.theta     = 0; % [rad] Polar angle of direction the light collector is facing
+% % model.MC.LC.phi       = pi/2; % [rad] Azimuthal angle of direction the light collector is facing
 % % 
-% % MCinput.LightCollector.f         = .2; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
-% % MCinput.LightCollector.diam      = .1; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(NA)).
-% % MCinput.LightCollector.FieldSize = .1; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
-% % MCinput.LightCollector.NA        = 0.22; % [-] Fiber NA. Only used for infinite f.
+% % model.MC.LC.f         = .2; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
+% % model.MC.LC.diam      = .1; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(NA)).
+% % model.MC.LC.fieldSize = .1; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
+% % model.MC.LC.NA        = 0.22; % [-] Fiber NA. Only used for infinite f.
 % % 
-% % MCinput.LightCollector.res       = 50; % X and Y resolution of light collector in pixels, only used for finite f
+% % model.MC.LC.res       = 50; % X and Y resolution of light collector in pixels, only used for finite f
 % % 
-% % % MCinput.LightCollector.tStart    = -1e-13; % [s] Start of the detection time interval
-% % % MCinput.LightCollector.tEnd      = 5e-12; % [s] End of the detection time interval
-% % % MCinput.LightCollector.nTimeBins = 30; % (Default: 0) Number of bins between tStart and tEnd. If zero, the measurement is not time-resolved.
+% % % model.MC.LC.tStart    = -1e-13; % [s] Start of the detection time interval
+% % % model.MC.LC.tEnd      = 5e-12; % [s] End of the detection time interval
+% % % model.MC.LC.nTimeBins = 30; % (Default: 0) Number of bins between tStart and tEnd. If zero, the measurement is not time-resolved.
 % 
-% % Execution, do not modify the next three lines:
-% MCinput.G = Goutput;
-% MCoutput = runMonteCarlo(MCinput);
-% plotMCmatlab(MCinput,MCoutput);
+% % Execution, do not modify the next line:
+% model = runMonteCarlo(model);
+% 
+% plotMCmatlab(model);
 
 %% Fluorescence Monte Carlo
-% clear FMCinput
-% FMCinput.simulationTime           = .1; % [min] Time duration of the simulation
-% FMCinput.nPhotons                 = 1e5; % # of photons to launch
+% model = clearMCmatlabModel(model,'FMC'); % Only necessary if you want to run this section repeatedly, re-using previous G and MC data
 % 
-% % FMCinput.silentMode               = false; % (Default: false) Disables command window text and progress indication
-% % FMCinput.useAllCPUs               = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
-% % FMCinput.calcF                    = true; % (Default: true) If true, the 3D fluence rate output matrix F will be calculated. Set to false if you have a light collector and you're only interested in the Image output.
-% % FMCinput.calcFdet                 = false; % (Default: false) If true, the 3D fluence rate output matrix Fdet will be calculated. Only photons that end up on the light collector are counted in Fdet.
-% % FMCinput.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
-% % FMCinput.farfieldRes              = 50; % (Default: 0) If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
+% model.FMC.simulationTime           = .1; % [min] Time duration of the simulation
+% model.FMC.nPhotonsRequested        = 1e5; % # of photons to launch
 % 
-% FMCinput.matchedInterfaces        = true; % (Default: true) If true, assumes all refractive indices are 1. If false, uses the refractive indices defined in getMediaProperties
-% FMCinput.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
-% FMCinput.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
+% % model.FMC.silentMode             = false; % (Default: false) Disables command window text and progress indication
+% % model.FMC.useAllCPUs             = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
+% % model.FMC.calcNFR                = true; % (Default: true) If true, the 3D fluence rate output array NFR will be calculated. Set to false if you have a light collector and you're only interested in the image output.
+% % model.FMC.calcNFRdet             = false; % (Default: false) If true, the 3D fluence rate output array NFRdet will be calculated. Only photons that end up on the light collector are counted in NFRdet.
+% % model.FMC.nExamplePaths          = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
+% % model.FMC.farFieldRes            = 50; % (Default: 0) If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
 % 
-% % FMCinput.LightCollector.x         = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
-% % FMCinput.LightCollector.y         = 0; % [cm] y position
-% % FMCinput.LightCollector.z         = 0.03; % [cm] z position
+% model.FMC.matchedInterfaces        = true; % (Default: true) If true, assumes all refractive indices are 1. If false, uses the refractive indices defined in getMediaProperties
+% model.FMC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+% model.FMC.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
+% 
+% % model.FMC.useLightCollector      = true;
+% % model.FMC.LC.x         = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
+% % model.FMC.LC.y         = 0; % [cm] y position
+% % model.FMC.LC.z         = 0.03; % [cm] z position
 % % 
-% % FMCinput.LightCollector.theta     = 0; % [rad] Polar angle of direction the light collector is facing
-% % FMCinput.LightCollector.phi       = pi/2; % [rad] Azimuthal angle of direction the light collector is facing
+% % model.FMC.LC.theta     = 0; % [rad] Polar angle of direction the light collector is facing
+% % model.FMC.LC.phi       = pi/2; % [rad] Azimuthal angle of direction the light collector is facing
 % % 
-% % FMCinput.LightCollector.f         = .2; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
-% % FMCinput.LightCollector.diam      = .1; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(NA)).
-% % FMCinput.LightCollector.FieldSize = .1; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
-% % FMCinput.LightCollector.NA        = 0.22; % [-] Fiber NA. Only used for infinite f.
+% % model.FMC.LC.f         = .2; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
+% % model.FMC.LC.diam      = .1; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(NA)).
+% % model.FMC.LC.fieldSize = .1; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
+% % model.FMC.LC.NA        = 0.22; % [-] Fiber NA. Only used for infinite f.
 % % 
-% % FMCinput.LightCollector.res       = 50; % X and Y resolution of light collector in pixels, only used for finite f
+% % model.FMC.LC.res       = 50; % X and Y resolution of light collector in pixels, only used for finite f
 % 
-% % Execution, do not modify the next four lines:
-% FMCinput.G = Goutput;
-% FMCinput.MCoutput = MCoutput;
-% FMCoutput = runMonteCarloFluorescence(FMCinput);
-% plotMCmatlabFluorescence(FMCinput,FMCoutput);
+% % Execution, do not modify the next line:
+% model = runMonteCarlo(model,'fluorescence');
+% 
+% plotMCmatlab(model,'fluorescence');
 
 %% Heat simulation
-% % HSinput.silentMode          = false; % (Default: false) Disables command window text and progress indication
-% % HSinput.useAllCPUs          = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
-% % HSinput.makeMovie           = true; % (Default: false) Requires silentMode = false.
-% % HSinput.largeTimeSteps      = true; % (Default: false) If true, calculations will be faster, but some voxel temperatures may be slightly less precise. Test for yourself whether this precision is acceptable for your application.
+% model = clearMCmatlabModel(model,'HS'); % Only necessary if you want to run this section repeatedly, re-using previous G, MC and/or FMC data
 % 
-% HSinput.heatBoundaryType    = 0; % 0: Insulating boundaries, 1: Constant-temperature boundaries (heat-sinked)
-% HSinput.P                   = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
-% HSinput.durationOn          = 0.001; % [s] Pulse on-duration
-% HSinput.durationOff         = 0.004; % [s] Pulse off-duration
-% HSinput.durationEnd         = 0.02; % [s] Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train
-% HSinput.initialTemp         = 37; % [deg C] Initial temperature
+% % model.HS.silentMode          = false; % (Default: false) Disables command window text and progress indication
+% % model.HS.useAllCPUs          = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
+% % model.HS.makeMovie           = true; % (Default: false) Requires silentMode = false.
+% % model.HS.largeTimeSteps      = true; % (Default: false) If true, calculations will be faster, but some voxel temperatures may be slightly less precise. Test for yourself whether this precision is acceptable for your application.
+% % model.HS.deferMovieWrite = false;
 % 
-% HSinput.nPulses             = 5; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
+% model.HS.heatBoundaryType    = 0; % 0: Insulating boundaries, 1: Constant-temperature boundaries (heat-sinked)
+% model.HS.durationOn          = 0.001; % [s] Pulse on-duration
+% model.HS.durationOff         = 0.004; % [s] Pulse off-duration
+% model.HS.durationEnd         = 0.02; % [s] Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train
+% model.HS.Tinitial            = 37; % [deg C] Initial temperature, can be scalar or 3D array
 % 
-% HSinput.plotTempLimits      = [37 100]; % [deg C] Expected range of temperatures, used only for setting the color scale in the plot
-% HSinput.nUpdates            = 100; % Number of times data is extracted for plots during each pulse. A minimum of 1 update is performed in each phase (2 for each pulse consisting of an illumination phase and a diffusion phase)
-% HSinput.slicePositions      = [.5 0.6 1]; % (Default: [0.5 1 1]) Relative slice positions [x y z] for the 3D plots on a scale from 0 to 1
-% HSinput.tempSensorPositions = [0 0 0.038
+% model.HS.nPulses             = 5; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
+% 
+% model.HS.plotTempLimits      = [37 100]; % [deg C] Expected range of temperatures, used only for setting the color scale in the plot
+% model.HS.nUpdates            = 100; % Number of times data is extracted for plots during each pulse. A minimum of 1 update is performed in each phase (2 for each pulse consisting of an illumination phase and a diffusion phase)
+% % model.HS.mediaPropRecalcPeriod = 5; % Every N updates, the media properties will be recalculated (including, if needed, re-running MC and FMC steps)
+% 
+% model.HS.slicePositions      = [.5 0.6 1]; % (Default: [0.5 1 1]) Relative slice positions [x y z] for the 3D plots on a scale from 0 to 1
+% model.HS.tempSensorPositions = [0 0 0.038
 %                               0 0 0.04
 %                               0 0 0.042
 %                               0 0 0.044]; % (Default: []) Each row is a temperature sensor's absolute [x y z] coordinates. Leave the matrix empty ([]) to disable temperature sensors.
 % 
-% % Execution, do not modify the next four lines:
-% HSinput.G = Goutput;
-% HSinput.MCoutput = MCoutput;
-% HSoutput = simulateHeatDistribution(HSinput);
-% plotMCmatlabHeat(HSinput,HSoutput);
+% % Execution, do not modify the next line:
+% model = simulateHeatDistribution(model);
+% 
+% plotMCmatlabHeat(model);
 
 %% Post-processing
 
 %% Geometry function(s)
 % A geometry function takes as input X,Y,Z matrices as returned by the
 % "ndgrid" MATLAB function as well as any parameters the user may have
-% provided in the definition of Ginput. It returns the media matrix M,
+% provided in the definition of model.G. It returns the media matrix M,
 % containing numerical values indicating the media type (as defined in
-% getMediaProperties) at each voxel location.
-function M = GeometryDefinition_StandardTissue(X,Y,Z,parameters)
+% mediaPropertiesFunc) at each voxel location.
+function M = geometryDefinition_StandardTissue(X,Y,Z,parameters)
 tissuedepth = 0.03;
 M = ones(size(X)); % Air
 M(Z > tissuedepth) = 3; % "Standard" tissue
 end
 
-function M = GeometryDefinition_BloodVessel(X,Y,Z,parameters)
+function M = geometryDefinition_BloodVessel(X,Y,Z,parameters)
 % Blood vessel example:
 zsurf = 0.01;
 epd_thick = 0.006;
@@ -162,13 +178,13 @@ M(Z > zsurf + epd_thick) = 5; % dermis
 M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 6; % blood
 end
 
-function M = GeometryDefinition_FluorescingCylinder(X,Y,Z,parameters)
+function M = geometryDefinition_FluorescingCylinder(X,Y,Z,parameters)
 cylinderradius  = 0.0100;
 M = 17*ones(size(X)); % fill background with fluorescence absorber
 M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 16; % fluorescer
 end
 
-function M = GeometryDefinition_HairExample(X,Y,Z,parameters)
+function M = geometryDefinition_HairExample(X,Y,Z,parameters)
 zsurf = 0.02;  % position of gel/skin surface[cm]
 epd_thick = 0.01; % thickness of the epidermis [cm]
 hair_radius = 0.0075/2; % diameter varies from 17 - 180 micrometers, should increase with colouring and age
@@ -186,7 +202,7 @@ M((X/hair_bulb_semiminor).^2 + (Y/hair_bulb_semiminor).^2 + ((Z-(zsurf+hair_dept
 M((X/papilla_semiminor).^2 + (Y/papilla_semiminor).^2 + ((Z-(zsurf+hair_depth+hair_bulb_semimajor-papilla_semimajor))/papilla_semimajor).^2 < 1) = 5; % dermis (papilla)
 end
 
-function M = GeometryDefinition_SolderPatchExample(X,Y,Z,parameters)
+function M = geometryDefinition_SolderPatchExample(X,Y,Z,parameters)
 patch_radius        = 0.218;   	% [cm], cylinder radius
 patch_zi_start      = 1;
 patch_zi_end        = 5;
@@ -201,14 +217,14 @@ M(X.^2 + Y.^2 < water_radius^2) = 2; % water
 M(X.^2 + Y.^2 < fibre_radius^2) = 11; % fibre
 end
 
-function M = GeometryDefinition_TimeTaggingExample(X,Y,Z,parameters)
+function M = geometryDefinition_TimeTaggingExample(X,Y,Z,parameters)
 [nx,ny,~] = size(X);
 M = ones(size(X)); % Air background
 M(1:(nx*(ny+1)+1):end) = 18; % Set xyz diagonal positions to testscatterer
 M(1:(nx*(ny+1)):end) = 18; % Set yz diagonal positions to testscatterer
 end
 
-function M = GeometryDefinition_RefractionReflectionExample(X,Y,Z,parameters)
+function M = geometryDefinition_RefractionReflectionExample(X,Y,Z,parameters)
 M = ones(size(X)); % Air background
 M(Z>0.03) = 2; % Water
 M(Z>0.09) = 20; % Reflector
@@ -220,7 +236,8 @@ end
 % "mediaProperties" struct with various fields. As its input, the function
 % takes the wavelength as well as any other parameters you might specify
 % above in the model file, for example parameters that you might loop over
-% in a for loop.
+% in a for loop. Dependence on excitation fluence rate FR, temperature T or
+% fractional heat damage FD can be specified as in examples 11-14.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 j=1;
 mediaProperties(j).name  = 'air';

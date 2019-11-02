@@ -1,11 +1,12 @@
 addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
+fprintf('\n');
 
 %% Description
 % This example is another illustration of MC simulations inside a for loop,
 % this time simulating a pencil beam incident on a 100µm slab of scattering
 % medium with a variable (parametrically sweeped) scattering anisotropy g.
 % g is passed in through the mediaPropParams field and used within
-% getMediaProperties. Light is collected in transmission at a 45° angle in
+% mediaPropertiesFunc. Light is collected in transmission at a 45° angle in
 % a fiber, similar to example 8. At the end of the script, collected power
 % as a function of g is plotted. The power is seen to be zero for g = +- 1,
 % which is because then the light can only be scattered exactly forward or
@@ -14,7 +15,7 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 % photons experiencing two scattering events at a scattering angle of
 % 157.5°.
 % 
-% As in example 8, calcF is again set to false to speed up the simulation
+% As in example 8, calcNFR is again set to false to speed up the simulation
 % slightly.
 
 g_vec = linspace(-1,1,21); % g values to simulate
@@ -23,73 +24,77 @@ fprintf('%2d/%2d\n',0,length(g_vec));
 for i=1:length(g_vec)
 fprintf('\b\b\b\b\b\b%2d/%2d\n',i,length(g_vec)); % Simple progress indicator
 %% Geometry definition
-clear Ginput
-Ginput.silentMode        = true; % Disables command window text and progress indication
+model = initializeMCmatlabModel();
 
-Ginput.nx                = 21; % Number of bins in the x direction
-Ginput.ny                = 21; % Number of bins in the y direction
-Ginput.nz                = 21; % Number of bins in the z direction
-Ginput.Lx                = .1; % [cm] x size of simulation cuboid
-Ginput.Ly                = .1; % [cm] y size of simulation cuboid
-Ginput.Lz                = .01; % [cm] z size of simulation cuboid
+model.G.silentMode        = true; % Disables command window text and progress indication
 
-Ginput.mediaPropParams   = {g_vec(i)}; % Cell array containing any additional parameters to be passed to the getMediaProperties function
+model.G.nx                = 21; % Number of bins in the x direction
+model.G.ny                = 21; % Number of bins in the y direction
+model.G.nz                = 21; % Number of bins in the z direction
+model.G.Lx                = .1; % [cm] x size of simulation cuboid
+model.G.Ly                = .1; % [cm] y size of simulation cuboid
+model.G.Lz                = .01; % [cm] z size of simulation cuboid
 
-Ginput.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
-Ginput.GeomFunc          = @GeometryDefinition_MediaPropertyParametricSweep; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
+model.G.mediaPropParams   = {g_vec(i)}; % Cell array containing any additional parameters to be passed to the mediaPropertiesFunc function
+
+model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
+model.G.geomFunc          = @geometryDefinition_MediaPropertyParametricSweep; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
 % Execution, do not modify the next line:
-Goutput = defineGeometry(Ginput);
+model = defineGeometry(model);
 
-% plotMCmatlabGeom(Goutput);
+% plotMCmatlabGeom(model);
 
 %% Monte Carlo simulation
-clear MCinput
-MCinput.silentMode               = true; % Disables command window text and progress indication
-MCinput.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
-MCinput.simulationTime           = 2/60; % [min] Time duration of the simulation
-MCinput.calcF                    = false; % (Default: true) If true, the 3D fluence rate output matrix F will be calculated. Set to false if you have a light collector and you're only interested in the Image output.
+model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
 
-MCinput.matchedInterfaces        = true; % Assumes all refractive indices are 1
-MCinput.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
-MCinput.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
+model.MC.silentMode               = true; % Disables command window text and progress indication
+model.MC.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
+model.MC.simulationTime           = 2/60; % [min] Time duration of the simulation
+model.MC.calcNFR                  = false; % (Default: true) If true, the 3D fluence rate output matrix NFR will be calculated. Set to false if you have a light collector and you're only interested in the image output.
 
-MCinput.Beam.beamType            = 0; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
-MCinput.Beam.xFocus              = 0; % [cm] x position of focus
-MCinput.Beam.yFocus              = 0; % [cm] y position of focus
-MCinput.Beam.zFocus              = 0; % [cm] z position of focus
-MCinput.Beam.theta               = 0; % [rad] Polar angle of beam center axis
-MCinput.Beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
-MCinput.Beam.waist               = 0.005; % [cm] Beam waist 1/e^2 radius
-MCinput.Beam.divergence          = 5/180*pi; % [rad] Beam divergence 1/e^2 half-angle of beam (for a diffraction limited Gaussian beam, this is G.wavelength*1e-9/(pi*MCinput.Beam.waist*1e-2))
+model.MC.matchedInterfaces        = true; % Assumes all refractive indices are 1
+model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
-MCinput.LightCollector.x         = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
-MCinput.LightCollector.y         = -0.05; % [cm] y position
-MCinput.LightCollector.z         = 0.06; % [cm] z position
+model.MC.beam.beamType            = 0; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
+model.MC.beam.xFocus              = 0; % [cm] x position of focus
+model.MC.beam.yFocus              = 0; % [cm] y position of focus
+model.MC.beam.zFocus              = 0; % [cm] z position of focus
+model.MC.beam.theta               = 0; % [rad] Polar angle of beam center axis
+model.MC.beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
+model.MC.beam.waist               = 0.005; % [cm] Beam waist 1/e^2 radius
+model.MC.beam.divergence          = 5/180*pi; % [rad] Beam divergence 1/e^2 half-angle of beam (for a diffraction limited Gaussian beam, this is G.wavelength*1e-9/(pi*model.MC.beam.waist*1e-2))
 
-MCinput.LightCollector.theta     = 3*pi/4; % [rad] Polar angle of direction the light collector is facing
-MCinput.LightCollector.phi       = pi/2; % [rad] Azimuthal angle of direction the light collector is facing
+model.MC.useLightCollector        = true;
+model.MC.LC.x                     = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
+model.MC.LC.y                     = -0.05; % [cm] y position
+model.MC.LC.z                     = 0.06; % [cm] z position
 
-MCinput.LightCollector.f         = Inf; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
-MCinput.LightCollector.diam      = .1; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(NA)).
-MCinput.LightCollector.FieldSize = .1; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
-MCinput.LightCollector.NA        = 0.22; % [-] Fiber NA. Only used for infinite f.
+model.MC.LC.theta                 = 3*pi/4; % [rad] Polar angle of direction the light collector is facing
+model.MC.LC.phi                   = pi/2; % [rad] Azimuthal angle of direction the light collector is facing
 
-MCinput.LightCollector.res       = 1; % X and Y resolution of light collector in pixels, only used for finite f
+model.MC.LC.f                     = Inf; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
+model.MC.LC.diam                  = .1; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(NA)).
+model.MC.LC.fieldSize             = .1; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
+model.MC.LC.NA                    = 0.22; % [-] Fiber NA. Only used for infinite f.
 
-% Execution, do not modify the next two lines:
-MCinput.G = Goutput;
-MCoutput = runMonteCarlo(MCinput);
+model.MC.LC.res                   = 1; % X and Y resolution of light collector in pixels, only used for finite f
 
-% plotMCmatlab(MCinput,MCoutput);
+% Execution, do not modify the next line:
+model = runMonteCarlo(model);
+
+% plotMCmatlab(model);
 
 %% Post-processing
-power_vec(i) = MCoutput.Image; % "Image" is in this case just a scalar, the normalized power collected by the fiber.
+power_vec(i) = model.MC.LC.image; % "image" is in this case just a scalar, the normalized power collected by the fiber.
 end
+plotMCmatlabGeom(model);
+plotMCmatlab(model);
 
 figure;clf;
 plot(g_vec,power_vec,'Linewidth',2);
-set(gcf,'Position',[40 80 1100 650]);
+set(gcf,'Position',[40 160 1100 650]);
 xlabel('Scattering anisotropy g');
 ylabel('Normalized power collected by fiber');
 set(gca,'FontSize',18);grid on; grid minor;
@@ -99,8 +104,8 @@ set(gca,'FontSize',18);grid on; grid minor;
 % "ndgrid" MATLAB function as well as any parameters the user may have
 % provided in the definition of Ginput. It returns the media matrix M,
 % containing numerical values indicating the media type (as defined in
-% getMediaProperties) at each voxel location.
-function M = GeometryDefinition_MediaPropertyParametricSweep(X,Y,Z,parameters)
+% mediaPropertiesFunc) at each voxel location.
+function M = geometryDefinition_MediaPropertyParametricSweep(X,Y,Z,parameters)
 M = ones(size(X)); % Variable g medium
 end
 
@@ -110,7 +115,8 @@ end
 % "mediaProperties" struct with various fields. As its input, the function
 % takes the wavelength as well as any other parameters you might specify
 % above in the model file, for example parameters that you might loop over
-% in a for loop.
+% in a for loop. Dependence on excitation fluence rate FR, temperature T or
+% fractional heat damage FD can be specified as in examples 11-14.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 j=1;
 mediaProperties(j).name  = 'variable g medium';

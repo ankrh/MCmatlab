@@ -1,4 +1,5 @@
 addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
+fprintf('\n');
 
 %% Decription
 % This example simulates a collimated top hat beam of radius 300 µm
@@ -10,79 +11,80 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 % The found absorption distribution is then passed into the heat simulator,
 % assuming the light is on for 5 pulses of 1 ms on time and 4 ms off time
 % each, with 4 W of peak power. Some demonstration values of the Arrhenius
-% E and A parameters for blood coagulation exist in getMediaProperties and
-% are used to calculate the distribution of coagulated blood. Temperature
-% sensors outputs and movie generation is also demonstrated.
+% E and A parameters for blood coagulation are used to calculate the
+% distribution of coagulated blood. Temperature sensors outputs and movie
+% generation is also demonstrated.
 
 %% Geometry definition
-clear Ginput
-Ginput.nx                = 100; % Number of bins in the x direction
-Ginput.ny                = 100; % Number of bins in the y direction
-Ginput.nz                = 100; % Number of bins in the z direction
-Ginput.Lx                = .1; % [cm] x size of simulation cuboid
-Ginput.Ly                = .1; % [cm] y size of simulation cuboid
-Ginput.Lz                = .1; % [cm] z size of simulation cuboid
+model = initializeMCmatlabModel();
 
-Ginput.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
-Ginput.GeomFunc          = @GeometryDefinition_BloodVessel; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
+model.G.nx                = 100; % Number of bins in the x direction
+model.G.ny                = 100; % Number of bins in the y direction
+model.G.nz                = 100; % Number of bins in the z direction
+model.G.Lx                = .1; % [cm] x size of simulation cuboid
+model.G.Ly                = .1; % [cm] y size of simulation cuboid
+model.G.Lz                = .1; % [cm] z size of simulation cuboid
+
+model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
+model.G.geomFunc          = @geometryDefinition_BloodVessel; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
 % Execution, do not modify the next line:
-Goutput = defineGeometry(Ginput);
+model = defineGeometry(model);
 
-plotMCmatlabGeom(Goutput);
+plotMCmatlabGeom(model);
 
 %% Monte Carlo simulation
-clear MCinput
-MCinput.simulationTime           = .1; % [min] Time duration of the simulation
+model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
 
-MCinput.matchedInterfaces        = true; % Assumes all refractive indices are 1
-MCinput.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
-MCinput.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
+model.MC.simulationTime           = .1; % [min] Time duration of the simulation
 
-MCinput.Beam.beamType            = 6; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
-MCinput.Beam.xFocus              = 0; % [cm] x position of focus
-MCinput.Beam.yFocus              = 0; % [cm] y position of focus
-MCinput.Beam.zFocus              = 0; % [cm] z position of focus
-MCinput.Beam.theta               = 0; % [rad] Polar angle of beam center axis
-MCinput.Beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
-MCinput.Beam.waist               = 0.03; % [cm] Beam waist 1/e^2 radius
-MCinput.Beam.divergence          = 0/180*pi; % [rad] Beam divergence 1/e^2 half-angle of beam (for a diffraction limited Gaussian beam, this is G.wavelength*1e-9/(pi*MCinput.Beam.waist*1e-2))
+model.MC.matchedInterfaces        = true; % Assumes all refractive indices are 1
+model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
-% Execution, do not modify the next two lines:
-MCinput.G = Goutput;
-MCoutput = runMonteCarlo(MCinput);
+model.MC.beam.beamType            = 6; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
+model.MC.beam.xFocus              = 0; % [cm] x position of focus
+model.MC.beam.yFocus              = 0; % [cm] y position of focus
+model.MC.beam.zFocus              = 0; % [cm] z position of focus
+model.MC.beam.theta               = 0; % [rad] Polar angle of beam center axis
+model.MC.beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
+model.MC.beam.waist               = 0.03; % [cm] Beam waist 1/e^2 radius
+model.MC.beam.divergence          = 0/180*pi; % [rad] Beam divergence 1/e^2 half-angle of beam (for a diffraction limited Gaussian beam, this is G.wavelength*1e-9/(pi*model.MC.beam.waist*1e-2))
 
-plotMCmatlab(MCinput,MCoutput);
+% Execution, do not modify the next line:
+model = runMonteCarlo(model);
+
+plotMCmatlab(model);
 
 %% Heat simulation
-clear HSinput
-HSinput.useAllCPUs          = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
-HSinput.makeMovie           = true; % Requires silentMode = false.
-HSinput.largeTimeSteps      = false; % (Default: false) If true, calculations will be faster, but some voxel temperatures may be slightly less precise. Test for yourself whether this precision is acceptable for your application.
+model = clearMCmatlabModel(model,'HS'); % Only necessary if you want to run this section repeatedly, re-using previous G, MC and/or FMC data
 
-HSinput.heatBoundaryType    = 0; % 0: Insulating boundaries, 1: Constant-temperature boundaries (heat-sinked)
-HSinput.P                   = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
-HSinput.durationOn          = 0.001; % [s] Pulse on-duration
-HSinput.durationOff         = 0.004; % [s] Pulse off-duration
-HSinput.durationEnd         = 0.02; % [s] Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train
-HSinput.initialTemp         = 37; % [deg C] Initial temperature
+model.MC.P                   = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
 
-HSinput.nPulses             = 5; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use n_pulses = 1.
+model.HS.useAllCPUs          = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
+model.HS.makeMovie           = true; % Requires silentMode = false.
+model.HS.largeTimeSteps      = false; % (Default: false) If true, calculations will be faster, but some voxel temperatures may be slightly less precise. Test for yourself whether this precision is acceptable for your application.
 
-HSinput.plotTempLimits      = [37 100]; % [deg C] Expected range of temperatures, used only for setting the color scale in the plot
-HSinput.nUpdates            = 100; % Number of times data is extracted for plots during each pulse. A minimum of 1 update is performed in each phase (2 for each pulse consisting of an illumination phase and a diffusion phase)
-HSinput.slicePositions      = [.5 0.6 1]; % Relative slice positions [x y z] for the 3D plots on a scale from 0 to 1
-HSinput.tempSensorPositions = [0 0 0.038
-                               0 0 0.04
-                               0 0 0.042
-                               0 0 0.044]; % Each row is a temperature sensor's absolute [x y z] coordinates. Leave the matrix empty ([]) to disable temperature sensors.
+model.HS.heatBoundaryType    = 0; % 0: Insulating boundaries, 1: Constant-temperature boundaries (heat-sinked)
+model.HS.durationOn          = 0.001; % [s] Pulse on-duration
+model.HS.durationOff         = 0.004; % [s] Pulse off-duration
+model.HS.durationEnd         = 0.02; % [s] Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train
+model.HS.Tinitial            = 37; % [deg C] Initial temperature
 
-% Execution, do not modify the next three lines:
-HSinput.G = Goutput;
-HSinput.MCoutput = MCoutput;
-HSoutput = simulateHeatDistribution(HSinput);
+model.HS.nPulses             = 5; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use nPulses = 1.
 
-plotMCmatlabHeat(HSinput,HSoutput);
+model.HS.plotTempLimits      = [37 100]; % [deg C] Expected range of temperatures, used only for setting the color scale in the plot
+model.HS.nUpdates            = 100; % Number of times data is extracted for plots during each pulse. A minimum of 1 update is performed in each phase (2 for each pulse consisting of an illumination phase and a diffusion phase)
+model.HS.slicePositions      = [.5 0.6 1]; % Relative slice positions [x y z] for the 3D plots on a scale from 0 to 1
+model.HS.tempSensorPositions = [0 0 0.038
+                                0 0 0.04
+                                0 0 0.042
+                                0 0 0.044]; % Each row is a temperature sensor's absolute [x y z] coordinates. Leave the matrix empty ([]) to disable temperature sensors.
+
+% Execution, do not modify the next line:
+model = simulateHeatDistribution(model);
+
+plotMCmatlabHeat(model);
 
 %% Post-processing
 
@@ -91,8 +93,8 @@ plotMCmatlabHeat(HSinput,HSoutput);
 % "ndgrid" MATLAB function as well as any parameters the user may have
 % provided in the definition of Ginput. It returns the media matrix M,
 % containing numerical values indicating the media type (as defined in
-% getMediaProperties) at each voxel location.
-function M = GeometryDefinition_BloodVessel(X,Y,Z,parameters)
+% mediaPropertiesFunc) at each voxel location.
+function M = geometryDefinition_BloodVessel(X,Y,Z,parameters)
 % Blood vessel example:
 zsurf = 0.01;
 epd_thick = 0.006;
@@ -110,7 +112,8 @@ end
 % "mediaProperties" struct with various fields. As its input, the function
 % takes the wavelength as well as any other parameters you might specify
 % above in the model file, for example parameters that you might loop over
-% in a for loop.
+% in a for loop. Dependence on excitation fluence rate FR, temperature T or
+% fractional heat damage FD can be specified as in examples 11-14.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 load spectralLIB.mat
 MU(:,1) = interp1(nmLIB,muaoxy,wavelength);

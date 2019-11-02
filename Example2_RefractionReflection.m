@@ -1,4 +1,5 @@
 addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
+fprintf('\n');
 
 %% Description
 % This example illustrates simulation of refraction and reflection
@@ -22,46 +23,47 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 % shown as lines in a 3D plot after completion.
 
 %% Geometry definition
-clear Ginput
-Ginput.nx                = 100; % Number of bins in the x direction
-Ginput.ny                = 100; % Number of bins in the y direction
-Ginput.nz                = 100; % Number of bins in the z direction
-Ginput.Lx                = .1; % [cm] x size of simulation cuboid
-Ginput.Ly                = .1; % [cm] y size of simulation cuboid
-Ginput.Lz                = .1; % [cm] z size of simulation cuboid
+model = initializeMCmatlabModel();
 
-Ginput.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
-Ginput.GeomFunc          = @GeometryDefinition_RefractionReflectionExample; % The distribution of media in the cuboid, also defined as a function at the end of this file.
+model.G.nx                = 100; % Number of bins in the x direction
+model.G.ny                = 100; % Number of bins in the y direction
+model.G.nz                = 100; % Number of bins in the z direction
+model.G.Lx                = .1; % [cm] x size of simulation cuboid
+model.G.Ly                = .1; % [cm] y size of simulation cuboid
+model.G.Lz                = .1; % [cm] z size of simulation cuboid
+
+model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
+model.G.geomFunc          = @geometryDefinition_RefractionReflectionExample; % The distribution of media in the cuboid, also defined as a function at the end of this file.
 
 % Execution, do not modify the next line:
-Goutput = defineGeometry(Ginput);
+model = defineGeometry(model);
 
-plotMCmatlabGeom(Goutput);
+plotMCmatlabGeom(model);
 
 %% Monte Carlo simulation
-clear MCinput
-MCinput.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
-MCinput.simulationTime           = .1; % [min] Time duration of the simulation
-MCinput.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
+model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
 
-MCinput.matchedInterfaces        = false; % If false, uses the refractive indices as defined in mediaPropertiesFunc at the end of this file
-MCinput.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
-MCinput.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
+model.MC.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
+model.MC.simulationTime           = .1; % [min] Time duration of the simulation
+model.MC.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
 
-MCinput.Beam.beamType            = 1; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
-MCinput.Beam.xFocus              = 0; % [cm] x position of focus
-MCinput.Beam.yFocus              = 0; % [cm] y position of focus
-MCinput.Beam.zFocus              = 0.04; % [cm] z position of focus
-MCinput.Beam.theta               = 0; % [rad] Polar angle of beam center axis
-MCinput.Beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
-MCinput.Beam.waist               = 0.005; % [cm] Beam waist 1/e^2 radius
-MCinput.Beam.divergence          = 5/180*pi; % [rad] Beam divergence 1/e^2 half-angle of beam (for a diffraction limited Gaussian beam, this is G.wavelength*1e-9/(pi*MCinput.Beam.waist*1e-2))
+model.MC.matchedInterfaces        = false; % If false, uses the refractive indices as defined in mediaPropertiesFunc at the end of this file
+model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
-% Execution, do not modify the next two lines:
-MCinput.G = Goutput;
-MCoutput = runMonteCarlo(MCinput);
+model.MC.beam.beamType            = 1; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
+model.MC.beam.xFocus              = 0; % [cm] x position of focus
+model.MC.beam.yFocus              = 0; % [cm] y position of focus
+model.MC.beam.zFocus              = 0.04; % [cm] z position of focus
+model.MC.beam.theta               = 0; % [rad] Polar angle of beam center axis
+model.MC.beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
+model.MC.beam.waist               = 0.005; % [cm] Beam waist 1/e^2 radius
+model.MC.beam.divergence          = 5/180*pi; % [rad] Beam divergence 1/e^2 half-angle of beam (for a diffraction limited Gaussian beam, this is G.wavelength*1e-9/(pi*model.MC.beam.waist*1e-2))
 
-plotMCmatlab(MCinput,MCoutput);
+% Execution, do not modify the next line:
+model = runMonteCarlo(model);
+
+plotMCmatlab(model);
 
 %% Post-processing
 
@@ -70,8 +72,8 @@ plotMCmatlab(MCinput,MCoutput);
 % "ndgrid" MATLAB function as well as any parameters the user may have
 % provided in the definition of Ginput. It returns the media matrix M,
 % containing numerical values indicating the media type (as defined in
-% getMediaProperties) at each voxel location.
-function M = GeometryDefinition_RefractionReflectionExample(X,Y,Z,parameters)
+% mediaPropertiesFunc) at each voxel location.
+function M = geometryDefinition_RefractionReflectionExample(X,Y,Z,parameters)
 M = ones(size(X)); % Air background
 M(Z>0.03) = 2; % Water
 M(Z>0.09) = 3; % Reflector
@@ -83,7 +85,8 @@ end
 % "mediaProperties" struct with various fields. As its input, the function
 % takes the wavelength as well as any other parameters you might specify
 % above in the model file, for example parameters that you might loop over
-% in a for loop.
+% in a for loop. Dependence on excitation fluence rate FR, temperature T or
+% fractional heat damage FD can be specified as in examples 11-14.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 j=1;
 mediaProperties(j).name  = 'air';

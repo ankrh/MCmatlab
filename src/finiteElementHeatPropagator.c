@@ -65,7 +65,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   float *Temp           = mxGetData(prhs[0]); // Temp is an nx*ny*nz array of floats (singles in MATLAB)
   float *outputTemp     = mxGetData(plhs[0]); // outputTemp is an nx*ny*nz array of floats
   long nt               = *mxGetPr(mxGetField(prhs[2],0,"steps")); // nt is an integer (number of time steps to perform)
-  float dt              = *mxGetPr(mxGetField(prhs[2],0,"dt")); // dt is a float (duration of time step)
+  float dt              = *mxGetPr(mxGetField(prhs[2],0,"dt")); // dt in MATLAB is a double that is here converted to a float (duration of time step)
   unsigned char *M      = mxGetData(mxGetField(prhs[2],0,"M")); // M is a nx*ny*nz array of uint8 (unsigned char) containing values from 0..nM-1
   float *c              = mxGetData(mxGetField(prhs[2],0,"dTdtperdeltaT")); // c is an nM*nM*3 array of floats
   float *dTdt_abs       = mxGetData(mxGetField(prhs[2],0,"dTdt_abs")); // dTdt_abs is an nx*ny*nz array of floats
@@ -87,7 +87,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   plhs[2] = nSensors? mxCreateDoubleMatrix(nSensors,nt+1,mxREAL): mxCreateDoubleMatrix(0,0,mxREAL);
   double *sensorTemps = mxGetPr(plhs[2]);
   
-  plhs[3] = mxCreateNumericArray(2,(mwSize[]){nM, 1},mxSINGLE_CLASS,mxREAL);
+  plhs[3] = mxCreateNumericMatrix(1,nM,mxSINGLE_CLASS,mxREAL);
   float *maxMediaTemps = mxGetData(plhs[3]);
   
   float *tempTemp = malloc(nx*ny*nz*sizeof(float)); // Temporary temperature matrix

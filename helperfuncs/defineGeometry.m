@@ -1,4 +1,4 @@
-function G = defineGeometry(G)
+function model = defineGeometry(model)
 %   Builds and saves a definition of the simulation geometry and the
 %   optical media it contains in a rectangular cuboid voxel mesh.
 %   The media properties are loaded from getMediaProperties.m.
@@ -28,24 +28,13 @@ function G = defineGeometry(G)
 %   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
 %%%%%
 
-%% Use default values for unspecified fields
-if ~isfield(G,'silentMode')
-  G.silentMode = false;
-end
-if ~isfield(G,'GeomFuncParams')
-  G.GeomFuncParams = {};
-end
-if ~isfield(G,'mediaPropParams')
-  G.mediaPropParams = {};
-end
-
 %% Calculate basic cuboid variables and call geometry function to create the media matrix M
-G.dx = G.Lx/G.nx;                  % [cm] size of x bins
-G.dy = G.Ly/G.ny;                  % [cm] size of y bins
-G.dz = G.Lz/G.nz;                  % [cm] size of z bins
-G.x  = ((0:G.nx-1)-(G.nx-1)/2)*G.dx; % [cm] x position of centers of voxels
-G.y  = ((0:G.ny-1)-(G.ny-1)/2)*G.dy; % [cm] y position of centers of voxels
-G.z  = ((0:G.nz-1)+1/2)*G.dz;      % [cm] z position of centers of voxels
-[X,Y,Z] = ndgrid(single(G.x),single(G.y),single(G.z)); % The single data type is used to conserve memory
-G.M = uint8(G.GeomFunc(X,Y,Z,G.GeomFuncParams));
+model.G.dx = model.G.Lx/model.G.nx;                  % [cm] size of x bins
+model.G.dy = model.G.Ly/model.G.ny;                  % [cm] size of y bins
+model.G.dz = model.G.Lz/model.G.nz;                  % [cm] size of z bins
+model.G.x  = ((0:model.G.nx-1)-(model.G.nx-1)/2)*model.G.dx; % [cm] x position of centers of voxels
+model.G.y  = ((0:model.G.ny-1)-(model.G.ny-1)/2)*model.G.dy; % [cm] y position of centers of voxels
+model.G.z  = ((0:model.G.nz-1)+1/2)*model.G.dz;      % [cm] z position of centers of voxels
+[X,Y,Z] = ndgrid(single(model.G.x),single(model.G.y),single(model.G.z)); % The single data type is used to conserve memory
+model.G.M_raw = uint8(model.G.geomFunc(X,Y,Z,model.G.geomFuncParams));
 end

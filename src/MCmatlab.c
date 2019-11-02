@@ -84,7 +84,7 @@ struct beam { // Struct type for the constant beam definitions
   double         v[3];
 };
 
-struct lightcollector { // Struct type for the constant light collector definitions. It can be either an objective lens (for 0<f<INFINITY) or a fiber tip or simple aperture (for f=INFINITY)
+struct lightCollector { // Struct type for the constant light collector definitions. It can be either an objective lens (for 0<f<INFINITY) or a fiber tip or simple aperture (for f=INFINITY)
   double         r[3]; // Position of center of objective focal plane (not the objective itself) or position of center of the fiber tip
   double         theta; // Polar angle that the objective or fiber is facing
   double         phi; // Azimuthal angle of objective or fiber orientation
@@ -103,10 +103,10 @@ struct photon { // Struct type for parameters describing the thread-specific cur
   double         stepLeft,weight,time;
   bool           insideVolume,alive,sameVoxel;
   dsfmt_t        dsfmt; // "State" of the Mersenne Twister pseudo-random number generator
-  long           recordSize; // Current size of the list of voxels in which power has been deposited, used only if calcFdet is true
-  long           recordElems; // Current number of elements used of the record. Starts at 0 every photon launch, used only if calcFdet is true
-  long           *j_record; // List of the indices of the voxels in which the current photon has deposited power, used only if calcFdet is true
-  double         *weight_record; // List of the weights that have been deposited into the voxels, used only if calcFdet is true
+  long           recordSize; // Current size of the list of voxels in which power has been deposited, used only if calcNFRdet is true
+  long           recordElems; // Current number of elements used of the record. Starts at 0 every photon launch, used only if calcNFRdet is true
+  long           *j_record; // List of the indices of the voxels in which the current photon has deposited power, used only if calcNFRdet is true
+  double         *weight_record; // List of the weights that have been deposited into the voxels, used only if calcNFRdet is true
 };
 
 struct paths { // Struct type for storing the paths taken by the nExamplePaths first photons simulated by the master thread
@@ -383,7 +383,7 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
   }
 }
 
-void formImage(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC, double * const Fdet, double * const Image) {
+void formImage(struct photon * const P, struct geometry const * const G, struct lightCollector const * const LC, double * const NFRdet, double * const image) {
   double U[3];
   xyztoXYZ(P->u,LC->theta,LC->phi,U); // U is now the photon trajectory in basis of detection frame (X,Y,Z)
   
@@ -410,33 +410,33 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
         if(distImP < LC->FSorNA/2) { // If the photon is coming from the area within the Field Size
           long Xindex = LC->res[0]*(RImP[0]/LC->FSorNA + 1.0/2);
           long Yindex = LC->res[0]*(RImP[1]/LC->FSorNA + 1.0/2);
-          long timeindex = fmin(LC->res[1]-1,fmax(0,1+(LC->res[1]-2)*(P->time - (Resc[2] - LC->f)/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)));
+          long timeindex = LC->res[1] > 1? fmin(LC->res[1]-1,fmax(0,1+(LC->res[1]-2)*(P->time - (Resc[2] - LC->f)/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart))): 0; // If we are not measuring time-resolved, LC->res[1] == 1
           #ifdef _WIN32
           #pragma omp atomic
           #endif
-          Image[Xindex               +
+          image[Xindex               +
                 Yindex   *LC->res[0] +
                 timeindex*LC->res[0]*LC->res[0]] += P->weight;
-          if(Fdet) for(long i=0;i<P->recordElems;i++) {
+          if(NFRdet) for(long i=0;i<P->recordElems;i++) {
             #ifdef _WIN32
             #pragma omp atomic
             #endif
-            Fdet[P->j_record[i]] += P->weight_record[i];
+            NFRdet[P->j_record[i]] += P->weight_record[i];
           }
         }
       } else { // If the light collector is a fiber tip
         double thetaLCFF = atan(-sqrt(U[0]*U[0] + U[1]*U[1])/U[2]); // Light collector far field polar angle
         if(thetaLCFF < asin(fmin(1,LC->FSorNA))) { // If the photon has an angle within the fiber's NA acceptance
-          long timeindex = fmin(LC->res[1]-1,fmax(0,1+(LC->res[1]-2)*(P->time - Resc[2]/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)));
+          long timeindex = LC->res[1] > 1? fmin(LC->res[1]-1,fmax(0,1+(LC->res[1]-2)*(P->time - Resc[2]/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart))): 0; // If we are not measuring time-resolved, LC->res[1] == 1
           #ifdef _WIN32
           #pragma omp atomic
           #endif
-          Image[timeindex] += P->weight;
-          if(Fdet) for(long i=0;i<P->recordElems;i++) {
+          image[timeindex] += P->weight;
+          if(NFRdet) for(long i=0;i<P->recordElems;i++) {
             #ifdef _WIN32
             #pragma omp atomic
             #endif
-            Fdet[P->j_record[i]] += P->weight_record[i];
+            NFRdet[P->j_record[i]] += P->weight_record[i];
           }
         }
       }
@@ -444,64 +444,64 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
   }
 }
 
-void formFarField(struct photon const * const P, long const farfieldRes, double * const FF) {
+void formFarField(struct photon const * const P, long const farFieldRes, double * const FF) {
   double theta = (1-DBL_EPSILON)*acos(P->u[2]); // The (1-DBL_EPS) factor is to ensure that photons exiting with theta = PI will be stored correctly
   double phi_shifted = (1-DBL_EPSILON)*(PI + atan2(P->u[1],P->u[0])); // Here it's to handle the case of phi = +PI
   #ifdef _WIN32
   #pragma omp atomic
   #endif
-  FF[(long)floor(theta/PI*farfieldRes) + farfieldRes*(long)floor(phi_shifted/(2*PI)*farfieldRes)] += P->weight;
+  FF[(long)floor(theta/PI*farFieldRes) + farFieldRes*(long)floor(phi_shifted/(2*PI)*farFieldRes)] += P->weight;
 }
 
 void formEdgeFluxes(struct photon const * const P, struct geometry const * const G,
-        double * const I_xpos, double * const I_xneg, double * const I_ypos,
-        double * const I_yneg, double * const I_zpos, double * const I_zneg) {
+        double * const NI_xpos, double * const NI_xneg, double * const NI_ypos,
+        double * const NI_yneg, double * const NI_zpos, double * const NI_zneg) {
   if(G->boundaryType == 1) {
     if(P->i[2] < 0) {
       #ifdef _WIN32
       #pragma omp atomic
       #endif
-      I_zneg[(long)P->i[0] + G->n[0]*(long)P->i[1]] += P->weight;
+      NI_zneg[(long)P->i[0] + G->n[0]*(long)P->i[1]] += P->weight;
     } else if(P->i[2] >= G->n[2]) {
       #ifdef _WIN32
       #pragma omp atomic
       #endif
-      I_zpos[(long)P->i[0] + G->n[0]*(long)P->i[1]] += P->weight;
+      NI_zpos[(long)P->i[0] + G->n[0]*(long)P->i[1]] += P->weight;
     } else if(P->i[1] < 0) {
       #ifdef _WIN32
       #pragma omp atomic
       #endif
-      I_yneg[(long)P->i[0] + G->n[0]*(long)P->i[2]] += P->weight;
+      NI_yneg[(long)P->i[0] + G->n[0]*(long)P->i[2]] += P->weight;
     } else if(P->i[1] >= G->n[1]) {
       #ifdef _WIN32
       #pragma omp atomic
       #endif
-      I_ypos[(long)P->i[0] + G->n[0]*(long)P->i[2]] += P->weight;
+      NI_ypos[(long)P->i[0] + G->n[0]*(long)P->i[2]] += P->weight;
     } else if(P->i[0] < 0) {
       #ifdef _WIN32
       #pragma omp atomic
       #endif
-      I_xneg[(long)P->i[1] + G->n[1]*(long)P->i[2]] += P->weight;
+      NI_xneg[(long)P->i[1] + G->n[1]*(long)P->i[2]] += P->weight;
     } else if(P->i[0] >= G->n[0]) {
       #ifdef _WIN32
       #pragma omp atomic
       #endif
-      I_xpos[(long)P->i[1] + G->n[1]*(long)P->i[2]] += P->weight;
+      NI_xpos[(long)P->i[1] + G->n[1]*(long)P->i[2]] += P->weight;
     }
   } else { // boundaryType == 2
     if(P->i[2] < 0) {
       #ifdef _WIN32
       #pragma omp atomic
       #endif
-      I_zneg[(long)(P->i[0] + G->n[0]*(KILLRANGE-1)/2.0) + (KILLRANGE*G->n[0])*((long)(P->i[1] + G->n[1]*(KILLRANGE-1)/2.0))] += P->weight;
+      NI_zneg[(long)(P->i[0] + G->n[0]*(KILLRANGE-1)/2.0) + (KILLRANGE*G->n[0])*((long)(P->i[1] + G->n[1]*(KILLRANGE-1)/2.0))] += P->weight;
     }
   }
 }
 
-void checkEscape(struct photon * const P, struct geometry const * const G, struct lightcollector const * const LC,
-        double * const Fdet, double * const Image, long const farfieldRes, double * const FF,
-        double * const I_xpos, double * const I_xneg, double * const I_ypos,
-        double * const I_yneg, double * const I_zpos, double * const I_zneg) {
+void checkEscape(struct photon * const P, struct geometry const * const G, struct lightCollector const * const LC,
+        double * const NFRdet, double * const image, long const farFieldRes, double * const FF,
+        double * const NI_xpos, double * const NI_xneg, double * const NI_ypos,
+        double * const NI_yneg, double * const NI_zpos, double * const NI_zneg) {
   bool escaped = false;
   P->insideVolume = P->i[0] < G->n[0] && P->i[0] >= 0 &&
                     P->i[1] < G->n[1] && P->i[1] >= 0 &&
@@ -526,9 +526,9 @@ void checkEscape(struct photon * const P, struct geometry const * const G, struc
       break;
   }
   
-  if(!P->alive && G->boundaryType) formEdgeFluxes(P,G,I_xpos,I_xneg,I_ypos,I_yneg,I_zpos,I_zneg);
-  if(escaped && FF)                formFarField(P,farfieldRes,FF);
-  if(escaped && Image)             formImage(P,G,LC,Fdet,Image); // If Image is not NULL then that's because useLightCollector was set to true (non-zero)
+  if(!P->alive && G->boundaryType) formEdgeFluxes(P,G,NI_xpos,NI_xneg,NI_ypos,NI_yneg,NI_zpos,NI_zneg);
+  if(escaped && FF)                formFarField(P,farFieldRes,FF);
+  if(escaped && image)             formImage(P,G,LC,NFRdet,image); // If image is not NULL then that's because useLightCollector was set to true (non-zero)
 }
 
 void getNewVoxelProperties(struct photon * const P, struct geometry const * const G) {
@@ -544,7 +544,7 @@ void getNewVoxelProperties(struct photon * const P, struct geometry const * cons
   P->RI  = G->RIv[(P->i[2] < 0)? 0: ((P->i[2] >= G->n[2])? G->n[2]-1: (long)floor(P->i[2]))];
 }
 
-void propagatePhoton(struct photon * const P, struct geometry const * const G, double * const F, struct paths * const Pa) {
+void propagatePhoton(struct photon * const P, struct geometry const * const G, double * const NFR, struct paths * const Pa) {
   long idx;
   
   P->sameVoxel = true;
@@ -609,13 +609,13 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, d
   double absorb = P->weight*(1 - exp(-P->mua*s));   // photon weight absorbed at this step
   P->weight -= absorb;             // decrement WEIGHT by amount absorbed
   if(P->insideVolume) {  // only save data if the photon is inside simulation cuboid
-    if(F) {
+    if(NFR) {
       #ifdef _WIN32
       #pragma omp atomic
       #endif
-      F[P->j] += absorb;
+      NFR[P->j] += absorb;
     }
-    if(P->recordSize) { // store indices and weights in pseudosparse array, to later add to Fdet if photon ends up on the light collector
+    if(P->recordSize) { // store indices and weights in pseudosparse array, to later add to NFRdet if photon ends up on the light collector
       if(P->recordElems == P->recordSize) {
         P->recordSize *= 2; // double the record's size
         P->j_record = realloc(P->j_record,P->recordSize*sizeof(long));
@@ -659,7 +659,7 @@ void checkRoulette(struct photon * const P) {
 
 void scatterPhoton(struct photon * const P, struct geometry const * const G) {
   // Sample for costheta using Henyey-Greenstein scattering
-  double costheta = P->g? (1 + P->g*P->g - pow((1 - P->g*P->g)/(1 - P->g + 2*P->g*RandomNum),2))/(2*P->g) : 2*RandomNum - 1;
+  double costheta = fabs(P->g) > sqrt(DBL_EPSILON)? (1 + P->g*P->g - pow((1 - P->g*P->g)/(1 - P->g + 2*P->g*RandomNum),2))/(2*P->g) : 2*RandomNum - 1;
   double sintheta = sqrt(1 - costheta*costheta);
   double phi = 2*PI*RandomNum;
   double cosphi = cos(phi);
@@ -684,16 +684,16 @@ void scatterPhoton(struct photon * const P, struct geometry const * const G) {
   P->stepLeft  = -log(RandomNum);
 }
 
-void normalizeDeposition(struct beam const * const B, struct geometry const * const G, struct lightcollector const * const LC,
-        double * const F, double * const Fdet, double * const Image, double * const FF, long const farfieldRes,
-        double * const I_xpos, double * const I_xneg, double * const I_ypos,
-        double * const I_yneg, double * const I_zpos, double * const I_zneg, double nPhotons) {
+void normalizeDeposition(struct beam const * const B, struct geometry const * const G, struct lightCollector const * const LC,
+        double * const NFR, double * const NFRdet, double * const image, double * const FF, long const farFieldRes,
+        double * const NI_xpos, double * const NI_xneg, double * const NI_ypos,
+        double * const NI_yneg, double * const NI_zpos, double * const NI_zneg, double nPhotons) {
   long j;
   double V = G->d[0]*G->d[1]*G->d[2]; // Voxel volume
   long L = G->n[0]*G->n[1]*G->n[2]; // Total number of voxels in cuboid
   long L_LC = LC->res[0]*LC->res[0]; // Total number of spatial pixels in light collector planes
-  long L_FF = farfieldRes*farfieldRes; // Total number of pixels in the far field array
-  // Normalize deposition to yield relative fluence rate (F). For fluorescence, the result is relative to
+  long L_FF = farFieldRes*farFieldRes; // Total number of pixels in the far field array
+  // Normalize deposition to yield normalizes fluence rate (NFR). For fluorescence, the result is relative to
   // the incident excitation power (not emitted fluorescence power).
   double normfactor = nPhotons;
   if(B->S) { // For a 3D source distribution (e.g., fluorescence)
@@ -703,22 +703,22 @@ void normalizeDeposition(struct beam const * const B, struct geometry const * co
     normfactor /= KILLRANGE*KILLRANGE;
   }
   
-  if(F)    for(j=0;j<L   ;j++) F[j]    /= V*normfactor*G->muav[G->M[j]];
-  if(Fdet) for(j=0;j<L   ;j++) Fdet[j] /= V*normfactor*G->muav[G->M[j]];
-  if(FF)   for(j=0;j<L_FF;j++) FF[j]   /=   normfactor;
-  if(Image) {
-    if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) Image[j] /= LC->FSorNA*LC->FSorNA/L_LC*normfactor;
-    else         for(j=0;j<     LC->res[1];j++) Image[j] /= normfactor;
+  if(NFR)        for(j=0;j<L   ;j++) NFR[j]    /= V*normfactor*G->muav[G->M[j]];
+  if(NFRdet)     for(j=0;j<L   ;j++) NFRdet[j] /= V*normfactor*G->muav[G->M[j]];
+  if(FF)         for(j=0;j<L_FF;j++) FF[j]   /=   normfactor;
+  if(image) {
+    if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) image[j] /= LC->FSorNA*LC->FSorNA/L_LC*normfactor;
+    else         for(j=0;j<     LC->res[1];j++) image[j] /= normfactor;
   }
   if(G->boundaryType == 1) {
-    for(j=0;j<G->n[1]*G->n[2];j++) I_xpos[j] /= G->d[1]*G->d[2]*normfactor;
-    for(j=0;j<G->n[1]*G->n[2];j++) I_xneg[j] /= G->d[1]*G->d[2]*normfactor;
-    for(j=0;j<G->n[0]*G->n[2];j++) I_ypos[j] /= G->d[0]*G->d[2]*normfactor;
-    for(j=0;j<G->n[0]*G->n[2];j++) I_yneg[j] /= G->d[0]*G->d[2]*normfactor;
-    for(j=0;j<G->n[0]*G->n[1];j++) I_zpos[j] /= G->d[0]*G->d[1]*normfactor;
-    for(j=0;j<G->n[0]*G->n[1];j++) I_zneg[j] /= G->d[0]*G->d[1]*normfactor;
+    for(j=0;j<G->n[1]*G->n[2];j++) NI_xpos[j] /= G->d[1]*G->d[2]*normfactor;
+    for(j=0;j<G->n[1]*G->n[2];j++) NI_xneg[j] /= G->d[1]*G->d[2]*normfactor;
+    for(j=0;j<G->n[0]*G->n[2];j++) NI_ypos[j] /= G->d[0]*G->d[2]*normfactor;
+    for(j=0;j<G->n[0]*G->n[2];j++) NI_yneg[j] /= G->d[0]*G->d[2]*normfactor;
+    for(j=0;j<G->n[0]*G->n[1];j++) NI_zpos[j] /= G->d[0]*G->d[1]*normfactor;
+    for(j=0;j<G->n[0]*G->n[1];j++) NI_zneg[j] /= G->d[0]*G->d[1]*normfactor;
   } else if(G->boundaryType == 2) {
-    for(j=0;j<KILLRANGE*G->n[0]*KILLRANGE*G->n[1];j++) I_zneg[j] /= G->d[0]*G->d[1]*normfactor;
+    for(j=0;j<KILLRANGE*G->n[0]*KILLRANGE*G->n[1];j++) NI_zneg[j] /= G->d[0]*G->d[1]*normfactor;
   }
 }
 
@@ -727,24 +727,27 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   int  pctProgress = 0;      // Simulation progress in percent
   int  newPctProgress;
   bool ctrlc_caught = false; // Has a ctrl+c been passed from MATLAB?
-  bool silentMode = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"silentMode"));
-  bool calcF = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"calcF")); // Are we supposed to calculate the F matrix?
-  bool calcFdet = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"calcFdet")); // Are we supposed to calculate the Fdet matrix?
+  
+  bool simFluorescence = *mxGetPr(prhs[1]) == 2;
+  mxArray *MatlabMC = mxGetField(prhs[0],0,simFluorescence? "FMC": "MC");
+  
+  bool silentMode = mxIsLogicalScalarTrue(mxGetField(MatlabMC,0,"silentMode"));
+  bool calcNFR    = mxIsLogicalScalarTrue(mxGetField(MatlabMC,0,"calcNFR")); // Are we supposed to calculate the NFR matrix?
+  bool calcNFRdet = mxIsLogicalScalarTrue(mxGetField(MatlabMC,0,"calcNFRdet")); // Are we supposed to calculate the NFRdet matrix?
   
   // To know if we are simulating fluorescence, we check if a "sourceDistribution" field exists. If so, we will use it later in the beam definition.
-  mxArray *MatlabBeam = mxGetField(prhs[0],0,"Beam");
+  mxArray *MatlabBeam = mxGetField(MatlabMC,0,"beam");
   double *S_PDF       = mxGetData(mxGetField(MatlabBeam,0,"sourceDistribution")); // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
-  
+
   // Variables for timekeeping and number of photons
-  bool            simulationTimed = mxGetPr(mxGetField(prhs[0],0,"simulationTime")) != NULL;
-  double          simulationTimeRequested = simulationTimed? *mxGetPr(mxGetField(prhs[0],0,"simulationTime")): INFINITY;
+  bool            simulationTimed = mxIsNaN(*mxGetPr(mxGetField(MatlabMC,0,"nPhotonsRequested")));
+  double          simulationTimeRequested = simulationTimed? *mxGetPr(mxGetField(MatlabMC,0,"simulationTime")): INFINITY;
   double          simulationTimeSpent;
   struct timespec simulationTimeStart, simulationTimeCurrent;
-  long long       nPhotonsRequested = simulationTimed? -1: *mxGetPr(mxGetField(prhs[0],0,"nPhotons"));
+  long long       nPhotonsRequested = simulationTimed? -1: *mxGetPr(mxGetField(MatlabMC,0,"nPhotonsRequested"));
 
   // Geometry struct definition
-  mxArray *MatlabG         = mxGetField(prhs[0],0,"G");
-  mxArray *mediaProperties = mxGetField(prhs[0],0,"mediaProperties");
+  mxArray *mediaProperties = mxGetField(MatlabMC,0,"mediaProperties");
   int     nM = mxGetN(mediaProperties);
   double   muav[nM];            // muav[0:nM-1], absorption coefficient of ith medium
   double   musv[nM];            // scattering coeff.
@@ -755,22 +758,24 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     gv[idx]   = *mxGetPr(mxGetField(mediaProperties,idx,"g"));
   }
   
-  mwSize const  *dimPtr = mxGetDimensions(mxGetField(MatlabG,0,"M"));
+  mwSize const *dimPtr = mxGetDimensions(mxGetField(MatlabMC,0,"M"));
+  long L = dimPtr[0]*dimPtr[1]*dimPtr[2]; // Total number of voxels in cuboid
+  mxArray *MatlabG         = mxGetField(prhs[0],0,"G");
   struct geometry const G_var = (struct geometry) {
     .d = {*mxGetPr(mxGetField(MatlabG,0,"dx")),
           *mxGetPr(mxGetField(MatlabG,0,"dy")),
           *mxGetPr(mxGetField(MatlabG,0,"dz"))},
     .n = {dimPtr[0], dimPtr[1], dimPtr[2]},
-    .boundaryType = *mxGetPr(mxGetField(prhs[0],0,"boundaryType")),
+    .boundaryType = *mxGetPr(mxGetField(MatlabMC,0,"boundaryType")),
     .muav = muav,
     .musv = musv,
     .gv = gv,
-    .M = mxGetData(mxGetField(MatlabG,0,"M")),
-    .RIv = mxGetData(mxGetField(prhs[0],0,"RI"))
+    .M = malloc(L*sizeof(unsigned char)),
+    .RIv = mxGetData(mxGetField(MatlabMC,0,"RI"))
   };
   struct geometry const *G = &G_var;
-  
-  long L = G->n[0]*G->n[1]*G->n[2]; // Total number of voxels in cuboid
+  unsigned char *M_matlab = mxGetData(mxGetField(MatlabMC,0,"M"));
+  for(idx=0;idx<L;idx++) G->M[idx] = M_matlab[idx] - 1; // Convert from MATLAB 1-based indexing to C 0-based indexing
   
   // Beam struct definition
   double power        = 0;
@@ -786,7 +791,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   
   double tb = S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"theta"));
   double pb = S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"phi"));
-  
+
   double u[3] = {sin(tb)*cos(pb),
   sin(tb)*sin(pb),
   cos(tb)}; // Temporary array
@@ -794,10 +799,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   double v[3] = {1,0,0};
   if(u[2]!=1) unitcrossprod(u,(double[]){0,0,1},v);
   
+  bool customNearFarField = S? 0: mxIsNaN(*mxGetPr(mxGetField(MatlabBeam,0,"beamType")));
   struct beam const B_var = (struct beam) {
-    .beamType      =  S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"beamType")),
-    .nearFieldType =  S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"nearFieldType")),
-    .farFieldType  =  S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"farFieldType")),
+    .beamType      =  S? 0: ( customNearFarField? -1: *mxGetPr(mxGetField(MatlabBeam,0,"beamType"))),
+    .nearFieldType =  S? 0: (!customNearFarField? -1: *mxGetPr(mxGetField(MatlabBeam,0,"nearFieldType"))),
+    .farFieldType  =  S? 0: (!customNearFarField? -1: *mxGetPr(mxGetField(MatlabBeam,0,"farFieldType"))),
     .S             =  S,
     .power         =  power,
     .waist         =  S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"waist")),
@@ -809,17 +815,17 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     .v             = {v[0],v[1],v[2]} // normal vector to beam center axis
   };
   struct beam const *B = &B_var;
-  
+
   // Light Collector struct definition
-  mxArray *MatlabLC      = mxGetField(prhs[0],0,"LightCollector");
-  bool useLightCollector = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"useLightCollector"));
+  mxArray *MatlabLC      = mxGetField(MatlabMC,0,"LC");
+  bool useLightCollector = mxIsLogicalScalarTrue(mxGetField(MatlabMC,0,"useLightCollector"));
   
   double theta     = *mxGetPr(mxGetField(MatlabLC,0,"theta"));
   double phi       = *mxGetPr(mxGetField(MatlabLC,0,"phi"));
   double f         = *mxGetPr(mxGetField(MatlabLC,0,"f"));
   long   nTimeBins = S? 0: *mxGetPr(mxGetField(MatlabLC,0,"nTimeBins"));
-  
-  struct lightcollector const LC_var = (struct lightcollector) {
+
+  struct lightCollector const LC_var = (struct lightCollector) {
     .r            = {*mxGetPr(mxGetField(MatlabLC,0,"x")) - (isfinite(f)? f*sin(theta)*cos(phi):0), // xyz coordinates of center of light collector
                      *mxGetPr(mxGetField(MatlabLC,0,"y")) - (isfinite(f)? f*sin(theta)*sin(phi):0),
                      *mxGetPr(mxGetField(MatlabLC,0,"z")) - (isfinite(f)? f*cos(theta)         :0)},
@@ -827,18 +833,18 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     .phi          =  phi,
     .f            =  f,
     .diam         =  *mxGetPr(mxGetField(MatlabLC,0,"diam")),
-    .FSorNA       =  *mxGetPr(mxGetField(MatlabLC,0,isfinite(f)?"FieldSize":"NA")),
+    .FSorNA       =  *mxGetPr(mxGetField(MatlabLC,0,isfinite(f)?"fieldSize":"NA")),
     .res          = {*mxGetPr(mxGetField(MatlabLC,0,"res")),
                      nTimeBins? nTimeBins+2: 1},
-    .tStart       =  *mxGetPr(mxGetField(MatlabLC,0,"tStart")),
-    .tEnd         =  *mxGetPr(mxGetField(MatlabLC,0,"tEnd"))
+    .tStart       =  S? 0: *mxGetPr(mxGetField(MatlabLC,0,"tStart")),
+    .tEnd         =  S? 0: *mxGetPr(mxGetField(MatlabLC,0,"tEnd"))
   };
-  struct lightcollector const *LC = &LC_var;
-  
+  struct lightCollector const *LC = &LC_var;
+
   // Paths definitions (example photon trajectories)
   struct paths Pa_var;
   struct paths *Pa = &Pa_var;
-  Pa->nExamplePaths = *mxGetPr(mxGetField(prhs[0],0,"nExamplePaths")); // How many photon path examples are we supposed to store?
+  Pa->nExamplePaths = *mxGetPr(mxGetField(MatlabMC,0,"nExamplePaths")); // How many photon path examples are we supposed to store?
   Pa->nMasterPhotonsLaunched = 0;
   Pa->pathsSize = 10*Pa->nExamplePaths; // Will be dynamically increased later if needed
   Pa->pathsElems = 0;
@@ -846,103 +852,64 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   if(Pa->pathsSize && !Pa->data) mexErrMsgIdAndTxt("MCmatlab:OutOfMemory","Error: Out of memory");
   
   // Far field angle distribution resolution
-  long farfieldRes = *mxGetPr(mxGetField(prhs[0],0,"farfieldRes"));
+  long farFieldRes = *mxGetPr(mxGetField(MatlabMC,0,"farFieldRes"));
   
   // Prepare output MATLAB struct
-  long nOutputs = 2 + useLightCollector + calcF + calcFdet + (Pa->nExamplePaths != 0) + (farfieldRes != 0) + 6*(G->boundaryType == 1) + 1*(G->boundaryType == 2);
-  char *fieldnames[nOutputs];
-  idx = 0;
-  fieldnames[idx++] = "nPhotons";
-  fieldnames[idx++] = "nThreads";
-  if(useLightCollector) fieldnames[idx++] = "Image";
-  if(calcF) fieldnames[idx++] = "F";
-  if(calcFdet) fieldnames[idx++] = "Fdet";
-  if(Pa->nExamplePaths) fieldnames[idx++] = "ExamplePaths";
-  if(farfieldRes) fieldnames[idx++] = "FarField";
-  if(G->boundaryType == 1) {
-    fieldnames[idx++] = "I_xpos";
-    fieldnames[idx++] = "I_xneg";
-    fieldnames[idx++] = "I_ypos";
-    fieldnames[idx++] = "I_yneg";
-    fieldnames[idx++] = "I_zpos";
-    fieldnames[idx++] = "I_zneg";
-  } else if(G->boundaryType == 2) fieldnames[idx++] = "I_zneg";
+  plhs[0] = mxDuplicateArray(prhs[0]);
   
-  plhs[0] = mxCreateStructMatrix(1,1,nOutputs,(const char **)fieldnames);
+  mxArray *MCout = mxGetField(plhs[0],0,S? "FMC": "MC");
+  mxArray *LCout = mxGetField(MCout,0,"LC");
+  mxDestroyArray(mxGetField(MCout,0,"nPhotons"));
+  mxDestroyArray(mxGetField(MCout,0,"nThreads"));
   
-  if(calcF)             mxSetField(plhs[0],0,"F",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
-  if(calcFdet)          mxSetField(plhs[0],0,"Fdet",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
-  if(useLightCollector) mxSetField(plhs[0],0,"Image", mxCreateNumericArray(3,(mwSize[]){LC->res[0],LC->res[0],LC->res[1]},mxDOUBLE_CLASS,mxREAL));
-  if(farfieldRes)       mxSetField(plhs[0],0,"FarField", mxCreateDoubleMatrix(farfieldRes,farfieldRes,mxREAL));
+  if(useLightCollector) mxDestroyArray(mxGetField(LCout,0,"image"));
+  if(calcNFR) mxDestroyArray(mxGetField(MCout,0,"NFR"));
+  if(calcNFRdet) mxDestroyArray(mxGetField(MCout,0,"NFRdet"));
+  if(farFieldRes) mxDestroyArray(mxGetField(MCout,0,"farField"));
   if(G->boundaryType == 1) {
-    mxSetField(plhs[0],0,"I_xpos", mxCreateDoubleMatrix(G->n[1],G->n[2],mxREAL));
-    mxSetField(plhs[0],0,"I_xneg", mxCreateDoubleMatrix(G->n[1],G->n[2],mxREAL));
-    mxSetField(plhs[0],0,"I_ypos", mxCreateDoubleMatrix(G->n[0],G->n[2],mxREAL));
-    mxSetField(plhs[0],0,"I_yneg", mxCreateDoubleMatrix(G->n[0],G->n[2],mxREAL));
-    mxSetField(plhs[0],0,"I_zpos", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
-    mxSetField(plhs[0],0,"I_zneg", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
-  } else if(G->boundaryType == 2) mxSetField(plhs[0],0,"I_zneg", mxCreateDoubleMatrix(KILLRANGE*G->n[0],KILLRANGE*G->n[1],mxREAL));
-  mxSetField(plhs[0],0,"nPhotons",mxCreateDoubleMatrix(1,1,mxREAL));
-  mxSetField(plhs[0],0,"nThreads",mxCreateDoubleMatrix(1,1,mxREAL));
-  double *F           = calcF? mxGetPr(mxGetField(plhs[0],0,"F")): NULL;
-  double *Fdet        = calcFdet? mxGetPr(mxGetField(plhs[0],0,"Fdet")): NULL;
-  double *Image       = useLightCollector? mxGetPr(mxGetField(plhs[0],0,"Image")): NULL;
-  double *nPhotonsPtr = mxGetPr(mxGetField(plhs[0],0,"nPhotons"));
-  double *nThreadsPtr = mxGetPr(mxGetField(plhs[0],0,"nThreads"));
-  double *FF          = farfieldRes? mxGetPr(mxGetField(plhs[0],0,"FarField")): NULL;
-  double *I_xpos      = G->boundaryType == 1? mxGetPr(mxGetField(plhs[0],0,"I_xpos")): NULL;
-  double *I_xneg      = G->boundaryType == 1? mxGetPr(mxGetField(plhs[0],0,"I_xneg")): NULL;
-  double *I_ypos      = G->boundaryType == 1? mxGetPr(mxGetField(plhs[0],0,"I_ypos")): NULL;
-  double *I_yneg      = G->boundaryType == 1? mxGetPr(mxGetField(plhs[0],0,"I_yneg")): NULL;
-  double *I_zpos      = G->boundaryType == 1? mxGetPr(mxGetField(plhs[0],0,"I_zpos")): NULL;
-  double *I_zneg      = G->boundaryType != 0? mxGetPr(mxGetField(plhs[0],0,"I_zneg")): NULL;
+    mxDestroyArray(mxGetField(MCout,0,"NI_xpos"));
+    mxDestroyArray(mxGetField(MCout,0,"NI_xneg"));
+    mxDestroyArray(mxGetField(MCout,0,"NI_ypos"));
+    mxDestroyArray(mxGetField(MCout,0,"NI_yneg"));
+    mxDestroyArray(mxGetField(MCout,0,"NI_zpos"));
+    mxDestroyArray(mxGetField(MCout,0,"NI_zneg"));
+  } else if(G->boundaryType == 2) mxDestroyArray(mxGetField(MCout,0,"NI_zneg"));
+  
+  
+  if(calcNFR)           mxSetField(MCout,0,"NFR",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
+  if(calcNFRdet)        mxSetField(MCout,0,"NFRdet",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
+  if(useLightCollector) mxSetField(LCout,0,"image", mxCreateNumericArray(3,(mwSize[]){LC->res[0],LC->res[0],LC->res[1]},mxDOUBLE_CLASS,mxREAL));
+  if(farFieldRes)       mxSetField(MCout,0,"farField", mxCreateDoubleMatrix(farFieldRes,farFieldRes,mxREAL));
+  if(G->boundaryType == 1) {
+    mxSetField(MCout,0,"NI_xpos", mxCreateDoubleMatrix(G->n[1],G->n[2],mxREAL));
+    mxSetField(MCout,0,"NI_xneg", mxCreateDoubleMatrix(G->n[1],G->n[2],mxREAL));
+    mxSetField(MCout,0,"NI_ypos", mxCreateDoubleMatrix(G->n[0],G->n[2],mxREAL));
+    mxSetField(MCout,0,"NI_yneg", mxCreateDoubleMatrix(G->n[0],G->n[2],mxREAL));
+    mxSetField(MCout,0,"NI_zpos", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
+    mxSetField(MCout,0,"NI_zneg", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
+  } else if(G->boundaryType == 2) mxSetField(MCout,0,"NI_zneg", mxCreateDoubleMatrix(KILLRANGE*G->n[0],KILLRANGE*G->n[1],mxREAL));
+  mxSetField(MCout,0,"nPhotons",mxCreateDoubleMatrix(1,1,mxREAL));
+  mxSetField(MCout,0,"nThreads",mxCreateDoubleMatrix(1,1,mxREAL));
+  double *NFR         = calcNFR? mxGetPr(mxGetField(MCout,0,"NFR")): NULL;
+  double *NFRdet      = calcNFRdet? mxGetPr(mxGetField(MCout,0,"NFRdet")): NULL;
+  double *image       = useLightCollector? mxGetPr(mxGetField(LCout,0,"image")): NULL;
+  double *nPhotonsPtr = mxGetPr(mxGetField(MCout,0,"nPhotons"));
+  double *nThreadsPtr = mxGetPr(mxGetField(MCout,0,"nThreads"));
+  double *FF          = farFieldRes? mxGetPr(mxGetField(MCout,0,"farField")): NULL;
+  double *NI_xpos     = G->boundaryType == 1? mxGetPr(mxGetField(MCout,0,"NI_xpos")): NULL;
+  double *NI_xneg     = G->boundaryType == 1? mxGetPr(mxGetField(MCout,0,"NI_xneg")): NULL;
+  double *NI_ypos     = G->boundaryType == 1? mxGetPr(mxGetField(MCout,0,"NI_ypos")): NULL;
+  double *NI_yneg     = G->boundaryType == 1? mxGetPr(mxGetField(MCout,0,"NI_yneg")): NULL;
+  double *NI_zpos     = G->boundaryType == 1? mxGetPr(mxGetField(MCout,0,"NI_zpos")): NULL;
+  double *NI_zneg     = G->boundaryType != 0? mxGetPr(mxGetField(MCout,0,"NI_zneg")): NULL;
   
   
   if(!silentMode) {
-    // Display parameters
-    printf("---------------------------------------------------------\n");
-    printf("(nx,ny,nz) = (%d,%d,%d), (dx,dy,dz) = (%0.1e,%0.1e,%0.1e) cm\n",G->n[0],G->n[1],G->n[2],G->d[0],G->d[1],G->d[2]);
-    
-    if(B->S) printf("Using isotropically emitting 3D distribution as light source\n");
-    else {
-      switch(B->beamType) {
-        case 0:
-          printf("Using pencil beam\n");
-          break;
-        case 1:
-          printf("Using isotropically emitting point source\n");
-          break;
-        case 2:
-          printf("Using infinite plane wave\n");
-          break;
-        case 3:
-          printf("Using Gaussian focus, Gaussian far field beam\n");
-          break;
-        case 4:
-          printf("Using Gaussian focus, top-hat far field beam\n");
-          break;
-        case 5:
-          printf("Using top-hat focus, Gaussian far field beam\n");
-          break;
-        case 6:
-          printf("Using top-hat focus, top-hat far field beam\n");
-          break;
-        case 7:
-          printf("Using Laguerre-Gaussian LG01 beam\n");
-          break;
-      }
-      
-      if(B->beamType!=2) printf("Focus location = (%0.1e,%0.1e,%0.1e) cm\n",B->focus[0],B->focus[1],B->focus[2]);
-      if(B->beamType!=1) printf("Beam direction = (%0.3f,%0.3f,%0.3f)\n",B->u[0],B->u[1],B->u[2]);
-      if(B->beamType >2) printf("Beam waist = %0.1e cm, divergence = %0.1e rad\n",B->waist,B->divergence);
-    }
-    
-    if(G->boundaryType==0) printf("boundaryType = 0, so no boundaries\n");
-    else if(G->boundaryType==1) printf("boundaryType = 1, so escape at all boundaries\n");
-    else if(G->boundaryType==2) printf("boundaryType = 2, so escape at surface only\n");
-    
-    if(simulationTimed) printf("Simulation duration = %0.2f min\n\n",simulationTimeRequested);
-    else                printf("Requested # of photons = %0.2e\n\n",(double)nPhotonsRequested);
+    // Display progress indicator
+    printf(simFluorescence?"-----------Fluorescence Monte Carlo Simulation-----------\n":
+                           "-----------------Monte Carlo Simulation------------------\n");
+    if(simulationTimed) printf("Simulation duration = %0.2f min\n",simulationTimeRequested);
+    else                printf("Requested # of photons = %0.2e\n",(double)nPhotonsRequested);
     printf("Calculating...   0%% done");
     mexEvalString("drawnow;");
   }
@@ -950,7 +917,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   // ============================ MAJOR CYCLE ========================
   clock_gettime(CLOCK_MONOTONIC, &simulationTimeStart);
   #ifdef _WIN32
-  bool useAllCPUs = mxIsLogicalScalarTrue(mxGetField(prhs[0],0,"useAllCPUs"));
+  bool useAllCPUs = mxIsLogicalScalarTrue(mxGetField(MatlabMC,0,"useAllCPUs"));
   *nThreadsPtr = useAllCPUs? omp_get_num_procs(): fmax(omp_get_num_procs()-1,1);
   #pragma omp parallel num_threads((long)*nThreadsPtr)
   #else
@@ -960,7 +927,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     struct photon P_var;
     struct photon *P = &P_var;
     
-    P->recordSize    = Fdet? 1000: 0; // If we're supposed to calculate Fdet, we start the record at a size of 1000 elements - it will be dynamically expanded later if needed
+    P->recordSize    = NFRdet? 1000: 0; // If we're supposed to calculate NFRdet, we start the record at a size of 1000 elements - it will be dynamically expanded later if needed
     P->j_record      = malloc(P->recordSize*sizeof(long)); // Will be NULL if P->recordSize == 0
     if(P->recordSize && !P->j_record) mexErrMsgIdAndTxt("MCmatlab:OutOfMemory","Error: Out of memory");
     P->weight_record = malloc(P->recordSize*sizeof(double)); // Will be NULL if P->recordSize == 0
@@ -984,11 +951,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
       while(P->alive) {
         while(P->stepLeft>0) {
           if(!P->sameVoxel) {
-            checkEscape(P,G,LC,Fdet,Image,farfieldRes,FF,I_xpos,I_xneg,I_ypos,I_yneg,I_zpos,I_zneg);
+            checkEscape(P,G,LC,NFRdet,image,farFieldRes,FF,NI_xpos,NI_xneg,NI_ypos,NI_yneg,NI_zpos,NI_zneg);
             if(!P->alive) break;
             getNewVoxelProperties(P,G); // If photon has just entered a new voxel or has just been launched
           }
-          propagatePhoton(P,G,F,Pa);
+          propagatePhoton(P,G,NFR,Pa);
         }
         checkRoulette(P);
         scatterPhoton(P,G);
@@ -1017,7 +984,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         if((newPctProgress != pctProgress) && !ctrlc_caught) {
           pctProgress = newPctProgress;
           if(!silentMode) {
-            printf("\b\b\b\b\b\b\b\b\b%3.i%% done", pctProgress);
+            printf("\b\b\b\b\b\b\b\b\b%3.i%% done", pctProgress<100? pctProgress: 100);
             mexEvalString("drawnow;");
           }
         }
@@ -1033,14 +1000,15 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
                        (simulationTimeCurrent.tv_nsec - simulationTimeStart.tv_nsec)/1e9;
   if(!silentMode) {
     printf("\nSimulated %0.2e photons at a rate of %0.2e photons per minute\n",*nPhotonsPtr, *nPhotonsPtr*60/simulationTimeSpent);
-    printf("---------------------------------------------------------\n");
     mexEvalString("drawnow;");
   }
-  normalizeDeposition(B,G,LC,F,Fdet,Image,FF,farfieldRes,I_xpos,I_xneg,I_ypos,I_yneg,I_zpos,I_zneg,*nPhotonsPtr); // Convert data to relative fluence rate
+  normalizeDeposition(B,G,LC,NFR,NFRdet,image,FF,farFieldRes,NI_xpos,NI_xneg,NI_ypos,NI_yneg,NI_zpos,NI_zneg,*nPhotonsPtr); // Convert data to relative fluence rate
+  free(G->M);
   
   if(Pa->nExamplePaths) {
-    mxSetField(plhs[0],0,"ExamplePaths",mxCreateNumericMatrix(4,Pa->pathsElems,mxDOUBLE_CLASS,mxREAL));
-    memcpy(mxGetPr(mxGetField(plhs[0],0,"ExamplePaths")),Pa->data,4*sizeof(double)*Pa->pathsElems);
+    mxDestroyArray(mxGetField(MCout,0,"examplePaths"));
+    mxSetField(MCout,0,"examplePaths",mxCreateNumericMatrix(4,Pa->pathsElems,mxDOUBLE_CLASS,mxREAL));
+    memcpy(mxGetPr(mxGetField(MCout,0,"examplePaths")),Pa->data,4*sizeof(double)*Pa->pathsElems);
     free(Pa->data);
   }
 }

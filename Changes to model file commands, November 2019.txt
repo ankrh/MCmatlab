@@ -1,0 +1,46 @@
+all input and output information is stored in a "model" struct, which must be initialized using "model = initializeMCmatlabModel()"
+if you want to clear the contents of a specific part of the model struct, you can use "model = clearMCmatlabModel(model,'G')", "model = clearMCmatlabModel(model,'MC')", "model = clearMCmatlabModel(model,'FMC')" or "model = clearMCmatlabModel(model,'HS')"
+
+Ginput -> model.G
+MCinput -> model.MC
+FMCinput -> model.FMC
+HSinput -> model.HS
+
+matchedInterfaces and boundaryType is now specified (independently) in the MC and FMC structs rather than G
+GeomFunc is now called geomFunc
+GeomFuncParams is now called geomFuncParams
+defineGeometry is now called as "model = defineGeometry(model)"
+plotMCmatlabGeom is now called as "plotMCmatlabGeom(model)"
+
+nPhotons as an input is now called nPhotonsRequested
+F, the output normalized fluence rate is now called NFR
+Fdet, the output normalized fluence rate of collected light is now called NFRdet
+calcF is now called calcNFR
+calcFdet is now called calcNFRdet
+farfieldRes is now called farFieldRes
+the Beam struct is now called beam
+to enable a light collector you must now specify model.MC.useLightCollector = true;
+the LightCollector struct is now called LC
+FieldSize is now called fieldSize
+
+runMonteCarlo is now called as "model = runMonteCarlo(model)"
+plotMCmatlab should now be called as "plotMCmatlab(model)"
+the image output is now stored in the LC struct
+
+instead of runMonteCarloFluorescence, you should now use "model = runMonteCarlo(model,'fluorecscence')"
+instead of plotMCmatlabFluorescence, you should now use "plotMCmatlab(model,'fluorescence')"
+
+the excitation power is now stored in MC rather than in HS
+
+initialTemp is now called Tinitial and can now be specified either as a scalar (constant temperature distribution) or a 3D array of initial temperatures
+simulateHeatDistribution is now called as "model = simulateHeatDistribution(model)"
+plotMCmatlabHeat is now called as "plotMCmatlabHeat(model)"
+
+media properties can now optionally be specified as char array formulas that depend on the fluence rate (FR) of the excitation light, the temperature (T) and/or the fraction heat damage of the media (FD):
+mua, mus, g and Y can depend on all the above parameters
+VHC and TC can depend on T and FD but not FR
+number of bins used to take these dependences into account is specified in the new nBins media property (see examples 11-14)
+if necessary, an initial guess as to the fluence rate distribution in a cuboid with FR dependent media properties can be provided in the now FRinitial property of the MC struct, which will assist convergence in the iterative method
+FRdepIterations in the MC struct specifies how many iterations should be used in such a case (see example 11). Defaults to 20
+
+for simulations with T or FD dependent properties, the now mediaPropRecalcPeriod in the HS struct specifies how frequently the media properties should be recalculated (how many updates per recalculation)
