@@ -136,7 +136,7 @@ function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 j=1;
 mediaProperties(j).name  = 'test fluorescence absorber';
 if(wavelength<500)
-  mediaProperties(j).mua = 10;
+  mediaProperties(j).mua = 1;
   mediaProperties(j).mus = 100;
   mediaProperties(j).g   = 0.9;
 else
