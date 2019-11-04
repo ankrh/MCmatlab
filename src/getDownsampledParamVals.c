@@ -160,7 +160,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
           binidx[k] = j+1; // Using MATLAB indexing. The k'th input point is closest to the j'th downsampled point
         }
 
+        #ifdef _WIN32
         if(sqrDists[k] > sqrDists[maxDistIdxs[omp_get_thread_num()]]) maxDistIdxs[omp_get_thread_num()] = k;
+        #else
+        if(sqrDists[k] > sqrDists[maxDistIdxs[0]]) maxDistIdxs[0] = k;
+        #endif
       }
 
       #ifdef _WIN32
