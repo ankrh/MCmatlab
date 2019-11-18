@@ -74,11 +74,16 @@ struct geometry { // Struct type for the constant geometry definitions, includin
 
 struct beam { // Struct type for the constant beam definitions
   int            beamType;
-  int            nearFieldType;
-  int            farFieldType;
+  double         *NFdist1; // Radial or X
+  double         NFwidth1;
+  double         *NFdist2; // Azimuthal or Y
+  double         NFwidth2;
+  double         *FFdist1; // Radial or X
+  double         FFwidth1;
+  double         *FFdist2; // Azimuthal or Y
+  double         FFwidth2;
   double         *S;
   double         power;
-  double         waist,divergence;
   double         focus[3];
   double         u[3];
   double         v[3];
