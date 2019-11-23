@@ -19,6 +19,7 @@ calcF is now called calcNFR
 calcFdet is now called calcNFRdet
 farfieldRes is now called farFieldRes
 the Beam struct is now called beam
+a new beam definition method is used - see example 2
 to enable a light collector you must now specify model.MC.useLightCollector = true;
 the LightCollector struct is now called LC
 FieldSize is now called fieldSize

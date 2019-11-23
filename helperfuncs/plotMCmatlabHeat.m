@@ -35,7 +35,9 @@ h_f.Name = 'Thermal media properties';
 %% Write out the highest temperatures in each medium
 fprintf('--------------------plotMCmatlabHeat---------------------\n');
 for idx=1:nM
-  fprintf('Highest temperature obtained in %s is %.2f°C\n',mP_fH(idx).name,model.HS.maxMediaTemps(idx));
+  if isfinite(model.HS.maxMediaTemps(idx))
+    fprintf('Highest temperature obtained in %s is %.2f°C\n',mP_fH(idx).name,model.HS.maxMediaTemps(idx));
+  end
 end
 
 %% Plot the geometry showing the temperature sensor locations and the sensor data

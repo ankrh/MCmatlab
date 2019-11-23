@@ -55,11 +55,22 @@ if strcmp(string,'MC')
   model.MC.beam.zFocus= NaN;
   model.MC.beam.theta = NaN;
   model.MC.beam.phi = NaN;
-  model.MC.beam.waist = NaN;
-  model.MC.beam.divergence = NaN;
-  model.MC.beam.nearFieldType = NaN;
-  model.MC.beam.farFieldType = NaN;
-  
+  model.MC.beam.psi = 0;
+
+  model.MC.beam.NF.radialDistr = NaN;
+  model.MC.beam.NF.radialWidth = NaN;
+  model.MC.beam.NF.XDistr = NaN;
+  model.MC.beam.NF.XWidth = NaN;
+  model.MC.beam.NF.YDistr = NaN;
+  model.MC.beam.NF.YWidth = NaN;
+
+  model.MC.beam.FF.radialDistr = NaN;
+  model.MC.beam.FF.radialWidth = NaN;
+  model.MC.beam.FF.XDistr = NaN;
+  model.MC.beam.FF.XWidth = NaN;
+  model.MC.beam.FF.YDistr = NaN;
+  model.MC.beam.FF.YWidth = NaN;
+
   % Light collector parameters
   model.MC.useLightCollector = false;
   
