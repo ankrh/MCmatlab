@@ -89,6 +89,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   
   plhs[3] = mxCreateNumericMatrix(1,nM,mxSINGLE_CLASS,mxREAL);
   float *maxMediaTemps = mxGetData(plhs[3]);
+  for(long j=0;j<nM;j++) maxMediaTemps[j] = -INFINITY;
   
   float *tempTemp = malloc(nx*ny*nz*sizeof(float)); // Temporary temperature matrix
   

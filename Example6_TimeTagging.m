@@ -43,14 +43,12 @@ model.MC.matchedInterfaces        = true; % Assumes all refractive indices are 1
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
-model.MC.beam.beamType            = 2; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
+model.MC.beam.beamType            = 2; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
 model.MC.beam.xFocus              = 0; % [cm] x position of focus
 model.MC.beam.yFocus              = 0; % [cm] y position of focus
 model.MC.beam.zFocus              = model.G.Lz/2; % [cm] z position of focus
 model.MC.beam.theta               = 0; % [rad] Polar angle of beam center axis
 model.MC.beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
-model.MC.beam.waist               = 0.005; % [cm] Beam waist 1/e^2 radius
-model.MC.beam.divergence          = 5/180*pi; % [rad] Beam divergence 1/e^2 half-angle of beam (for a diffraction limited Gaussian beam, this is G.wavelength*1e-9/(pi*model.MC.beam.waist*1e-2))
 
 model.MC.useLightCollector = true;
 model.MC.LC.x         = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip

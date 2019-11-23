@@ -2,22 +2,22 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 fprintf('\n');
 
 %% Description
-% This example shows how to use the calcFdet flag to calculate and plot the
-% fluence rate of only that light which ends up on the light collector.
-% This is shown for both excitation light and fluorescence light. The
-% geometry is the same as in example 4, into which a Gaussian beam is
-% injected at x = 0.02 and the light collector is looking at x = -0.02.
+% In this example, simulation of fluorescence (luminescence) is shown. The
+% test geometry is a fluorescing cylinder in which excitation light is
+% predominantly absorbed embedded in a block of medium in which
+% fluorescence light is predominantly absorbed. The geometry is illuminated
+% with an infinite plane wave, for which the xFocus, yFocus, zFocus, waist
+% and divergence quantities are not used.
+%
+% This example also shows detection of the light exiting the cuboid,
+% separately for excitation light and for fluorescence light. Although most
+% of the fluorescence light is absorbed in the medium surrounding the
+% cylinder, some of it escapes to the detector, showing a slightly blurred
+% image of the cylinder.
 % 
-% In the fluence rate plot for collected light, you can see how the photons
-% all start at the source and end at the light collector.
-% 
-% This example also shows two other features: (1) That the Monte Carlo
-% simulation can be set to launch a set number of photons rather than run
-% for a set time using the MC.nPhotonsRequested and FMC.nPhotonsRequested
-% fields, and (2) that by setting the boundaryType flags to 2, we can allow
-% photons to travel outside the cuboid in the x, y, and +z directions as
-% seen in the photon paths illustrations, although absorption and fluence
-% rate data is still only tracked within the main cuboid.
+% The "nExamplePaths" parameter (see example 3) is used for both the
+% excitation and fluorescence simulations, showing paths of both kinds of
+% photons.
 
 %% Geometry definition
 model = initializeMCmatlabModel();
@@ -40,35 +40,33 @@ plotMCmatlabGeom(model);
 %% Monte Carlo simulation
 model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
 
-model.MC.nPhotonsRequested        = 2e6; % # of photons to launch
-model.MC.calcNFR                  = true; % (Default: true) If true, the 3D fluence rate output matrix NFR will be calculated. Set to false if you have a light collector and you're only interested in the image output.
-model.MC.calcNFRdet               = true; % (Default: false) If true, the 3D fluence rate output matrix NFRdet will be calculated. Only photons that end up on the light collector are counted in NFRdet.
-model.MC.nExamplePaths            = 200;
+model.MC.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
+model.MC.simulationTime           = .1; % [min] Time duration of the simulation
+model.MC.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
 
 model.MC.matchedInterfaces        = true; % Assumes all refractive indices are 1
-model.MC.boundaryType             = 2; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 model.MC.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
-model.MC.beam.beamType            = 3; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
-model.MC.beam.xFocus              = 0.02; % [cm] x position of focus
+model.MC.beam.beamType            = 2; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+model.MC.beam.xFocus              = 0; % [cm] x position of focus
 model.MC.beam.yFocus              = 0; % [cm] y position of focus
-model.MC.beam.zFocus              = 0; % [cm] z position of focus
+model.MC.beam.zFocus              = model.G.Lz/2; % [cm] z position of focus
 model.MC.beam.theta               = 0; % [rad] Polar angle of beam center axis
 model.MC.beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
-model.MC.beam.waist               = 0.005; % [cm] Beam waist 1/e^2 radius
-model.MC.beam.divergence          = 5/180*pi; % [rad] Beam divergence 1/e^2 half-angle of beam (for a diffraction limited Gaussian beam, this is G.wavelength*1e-9/(pi*model.MC.Beam.waist*1e-2))
 
 model.MC.useLightCollector        = true;
-model.MC.LC.x                     = -0.02; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
+
+model.MC.LC.x                     = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
 model.MC.LC.y                     = 0; % [cm] y position
-model.MC.LC.z                     = 0; % [cm] z position
+model.MC.LC.z                     = 0.03; % [cm] z position
 
 model.MC.LC.theta                 = 0; % [rad] Polar angle of direction the light collector is facing
 model.MC.LC.phi                   = pi/2; % [rad] Azimuthal angle of direction the light collector is facing
 
-model.MC.LC.f                     = .1; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
+model.MC.LC.f                     = .2; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
 model.MC.LC.diam                  = .1; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(NA)).
-model.MC.LC.fieldSize             = .04; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
+model.MC.LC.fieldSize             = .1; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
 model.MC.LC.NA                    = 0.22; % [-] Fiber NA. Only used for infinite f.
 
 model.MC.LC.res                   = 50; % X and Y resolution of light collector in pixels, only used for finite f
@@ -81,26 +79,26 @@ plotMCmatlab(model);
 %% Fluorescence Monte Carlo
 model = clearMCmatlabModel(model,'FMC'); % Only necessary if you want to run this section repeatedly, re-using previous G and MC data
 
-model.FMC.nPhotonsRequested       = 2e6; % # of photons to launch
-model.FMC.calcNFR                 = true; % (Default: true) If true, the 3D fluence rate output matrix NFR will be calculated. Set to false if you have a light collector and you're only interested in the image output.
-model.FMC.calcNFRdet              = true; % (Default: false) If true, the 3D fluence rate output matrix NFRdet will be calculated. Only photons that end up on the light collector are counted in NFRdet.
-model.FMC.nExamplePaths           = 200;
+model.FMC.useAllCPUs              = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
+model.FMC.simulationTime          = .1; % [min] Time duration of the simulation
+model.FMC.nExamplePaths           = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
 
 model.FMC.matchedInterfaces       = true; % Assumes all refractive indices are 1
-model.FMC.boundaryType            = 2; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+model.FMC.boundaryType            = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 model.FMC.wavelength              = 550; % [nm] Fluorescence wavelength, used for determination of optical properties for fluorescence light
 
 model.FMC.useLightCollector       = true;
-model.FMC.LC.x                    = -0.02; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
+
+model.FMC.LC.x                    = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
 model.FMC.LC.y                    = 0; % [cm] y position
-model.FMC.LC.z                    = 0; % [cm] z position
+model.FMC.LC.z                    = 0.03; % [cm] z position
 
 model.FMC.LC.theta                = 0; % [rad] Polar angle of direction the light collector is facing
 model.FMC.LC.phi                  = pi/2; % [rad] Azimuthal angle of direction the light collector is facing
 
-model.FMC.LC.f                    = .1; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
+model.FMC.LC.f                    = .2; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
 model.FMC.LC.diam                 = .1; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(NA)).
-model.FMC.LC.fieldSize            = .04; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
+model.FMC.LC.fieldSize            = .1; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
 model.FMC.LC.NA                   = 0.22; % [-] Fiber NA. Only used for infinite f.
 
 model.FMC.LC.res                  = 50; % X and Y resolution of light collector in pixels, only used for finite f
@@ -136,7 +134,7 @@ function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 j=1;
 mediaProperties(j).name  = 'test fluorescence absorber';
 if(wavelength<500)
-  mediaProperties(j).mua = 10;
+  mediaProperties(j).mua = 1;
   mediaProperties(j).mus = 100;
   mediaProperties(j).g   = 0.9;
 else
@@ -144,7 +142,6 @@ else
   mediaProperties(j).mus = 100;
   mediaProperties(j).g   = 0.9;
 end
-mediaProperties(j).n   = 1.3;
 
 j=2;
 mediaProperties(j).name  = 'test fluorescer';
@@ -155,10 +152,8 @@ if(wavelength<500)
 
   mediaProperties(j).Y   = 0.5;
 else
-  mediaProperties(j).mua = 10;
+  mediaProperties(j).mua = 1;
   mediaProperties(j).mus = 100;
   mediaProperties(j).g   = 0.9;
 end
-mediaProperties(j).n   = 1.3;
-
 end

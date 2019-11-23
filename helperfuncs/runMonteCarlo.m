@@ -172,11 +172,59 @@ if simType == 2
     error('Error: NFR matrix not calculated for excitation light');
   end
 else
-  if xor(isnan(MCorFMC.beam.nearFieldType), isnan(MCorFMC.beam.farFieldType))
-    error('Error: nearFieldType and farFieldType must either both be specified, or neither');
+  if isnan(MCorFMC.beam.beamType)
+    error('Error: No beamType defined');
   end
-  if isnan(MCorFMC.beam.nearFieldType) && isnan(MCorFMC.beam.beamType)
-    error('Error: nearFieldType and beamType may not both be specified');
+  if (MCorFMC.beam.beamType == 3 || MCorFMC.beam.beamType == 4) && (isnan(MCorFMC.beam.NF.radialWidth) || isnan(MCorFMC.beam.FF.radialWidth))
+    error('Error: beam.NF.radialWidth and beam.FF.radialWidth must both be specified when beamType is 3 or 4');
+  end
+  if MCorFMC.beam.beamType == 4 && (isnan(MCorFMC.beam.NF.radialDistr(1)) || isnan(MCorFMC.beam.FF.radialDistr(1)))
+    error('Error: beam.NF.radialDistr and beam.FF.radialDistr must both be specified when beamType is 4');
+  end
+  if MCorFMC.beam.beamType == 5
+    if isnan(MCorFMC.beam.NF.XDistr(1))
+      error('Error: beam.NF.XDistr must be specified when beamType is 5');
+    end
+    if isnan(MCorFMC.beam.NF.XWidth)
+      error('Error: beam.NF.Xwidth must be specified when beamType is 5');
+    end
+    if isnan(MCorFMC.beam.NF.YDistr(1))
+      error('Error: beam.NF.YDistr must be specified when beamType is 5');
+    end
+    if isnan(MCorFMC.beam.NF.YWidth)
+      error('Error: beam.NF.YWidth must be specified when beamType is 5');
+    end
+    if isnan(MCorFMC.beam.FF.XDistr(1))
+      error('Error: beam.FF.XDistr must be specified when beamType is 5');
+    end
+    if isnan(MCorFMC.beam.FF.XWidth)
+      error('Error: beam.FF.Xwidth must be specified when beamType is 5');
+    end
+    if isnan(MCorFMC.beam.FF.YDistr(1))
+      error('Error: beam.FF.YDistr must be specified when beamType is 5');
+    end
+    if isnan(MCorFMC.beam.FF.YWidth)
+      error('Error: beam.FF.YWidth must be specified when beamType is 5');
+    end
+    if xor(MCorFMC.beam.FF.XDistr == 2,MCorFMC.beam.FF.YDistr == 2)
+      error('Error: beam.FF.XDistr and beam.FF.YDistr must either both be set to cosine (Lambertian), or neither');
+    end
+  end
+  if size(MCorFMC.beam.NF.radialDistr,1) > 1 || size(MCorFMC.beam.NF.XDistr,1) > 1 || size(MCorFMC.beam.NF.YDistr,1) > 1 ||...
+     size(MCorFMC.beam.FF.radialDistr,1) > 1 || size(MCorFMC.beam.FF.XDistr,1) > 1 || size(MCorFMC.beam.FF.YDistr,1) > 1
+    error('Error: Beam distribution functions must be scalars or row-vectors, not column-vectors');
+  end
+  if (numel(MCorFMC.beam.NF.radialDistr) > 1 && numel(MCorFMC.beam.NF.radialDistr) < 1000) ||...
+     (numel(MCorFMC.beam.NF.XDistr)      > 1 && numel(MCorFMC.beam.NF.XDistr)      < 1000) ||...
+     (numel(MCorFMC.beam.NF.YDistr)      > 1 && numel(MCorFMC.beam.NF.YDistr)      < 1000) ||...
+     (numel(MCorFMC.beam.FF.radialDistr) > 1 && numel(MCorFMC.beam.FF.radialDistr) < 1000) ||...
+     (numel(MCorFMC.beam.FF.XDistr)      > 1 && numel(MCorFMC.beam.FF.XDistr)      < 1000) ||...
+     (numel(MCorFMC.beam.FF.YDistr)      > 1 && numel(MCorFMC.beam.FF.YDistr)      < 1000)
+    error('Error: Beam definition distributions must have 1000 elements (or more, if necessary)');
+  end
+  if any([MCorFMC.beam.NF.radialDistr , MCorFMC.beam.NF.XDistr , MCorFMC.beam.NF.YDistr , ...
+          MCorFMC.beam.FF.radialDistr , MCorFMC.beam.FF.XDistr , MCorFMC.beam.FF.YDistr] < 0)
+    error('Error: Beam definition distributions may not contain negative numbers');
   end
 end
 

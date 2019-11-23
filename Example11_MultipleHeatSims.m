@@ -2,18 +2,18 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 fprintf('\n');
 
 %% Decription
-% This example simulates a collimated top hat beam of radius 300 µm
-% incident on skin, with some gel (water) on the top. This example is
-% constructed identically to that on the mcxyz website, except that photons
-% escape on all boundaries and the voxel grid is only 100x100x100:
-% https://omlc.org/software/mc/mcxyz/
-%
-% The found absorption distribution is then passed into the heat simulator,
-% assuming the light is on for 5 pulses of 1 ms on time and 4 ms off time
-% each, with 4 W of peak power. Some demonstration values of the Arrhenius
-% E and A parameters for blood coagulation are used to calculate the
-% distribution of coagulated blood. Temperature sensors outputs and movie
-% generation is also demonstrated.
+% This example is very similar to example 4, the geometry and light
+% propagation part being the same. It illustrates the ability to sequence
+% together multiple pulse trains in the form of separate heat simulations,
+% carrying over the temperature and thermal damage from one simulation to
+% the next. A movie is generated that shows all the heat simulations.
+% 
+% The first heat simulation has a single light pulse of 2 ms on-time
+% followed by 3 ms off-time. The second heat simulation adds nine more
+% pulses onto that with 0.5 ms on-time and 4.5 ms off-time.
+% 
+% In these heat simulations, largeTimeSteps is set to true and nUpdates set
+% to 10 rather than 100, which speeds up the simulations considerably.
 
 %% Geometry definition
 model = initializeMCmatlabModel();
@@ -42,44 +42,62 @@ model.MC.matchedInterfaces        = true; % Assumes all refractive indices are 1
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
-model.MC.beam.beamType            = 6; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
+model.MC.beam.beamType            = 4; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+model.MC.beam.NF.radialDistr      = 0; % Radial near field distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
+model.MC.beam.NF.radialWidth      = .03; % [cm] Radial near field 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
+model.MC.beam.FF.radialDistr      = 0; % Radial far field distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
+model.MC.beam.FF.radialWidth      = 0; % [rad] Radial far field 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom. For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength*1e-9/(pi*model.MC.beam.NF.radialWidth*1e-2))
 model.MC.beam.xFocus              = 0; % [cm] x position of focus
 model.MC.beam.yFocus              = 0; % [cm] y position of focus
 model.MC.beam.zFocus              = 0; % [cm] z position of focus
 model.MC.beam.theta               = 0; % [rad] Polar angle of beam center axis
 model.MC.beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
-model.MC.beam.waist               = 0.03; % [cm] Beam waist 1/e^2 radius
-model.MC.beam.divergence          = 0/180*pi; % [rad] Beam divergence 1/e^2 half-angle of beam (for a diffraction limited Gaussian beam, this is G.wavelength*1e-9/(pi*model.MC.beam.waist*1e-2))
 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
 
-plotMCmatlab(model);
+% plotMCmatlab(model);
 
-%% Heat simulation
+%% First pulse heat simulation
 model = clearMCmatlabModel(model,'HS'); % Only necessary if you want to run this section repeatedly, re-using previous G, MC and/or FMC data
 
 model.MC.P                   = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
 
 model.HS.useAllCPUs          = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 model.HS.makeMovie           = true; % Requires silentMode = false.
-model.HS.largeTimeSteps      = false; % (Default: false) If true, calculations will be faster, but some voxel temperatures may be slightly less precise. Test for yourself whether this precision is acceptable for your application.
+model.HS.deferMovieWrite     = true; % (Default: false) If true, will not write the movie to file upon completion, but will store the raw frames in HSoutput for future writing
+model.HS.largeTimeSteps      = true; % (Default: false) If true, calculations will be faster, but some voxel temperatures may be slightly less precise. Test for yourself whether this precision is acceptable for your application.
 
 model.HS.heatBoundaryType    = 0; % 0: Insulating boundaries, 1: Constant-temperature boundaries (heat-sinked)
-model.HS.durationOn          = 0.001; % [s] Pulse on-duration
-model.HS.durationOff         = 0.004; % [s] Pulse off-duration
-model.HS.durationEnd         = 0.02; % [s] Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train
+model.HS.durationOn          = 0.002; % [s] Pulse on-duration
+model.HS.durationOff         = 0.003; % [s] Pulse off-duration
+model.HS.durationEnd         = 0.000; % [s] Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train
 model.HS.Tinitial            = 37; % [deg C] Initial temperature
 
-model.HS.nPulses             = 5; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use nPulses = 1.
+model.HS.nPulses             = 1; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use nPulses = 1.
 
 model.HS.plotTempLimits      = [37 100]; % [deg C] Expected range of temperatures, used only for setting the color scale in the plot
-model.HS.nUpdates            = 100; % Number of times data is extracted for plots during each pulse. A minimum of 1 update is performed in each phase (2 for each pulse consisting of an illumination phase and a diffusion phase)
+model.HS.nUpdates            = 10; % Number of times data is extracted for plots during each pulse. A minimum of 1 update is performed in each phase (2 for each pulse consisting of an illumination phase and a diffusion phase)
 model.HS.slicePositions      = [.5 0.6 1]; % Relative slice positions [x y z] for the 3D plots on a scale from 0 to 1
 model.HS.tempSensorPositions = [0 0 0.038
-                                0 0 0.04
-                                0 0 0.042
-                                0 0 0.044]; % Each row is a temperature sensor's absolute [x y z] coordinates. Leave the matrix empty ([]) to disable temperature sensors.
+                               0 0 0.04
+                               0 0 0.042
+                               0 0 0.044]; % Each row is a temperature sensor's absolute [x y z] coordinates. Leave the matrix empty ([]) to disable temperature sensors.
+
+% Execution, do not modify the next line:
+model = simulateHeatDistribution(model);
+
+% plotMCmatlabHeat(model);
+
+%% Remaining pulse train heat simulation
+% The model.HS struct is modified slightly but keeps its data from the
+% previous pulse (HS.T, HS.sensorTemps, HS.Omega, etc.)
+model.HS.deferMovieWrite     = false; % (Default: false) If true, will not write the movie to file upon completion, but will store the raw frames in HSoutput for future writing
+model.HS.durationOn          = 0.0005; % [s] Pulse on-duration
+model.HS.durationOff         = 0.0045; % [s] Pulse off-duration
+model.HS.durationEnd         = 0.01; % [s] Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train
+
+model.HS.nPulses             = 9; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use nPulses = 1.
 
 % Execution, do not modify the next line:
 model = simulateHeatDistribution(model);

@@ -69,7 +69,11 @@ mP = model.HS.mediaProperties; % Split media
 if firstHSrun
   model.HS.maxMediaTemps = ones(nM,1);
   for i=1:nM
-    model.HS.maxMediaTemps(i) = max(model.HS.T(G.M_raw == i));
+    if any(G.M_raw == i)
+      model.HS.maxMediaTemps(i) = max(model.HS.T(G.M_raw == i));
+    else
+      model.HS.maxMediaTemps(i) = -Inf;
+    end
   end
 end
 
