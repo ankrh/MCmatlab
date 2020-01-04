@@ -13,6 +13,7 @@ defineGeometry is now called as "model = defineGeometry(model)"
 plotMCmatlabGeom is now called as "plotMCmatlabGeom(model)"
 
 nPhotons as an input is now called nPhotonsRequested
+simulationTime as an input is now called simulationTimeRequested
 F, the output normalized fluence rate is now called NFR
 Fdet, the output normalized fluence rate of collected light is now called NFRdet
 calcF is now called calcNFR
@@ -45,3 +46,5 @@ if necessary, an initial guess as to the fluence rate distribution in a cuboid w
 FRdepIterations in the MC struct specifies how many iterations should be used in such a case (see example 11). Defaults to 20
 
 for simulations with T or FD dependent properties, the now mediaPropRecalcPeriod in the HS struct specifies how frequently the media properties should be recalculated (how many updates per recalculation)
+
+a new input parameter, useGPU, now exists for the MC and FMC inputs to enable CUDA accelerated execution using Nvidia GPUs

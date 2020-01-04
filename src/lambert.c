@@ -29,6 +29,9 @@
 // Shamelessly modified for simpler integration into MCmatlab by Anders Hansen, DTU Fotonik, February 2018
 
 /* Halley iteration (eqn. 5.12, Corless et al) */
+#ifdef __NVCC__
+__device__
+#endif
 static double
 halley_iteration(
   double x,
@@ -67,6 +70,9 @@ halley_iteration(
 /* series which appears for q near zero;
  * only the argument is different for the different branches
  */
+#ifdef __NVCC__
+__device__
+#endif
 static double
 series_eval(double r)
 {
@@ -91,10 +97,13 @@ series_eval(double r)
 }
 
 
+#ifdef __NVCC__
+__device__
+#endif
 double
 gsl_sf_lambert_W0(double x)
 {
-  const double q = x + exp(-1);
+  const double q = x + exp(-1.0);
 
   if(x == 0.0) {
     return 0.0;
@@ -125,7 +134,7 @@ gsl_sf_lambert_W0(double x)
        * no need for extra care, since the Halley iteration
        * converges nicely on this branch
        */
-      const double p = sqrt(2.0 * exp(1) * q);
+      const double p = sqrt(2.0 * exp(1.0) * q);
       w = -1.0 + p*(1.0 + p*(-1.0/3.0 + p*11.0/72.0)); 
     }
     else {
@@ -138,7 +147,9 @@ gsl_sf_lambert_W0(double x)
   }
 }
 
-
+#ifdef __NVCC__
+__device__
+#endif
 double
 gsl_sf_lambert_Wm1(double x)
 {
@@ -150,7 +161,7 @@ gsl_sf_lambert_Wm1(double x)
   }
   else {
     static const unsigned int MAX_ITERS = 32;
-    const double q = x + exp(-1);
+    const double q = x + exp(-1.0);
     double w;
 
     if (q < 0.0) {

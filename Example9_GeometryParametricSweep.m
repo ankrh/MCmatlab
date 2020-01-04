@@ -61,7 +61,7 @@ model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this
 
 model.MC.silentMode               = true; % Disables command window text and progress indication
 model.MC.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
-model.MC.simulationTime           = 2/60; % [min] Time duration of the simulation
+model.MC.simulationTimeRequested  = 2/60; % [min] Time duration of the simulation
 model.MC.calcNFR                  = false; % (Default: true) If true, the 3D fluence rate output array NFR will be calculated. Set to false if you have a light collector and you're only interested in the image output.
 
 model.MC.matchedInterfaces        = true; % Assumes all refractive indices are 1
@@ -125,7 +125,7 @@ end
 % takes the wavelength as well as any other parameters you might specify
 % above in the model file, for example parameters that you might loop over
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
-% fractional heat damage FD can be specified as in examples 11-14.
+% fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 j=1;
 mediaProperties(j).name  = 'air';

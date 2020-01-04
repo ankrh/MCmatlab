@@ -30,7 +30,9 @@ plotMCmatlabGeom(model);
 %% Monte Carlo simulation
 % model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
 % 
-% model.MC.simulationTime           = .1; % [min] Time duration of the simulation
+% model.MC.useGPU = false; % (Default: false) Use CUDA acceleration for Nvidia GPUs
+% 
+% model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
 % model.MC.nPhotonsRequested        = 1e5; % # of photons to launch
 % 
 % % model.MC.silentMode               = false; % (Default: false) Disables command window text and progress indication
@@ -86,7 +88,9 @@ plotMCmatlabGeom(model);
 %% Fluorescence Monte Carlo
 % model = clearMCmatlabModel(model,'FMC'); % Only necessary if you want to run this section repeatedly, re-using previous G and MC data
 % 
-% model.FMC.simulationTime           = .1; % [min] Time duration of the simulation
+% model.FMC.useGPU = false; % (Default: false) Use CUDA acceleration for Nvidia GPUs
+% 
+% model.FMC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
 % model.FMC.nPhotonsRequested        = 1e5; % # of photons to launch
 % 
 % % model.FMC.silentMode             = false; % (Default: false) Disables command window text and progress indication
@@ -237,7 +241,7 @@ end
 % takes the wavelength as well as any other parameters you might specify
 % above in the model file, for example parameters that you might loop over
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
-% fractional heat damage FD can be specified as in examples 11-14.
+% fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 j=1;
 mediaProperties(j).name  = 'air';

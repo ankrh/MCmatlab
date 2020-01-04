@@ -25,7 +25,7 @@ function model = runMonteCarlo(model,varargin)
 
 G = model.G;
 
-if ~isempty(varargin) && strcmp(varargin{1},'fluorescence')
+if any(strcmp(varargin,'fluorescence'))
   simType = 2;
 else
   simType = 1;
@@ -74,7 +74,7 @@ iterate = simType == 1 && model.MC.FRdependent;
 if iterate
   nIterations = model.MC.FRdepIterations;
   if isnan(model.MC.nPhotonsRequested)
-    t = model.MC.simulationTime;
+    t = model.MC.simulationTimeRequested;
     t_array = t*(1/2).^(nIterations-1:-1:0);
   else
     nPhotons = model.MC.nPhotonsRequested;
@@ -82,16 +82,20 @@ if iterate
   end
   for i=1:nIterations
     if isnan(model.MC.nPhotonsRequested)
-      model.MC.simulationTime = t_array(i);
+      model.MC.simulationTimeRequested = t_array(i);
     else
       model.MC.nPhotonsRequested = nPhotons_array(i);
     end
     model = getOpticalMediaProperties(model,simType); % Also performs splitting of mediaProperties and M_raw, if necessary
-    model = MCmatlab(model,simType);
+    if (simType == 1 && model.MC.useGPU) || (simType == 2 && model.FMC.useGPU)
+      model = MCmatlab_CUDA(model,simType);
+    else
+      model = MCmatlab(model,simType);
+    end
     if i<nIterations; model.MC.FR = model.MC.P*model.MC.NFR; end
   end
   if isnan(model.MC.nPhotonsRequested)
-    model.MC.simulationTime = t;
+    model.MC.simulationTimeRequested = t;
   else
     model.MC.nPhotonsRequested = nPhotons;
   end
@@ -116,7 +120,11 @@ else
     clear Y_3d
     if max(model.FMC.beam.sourceDistribution(:)) == 0; error('Error: No fluorescence emitters'); end
   end
-  model = MCmatlab(model,simType);
+  if (simType == 1 && model.MC.useGPU) || (simType == 2 && model.FMC.useGPU)
+    model = MCmatlab_CUDA(model,simType);
+  else
+    model = MCmatlab(model,simType);
+  end
 end
 
 % Add positions of the centers of the pixels in the light collector image
@@ -172,6 +180,7 @@ if simType == 2
     error('Error: NFR matrix not calculated for excitation light');
   end
 else
+  
   if isnan(MCorFMC.beam.beamType)
     error('Error: No beamType defined');
   end

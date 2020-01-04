@@ -2,14 +2,17 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 fprintf('\n');
 
 %% Description
-% In this introductory example, a block of "standard tissue" (mu_a = 1,
-% mu_s = 100, g = 0.9) is illuminated by a pencil beam (infinitely thin
-% beam). A small slice of air is present in the top of the simulation
-% volume. nx and ny are set to odd values so that when the pencil beam is
-% launched at x = y = 0 and travels straight down, it travels along a
-% well-defined center column of voxels (the middle of the 51st column). Use
-% the log10 plot checkbox in the visualizations to better see the fluence
-% rate and absorption distribution in the MC result.
+% This example is exactly the same as example 1, except that GPU
+% acceleration is utilized by executing on an Nvidia GPU through the CUDA
+% architecture. If you have a CUDA-capable GPU you can launch MCmatlab
+% with this acceleration by setting model.MC.useGPU = true, as seen below.
+% 
+% On my Windows test PC with an Intel i5-6600 CPU and an Nvidia GeForce GTX 970
+% GPU, the speedup is a factor of 10-15x.
+% 
+% Currently, only one GPU will be used even if you have multiple GPUs
+% installed. If you are interested in using multiple GPUs in parallel,
+% contact the MCmatlab developer Anders K. Hansen at ankrh@fotonik.dtu.dk
 
 %% Geometry definition
 model = initializeMCmatlabModel();
@@ -31,6 +34,8 @@ plotMCmatlabGeom(model);
 
 %% Monte Carlo simulation
 model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
+
+model.MC.useGPU                   = true; % (Default: false) Use CUDA acceleration for Nvidia GPUs
 
 model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
 model.MC.matchedInterfaces        = true; % Assumes all refractive indices are 1

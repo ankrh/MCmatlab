@@ -19,7 +19,7 @@ fprintf('\n');
 % photons. An "escaping" photon is one that hits the top cuboid boundary
 % (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1)
 % where the medium has refractive index 1 (or matchedInterfaces == true). A
-% "killed" photon is one that strays too far from the main cuboid (6 times
+% "killed" photon is one that strays too far from the main cuboid (5 times
 % further than the cuboid dimensions).
 % 
 % If boundaryType == 1, there are no "killed" photons since no photons can
@@ -47,7 +47,7 @@ plotMCmatlabGeom(model);
 %% Monte Carlo simulation
 model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
 
-model.MC.simulationTime           = .1; % [min] Time duration of the simulation
+model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
 model.MC.farFieldRes              = 50; % (Default: 0) If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
 
 model.MC.matchedInterfaces        = true; % Assumes all refractive indices are 1
@@ -71,7 +71,7 @@ model = runMonteCarlo(model);
 plotMCmatlab(model);
 
 %% Fluorescence Monte Carlo
-model.FMC.simulationTime           = .1; % [min] Time duration of the simulation
+model.FMC.simulationTimeRequested  = 0.1; % [min] Time duration of the simulation
 model.FMC.farFieldRes              = 50; % (Default: 0) If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
 
 model.FMC.matchedInterfaces        = true; % Assumes all refractive indices are 1
@@ -104,7 +104,7 @@ end
 % takes the wavelength as well as any other parameters you might specify
 % above in the model file, for example parameters that you might loop over
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
-% fractional heat damage FD can be specified as in examples 11-14.
+% fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 j=1;
 mediaProperties(j).name  = 'test fluorescence absorber';

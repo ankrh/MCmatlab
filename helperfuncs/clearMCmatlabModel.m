@@ -30,7 +30,10 @@ end
 
 if strcmp(string,'MC')
   %% Monte Carlo parameters that can be specified by the user
-  model.MC.simulationTime = 0.1;
+  model.MC.useGPU = false;
+%   model.MC.useGPU = true;
+
+  model.MC.simulationTimeRequested = 0.1;
   model.MC.nPhotonsRequested = NaN;
   model.MC.silentMode = false;
   model.MC.useAllCPUs = false;
@@ -50,11 +53,11 @@ if strcmp(string,'MC')
   
   % Beam parameters
   model.MC.beam.beamType = NaN;
-  model.MC.beam.xFocus = NaN;
-  model.MC.beam.yFocus = NaN;
-  model.MC.beam.zFocus= NaN;
-  model.MC.beam.theta = NaN;
-  model.MC.beam.phi = NaN;
+  model.MC.beam.xFocus = 0;
+  model.MC.beam.yFocus = 0;
+  model.MC.beam.zFocus= 0;
+  model.MC.beam.theta = 0;
+  model.MC.beam.phi = 0;
   model.MC.beam.psi = 0;
 
   model.MC.beam.NF.radialDistr = NaN;
@@ -91,6 +94,7 @@ if strcmp(string,'MC')
   model.MC.LC.nTimeBins = 0;
   
   %% Monte Carlo parameters that are calculated
+  model.MC.simulationTime = NaN;
   model.MC.nPhotons = NaN;
   model.MC.nThreads = NaN;
   
@@ -124,7 +128,10 @@ end
 
 if strcmp(string,'FMC')
   %% Fluorescence Monte Carlo parameters that can be specified by the user
-  model.FMC.simulationTime = 0.1;
+  model.FMC.useGPU = false;
+%   model.FMC.useGPU = true;
+
+  model.FMC.simulationTimeRequested = 0.1;
   model.FMC.nPhotonsRequested = NaN;
   model.FMC.silentMode = false;
   model.FMC.useAllCPUs = false;
@@ -153,6 +160,7 @@ if strcmp(string,'FMC')
   model.FMC.LC.res = NaN;
   
   %% Fluorescence Monte Carlo parameters that are calculated
+  model.FMC.simulationTime = NaN;
   model.FMC.nPhotons = NaN;
   model.FMC.nThreads = NaN;
   

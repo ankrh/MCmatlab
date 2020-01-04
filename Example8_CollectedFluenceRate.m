@@ -2,7 +2,7 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 fprintf('\n');
 
 %% Description
-% This example shows how to use the calcFdet flag to calculate and plot the
+% This example shows how to use the calcNFRdet flag to calculate and plot the
 % fluence rate of only that light which ends up on the light collector.
 % This is shown for both excitation light and fluorescence light. The
 % geometry is the same as in example 5, into which a Gaussian beam is
@@ -40,7 +40,8 @@ plotMCmatlabGeom(model);
 %% Monte Carlo simulation
 model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
 
-model.MC.nPhotonsRequested        = 2e6; % # of photons to launch
+model.MC.nPhotonsRequested        = 5e6; % # of photons to launch
+
 model.MC.calcNFR                  = true; % (Default: true) If true, the 3D fluence rate output matrix NFR will be calculated. Set to false if you have a light collector and you're only interested in the image output.
 model.MC.calcNFRdet               = true; % (Default: false) If true, the 3D fluence rate output matrix NFRdet will be calculated. Only photons that end up on the light collector are counted in NFRdet.
 model.MC.nExamplePaths            = 200;
@@ -83,7 +84,8 @@ plotMCmatlab(model);
 %% Fluorescence Monte Carlo
 model = clearMCmatlabModel(model,'FMC'); % Only necessary if you want to run this section repeatedly, re-using previous G and MC data
 
-model.FMC.nPhotonsRequested       = 2e6; % # of photons to launch
+model.FMC.nPhotonsRequested       = 5e6; % # of photons to launch
+
 model.FMC.calcNFR                 = true; % (Default: true) If true, the 3D fluence rate output matrix NFR will be calculated. Set to false if you have a light collector and you're only interested in the image output.
 model.FMC.calcNFRdet              = true; % (Default: false) If true, the 3D fluence rate output matrix NFRdet will be calculated. Only photons that end up on the light collector are counted in NFRdet.
 model.FMC.nExamplePaths           = 200;
@@ -133,7 +135,7 @@ end
 % takes the wavelength as well as any other parameters you might specify
 % above in the model file, for example parameters that you might loop over
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
-% fractional heat damage FD can be specified as in examples 11-14.
+% fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 j=1;
 mediaProperties(j).name  = 'test fluorescence absorber';

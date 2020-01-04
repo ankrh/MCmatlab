@@ -229,8 +229,8 @@ if MCorFMC.nExamplePaths > 0
 
   previousNaNidx = 1;
   linenumber = 0;
-  for idx=3:size(MCorFMC.examplePaths,2)
-    if isnan(MCorFMC.examplePaths(1,idx))
+  for idx=3:(size(MCorFMC.examplePaths,2)+1)
+    if idx == size(MCorFMC.examplePaths,2)+1 || isnan(MCorFMC.examplePaths(1,idx))
       linenumber = linenumber + 1;
       xdata = MCorFMC.examplePaths(1,previousNaNidx+1:idx-1);
       ydata = MCorFMC.examplePaths(2,previousNaNidx+1:idx-1);
@@ -377,7 +377,10 @@ if ~isnan(MCorFMC.farField)
 
     [ux,uy,minus_uz] = sphere(farFieldRes); % This MATLAB function gives us the correct ux,uy,uz coordinates of the corners of the far field pixels, except that uz has the wrong sign
     uz = -minus_uz;
-    surf(ux,uy,uz,MCorFMC.farField./repmat(solidAngle_vec,1,farFieldRes),'EdgeColor','none');
+    plotdata = MCorFMC.farField./repmat(solidAngle_vec,1,farFieldRes);
+    plotdata(1,:) = mean(plotdata(1,:));
+    plotdata(end,:) = mean(plotdata(end,:));
+    surf(ux,uy,uz,plotdata,'EdgeColor','none');
 
     colormap(inferno);colorbar;
     xlabel('u_x');

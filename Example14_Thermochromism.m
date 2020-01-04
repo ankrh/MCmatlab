@@ -16,7 +16,7 @@ fprintf('\n');
 % deg C.
 % 
 % The light is on for 200 ms and 50 plotting updates are requested.
-% HS.mediaPropRecalcRate is set to 2 which means that every 2 updates (8
+% HS.mediaPropRecalcPeriod is set to 2 which means that every 2 updates (8
 % ms), the heat simulation is paused while the media properties of the
 % incident light are recalculated and the fluence rate is found again by
 % re-running the Monte Carlo step. Monte Carlo results are plotted both
@@ -49,7 +49,7 @@ plotMCmatlabGeom(model);
 %% Monte Carlo simulation
 model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
 
-model.MC.simulationTime           = .02; % [min] Time duration of the simulation
+model.MC.simulationTimeRequested  = .02; % [min] Time duration of the simulation
 
 model.MC.matchedInterfaces        = true; % Assumes all refractive indices are 1
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
@@ -122,7 +122,7 @@ end
 % takes the wavelength as well as any other parameters you might specify
 % above in the model file, for example parameters that you might loop over
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
-% fractional heat damage FD can be specified as in examples 11-14.
+% fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 j=1;
 mediaProperties(j).name  = 'water';
