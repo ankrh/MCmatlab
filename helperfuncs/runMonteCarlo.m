@@ -34,6 +34,17 @@ end
 checkMCinputFields(model,simType);
 model = getMediaProperties_funcHandles(model,simType); % Calls the mediaPropertiesFunc and converts those fields that are specified as char array formulas into function handles taking intensity and temperature as input
 
+if (simType == 1 && model.MC.useGPU) || (simType == 2 && model.FMC.useGPU)
+  try
+    GPUDev = gpuDevice;
+    if(str2double(GPUDev.ComputeCapability) < 3)
+      error('Your GPU is not supported (compute capability < 3.0)')
+    end
+  catch
+    error('No NVidia GPU device found');
+  end
+end
+
 if ((simType == 2 && model.FMC.Tdependent) || (simType == 1 && model.MC.Tdependent))
   if ~isnan(model.HS.T(1))
     T = model.HS.T;

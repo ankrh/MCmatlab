@@ -220,7 +220,13 @@ heatSimParameters = struct('M',model.HS.M-1,'A',A,'E',E,'dTdtperdeltaT',dTdtperd
         'tempSensorCornerIdxs',tempSensorCornerIdxs,'tempSensorInterpWeights',tempSensorInterpWeights); % Contents of HS.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
 
 %% Simulate heat transfer
-if ~model.HS.silentMode; tic; end
+if ~model.HS.silentMode
+  if model.HS.useGPU
+    GPUDevice = gpuDevice;
+    fprintf("Using %s with CUDA compute capability %s\n",GPUDevice.Name,GPUDevice.ComputeCapability);
+  end
+  tic;
+end
 for j=1:model.HS.nPulses
   %% Illumination phase
   if model.HS.durationOn ~= 0
@@ -233,7 +239,11 @@ for j=1:model.HS.nPulses
     heatSimParameters.steps = nTsPerUpdateOn;
     heatSimParameters.dt = dtOn;
     for i = 1:nUpdatesOn
-      [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(model.HS.T,model.HS.Omega,heatSimParameters);
+      if model.HS.useGPU
+        [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator_CUDA(model.HS.T,model.HS.Omega,heatSimParameters);
+      else
+        [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(model.HS.T,model.HS.Omega,heatSimParameters);
+      end
       
       SMidx = 1; % sub-medium index
       for k=1:nM
@@ -282,7 +292,11 @@ for j=1:model.HS.nPulses
     heatSimParameters.steps = nTsPerUpdateOff;
     heatSimParameters.dt = dtOff;
     for i = 1:nUpdatesOff
-      [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(model.HS.T,model.HS.Omega,heatSimParameters);
+      if model.HS.useGPU
+        [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator_CUDA(model.HS.T,model.HS.Omega,heatSimParameters);
+      else
+        [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(model.HS.T,model.HS.Omega,heatSimParameters);
+      end
       
       SMidx = 1; % sub-medium index
       for k=1:nM
@@ -331,7 +345,11 @@ heatSimParameters.lightsOn = false;
 heatSimParameters.steps = nTsPerUpdateEnd;
 heatSimParameters.dt = dtEnd;
 for i = 1:nUpdatesEnd
-  [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(model.HS.T,model.HS.Omega,heatSimParameters);
+  if model.HS.useGPU
+    [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator_CUDA(model.HS.T,model.HS.Omega,heatSimParameters);
+  else
+    [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(model.HS.T,model.HS.Omega,heatSimParameters);
+  end
 
   SMidx = 1; % sub-medium index
   for k=1:nM

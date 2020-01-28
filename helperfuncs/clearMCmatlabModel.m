@@ -198,6 +198,7 @@ if strcmp(string,'HS')
   %% Heat simulation parameters that can be specified by the user
   model.HS.silentMode = false;
   model.HS.useAllCPUs = false;
+  model.HS.useGPU     = false;
   model.HS.makeMovie = false;
   model.HS.largeTimeSteps = false;
   model.HS.deferMovieWrite = false;

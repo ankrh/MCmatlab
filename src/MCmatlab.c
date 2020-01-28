@@ -52,7 +52,7 @@
  * 1. Install XCode from the App Store
  * 2. Type "mex -setup" in the MATLAB command window
  ********************************************/
-// printf("Debug 1...\n");mexEvalString("drawnow;"); // For inserting into code for debugging purposes
+// printf("Debug 1...\n");mexEvalString("drawnow;");mexEvalString("drawnow;");mexEvalString("drawnow;"); // For inserting into code for debugging purposes
 
 #include "mex.h"
 #include <math.h>
@@ -535,7 +535,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   *nThreadsPtr = threadsPerBlock*blocks;
 
   struct cudaDeviceProp CDP; gpuErrchk(cudaGetDeviceProperties(&CDP,DEVICE));
-  if(!silentMode) printf("Using %s with CUDA compute capability %d.%d,\n    launching %d blocks, each with %d threads,\n    using %d/%d bytes of shared memory per block\n",CDP.name,CDP.major,CDP.minor,blocks,threadsPerBlock,384+size_smallArrays,CDP.sharedMemPerBlock);
+//   if(!silentMode) printf("Using %s with CUDA compute capability %d.%d,\n    launching %d blocks, each with %d threads,\n    using %d/%d bytes of shared memory per block\n",CDP.name,CDP.major,CDP.minor,blocks,threadsPerBlock,384+size_smallArrays,CDP.sharedMemPerBlock);
+  if(!silentMode) printf("Using %s with CUDA compute capability %d.%d\n",CDP.name,CDP.major,CDP.minor);
 
   unsigned long long heapSizeLimit; gpuErrchk(cudaDeviceGetLimit(&heapSizeLimit,cudaLimitMallocHeapSize));
   if(calcNFRdet && heapSizeLimit < GPUHEAPMEMORYLIMIT) {
@@ -546,10 +547,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   nvmlInit();
   nvmlDevice_t nvmldevice; int returnvar = nvmlDeviceGetHandleByIndex(DEVICE,&nvmldevice);
   unsigned int clock; nvmlDeviceGetClockInfo(nvmldevice,NVML_CLOCK_GRAPHICS,&clock);
-  unsigned int fanspeed; nvmlDeviceGetFanSpeed(nvmldevice,&fanspeed);
-  nvmlMemory_t memory; nvmlDeviceGetMemoryInfo(nvmldevice,&memory);
-  unsigned int T; nvmlDeviceGetTemperature(nvmldevice,NVML_TEMPERATURE_GPU,&T);
-  nvmlUtilization_t utilization; nvmlDeviceGetUtilizationRates(nvmldevice,&utilization);
+//   unsigned int fanspeed; nvmlDeviceGetFanSpeed(nvmldevice,&fanspeed);
+//   nvmlMemory_t memory; nvmlDeviceGetMemoryInfo(nvmldevice,&memory);
+//   unsigned int T; nvmlDeviceGetTemperature(nvmldevice,NVML_TEMPERATURE_GPU,&T);
+//   nvmlUtilization_t utilization; nvmlDeviceGetUtilizationRates(nvmldevice,&utilization);
 
   struct geometry *G_dev;
   struct beam *B_dev;
@@ -563,7 +564,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   int callnumber = 0;
   long long timeLeft = simulationTimed? (long long)(simulationTimeRequested*60000000): LLONG_MAX; // microseconds
   if(!silentMode) {
-    printf("Calculating...   0%% done [GPU      MHz, memory used    /    GB]");
+//     printf("Calculating...   0%% done [GPU      MHz, memory used    /    GB]");
+    printf("Calculating...   0%% done");
     mexEvalString("drawnow;");
   }
   long long simulationTimeStart = getMicroSeconds();
@@ -584,11 +586,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     }
     nvmlDeviceGetClockInfo(nvmldevice,NVML_CLOCK_GRAPHICS,&clock);
     if(!(callnumber++%5) && !silentMode) {
-      nvmlDeviceGetFanSpeed(nvmldevice,&fanspeed);
-      nvmlDeviceGetMemoryInfo(nvmldevice,&memory);
-      nvmlDeviceGetTemperature(nvmldevice,NVML_TEMPERATURE_GPU,&T);
-      nvmlDeviceGetUtilizationRates(nvmldevice,&utilization);
-      printf("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b%3d%% done [GPU %4u MHz, memory used %3.1f/%3.1f GB]",pctProgress,clock,(double)memory.used/1024/1024/1024,(double)memory.total/1024/1024/1024);
+//       nvmlDeviceGetFanSpeed(nvmldevice,&fanspeed);
+//       nvmlDeviceGetMemoryInfo(nvmldevice,&memory);
+//       nvmlDeviceGetTemperature(nvmldevice,NVML_TEMPERATURE_GPU,&T);
+//       nvmlDeviceGetUtilizationRates(nvmldevice,&utilization);
+//       printf("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b%3d%% done [GPU %4u MHz, memory used %3.1f/%3.1f GB]",pctProgress,clock,(double)memory.used/1024/1024/1024,(double)memory.total/1024/1024/1024);
+      printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgress);
       mexEvalString("drawnow;");
     }
     prevtime = newtime;
@@ -612,7 +615,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
       printf("\nCtrl+C detected, stopping.");
     }
   } while(timeLeft > 0 && O->nPhotons < nPhotonsRequested && !ctrlc_caught);
-  if(!silentMode) printf("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b100%% done [GPU %4u MHz, memory used %3.1f/%3.1f GB]",clock,(double)memory.used/1024/1024/1024,(double)memory.total/1024/1024/1024);
+//   if(!silentMode) printf("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b100%% done [GPU %4u MHz, memory used %3.1f/%3.1f GB]",clock,(double)memory.used/1024/1024/1024,(double)memory.total/1024/1024/1024);
+  if(!silentMode) printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgress);
+
   nvmlShutdown();
   retrieveAndFreeDeviceStructs(G,G_dev,B,B_dev,LC,LC_dev,Pa,Pa_dev,O,O_dev,L,D,D_dev);
 

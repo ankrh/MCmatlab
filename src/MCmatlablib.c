@@ -234,40 +234,15 @@ void createDeviceStructs(struct geometry const *G, struct geometry **G_devptr,
   struct geometry G_tempvar = *G;
   long size_smallArrays = (nM*3 + G->n[2] + B->L_NF1 + B->L_FF1 + B->L_NF2 + B->L_FF2)*sizeof(FLOATORDBL);
   gpuErrchk(cudaMalloc(&G_tempvar.muav,size_smallArrays)); // This is to allocate all of smallArrays
-  gpuErrchk(cudaMemcpy(G_tempvar.muav,G->muav,size_smallArrays,cudaMemcpyHostToDevice)); // And for coping all of it to global device memory
-//   gpuErrchk(cudaMalloc(&G_tempvar.muav,      nM*sizeof(FLOATORDBL)));
-//   gpuErrchk(cudaMalloc(&G_tempvar.musv,      nM*sizeof(FLOATORDBL)));
-//   gpuErrchk(cudaMalloc(&G_tempvar.gv  ,      nM*sizeof(FLOATORDBL)));
+  gpuErrchk(cudaMemcpy(G_tempvar.muav,G->muav,size_smallArrays,cudaMemcpyHostToDevice)); // And for copying all of it to global device memory
   gpuErrchk(cudaMalloc(&G_tempvar.M   ,       L*sizeof(unsigned char)));
-//   gpuErrchk(cudaMalloc(&G_tempvar.RIv , G->n[2]*sizeof(FLOATORDBL)));
-
-//   gpuErrchk(cudaMemcpy(G_tempvar.muav, G->muav,      nM*sizeof(FLOATORDBL),cudaMemcpyHostToDevice));
-//   gpuErrchk(cudaMemcpy(G_tempvar.musv, G->musv,      nM*sizeof(FLOATORDBL),cudaMemcpyHostToDevice));
-//   gpuErrchk(cudaMemcpy(G_tempvar.gv  , G->gv  ,      nM*sizeof(FLOATORDBL),cudaMemcpyHostToDevice));
   gpuErrchk(cudaMemcpy(G_tempvar.M   , G->M   ,       L*sizeof(unsigned char),cudaMemcpyHostToDevice));
-//   gpuErrchk(cudaMemcpy(G_tempvar.RIv , G->RIv , G->n[2]*sizeof(FLOATORDBL),cudaMemcpyHostToDevice));
 
   gpuErrchk(cudaMalloc(G_devptr, sizeof(struct geometry)));
   gpuErrchk(cudaMemcpy(*G_devptr,&G_tempvar,sizeof(struct geometry),cudaMemcpyHostToDevice));
 
   // Allocate and copy beam struct
   struct beam B_tempvar = *B;
-//   if(B->NFdist1) {
-//     gpuErrchk(cudaMalloc(&B_tempvar.NFdist1, B->L_NF1*sizeof(FLOATORDBL)));
-//     gpuErrchk(cudaMemcpy(B_tempvar.NFdist1, B->NFdist1, B->L_NF1*sizeof(FLOATORDBL),cudaMemcpyHostToDevice));
-//   }
-//   if(B->NFdist2) {
-//     gpuErrchk(cudaMalloc(&B_tempvar.NFdist2, B->L_NF2*sizeof(FLOATORDBL)));
-//     gpuErrchk(cudaMemcpy(B_tempvar.NFdist2, B->NFdist2, B->L_NF2*sizeof(FLOATORDBL),cudaMemcpyHostToDevice));
-//   }
-//   if(B->FFdist1) {
-//     gpuErrchk(cudaMalloc(&B_tempvar.FFdist1, B->L_FF1*sizeof(FLOATORDBL)));
-//     gpuErrchk(cudaMemcpy(B_tempvar.FFdist1, B->FFdist1, B->L_FF1*sizeof(FLOATORDBL),cudaMemcpyHostToDevice));
-//   }
-//   if(B->FFdist2) {
-//     gpuErrchk(cudaMalloc(&B_tempvar.FFdist2, B->L_FF2*sizeof(FLOATORDBL)));
-//     gpuErrchk(cudaMemcpy(B_tempvar.FFdist2, B->FFdist2, B->L_FF2*sizeof(FLOATORDBL),cudaMemcpyHostToDevice));
-//   }
   if(B->S) {
     gpuErrchk(cudaMalloc(&B_tempvar.S, (L+1)*sizeof(FLOATORDBL)));
     gpuErrchk(cudaMemcpy(B_tempvar.S, B->S, (L+1)*sizeof(FLOATORDBL),cudaMemcpyHostToDevice));
@@ -340,18 +315,10 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
                                   struct debug *D, struct debug *D_dev) {
   struct geometry G_temp; gpuErrchk(cudaMemcpy(&G_temp, G_dev, sizeof(struct geometry),cudaMemcpyDeviceToHost));
   gpuErrchk(cudaFree(G_temp.muav)); // This frees all of smallArrays in the global memory on the device
-//   gpuErrchk(cudaFree(G_temp.muav));
-//   gpuErrchk(cudaFree(G_temp.musv));
-//   gpuErrchk(cudaFree(G_temp.gv));
   gpuErrchk(cudaFree(G_temp.M));
-//   gpuErrchk(cudaFree(G_temp.RIv));
   gpuErrchk(cudaFree(G_dev));
 
   struct beam B_temp; gpuErrchk(cudaMemcpy(&B_temp, B_dev, sizeof(struct beam),cudaMemcpyDeviceToHost));
-//   gpuErrchk(cudaFree(B_temp.NFdist1));
-//   gpuErrchk(cudaFree(B_temp.NFdist2));
-//   gpuErrchk(cudaFree(B_temp.FFdist1));
-//   gpuErrchk(cudaFree(B_temp.FFdist2));
   gpuErrchk(cudaFree(B_temp.S));
   gpuErrchk(cudaFree(B_dev));
   
