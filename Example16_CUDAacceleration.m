@@ -61,9 +61,9 @@ model.MC.beam.theta               = 0; % [rad] Polar angle of beam center axis
 model.MC.beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
 
 % Execution, do not modify the next few lines:
-model.MC.useGPU                   = false; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
+model.MC.useGPU                   = false; % (Default: false) Use CUDA acceleration for NVIDIA GPUs
 model = runMonteCarlo(model);
-model.MC.useGPU                   = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
+model.MC.useGPU                   = true; % (Default: false) Use CUDA acceleration for NVIDIA GPUs
 model = runMonteCarlo(model);
 
 plotMCmatlab(model);
@@ -94,9 +94,9 @@ model.HS.tempSensorPositions = [0 0 0.038
 
 
 % Execution, do not modify the next few lines:
-model.HS.useGPU              = false; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
+model.HS.useGPU              = false; % (Default: false) Use CUDA acceleration for NVIDIA GPUs
 model = simulateHeatDistribution(model);
-model.HS.useGPU              = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
+model.HS.useGPU              = true; % (Default: false) Use CUDA acceleration for NVIDIA GPUs
 model = simulateHeatDistribution(model);
 
 plotMCmatlabHeat(model);

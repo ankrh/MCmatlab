@@ -219,7 +219,21 @@ heatSimParameters = struct('M',model.HS.M-1,'A',A,'E',E,'dTdtperdeltaT',dTdtperd
         'useAllCPUs',model.HS.useAllCPUs,'heatBoundaryType',model.HS.heatBoundaryType,...
         'tempSensorCornerIdxs',tempSensorCornerIdxs,'tempSensorInterpWeights',tempSensorInterpWeights); % Contents of HS.M have to be converted from Matlab's 1-based indexing to C's 0-based indexing.
 
-%% Simulate heat transfer
+%% Check for GPU compatibility if needed, and start timer
+if model.HS.useGPU
+  v = ver;
+  if ~any(strcmp({v.Name},'Parallel Computing Toolbox'))
+    error('You must have the Parallel Computing Toolbox installed to use GPU acceleration');
+  end
+  try
+    GPUDev = gpuDevice;
+    if(str2double(GPUDev.ComputeCapability) < 3)
+      error('Your GPU is too old (CUDA compute capability < 3.0)')
+    end
+  catch
+    error('No supported NVIDIA GPU found, or its driver is too old');
+  end
+end
 if ~model.HS.silentMode
   if model.HS.useGPU
     GPUDevice = gpuDevice;
@@ -227,6 +241,7 @@ if ~model.HS.silentMode
   end
   tic;
 end
+%% Simulate heat transfer
 for j=1:model.HS.nPulses
   %% Illumination phase
   if model.HS.durationOn ~= 0

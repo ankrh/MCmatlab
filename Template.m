@@ -30,7 +30,7 @@ plotMCmatlabGeom(model);
 %% Monte Carlo simulation
 % model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
 % 
-% model.MC.useGPU = false; % (Default: false) Use CUDA acceleration for Nvidia GPUs
+% model.MC.useGPU = false; % (Default: false) Use CUDA acceleration for NVIDIA GPUs
 % 
 % model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
 % model.MC.nPhotonsRequested        = 1e5; % # of photons to launch
@@ -88,7 +88,7 @@ plotMCmatlabGeom(model);
 %% Fluorescence Monte Carlo
 % model = clearMCmatlabModel(model,'FMC'); % Only necessary if you want to run this section repeatedly, re-using previous G and MC data
 % 
-% model.FMC.useGPU = false; % (Default: false) Use CUDA acceleration for Nvidia GPUs
+% model.FMC.useGPU = false; % (Default: false) Use CUDA acceleration for NVIDIA GPUs
 % 
 % model.FMC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
 % model.FMC.nPhotonsRequested        = 1e5; % # of photons to launch
@@ -127,6 +127,7 @@ plotMCmatlabGeom(model);
 %% Heat simulation
 % model = clearMCmatlabModel(model,'HS'); % Only necessary if you want to run this section repeatedly, re-using previous G, MC and/or FMC data
 % 
+% model.HS.useGPU = false; % (Default: false) Use CUDA acceleration for NVIDIA GPUs
 % % model.HS.silentMode          = false; % (Default: false) Disables command window text and progress indication
 % % model.HS.useAllCPUs          = true; % (Default: false) If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 % % model.HS.makeMovie           = true; % (Default: false) Requires silentMode = false.
