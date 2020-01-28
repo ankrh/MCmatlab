@@ -96,8 +96,8 @@ if model.HS.nPulses ~= 1 && (model.HS.durationOn == 0 || model.HS.durationOff ==
   error('Error: If either on-duration or off-duration is 0, nPulses must be 1');
 end
 
-if model.HS.silentMode && ~(model.MC.Tdependent  || model.FMC.Tdependent  || model.HS.Tdependent || ...
-                            model.MC.FDdependent || model.FMC.FDdependent || model.HS.FDdependent)
+if model.HS.silentMode && ~(model.MC.Tdependent  == true || model.FMC.Tdependent  == true || model.HS.Tdependent  == true || ...
+                            model.MC.FDdependent == true || model.FMC.FDdependent == true || model.HS.FDdependent == true)
   model.HS.nUpdates = 1;
 end
 

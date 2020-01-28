@@ -101,6 +101,7 @@ if strcmp(string,'MC')
   model.MC.mediaProperties_funcHandles = NaN; % Wavelength-dependent
   model.MC.mediaProperties = NaN; % Wavelength- and splitting-dependent
   model.MC.FRdependent = NaN;
+  model.MC.FDdependent = NaN;
   model.MC.Tdependent = NaN;
   model.MC.M = NaN; % Splitting-dependent
   model.MC.RI = NaN;
@@ -167,6 +168,7 @@ if strcmp(string,'FMC')
   model.FMC.mediaProperties_funcHandles = NaN; % Wavelength-dependent
   model.FMC.mediaProperties = NaN; % Wavelength- and splitting-dependent
   model.FMC.FRdependent = NaN;
+  model.FMC.FDdependent = NaN;
   model.FMC.Tdependent = NaN;
   model.FMC.M = NaN; % Splitting-dependent
   model.FMC.RI = NaN;
@@ -205,7 +207,6 @@ if strcmp(string,'HS')
   
   model.HS.mediaProperties_funcHandles = NaN;
   model.HS.mediaProperties = NaN; % Splitting-dependent
-  model.HS.Tdependent = NaN;
   
   model.HS.heatBoundaryType = 0; % 0: Insulating boundaries, 1: Constant-temperature boundaries (heat-sinked)
   model.HS.durationOn = NaN; % [s] Pulse on-duration
@@ -223,6 +224,9 @@ if strcmp(string,'HS')
   model.HS.Tinitial = NaN;
   
   %% Heat simulation parameters that are calculated
+  model.HS.Tdependent = NaN;
+  model.HS.FDdependent = NaN;
+
   model.HS.T = NaN; % Final temperature
   model.HS.Omega = single(NaN);
   model.HS.maxMediaTemps = NaN;

@@ -159,7 +159,6 @@ switch simType
     model.FMC.FDdependent = anyFDdependence;
   case 3
     model.HS.mediaProperties_funcHandles = mP_fH;
-    model.HS.FRdependent = anyFRdependence;
     model.HS.Tdependent  = anyTdependence;
     model.HS.FDdependent = anyFDdependence;
 end
