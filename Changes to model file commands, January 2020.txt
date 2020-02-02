@@ -1,3 +1,13 @@
+# How to use this text file
+In January 2020, MCmatlab has undergone significant changes in how model files are built up.
+- In the old version (Releases R), the media properties were independently defined in a separate file, while the model file was mostly using separate structs to define the different inputs of the simulation.
+- In the new version, media properties are part of the model file, and there is one master-struct ("model = initializeMCmatlabModel") to hold all the inputs of the simulations.
+In this file, you can read how to upgrade your old model files (R-version) to make use of the new features of the S-version of MCmatlab.
+
+# How do I know which version of MCmatlab I have?
+Check in any of the example files whether you have a function "function mediaProperties = mediaPropertiesFunc(wavelength,parameters)" at the end. If not, you have the old R-version, if yes, you have the new S-version.
+
+# Specific changes to MCmatlab from the R version to the S version
 all input and output information is stored in a "model" struct, which must be initialized using "model = initializeMCmatlabModel()"
 if you want to clear the contents of a specific part of the model struct, you can use "model = clearMCmatlabModel(model,'G')", "model = clearMCmatlabModel(model,'MC')", "model = clearMCmatlabModel(model,'FMC')" or "model = clearMCmatlabModel(model,'HS')"
 

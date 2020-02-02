@@ -27,25 +27,30 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ## How do I get set up?
 
-Requirements:
+### Requirements:
 - Windows 7 or macOS 10.12 (Sierra) or newer
 - MATLAB R2017a or newer
 
-HELPER FILES:
+### Helper files:
 All the helper functions needed for running MCmatlab are located in the folder "helperfuncs", which therefore has to be on your MATLAB path. You will not need to modify any of these files. The example model files automatically add "helperfuncs" to the MATLAB path as the first command, and you should keep that practice also in your own model files.
 
-MODEL FILES:
+### Model files:
 In MCmatlab, you set up your model in a single m-file. You can find a few examples to get you started in the root folder of MCmatlab. Once you're familiar with those, you can check the model file "Template.m" for all the possible switches you might use, but it is itself not a valid model file, as it also contains some mutually exclusive switches.
 
-MEDIA PROPERTIES:
+### Media properties:
 The optical properties of all media are defined in the end of the model file. The examples contain some media you can modify or copy-paste to your own model file, or you define your own media from scratch in your own models. Make sure that each media in a single model file has its distinct "j"-number, as this is the number you will refer to when building your model.
+
+### Versions of MCmatlab:
+There currently (February 2020) exist two versions of MCmatlab, the old version (R-version), where the media-properties are specified in a file seperate from the model file, and the new version (S-version), where the media properties are stored in the model file itself, which allows more flexible beam definitions, and which can use CUDA if you have a CUDA-enabled graphics card installed. Check in any of the example files whether you have a function "function mediaProperties = mediaPropertiesFunc(wavelength,parameters)". If you have this, you are on the new S-version. If not, you are on the old R-version and might want to download the new S-version from https://gitlab.gbar.dtu.dk/biophotonics/MCmatlab. You will then need to upgrade your old model files, which is straight forward. Read "Changes to model file commands, January 2020.txt" on how to do so.
 
 ## How do I use MCmatlab?
 ### Compilation
-- The folders include all the executables necessary, so you don't need to compile anything. If, however, you want to change the routine in either the MCmatlab.c source code or the finiteElementHeatPropagator.c source code (both located in the folder "src"), you will need to recompile the respective mex-files. Check out those two source-files on how to do so.
+
+The folders include all the executables necessary, so you don't need to compile anything. If, however, you want to change the routine in either the MCmatlab.c source code or the finiteElementHeatPropagator.c source code (both located in the folder "src"), you will need to recompile the respective mex-files. Check out those two source-files on how to do so.
 
 ### Building the model
 You build a model in a seperate m-file. Each model requires the first two and optionally more of the following steps:
+
 1. Build geometry (check out "Example1_StandardTissue.m", section "%% Geometry definition")
  - Modify or add to "mediaPropertiesFunc" at the end of the model file to include the definitions of the media you're interested in. You may optionally include thermal and/or fluorescence properties.
  - In your model file, specify the geometry of your model.
