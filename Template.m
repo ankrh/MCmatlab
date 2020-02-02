@@ -46,16 +46,23 @@ plotMCmatlabGeom(model);
 % model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 % model.MC.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 % 
-% model.MC.beam.beamType            = 2; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Gaussian focus, Gaussian far field beam, 4: Gaussian focus, top-hat far field beam, 5: Top-hat focus, Gaussian far field beam, 6: Top-hat focus, top-hat far field beam, 7: Laguerre-Gaussian LG01 beam
-% model.MC.beam.nearFieldType       = 2; % 0: Gaussian, 1: Circular top-hat, 2: Square top-hat
-% model.MC.beam.farFieldType        = 2; % 0: Gaussian, 1: Circular top-hat, 2: Cosine distribution (Lambertian)
-% model.MC.beam.xFocus              = 0; % [cm] x position of focus
-% model.MC.beam.yFocus              = 0; % [cm] y position of focus
-% model.MC.beam.zFocus              = model.G.Lz/2; % [cm] z position of focus
+% model.MC.beam.beamType            = 5; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+% model.MC.beam.NF.radialDistr      = exp(-(linspace(0,20,1000)-4).^2); % Radial near field distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
+% model.MC.beam.NF.radialWidth      = .025; % [cm] Radial near field 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
+% model.MC.beam.NF.XDistr           = sin(linspace(0,2*pi,1000)).^2; % X near field distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
+% model.MC.beam.NF.XWidth           = .02; % [cm] X near field 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
+% model.MC.beam.NF.YDistr           = sin(linspace(0,3*pi,1000)).^2; % Y near field distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
+% model.MC.beam.NF.YWidth           = .01; % [cm] Y near field 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
+% model.MC.beam.FF.radialDistr      = 1+cos(linspace(0,7*pi,1000)); % Radial far field distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
+% model.MC.beam.FF.radialWidth      = pi/4; % [rad] Radial far field 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom. For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength*1e-9/(pi*model.MC.beam.NF.radialWidth*1e-2))
+% model.MC.beam.FF.XDistr           = 0; % X far field distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
+% model.MC.beam.FF.XWidth           = pi/8; % [rad] X far field 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom
+% model.MC.beam.FF.YDistr           = 1; % Y far field distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
+% model.MC.beam.FF.YWidth           = pi/8; % [rad] Y far field 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom
+% model.MC.beam.psi                 = -pi/4; % [rad] (Default: 0) Axial rotation angle of beam, relevant only for XY distributed beams
+%
 % model.MC.beam.theta               = 0; % [rad] Polar angle of beam center axis
 % model.MC.beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
-% model.MC.beam.waist               = 0.005; % [cm] Beam waist 1/e^2 radius
-% model.MC.beam.divergence          = 5/180*pi; % [rad] Beam divergence 1/e^2 half-angle of beam (for a diffraction limited Gaussian beam, this is G.wavelength*1e-9/(pi*model.MC.beam.waist*1e-2))
 % 
 % % model.MC.P                        = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
 % % model.MC.FRinitial = zeros(model.G.nx,model.G.ny,model.G.nz); % [W/cm^2] Initial guess for the intensity distribution, to be used for fluence rate dependent simulations
