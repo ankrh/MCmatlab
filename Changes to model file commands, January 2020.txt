@@ -48,13 +48,13 @@ initialTemp is now called Tinitial and can now be specified either as a scalar (
 simulateHeatDistribution is now called as "model = simulateHeatDistribution(model)"
 plotMCmatlabHeat is now called as "plotMCmatlabHeat(model)"
 
-media properties can now optionally be specified as char array formulas that depend on the fluence rate (FR) of the excitation light, the temperature (T) and/or the fraction heat damage of the media (FD):
+media properties can now optionally be specified as char array formulas that depend on the fluence rate (FR) of the excitation light, the temperature (T) and/or the fractional heat damage of the media (FD):
 mua, mus, g and Y can depend on all the above parameters
 VHC and TC can depend on T and FD but not FR
-number of bins used to take these dependences into account is specified in the new nBins media property (see examples 11-14)
+number of bins used to take these dependences into account is specified in the new nBins media property (see examples 12-15)
 if necessary, an initial guess as to the fluence rate distribution in a cuboid with FR dependent media properties can be provided in the now FRinitial property of the MC struct, which will assist convergence in the iterative method
-FRdepIterations in the MC struct specifies how many iterations should be used in such a case (see example 11). Defaults to 20
+FRdepIterations in the MC struct specifies how many iterations should be used in such a case (see example 12). Defaults to 20
 
-for simulations with T or FD dependent properties, the now mediaPropRecalcPeriod in the HS struct specifies how frequently the media properties should be recalculated (how many updates per recalculation)
+for simulations with T or FD dependent properties, the new mediaPropRecalcPeriod in the HS struct specifies how frequently the media properties should be recalculated (how many updates per recalculation)
 
 a new input parameter, useGPU, now exists for the MC and FMC inputs to enable CUDA accelerated execution using Nvidia GPUs
