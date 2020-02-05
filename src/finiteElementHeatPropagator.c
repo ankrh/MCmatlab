@@ -741,14 +741,16 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   createDeviceStructs(P,&P_dev,D,&D_dev);
   recordTempSensors<<<1,1>>>(P_dev,-1);
   #else
+  recordTempSensors(P,-1);
   #ifdef _OPENMP
   bool useAllCPUs       = mxIsLogicalScalarTrue(mxGetField(prhs[2],0,"useAllCPUs"));
   long numThreads = useAllCPUs || omp_get_num_procs() == 1? omp_get_num_procs(): omp_get_num_procs()-1;
   P->b = malloc(numThreads*(P->nx*P->nz > P->ny? P->nx*P->nz: P->ny)*sizeof(float));
-  recordTempSensors(P,-1);
   #pragma omp parallel num_threads(numThreads)
-  #endif
-  #endif
+  #else
+  P->b = malloc((P->nx*P->nz > P->ny? P->nx*P->nz: P->ny)*sizeof(float));
+  #endif // _OPENMP
+  #endif // __NVCC__
   {
     for(long n=0; n<P->nt; n++) {
       if(ctrlc_caught) break;
