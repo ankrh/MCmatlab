@@ -66,5 +66,23 @@ classdef model
         plotMCmatlabHeat(obj)
 
     end
+    
+    methods (Access = private)
+        finiteElementHeatPropagator(T,Omega,heatSimParameters)
+        finiteElementHeatPropagator_CUDA(T,Omega,heatSimParameters)
+        
+        getMediaProperties_funcHandles(model,simType)
+        getOpticalMediaProperties(model,simType)
+        getThermalMediaProperties(model)
+        
+        plotMediaProperties(nFig,model,simType)
+        plotVolumetric(nFig,xraw,yraw,zraw,Mraw,varargin)
+        updateVolumetric(h_f,M)
+        inferno(m)
+        
+        MCmatlab(model,simType)
+        MCmatlab_CUDA(model,simType)
+    end
+    
 end
 
