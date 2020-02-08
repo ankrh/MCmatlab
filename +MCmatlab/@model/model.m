@@ -37,19 +37,19 @@ classdef model
             end
         end
         
-        obj = runMonteCarlo(obj, type)
+        obj = runMonteCarlo(obj, varargin)
        
-        function plotMCmatlab(obj, type)
+        function plotMCmatlab(obj, varargin)
             %plotMCmatlab Summary of this method goes here
             %   Detailed explanation goes here
             
             if nargin == 1
-                plotMCmatlab(obj)
+                plotMCmatlabMC(obj)
                 return
             end
-            switch type
+            switch varargin
                 case "fluorescence"
-                    plotMCmatlab(obj, "fluorescence")
+                    plotMCmatlabMC(obj, "fluorescence")
                 case "geometry"
                     plotMCmatlabGeom(obj)
                 case "heatSimulation"
@@ -61,21 +61,9 @@ classdef model
         
         obj = simulateHeatDistribution(obj)
         
-        function plotMCmatlabGeom(obj)
-            %plotMCmatlabGeom Summary of this method goes here
-            %   Detailed explanation goes here
-            
-            warning('plotMCmatlabGeom is deprecated and might not work in future releases of MCmatlab. Please use ''plotMCmatlab(model, ''geometry'' instead')
-            plotMCmatlabGeom(obj)
-        end
-        
-        function plotMCmatlabHeat(obj)
-            %plotMCmatlabHeat Summary of this method goes here
-            %   Detailed explanation goes here
-            
-            warning('plotMCmatlabHeat is deprecated and might not work in future releases of MCmatlab. Please use ''plotMCmatlab(model, ''heatSimulation'' instead')
-            plotMCmatlabHeat(obj)
-        end
+        plotMCmatlabMC(obj, varargin)
+        plotMCmatlabGeom(obj)
+        plotMCmatlabHeat(obj)
 
     end
 end

@@ -1,4 +1,4 @@
-function plotMCmatlab(model,varargin)
+function plotMCmatlabMC(model,varargin)
 %   Displays (if calculated)
 %       Absorbed power
 %       Fluence rate of all photons
