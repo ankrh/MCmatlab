@@ -59,6 +59,11 @@ plotMCmatlabGeom(model);
 % model.MC.beam.FF.XWidth           = pi/8; % [rad] X far field 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom
 % model.MC.beam.FF.YDistr           = 1; % Y far field distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
 % model.MC.beam.FF.YWidth           = pi/8; % [rad] Y far field 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom
+%
+% model.MC.beam.xFocus              = 0; % [cm] x position of focus
+% model.MC.beam.yFocus              = 0; % [cm] y position of focus
+% model.MC.beam.zFocus              = 0; % [cm] z position of focus
+%
 % model.MC.beam.psi                 = -pi/4; % [rad] (Default: 0) Axial rotation angle of beam, relevant only for XY distributed beams
 %
 % model.MC.beam.theta               = 0; % [rad] Polar angle of beam center axis
