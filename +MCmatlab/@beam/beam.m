@@ -13,8 +13,8 @@ classdef beam
         phi  = 0                                % [rad] Azimuthal angle of beam center axis
         psi  = 0                                % [rad] Axial rotation angle of beam, relevant only for XY distributed beams
 
-        NF struct
-        FF struct
+        NF beamField
+        FF beamField
     end
     
     properties (Hidden)
@@ -26,6 +26,8 @@ classdef beam
             %BEAM Construct an instance of this class
             %   Detailed explanation goes here
             
+            obj.NF = MCmatlab.beamField;
+            obj.FF = MCmatlab.beamField;
         end
     end
 end
