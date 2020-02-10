@@ -133,9 +133,9 @@ else
     if any(isinf(Y_3d(:)) | Y_3d(:) < 0)
       error('Error: Invalid Y');
     end
-    model.FMC.beam.sourceDistribution = Y_3d.*mua_vec(model.MC.M).*model.MC.NFR; % [W/cm^3/W.incident]
+    model.FMC.sourceDistribution = Y_3d.*mua_vec(model.MC.M).*model.MC.NFR; % [W/cm^3/W.incident]
     clear Y_3d
-    if max(model.FMC.beam.sourceDistribution(:)) == 0; error('Error: No fluorescence emitters'); end
+    if max(model.FMC.sourceDistribution(:)) == 0; error('Error: No fluorescence emitters'); end
   end
   if (simType == 1 && model.MC.useGPU) || (simType == 2 && model.FMC.useGPU)
     model = MCmatlab_CUDA(model,simType);
