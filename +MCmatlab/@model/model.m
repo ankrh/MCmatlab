@@ -31,7 +31,7 @@ classdef model
                 case "MC"
                     obj.MC = MCmatlab.monteCarloSimulation;
                 case "FMC"
-                    obj.FMC = MCmatlab.monteCarloSimulation;
+                    obj.FMC = MCmatlab.fluorescenceMonteCarloSimulation;
                 case "HS"
                     obj.HS = MCmatlab.heatSimulation;
             end
