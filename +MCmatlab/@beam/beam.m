@@ -3,7 +3,7 @@ classdef beam
     %   Detailed explanation goes here
     
     properties
-        beamType                                % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+        beamType = NaN                          % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
         
         xFocus = 0
         yFocus = 0
@@ -13,12 +13,12 @@ classdef beam
         phi  = 0                                % [rad] Azimuthal angle of beam center axis
         psi  = 0                                % [rad] Axial rotation angle of beam, relevant only for XY distributed beams
 
-        NF beamField
-        FF beamField
+        NF MCmatlab.beamField
+        FF MCmatlab.beamField
     end
     
     properties (Hidden)
-        sourceDistribution
+        sourceDistribution = NaN
     end
     
     methods
