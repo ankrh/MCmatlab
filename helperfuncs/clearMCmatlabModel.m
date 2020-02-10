@@ -31,7 +31,6 @@ end
 if strcmp(string,'MC')
   %% Monte Carlo parameters that can be specified by the user
   model.MC.useGPU = false;
-%   model.MC.useGPU = true;
 
   model.MC.simulationTimeRequested = 0.1;
   model.MC.nPhotonsRequested = NaN;
@@ -108,6 +107,7 @@ if strcmp(string,'MC')
   
   model.MC.examplePaths = NaN;
   
+  model.MC.FR = NaN;
   model.MC.NFR = NaN; % Normalized Fluence Rate
   model.MC.NFRdet = NaN;
   
@@ -226,6 +226,8 @@ if strcmp(string,'HS')
   %% Heat simulation parameters that are calculated
   model.HS.Tdependent = NaN;
   model.HS.FDdependent = NaN;
+  
+  model.HS.M = NaN; % Splitting-dependent
 
   model.HS.T = NaN; % Final temperature
   model.HS.Omega = single(NaN);
