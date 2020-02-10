@@ -5,7 +5,7 @@ classdef model
     properties
         G MCmatlab.geometry
         MC MCmatlab.monteCarloSimulation
-        FMC MCmatlab.monteCarloSimulation
+        FMC MCmatlab.fluorescenceMonteCarloSimulation
         HS MCmatlab.heatSimulation
     end
     
@@ -16,7 +16,7 @@ classdef model
             
             obj.G = MCmatlab.geometry;
             obj.MC = MCmatlab.monteCarloSimulation;
-            obj.FMC = MCmatlab.monteCarloSimulation;
+            obj.FMC = MCmatlab.fluorescenceMonteCarloSimulation;
             obj.HS = MCmatlab.heatSimulation;
             
         end
