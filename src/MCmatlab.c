@@ -24,9 +24,9 @@
  ** COMPILING ON WINDOWS
  * (Set the MATLAB current folder to the one with all the example files)
  * Can be compiled in MATLAB using the MinGW-w64 compiler (GCC) with
- * "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' -outdir helperfuncs\private .\src\MCmatlab.c ".\src\libut.lib""
+ * "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' -outdir +MCmatlab\@model\private .\src\MCmatlab.c ".\src\libut.lib""
  * ... or the Microsoft Visual C++ compiler (MSVC) with
- * "mex COMPFLAGS='/Zp8 /GR /EHs /nologo /MD /openmp /W4 /WX /wd4204 /wd4100' -outdir helperfuncs\private .\src\MCmatlab.c ".\src\libut.lib""
+ * "mex COMPFLAGS='/Zp8 /GR /EHs /nologo /MD /openmp /W4 /WX /wd4204 /wd4100' -outdir +MCmatlab\@model\private .\src\MCmatlab.c ".\src\libut.lib""
  * In my experience, GCC produces faster machine code than MSVC.
  *
  * To get the MATLAB C compiler to work, try this:
@@ -41,7 +41,7 @@
  * installed. As of January 2020, mexcuda does not work with MSVC 2019,
  * so I'd recommend MSVC 2017. You also need the Parallel Computing
  * Toolbox, which you will find in the MATLAB addon manager. To compile, run:
- * "copyfile ./src/MCmatlab.c ./src/MCmatlab_CUDA.cu; mexcuda -llibut COMPFLAGS='-use_fast_math -res-usage $COMPFLAGS' -outdir helperfuncs\private .\src\MCmatlab_CUDA.cu ".\src\nvml.lib""
+ * "copyfile ./src/MCmatlab.c ./src/MCmatlab_CUDA.cu; mexcuda -llibut COMPFLAGS='-use_fast_math -res-usage $COMPFLAGS' -outdir +MCmatlab\@model\private .\src\MCmatlab_CUDA.cu ".\src\nvml.lib""
  * 
  ** COMPILING ON MAC
  * As of June 2017, the macOS compiler doesn't support libut (for ctrl+c 
