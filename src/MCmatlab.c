@@ -46,7 +46,7 @@
  ** COMPILING ON MAC
  * As of June 2017, the macOS compiler doesn't support libut (for ctrl+c 
  * breaking) or openmp (for multithreading).
- * Compile in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -std=c11 -Wall' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -std=c11 -Wall' -outdir helperfuncs/private ./src/MCmatlab.c"
+ * Compile in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -std=c11 -Wall' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -std=c11 -Wall' -outdir +MCmatlab/@model/private ./src/MCmatlab.c"
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Install XCode from the App Store
@@ -272,49 +272,49 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   
   long idx;                  // General-purpose non-thread-specific index variable
   bool simFluorescence = *mxGetPr(prhs[1]) == 2;
-  mxArray *MatlabMC = mxGetField(prhs[0],0,simFluorescence? "FMC": "MC");
+  mxArray *MatlabMC = mxGetProperty(prhs[0],0,simFluorescence? "FMC": "MC");
   
-  bool silentMode = mxIsLogicalScalarTrue(mxGetField(MatlabMC,0,"silentMode"));
-  bool calcNFR    = mxIsLogicalScalarTrue(mxGetField(MatlabMC,0,"calcNFR")); // Are we supposed to calculate the NFR matrix?
-  bool calcNFRdet = mxIsLogicalScalarTrue(mxGetField(MatlabMC,0,"calcNFRdet")); // Are we supposed to calculate the NFRdet matrix?
+  bool silentMode = mxIsLogicalScalarTrue(mxGetProperty(MatlabMC,0,"silentMode"));
+  bool calcNFR    = mxIsLogicalScalarTrue(mxGetProperty(MatlabMC,0,"calcNFR")); // Are we supposed to calculate the NFR matrix?
+  bool calcNFRdet = mxIsLogicalScalarTrue(mxGetProperty(MatlabMC,0,"calcNFRdet")); // Are we supposed to calculate the NFRdet matrix?
   
   // To know if we are simulating fluorescence, we check if a "sourceDistribution" field exists. If so, we will use it later in the beam definition.
-  mxArray *MatlabBeam = mxGetField(MatlabMC,0,"beam");
-  double *S_PDF       = (double *)mxGetData(mxGetField(MatlabBeam,0,"sourceDistribution")); // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
+  mxArray *MatlabBeam = mxGetProperty(MatlabMC,0,"beam");
+  double *S_PDF       = (double *)mxGetData(mxGetProperty(MatlabMC,0,"sourceDistribution")); // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
   
   // Variables for timekeeping and number of photons
-  bool            simulationTimed = mxIsNaN(*mxGetPr(mxGetField(MatlabMC,0,"nPhotonsRequested")));
+  bool            simulationTimed = mxIsNaN(*mxGetPr(mxGetProperty(MatlabMC,0,"nPhotonsRequested")));
   bool            ctrlc_caught = false;
-  double          simulationTimeRequested = simulationTimed? *mxGetPr(mxGetField(MatlabMC,0,"simulationTimeRequested")): INFINITY;
-  unsigned long long nPhotonsRequested = simulationTimed? ULLONG_MAX: (unsigned long long)*mxGetPr(mxGetField(MatlabMC,0,"nPhotonsRequested"));
+  double          simulationTimeRequested = simulationTimed? *mxGetPr(mxGetProperty(MatlabMC,0,"simulationTimeRequested")): INFINITY;
+  unsigned long long nPhotonsRequested = simulationTimed? ULLONG_MAX: (unsigned long long)*mxGetPr(mxGetProperty(MatlabMC,0,"nPhotonsRequested"));
   
   // Find out how much total memory to allocate for the small arrays (the array that for GPUs would be stored in GPU shared memory)
-  mxArray *mediaProperties = mxGetField(MatlabMC,0,"mediaProperties");
+  mxArray *mediaProperties = mxGetProperty(MatlabMC,0,"mediaProperties");
   int     nM = (int)mxGetN(mediaProperties);
-  mwSize const *dimPtr = mxGetDimensions(mxGetField(MatlabMC,0,"M"));
-  long beamType = S_PDF? -1: (int)*mxGetPr(mxGetField(MatlabBeam,0,"beamType"));
-  mxArray *MatlabBeamNF = S_PDF? 0: mxGetField(MatlabBeam,0,"NF");
-  mxArray *MatlabBeamFF = S_PDF? 0: mxGetField(MatlabBeam,0,"FF");
-  long L_NF1 = beamType >= 4? (long)mxGetN(mxGetField(MatlabBeamNF,0,beamType == 4? "radialDistr": "XDistr")): 0;
-  long L_FF1 = beamType >= 4? (long)mxGetN(mxGetField(MatlabBeamFF,0,beamType == 4? "radialDistr": "XDistr")): 0;
-  long L_NF2 = beamType == 5? (long)mxGetN(mxGetField(MatlabBeamNF,0,"YDistr")): 0;
-  long L_FF2 = beamType == 5? (long)mxGetN(mxGetField(MatlabBeamFF,0,"YDistr")): 0;
+  mwSize const *dimPtr = mxGetDimensions(mxGetProperty(MatlabMC,0,"M"));
+  long beamType = S_PDF? -1: (int)*mxGetPr(mxGetProperty(MatlabBeam,0,"beamType"));
+  mxArray *MatlabBeamNF = S_PDF? 0: mxGetProperty(MatlabBeam,0,"NF");
+  mxArray *MatlabBeamFF = S_PDF? 0: mxGetProperty(MatlabBeam,0,"FF");
+  long L_NF1 = beamType >= 4? (long)mxGetN(mxGetProperty(MatlabBeamNF,0,beamType == 4? "radialDistr": "XDistr")): 0;
+  long L_FF1 = beamType >= 4? (long)mxGetN(mxGetProperty(MatlabBeamFF,0,beamType == 4? "radialDistr": "XDistr")): 0;
+  long L_NF2 = beamType == 5? (long)mxGetN(mxGetProperty(MatlabBeamNF,0,"YDistr")): 0;
+  long L_FF2 = beamType == 5? (long)mxGetN(mxGetProperty(MatlabBeamFF,0,"YDistr")): 0;
   size_t size_smallArrays = (nM*3 + dimPtr[2] + L_NF1 + L_FF1 + L_NF2 + L_FF2)*sizeof(FLOATORDBL);
   FLOATORDBL *smallArrays = (FLOATORDBL *)malloc(size_smallArrays);
 
   // Geometry struct definition
   long L = (long)(dimPtr[0]*dimPtr[1]*dimPtr[2]); // Total number of voxels in cuboid
-  mxArray *MatlabG         = mxGetField(prhs[0],0,"G");
+  mxArray *MatlabG         = mxGetProperty(prhs[0],0,"G");
   struct geometry G_var;
   struct geometry *G = &G_var;
-  G->d[0] = (FLOATORDBL)*mxGetPr(mxGetField(MatlabG,0,"dx"));
-  G->d[1] = (FLOATORDBL)*mxGetPr(mxGetField(MatlabG,0,"dy"));
-  G->d[2] = (FLOATORDBL)*mxGetPr(mxGetField(MatlabG,0,"dz"));
+  G->d[0] = (FLOATORDBL)*mxGetPr(mxGetProperty(MatlabG,0,"dx"));
+  G->d[1] = (FLOATORDBL)*mxGetPr(mxGetProperty(MatlabG,0,"dy"));
+  G->d[2] = (FLOATORDBL)*mxGetPr(mxGetProperty(MatlabG,0,"dz"));
   G->n[0] = (long)dimPtr[0];
   G->n[1] = (long)dimPtr[1];
   G->n[2] = (long)dimPtr[2];
-  G->farFieldRes = (long)*mxGetPr(mxGetField(MatlabMC,0,"farFieldRes"));
-  G->boundaryType = (int)*mxGetPr(mxGetField(MatlabMC,0,"boundaryType")); // boundaryType
+  G->farFieldRes = (long)*mxGetPr(mxGetProperty(MatlabMC,0,"farFieldRes"));
+  G->boundaryType = (int)*mxGetPr(mxGetProperty(MatlabMC,0,"boundaryType")); // boundaryType
   G->muav = smallArrays;
   G->musv = G->muav + nM;
   G->gv   = G->musv + nM;
@@ -327,9 +327,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     G->musv[idx] = (FLOATORDBL)*mxGetPr(mxGetField(mediaProperties,idx,"mus"));
     G->gv[idx]   = (FLOATORDBL)*mxGetPr(mxGetField(mediaProperties,idx,"g"));
   }
-  unsigned char *M_matlab = (unsigned char *)mxGetData(mxGetField(MatlabMC,0,"M"));
+  unsigned char *M_matlab = (unsigned char *)mxGetData(mxGetProperty(MatlabMC,0,"M"));
   for(idx=0;idx<L;idx++) G->M[idx] = M_matlab[idx] - 1; // Convert from MATLAB 1-based indexing to C 0-based indexing
-  double *RI_matlab = (double *)mxGetData(mxGetField(MatlabMC,0,"RI"));
+  double *RI_matlab = (double *)mxGetData(mxGetProperty(MatlabMC,0,"RI"));
   for(idx=0;idx<dimPtr[2];idx++) G->RIv[idx] = (FLOATORDBL)RI_matlab[idx];
   
   // Beam struct definition
@@ -346,7 +346,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 
   FLOATORDBL *NFdist1 = NULL, *NFdist2 = NULL, *FFdist1 = NULL, *FFdist2 = NULL;
   if(beamType >= 4) {
-    double *MatlabNFdist1 = mxGetPr(mxGetField(MatlabBeamNF,0,beamType == 4? "radialDistr": "XDistr"));
+    double *MatlabNFdist1 = mxGetPr(mxGetProperty(MatlabBeamNF,0,beamType == 4? "radialDistr": "XDistr"));
     NFdist1 = G->RIv + dimPtr[2];
     if(L_NF1 == 1) {
       *NFdist1 = -1 - (FLOATORDBL)MatlabNFdist1[0];
@@ -357,7 +357,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     }
     
     FFdist1 = NFdist1 + L_NF1;
-    double *MatlabFFdist1 = mxGetPr(mxGetField(MatlabBeamFF,0,beamType == 4? "radialDistr": "XDistr"));
+    double *MatlabFFdist1 = mxGetPr(mxGetProperty(MatlabBeamFF,0,beamType == 4? "radialDistr": "XDistr"));
     if(L_FF1 == 1) {
       *FFdist1 = -1 - (FLOATORDBL)MatlabFFdist1[0];
     } else {
@@ -368,7 +368,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     
     if(beamType == 5) {
       NFdist2 = FFdist1 + L_FF1;
-      double *MatlabNFdist2 = mxGetPr(mxGetField(MatlabBeamNF,0,"YDistr"));
+      double *MatlabNFdist2 = mxGetPr(mxGetProperty(MatlabBeamNF,0,"YDistr"));
       if(L_NF2 == 1) {
         *NFdist2 = -1 - (FLOATORDBL)MatlabNFdist2[0];
       } else {
@@ -378,7 +378,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
       }
     
       FFdist2 = NFdist2 + L_NF2;
-      double *MatlabFFdist2 = mxGetPr(mxGetField(MatlabBeamFF,0,"YDistr"));
+      double *MatlabFFdist2 = mxGetPr(mxGetProperty(MatlabBeamFF,0,"YDistr"));
       if(L_FF2 == 1) {
         *FFdist2 = -1 - (FLOATORDBL)MatlabFFdist2[0];
       } else {
@@ -389,9 +389,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     }
   }
 
-  FLOATORDBL tb = (FLOATORDBL)(S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"theta")));
-  FLOATORDBL pb = (FLOATORDBL)(S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"phi")));
-  FLOATORDBL psib = (FLOATORDBL)(S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"psi")));
+  FLOATORDBL tb = (FLOATORDBL)(S? 0: *mxGetPr(mxGetProperty(MatlabBeam,0,"theta")));
+  FLOATORDBL pb = (FLOATORDBL)(S? 0: *mxGetPr(mxGetProperty(MatlabBeam,0,"phi")));
+  FLOATORDBL psib = (FLOATORDBL)(S? 0: *mxGetPr(mxGetProperty(MatlabBeam,0,"psi")));
 
   FLOATORDBL u[3] = {SIN(tb)*COS(pb),SIN(tb)*SIN(pb),COS(tb)}; // Temporary array
   
@@ -405,21 +405,21 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     S? 0: beamType,
     S? 0: NFdist1,
     S? 0: L_NF1,
-    S? 0: (FLOATORDBL)(beamType == 5? *mxGetPr(mxGetField(MatlabBeamNF,0,"XWidth")): *mxGetPr(mxGetField(MatlabBeamNF,0,"radialWidth"))),
+    S? 0: (FLOATORDBL)(beamType == 5? *mxGetPr(mxGetProperty(MatlabBeamNF,0,"XWidth")): *mxGetPr(mxGetProperty(MatlabBeamNF,0,"radialWidth"))),
     S? 0: NFdist2,
     S? 0: L_NF2,
-    S? 0: (FLOATORDBL)(beamType == 5? *mxGetPr(mxGetField(MatlabBeamNF,0,"YWidth")): 0),
+    S? 0: (FLOATORDBL)(beamType == 5? *mxGetPr(mxGetProperty(MatlabBeamNF,0,"YWidth")): 0),
     S? 0: FFdist1,
     S? 0: L_FF1,
-    S? 0: (FLOATORDBL)(beamType == 5? *mxGetPr(mxGetField(MatlabBeamFF,0,"XWidth")): *mxGetPr(mxGetField(MatlabBeamFF,0,"radialWidth"))),
+    S? 0: (FLOATORDBL)(beamType == 5? *mxGetPr(mxGetProperty(MatlabBeamFF,0,"XWidth")): *mxGetPr(mxGetProperty(MatlabBeamFF,0,"radialWidth"))),
     S? 0: FFdist2,
     S? 0: L_FF2,
-    S? 0: (FLOATORDBL)(beamType == 5? *mxGetPr(mxGetField(MatlabBeamFF,0,"YWidth")): 0),
+    S? 0: (FLOATORDBL)(beamType == 5? *mxGetPr(mxGetProperty(MatlabBeamFF,0,"YWidth")): 0),
     S,
     power,
-    {(FLOATORDBL)(S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"xFocus"))),
-     (FLOATORDBL)(S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"yFocus"))),
-     (FLOATORDBL)(S? 0: *mxGetPr(mxGetField(MatlabBeam,0,"zFocus")))},
+    {(FLOATORDBL)(S? 0: *mxGetPr(mxGetProperty(MatlabBeam,0,"xFocus"))),
+     (FLOATORDBL)(S? 0: *mxGetPr(mxGetProperty(MatlabBeam,0,"yFocus"))),
+     (FLOATORDBL)(S? 0: *mxGetPr(mxGetProperty(MatlabBeam,0,"zFocus")))},
     {u[0],u[1],u[2]},
     {v[0],v[1],v[2]}, // normal vector to beam center axis
     {w[0],w[1],w[2]}
@@ -427,33 +427,33 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   struct beam *B = &B_var;
 
   // Light Collector struct definition
-  mxArray *MatlabLC      = mxGetField(MatlabMC,0,"LC");
-  bool useLightCollector = mxIsLogicalScalarTrue(mxGetField(MatlabMC,0,"useLightCollector"));
+  mxArray *MatlabLC      = mxGetProperty(MatlabMC,0,"LC");
+  bool useLightCollector = mxIsLogicalScalarTrue(mxGetProperty(MatlabMC,0,"useLightCollector"));
   
-  FLOATORDBL theta     = (FLOATORDBL)*mxGetPr(mxGetField(MatlabLC,0,"theta"));
-  FLOATORDBL phi       = (FLOATORDBL)*mxGetPr(mxGetField(MatlabLC,0,"phi"));
-  FLOATORDBL f         = (FLOATORDBL)*mxGetPr(mxGetField(MatlabLC,0,"f"));
-  long   nTimeBins = S? 0: (long)*mxGetPr(mxGetField(MatlabLC,0,"nTimeBins"));
+  FLOATORDBL theta     = (FLOATORDBL)*mxGetPr(mxGetProperty(MatlabLC,0,"theta"));
+  FLOATORDBL phi       = (FLOATORDBL)*mxGetPr(mxGetProperty(MatlabLC,0,"phi"));
+  FLOATORDBL f         = (FLOATORDBL)*mxGetPr(mxGetProperty(MatlabLC,0,"f"));
+  long   nTimeBins = S? 0: (long)*mxGetPr(mxGetProperty(MatlabLC,0,"nTimeBins"));
 
   struct lightCollector LC_var = {
-    {(FLOATORDBL)*mxGetPr(mxGetField(MatlabLC,0,"x")) - (isfinite(f)? f*SIN(theta)*COS(phi):0), // r field, xyz coordinates of center of light collector
-     (FLOATORDBL)*mxGetPr(mxGetField(MatlabLC,0,"y")) - (isfinite(f)? f*SIN(theta)*SIN(phi):0),
-     (FLOATORDBL)*mxGetPr(mxGetField(MatlabLC,0,"z")) - (isfinite(f)? f*COS(theta)         :0)},
+    {(FLOATORDBL)*mxGetPr(mxGetProperty(MatlabLC,0,"x")) - (isfinite(f)? f*SIN(theta)*COS(phi):0), // r field, xyz coordinates of center of light collector
+     (FLOATORDBL)*mxGetPr(mxGetProperty(MatlabLC,0,"y")) - (isfinite(f)? f*SIN(theta)*SIN(phi):0),
+     (FLOATORDBL)*mxGetPr(mxGetProperty(MatlabLC,0,"z")) - (isfinite(f)? f*COS(theta)         :0)},
     theta,
     phi,
     f,
-    (FLOATORDBL)*mxGetPr(mxGetField(MatlabLC,0,"diam")),
-    (FLOATORDBL)*mxGetPr(mxGetField(MatlabLC,0,isfinite(f)?"fieldSize":"NA")),
-    {(long)*mxGetPr(mxGetField(MatlabLC,0,"res")), nTimeBins? nTimeBins+2: 1},
-    (FLOATORDBL)(S? 0: *mxGetPr(mxGetField(MatlabLC,0,"tStart"))),
-    (FLOATORDBL)(S? 0: *mxGetPr(mxGetField(MatlabLC,0,"tEnd")))
+    (FLOATORDBL)*mxGetPr(mxGetProperty(MatlabLC,0,"diam")),
+    (FLOATORDBL)*mxGetPr(mxGetProperty(MatlabLC,0,isfinite(f)?"fieldSize":"NA")),
+    {(long)*mxGetPr(mxGetProperty(MatlabLC,0,"res")), nTimeBins? nTimeBins+2: 1},
+    (FLOATORDBL)(S? 0: *mxGetPr(mxGetProperty(MatlabLC,0,"tStart"))),
+    (FLOATORDBL)(S? 0: *mxGetPr(mxGetProperty(MatlabLC,0,"tEnd")))
   };
   struct lightCollector *LC = &LC_var;
 
   // Paths definitions (example photon trajectories)
   struct paths Pa_var;
   struct paths *Pa = &Pa_var;
-  Pa->nExamplePaths = (long)*mxGetPr(mxGetField(MatlabMC,0,"nExamplePaths")); // How many photon path examples are we supposed to store?
+  Pa->nExamplePaths = (long)*mxGetPr(mxGetProperty(MatlabMC,0,"nExamplePaths")); // How many photon path examples are we supposed to store?
   Pa->nMasterPhotonsLaunched = 0;
   Pa->pathsSize = INITIALPATHSSIZE*Pa->nExamplePaths; // Will be dynamically increased later if needed
   Pa->pathsElems = 0;
@@ -463,60 +463,60 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   // Prepare output MATLAB struct
   plhs[0] = mxDuplicateArray(prhs[0]);
   
-  mxArray *MCout = mxGetField(plhs[0],0,S? "FMC": "MC");
-  mxArray *LCout = mxGetField(MCout,0,"LC");
-  mxDestroyArray(mxGetField(MCout,0,"nPhotons"));
-  mxDestroyArray(mxGetField(MCout,0,"nThreads"));
-  mxDestroyArray(mxGetField(MCout,0,"simulationTime"));
+  mxArray *MCout = mxGetProperty(plhs[0],0,S? "FMC": "MC");
+  mxArray *LCout = mxGetProperty(MCout,0,"LC");
+  mxDestroyArray(mxGetProperty(MCout,0,"nPhotons"));
+  mxDestroyArray(mxGetProperty(MCout,0,"nThreads"));
+  mxDestroyArray(mxGetProperty(MCout,0,"simulationTime"));
   
-  if(useLightCollector) mxDestroyArray(mxGetField(LCout,0,"image"));
-  if(calcNFR) mxDestroyArray(mxGetField(MCout,0,"NFR"));
-  if(calcNFRdet) mxDestroyArray(mxGetField(MCout,0,"NFRdet"));
-  if(G->farFieldRes) mxDestroyArray(mxGetField(MCout,0,"farField"));
+  if(useLightCollector) mxDestroyArray(mxGetProperty(LCout,0,"image"));
+  if(calcNFR) mxDestroyArray(mxGetProperty(MCout,0,"NFR"));
+  if(calcNFRdet) mxDestroyArray(mxGetProperty(MCout,0,"NFRdet"));
+  if(G->farFieldRes) mxDestroyArray(mxGetProperty(MCout,0,"farField"));
   if(G->boundaryType == 1) {
-    mxDestroyArray(mxGetField(MCout,0,"NI_xpos"));
-    mxDestroyArray(mxGetField(MCout,0,"NI_xneg"));
-    mxDestroyArray(mxGetField(MCout,0,"NI_ypos"));
-    mxDestroyArray(mxGetField(MCout,0,"NI_yneg"));
-    mxDestroyArray(mxGetField(MCout,0,"NI_zpos"));
-    mxDestroyArray(mxGetField(MCout,0,"NI_zneg"));
-  } else if(G->boundaryType == 2) mxDestroyArray(mxGetField(MCout,0,"NI_zneg"));
+    mxDestroyArray(mxGetProperty(MCout,0,"NI_xpos"));
+    mxDestroyArray(mxGetProperty(MCout,0,"NI_xneg"));
+    mxDestroyArray(mxGetProperty(MCout,0,"NI_ypos"));
+    mxDestroyArray(mxGetProperty(MCout,0,"NI_yneg"));
+    mxDestroyArray(mxGetProperty(MCout,0,"NI_zpos"));
+    mxDestroyArray(mxGetProperty(MCout,0,"NI_zneg"));
+  } else if(G->boundaryType == 2) mxDestroyArray(mxGetProperty(MCout,0,"NI_zneg"));
   
   
-  if(calcNFR)           mxSetField(MCout,0,"NFR",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
-  if(calcNFRdet)        mxSetField(MCout,0,"NFRdet",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
+  if(calcNFR)           mxSetProperty(MCout,0,"NFR",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
+  if(calcNFRdet)        mxSetProperty(MCout,0,"NFRdet",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
   if(useLightCollector) {
     mwSize LCsize[3] = {(mwSize)LC->res[0],(mwSize)LC->res[0],(mwSize)LC->res[1]};
-    mxSetField(LCout,0,"image", mxCreateNumericArray(3,LCsize,mxDOUBLE_CLASS,mxREAL));
+    mxSetProperty(LCout,0,"image", mxCreateNumericArray(3,LCsize,mxDOUBLE_CLASS,mxREAL));
   }
-  if(G->farFieldRes)    mxSetField(MCout,0,"farField", mxCreateDoubleMatrix(G->farFieldRes,G->farFieldRes,mxREAL));
+  if(G->farFieldRes)    mxSetProperty(MCout,0,"farField", mxCreateDoubleMatrix(G->farFieldRes,G->farFieldRes,mxREAL));
   if(G->boundaryType == 1) {
-    mxSetField(MCout,0,"NI_xpos", mxCreateDoubleMatrix(G->n[1],G->n[2],mxREAL));
-    mxSetField(MCout,0,"NI_xneg", mxCreateDoubleMatrix(G->n[1],G->n[2],mxREAL));
-    mxSetField(MCout,0,"NI_ypos", mxCreateDoubleMatrix(G->n[0],G->n[2],mxREAL));
-    mxSetField(MCout,0,"NI_yneg", mxCreateDoubleMatrix(G->n[0],G->n[2],mxREAL));
-    mxSetField(MCout,0,"NI_zpos", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
-    mxSetField(MCout,0,"NI_zneg", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
-  } else if(G->boundaryType == 2) mxSetField(MCout,0,"NI_zneg", mxCreateDoubleMatrix(KILLRANGE*G->n[0],KILLRANGE*G->n[1],mxREAL));
-  mxSetField(MCout,0,"simulationTime",mxCreateDoubleMatrix(1,1,mxREAL));
-  mxSetField(MCout,0,"nPhotons",mxCreateDoubleMatrix(1,1,mxREAL));
-  mxSetField(MCout,0,"nThreads",mxCreateDoubleMatrix(1,1,mxREAL));
-  double *simTimePtr = mxGetPr(mxGetField(MCout,0,"simulationTime"));
-  double *nPhotonsPtr = mxGetPr(mxGetField(MCout,0,"nPhotons"));
-  double *nThreadsPtr = mxGetPr(mxGetField(MCout,0,"nThreads"));
+    mxSetProperty(MCout,0,"NI_xpos", mxCreateDoubleMatrix(G->n[1],G->n[2],mxREAL));
+    mxSetProperty(MCout,0,"NI_xneg", mxCreateDoubleMatrix(G->n[1],G->n[2],mxREAL));
+    mxSetProperty(MCout,0,"NI_ypos", mxCreateDoubleMatrix(G->n[0],G->n[2],mxREAL));
+    mxSetProperty(MCout,0,"NI_yneg", mxCreateDoubleMatrix(G->n[0],G->n[2],mxREAL));
+    mxSetProperty(MCout,0,"NI_zpos", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
+    mxSetProperty(MCout,0,"NI_zneg", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
+  } else if(G->boundaryType == 2) mxSetProperty(MCout,0,"NI_zneg", mxCreateDoubleMatrix(KILLRANGE*G->n[0],KILLRANGE*G->n[1],mxREAL));
+  mxSetProperty(MCout,0,"simulationTime",mxCreateDoubleMatrix(1,1,mxREAL));
+  mxSetProperty(MCout,0,"nPhotons",mxCreateDoubleMatrix(1,1,mxREAL));
+  mxSetProperty(MCout,0,"nThreads",mxCreateDoubleMatrix(1,1,mxREAL));
+  double *simTimePtr = mxGetPr(mxGetProperty(MCout,0,"simulationTime"));
+  double *nPhotonsPtr = mxGetPr(mxGetProperty(MCout,0,"nPhotons"));
+  double *nThreadsPtr = mxGetPr(mxGetProperty(MCout,0,"nThreads"));
   
   struct outputs O_var = {
     0, // nPhotons
-  	calcNFR? mxGetPr(mxGetField(MCout,0,"NFR")): NULL,
-  	calcNFRdet? mxGetPr(mxGetField(MCout,0,"NFRdet")): NULL,
-    useLightCollector? mxGetPr(mxGetField(LCout,0,"image")): NULL,
-    G->farFieldRes? mxGetPr(mxGetField(MCout,0,"farField")): NULL,
-    G->boundaryType == 1? mxGetPr(mxGetField(MCout,0,"NI_xpos")): NULL,
-    G->boundaryType == 1? mxGetPr(mxGetField(MCout,0,"NI_xneg")): NULL,
-    G->boundaryType == 1? mxGetPr(mxGetField(MCout,0,"NI_ypos")): NULL,
-    G->boundaryType == 1? mxGetPr(mxGetField(MCout,0,"NI_yneg")): NULL,
-    G->boundaryType == 1? mxGetPr(mxGetField(MCout,0,"NI_zpos")): NULL,
-    G->boundaryType != 0? mxGetPr(mxGetField(MCout,0,"NI_zneg")): NULL
+  	calcNFR? mxGetPr(mxGetProperty(MCout,0,"NFR")): NULL,
+  	calcNFRdet? mxGetPr(mxGetProperty(MCout,0,"NFRdet")): NULL,
+    useLightCollector? mxGetPr(mxGetProperty(LCout,0,"image")): NULL,
+    G->farFieldRes? mxGetPr(mxGetProperty(MCout,0,"farField")): NULL,
+    G->boundaryType == 1? mxGetPr(mxGetProperty(MCout,0,"NI_xpos")): NULL,
+    G->boundaryType == 1? mxGetPr(mxGetProperty(MCout,0,"NI_xneg")): NULL,
+    G->boundaryType == 1? mxGetPr(mxGetProperty(MCout,0,"NI_ypos")): NULL,
+    G->boundaryType == 1? mxGetPr(mxGetProperty(MCout,0,"NI_yneg")): NULL,
+    G->boundaryType == 1? mxGetPr(mxGetProperty(MCout,0,"NI_zpos")): NULL,
+    G->boundaryType != 0? mxGetPr(mxGetProperty(MCout,0,"NI_zneg")): NULL
   };
   struct outputs *O = &O_var;
 
@@ -629,7 +629,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   }
   long long simulationTimeStart = getMicroSeconds();
   #ifdef _OPENMP
-  bool useAllCPUs = mxIsLogicalScalarTrue(mxGetField(MatlabMC,0,"useAllCPUs"));
+  bool useAllCPUs = mxIsLogicalScalarTrue(mxGetProperty(MatlabMC,0,"useAllCPUs"));
   *nThreadsPtr = useAllCPUs? omp_get_num_procs(): max(omp_get_num_procs()-1,1);
   #pragma omp parallel num_threads((long)*nThreadsPtr)
   #else
@@ -653,9 +653,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   free(smallArrays);
   
   if(Pa->nExamplePaths) {
-    mxDestroyArray(mxGetField(MCout,0,"examplePaths"));
-    mxSetField(MCout,0,"examplePaths",mxCreateNumericMatrix(4,Pa->pathsElems,mxDOUBLE_CLASS,mxREAL));
-    for(idx=0;idx<4*Pa->pathsElems;idx++) mxGetPr(mxGetField(MCout,0,"examplePaths"))[idx] = Pa->data[idx];
+    mxDestroyArray(mxGetProperty(MCout,0,"examplePaths"));
+    mxSetProperty(MCout,0,"examplePaths",mxCreateNumericMatrix(4,Pa->pathsElems,mxDOUBLE_CLASS,mxREAL));
+    for(idx=0;idx<4*Pa->pathsElems;idx++) mxGetPr(mxGetProperty(MCout,0,"examplePaths"))[idx] = Pa->data[idx];
     free(Pa->data);
   }
   
