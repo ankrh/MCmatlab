@@ -47,7 +47,7 @@ classdef model
                 plotMCmatlabMC(obj)
                 return
             end
-            switch varargin
+            switch cell2mat(varargin)
                 case "fluorescence"
                     plotMCmatlabMC(obj, "fluorescence")
                 case "geometry"

@@ -30,6 +30,8 @@ classdef heatSimulation
         mediaProperties = NaN
         mediaProperties_funcHandles = NaN
         
+        M = NaN
+        
         Tdependent = NaN
         FDdependent = NaN
 

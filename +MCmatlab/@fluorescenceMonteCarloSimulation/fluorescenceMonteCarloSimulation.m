@@ -17,6 +17,9 @@ classdef fluorescenceMonteCarloSimulation
         matchedInterfaces = true;
         boundaryType = 1;
         wavelength = NaN;
+
+        useLightCollector logical = false
+        LC MCmatlab.lightCollector
     end
     
     properties (Hidden)
@@ -57,6 +60,7 @@ classdef fluorescenceMonteCarloSimulation
             %FLUORESCENCEMONTECARLOSIMULATION Construct an instance of this class
             %   Detailed explanation goes here
             
+            obj.LC = MCmatlab.lightCollector;
         end
         
     end
