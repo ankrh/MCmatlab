@@ -88,7 +88,7 @@ P_in = 1;
 
 %% Plot emitter distribution
 if simFluorescence
-  h_f = plotVolumetric(11,G.x,G.y,G.z,model.FMC.beam.sourceDistribution,'MCmatlab_fromZero');
+  h_f = plotVolumetric(11,G.x,G.y,G.z,model.FMC.sourceDistribution,'MCmatlab_fromZero');
   h_f.Name = 'Fluorescence emitters';
   title('Fluorescence emitter distribution [W/cm^3/W.incident]')
 
@@ -108,7 +108,7 @@ if simFluorescence
   end
   P_exc_abs = G.dx*G.dy*G.dz*sum(sum(sum(mua_3d.*model.MC.NFR)));
   clear mua_3d T
-  P_flu_emit = G.dx*G.dy*G.dz*sum(sum(sum(model.FMC.beam.sourceDistribution)));
+  P_flu_emit = G.dx*G.dy*G.dz*sum(sum(sum(model.FMC.sourceDistribution)));
   fprintf('%.3g%% of absorbed incident light was re-emitted as fluorescence.\n',100*P_flu_emit/P_exc_abs);
   P_in = P_flu_emit;
 end
