@@ -23,6 +23,8 @@ function plotMCmatlabHeat(model)
 %   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
 %%%%%
 
+com.mathworks.mde.desk.MLDesktop.getInstance.setDocumentBarPosition('Figures',7); % Set Figures window tabs to be on left side
+
 G = model.G;
 mP_fH = model.HS.mediaProperties_funcHandles;
 nM = length(mP_fH); % Number of different media in simulation
@@ -30,6 +32,7 @@ numTemperatureSensors = size(model.HS.tempSensorPositions,1);
 
 %% Show thermal media properties
 h_f = plotMediaProperties(22,model,3);
+set(h_f,'WindowStyle','Docked');
 h_f.Name = 'Thermal media properties';
 
 %% Write out the highest temperatures in each medium
@@ -42,8 +45,9 @@ end
 
 %% Plot the geometry showing the temperature sensor locations and the sensor data
 if numTemperatureSensors
-  geometryFigure = plotVolumetric(23,G.x,G.y,G.z,G.M_raw,'MCmatlab_GeometryIllustration',mP_fH,'slicePositions',model.HS.slicePositions);
-  geometryFigure.Name = 'Temperature sensor illustration';
+  h_f = plotVolumetric(23,G.x,G.y,G.z,G.M_raw,'MCmatlab_GeometryIllustration',mP_fH,'slicePositions',model.HS.slicePositions);
+  set(h_f,'WindowStyle','Docked');
+  h_f.Name = 'Temperature sensor illustration';
   title('Temperature sensor illustration');
 
   for i=numTemperatureSensors:-1:1
@@ -55,15 +59,11 @@ if numTemperatureSensors
   end
   text(model.HS.tempSensorPositions(:,1),model.HS.tempSensorPositions(:,2),model.HS.tempSensorPositions(:,3),sensorNumbers,'HorizontalAlignment','center','VerticalAlignment','middle','FontSize',18);
 
-  if ~ishandle(24)
-    temperatureSensorFigure = figure(24);
-    temperatureSensorFigure.Position = [40 160 1100 650];
-  else
-    temperatureSensorFigure = figure(24);
-  end
-  temperatureSensorFigure.Color = 'w';
+  h_f = figure(24);
+  set(h_f,'WindowStyle','Docked');
+  h_f.Color = 'w';
   clf;
-  temperatureSensorFigure.Name = 'Temperature sensor data';
+  h_f.Name = 'Temperature sensor data';
   plot(model.HS.sensorsTimeVector,model.HS.sensorTemps,'LineWidth',2);
   set(gca,'FontSize',16);
   xlabel('Time [sec]');
@@ -84,13 +84,15 @@ if ~isnan(model.HS.Omega(1))
   M_damage = G.M_raw;
   M_damage(model.HS.Omega > 1) = nM + 1;
   mP_fH(nM + 1).name = 'damage';
-  damageFigure = plotVolumetric(25,G.x,G.y,G.z,M_damage,'MCmatlab_GeometryIllustration',mP_fH,'slicePositions',model.HS.slicePositions);
-  damageFigure.Name = 'Thermal damage illustration';
+  h_f = plotVolumetric(25,G.x,G.y,G.z,M_damage,'MCmatlab_GeometryIllustration',mP_fH,'slicePositions',model.HS.slicePositions);
+  set(h_f,'WindowStyle','Docked');
+  h_f.Name = 'Thermal damage illustration';
   title('Thermal damage illustration');
   fprintf('%.2e cm^3 was thermally damaged.\n',G.dx*G.dy*G.dz*sum(sum(sum(model.HS.Omega > 1))));
   
-  FDfigure = plotVolumetric(26,G.x,G.y,G.z,1-exp(-model.HS.Omega),'MCmatlab_fromZero','slicePositions',model.HS.slicePositions);
-  FDfigure.Name = 'Fractional damage';
+  h_f = plotVolumetric(26,G.x,G.y,G.z,1-exp(-model.HS.Omega),'MCmatlab_fromZero','slicePositions',model.HS.slicePositions);
+  set(h_f,'WindowStyle','Docked');
+  h_f.Name = 'Fractional damage';
   title('Fractional damage (1 - e^{-\Omega})');
 end
 drawnow;

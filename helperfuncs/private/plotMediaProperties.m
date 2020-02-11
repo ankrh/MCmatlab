@@ -14,7 +14,6 @@ end
 
 if(~ishandle(nFig))
   h_f = figure(nFig);
-  h_f.Position = [40 160 1100 650];
 else
   h_f = figure(nFig);
 end
