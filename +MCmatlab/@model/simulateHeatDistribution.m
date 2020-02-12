@@ -196,12 +196,20 @@ if ~model.HS.silentMode
   end
   
   movieFrameidx = 1;
-  if model.HS.makeMovie && firstHSrun % Make a temporary figure showing the geometry illustration to put into the beginning of the movie
-    heatsimFigure = plotVolumetric(21,G.x,G.y,G.z,G.M_raw,'MCmatlab_GeometryIllustration',mP,'slicePositions',model.HS.slicePositions);
-    title('Geometry illustration');
+  heatsimFigure = figure(21);
+  if model.HS.makeMovie
+    set(heatsimFigure,'WindowStyle','Normal');
     drawnow;
-    movieFrames(movieFrameidx) = getframe(heatsimFigure);
-    movieFrameidx = movieFrameidx + 1;
+    heatsimFigure.Position = [40 160 1100 650]; % The size defined here will determine the movie resolution
+    if firstHSrun % Make a temporary figure showing the geometry illustration to put into the beginning of the movie
+      heatsimFigure = plotVolumetric(21,G.x,G.y,G.z,G.M_raw,'MCmatlab_GeometryIllustration',mP,'slicePositions',model.HS.slicePositions);
+      title('Geometry illustration');
+      drawnow;
+      movieFrames(movieFrameidx) = getframe(heatsimFigure);
+      movieFrameidx = movieFrameidx + 1;
+    end
+  else
+    set(heatsimFigure,'WindowStyle','Docked');
   end
   
   heatsimFigure = plotVolumetric(21,G.x,G.y,G.z,model.HS.T,'MCmatlab_heat','slicePositions',model.HS.slicePositions);
@@ -404,6 +412,8 @@ end
 if ~model.HS.silentMode; toc; end
 
 clear heatSimParameters;
+
+set(heatsimFigure,'WindowStyle','Docked');
 
 %% Finalize and write movie
 if ~model.HS.silentMode && model.HS.makeMovie

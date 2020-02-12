@@ -54,6 +54,8 @@ function plotMCmatlabMC(model,varargin)
 % 25: Thermal damage illustration
 % 26: Fractional damage plot
 
+com.mathworks.mde.desk.MLDesktop.getInstance.setDocumentBarPosition('Figures',7); % Set Figures window tabs to be on left side
+
 G = model.G;
 
 simFluorescence = ~isempty(varargin) && strcmp(varargin{1},'fluorescence');
@@ -77,18 +79,11 @@ end
 LC = MCorFMC.LC;
 
 
-%% Make media properties plot
-h_f = plotMediaProperties(2+figNumOffset,model,simType);
-if simFluorescence
-  h_f.Name = 'Fluorescence media properties';
-else
-  h_f.Name = 'Media properties';
-end
-P_in = 1;
-
 %% Plot emitter distribution
+P_in = 1;
 if simFluorescence
   h_f = plotVolumetric(11,G.x,G.y,G.z,model.FMC.sourceDistribution,'MCmatlab_fromZero');
+  set(h_f,'WindowStyle','Docked');
   h_f.Name = 'Fluorescence emitters';
   title('Fluorescence emitter distribution [W/cm^3/W.incident]')
 
@@ -113,16 +108,214 @@ if simFluorescence
   P_in = P_flu_emit;
 end
 
+%% Make media properties plot
+h_f = plotMediaProperties(2+figNumOffset,model,simType);
+set(h_f,'WindowStyle','Docked');
+if simFluorescence
+  h_f.Name = 'Fluorescence media properties';
+else
+  h_f.Name = 'Media properties';
+end
+
+if ~isnan(MCorFMC.NFR(1))
+  %% Make power absorption plot
+  % Calculate 3D absorption distribution, which may be FR or T dependent
+  mua_vec = [MCorFMC.mediaProperties.mua];
+  h_f = plotVolumetric(3 + figNumOffset,G.x,G.y,G.z,mua_vec(MCorFMC.M).*MCorFMC.NFR,'MCmatlab_fromZero');
+  set(h_f,'WindowStyle','Docked');
+  h_f.Name = ['Normalized ' fluorescenceOrNothing 'absorption'];
+  title(['Normalized ' fluorescenceOrNothing 'absorbed power per unit volume [W/cm^3/W.incident]'])
+  
+  %% Make fluence rate plot
+  h_f = plotVolumetric(4 + figNumOffset,G.x,G.y,G.z,MCorFMC.NFR,'MCmatlab_fromZero');
+  set(h_f,'WindowStyle','Docked');
+  h_f.Name = ['Normalized ' fluorescenceOrNothing 'fluence rate'];
+  title(['Normalized ' fluorescenceOrNothing 'fluence rate [W/cm^2/W.incident]'])
+  
+  fprintf(['%.3g%% of ' fluorescenceOrIncident 'light was absorbed within the cuboid.\n'],100*G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(MCorFMC.M).*MCorFMC.NFR)))/P_in);
+end
+
+%% Plot example paths
+if MCorFMC.nExamplePaths > 0
+  h_f = plotVolumetric(5 + figNumOffset,G.x,G.y,G.z,G.M_raw,'MCmatlab_GeometryIllustration',MCorFMC.mediaProperties_funcHandles);
+  set(h_f,'WindowStyle','Docked');
+  if simFluorescence
+    h_f.Name = 'Fluorescence photon paths';
+  else
+    h_f.Name = 'Photon paths';
+  end
+  title(h_f.Name);
+  box on;grid on;grid minor;
+
+  previousNaNidx = 1;
+  linenumber = 0;
+  for idx=3:(size(MCorFMC.examplePaths,2)+1)
+    if idx == size(MCorFMC.examplePaths,2)+1 || isnan(MCorFMC.examplePaths(1,idx))
+      linenumber = linenumber + 1;
+      xdata = MCorFMC.examplePaths(1,previousNaNidx+1:idx-1);
+      ydata = MCorFMC.examplePaths(2,previousNaNidx+1:idx-1);
+      zdata = MCorFMC.examplePaths(3,previousNaNidx+1:idx-1);
+      adata = MCorFMC.examplePaths(4,previousNaNidx+1:idx-1);
+      previousNaNidx = idx;
+      surface([xdata;xdata],...
+              [ydata;ydata],...
+              [zdata;zdata],...
+              'AlphaData',uint8(64*[adata;adata]),...
+              'EdgeColor',[0 0 0],...
+              'EdgeAlpha','flat',...
+              'FaceColor','none',...
+              'CDataMapping','direct',...
+              'AlphaDataMapping','direct',...
+              'LineWidth',2);
+    end
+  end
+end
+
+if MCorFMC.useLightCollector
+  %% If there's a light collector, show its orientation and the detected light
+  h_f = plotVolumetric(6 + figNumOffset,G.x,G.y,G.z,G.M_raw,'MCmatlab_GeometryIllustration',MCorFMC.mediaProperties_funcHandles);
+  set(h_f,'WindowStyle','Docked');
+  if simFluorescence
+    h_f.Name = 'Fluorescence light collector illustration';
+  else
+    h_f.Name = 'Light collector illustration';
+  end
+  title(h_f.Name);
+  box on;grid on;grid minor;
+
+  arrowlength = sqrt((G.nx*G.dx)^2+(G.ny*G.dy)^2+(G.nz*G.dz)^2)/5;
+  Zvec = [sin(LC.theta)*cos(LC.phi) , sin(LC.theta)*sin(LC.phi) , cos(LC.theta)];
+  Xvec = [sin(LC.phi) , -cos(LC.phi) , 0];
+  Yvec = cross(Zvec,Xvec);
+  FPC = [LC.x , LC.y , LC.z]; % Focal Plane Center
+  FPC_X = FPC + arrowlength*Xvec;
+  line([FPC(1) FPC_X(1)],[FPC(2) FPC_X(2)],[FPC(3) FPC_X(3)],'Linewidth',2,'Color','r')
+  text(FPC_X(1),FPC_X(2),FPC_X(3),'X','HorizontalAlignment','center','FontSize',18)
+  FPC_Y = FPC + arrowlength*Yvec;
+  line([FPC(1) FPC_Y(1)],[FPC(2) FPC_Y(2)],[FPC(3) FPC_Y(3)],'Linewidth',2,'Color','r')
+  text(FPC_Y(1),FPC_Y(2),FPC_Y(3),'Y','HorizontalAlignment','center','FontSize',18)
+
+  if isfinite(LC.f)
+    fieldperimeter = LC.fieldSize/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + FPC;
+    h1 = line(fieldperimeter(:,1),fieldperimeter(:,2),fieldperimeter(:,3),'Color','b','LineWidth',2);
+    LCC = FPC - Zvec*LC.f; % Light Collector Center
+    detectoraperture = LC.diam/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
+    h2 = line(detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
+    legend([h1 h2],'Imaged area','Lens aperture','Location','northeast');
+  else
+    LCC = FPC;
+    detectoraperture = LC.diam/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
+    h2 = line(detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
+    legend(h2,'Fiber aperture','Location','northeast');
+  end
+
+  
+  if LC.res > 1
+    detFraction = 100*mean(mean(sum(MCorFMC.LC.image,3)))*LC.fieldSize^2;
+  else
+    detFraction = 100*sum(MCorFMC.LC.image,3);
+  end
+  fprintf(['%.3g%% of ' fluorescenceOrIncident 'light ends up on the detector.\n'],detFraction/P_in);
+
+  if ~isnan(MCorFMC.NFRdet(1))
+    %% Make NFRdet fluence rate plot
+    h_f = plotVolumetric(7 + figNumOffset,G.x,G.y,G.z,MCorFMC.NFRdet,'MCmatlab_fromZero');
+    set(h_f,'WindowStyle','Docked');
+    h_f.Name = ['Normalized fluence rate of collected ' fluorescenceOrIncident 'light'];
+    title(['Normalized fluence rate of collected ' fluorescenceOrIncident 'light [W/cm^2/W.incident]'])
+  end
+  
+  if ~simFluorescence && LC.nTimeBins > 0
+    timevector = (-1/2:(LC.nTimeBins+1/2))*(LC.tEnd-LC.tStart)/LC.nTimeBins + LC.tStart;
+  end
+
+  if LC.res > 1 && ~simFluorescence && LC.nTimeBins > 0
+    h_f = plotVolumetric(8 + figNumOffset,LC.X,LC.Y,timevector,LC.image,'slicePositions',[1 1 0]);
+    h_f.Name = 'Image';
+    xlabel('X [cm]');
+    ylabel('Y [cm]');
+    zlabel('Time [s]');
+    title({'Normalized time-resolved fluence rate in the image plane','at 1x magnification [W/cm^2/W.incident]'});
+    fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
+  elseif LC.res > 1
+    h_f = figure(8 + figNumOffset);
+    h_f.Color = 'w';
+    clf;
+    if simFluorescence
+      h_f.Name = 'Fluorescence image';
+    else
+      h_f.Name = 'Image';
+    end
+    imagesc(LC.X,LC.Y,LC.image.');
+    title({['Normalized ' fluorescenceOrNothing 'fluence rate in the image plane'],' at 1x magnification [W/cm^2/W.incident]'});
+    axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
+    set(gca,'FontSize',18);
+    colormap(inferno);
+    colorbar;
+  elseif ~simFluorescence && LC.nTimeBins > 0
+    h_f = figure(8 + figNumOffset);
+    h_f.Color = 'w';
+    clf;
+    h_b = bar(timevector,squeeze(LC.image),1,'FaceColor','flat');
+    h_b.CData(1  ,:) = [.5 0 .5];
+    h_b.CData(end,:) = [.5 0 .5];
+    title('Normalized time-resolved power on the detector');
+    xlabel('Time [s]'); ylabel('Normalized power [W/W.incident]'); grid on; grid minor;
+    set(gca,'FontSize',18);
+    fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
+  end
+  set(h_f,'WindowStyle','Docked');
+end
+
+if ~isnan(MCorFMC.farField)
+  fprintf(['%.3g%% of ' fluorescenceOrIncident 'light escapes.\n'],100*sum(sum(MCorFMC.farField))/P_in);
+  farFieldRes = length(MCorFMC.farField);
+  if farFieldRes > 1
+    theta_vec = linspace(0,pi,farFieldRes+1).'; % MCorFMC.farFieldTheta contains the theta values at the centers of the far field pixels, but we will not use those here since we need the corner positions to calculate the solid angle of the pixels
+    solidAngle_vec = 2*pi*(cos(theta_vec(1:end-1)) - cos(theta_vec(2:end)))/farFieldRes; % Solid angle extended by each far field pixel, as function of theta
+    h_f = figure(9 + figNumOffset);
+    set(h_f,'WindowStyle','Docked');
+    h_f.Color = 'w';
+    if simFluorescence
+      h_f.Name = 'Fluorescence far field';
+    else
+      h_f.Name = 'Far field';
+    end
+    clf;
+    h_a = axes;
+
+    [ux,uy,minus_uz] = sphere(farFieldRes); % This MATLAB function gives us the correct ux,uy,uz coordinates of the corners of the far field pixels, except that uz has the wrong sign
+    uz = -minus_uz;
+    plotdata = MCorFMC.farField./repmat(solidAngle_vec,1,farFieldRes);
+    plotdata(1,:) = mean(plotdata(1,:));
+    plotdata(end,:) = mean(plotdata(end,:));
+    surf(ux,uy,uz,plotdata,'EdgeColor','none');
+
+    colormap(inferno);colorbar;
+    xlabel('u_x');
+    ylabel('u_y');
+    zlabel('u_z');
+    title(['Far field radiant intensity of escaped ' fluorescenceOrNothing 'photons [W/sr/W.incident]']);
+    set(gca,'FontSize',18);
+    axis equal;
+    xlim([-1 1]);
+    ylim([-1 1]);
+    zlim([-1 1]);
+    h_a.ZDir = 'reverse';
+    h_a.CLim = [0 h_a.CLim(2)];
+    rotate3d on
+    if ~verLessThan('matlab','9.0')
+      setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera');
+    end
+  end
+end
+
 %% Plot normalized boundary irradiances
 if MCorFMC.boundaryType == 1
   fprintf(['%.3g%% of ' fluorescenceOrIncident 'light hits the cuboid boundaries.\n'],100*(sum(sum((MCorFMC.NI_xpos + MCorFMC.NI_xneg)*G.dy*G.dz)) + sum(sum((MCorFMC.NI_ypos + MCorFMC.NI_yneg)*G.dx*G.dz)) + sum(sum((MCorFMC.NI_zpos + MCorFMC.NI_zneg)*G.dx*G.dy)))/P_in);
   
-  if ~ishandle(10 + figNumOffset)
-    h_f = figure(10 + figNumOffset);
-    h_f.Position = [40 160 1100 650];
-  else
-    h_f = figure(10 + figNumOffset);
-  end
+  h_f = figure(10 + figNumOffset);
+  set(h_f,'WindowStyle','Docked');
   h_f.Color = 'w';
   h_f.Name = ['Normalized ' fluorescenceOrNothing 'boundary irradiance'];
   clf;
@@ -178,12 +371,8 @@ elseif MCorFMC.boundaryType == 2
     fprintf(['%.3g%% of ' fluorescenceOrIncident 'light hits the top cuboid boundary.\n'],100*(sum(sum(MCorFMC.NI_zneg*G.dx*G.dy)))/P_in);
   end
   
-  if ~ishandle(10 + figNumOffset)
-    h_f = figure(10 + figNumOffset);
-    h_f.Position = [40 160 1100 650];
-  else
-    h_f = figure(10 + figNumOffset);
-  end
+  h_f = figure(10 + figNumOffset);
+  set(h_f,'WindowStyle','Docked');
   h_f.Color = 'w';
   h_f.Name = ['Normalized ' fluorescenceOrNothing 'boundary irradiance'];
   clf;
@@ -199,206 +388,8 @@ elseif MCorFMC.boundaryType == 2
   ylabel('y [cm]');
   set(gca,'fontsize',18)
 end
-
 if ~isnan(MCorFMC.NFR(1))
-  %% Make power absorption plot
-  % Calculate 3D absorption distribution, which may be FR or T dependent
-  mua_vec = [MCorFMC.mediaProperties.mua];
-  h_f = plotVolumetric(3 + figNumOffset,G.x,G.y,G.z,mua_vec(MCorFMC.M).*MCorFMC.NFR,'MCmatlab_fromZero');
-  h_f.Name = ['Normalized ' fluorescenceOrNothing 'absorption'];
-  title(['Normalized ' fluorescenceOrNothing 'absorbed power per unit volume [W/cm^3/W.incident]'])
-  
-  %% Make fluence rate plot
-  h_f = plotVolumetric(4 + figNumOffset,G.x,G.y,G.z,MCorFMC.NFR,'MCmatlab_fromZero');
-  h_f.Name = ['Normalized ' fluorescenceOrNothing 'fluence rate'];
-  title(['Normalized ' fluorescenceOrNothing 'fluence rate [W/cm^2/W.incident]'])
-  
-  fprintf(['%.3g%% of ' fluorescenceOrIncident 'light was absorbed within the cuboid.\n'],100*G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(MCorFMC.M).*MCorFMC.NFR)))/P_in);
-end
-
-%% Plot example paths
-if MCorFMC.nExamplePaths > 0
-  h_f = plotVolumetric(5 + figNumOffset,G.x,G.y,G.z,G.M_raw,'MCmatlab_GeometryIllustration',MCorFMC.mediaProperties_funcHandles);
-  if simFluorescence
-    h_f.Name = 'Fluorescence photon paths';
-  else
-    h_f.Name = 'Photon paths';
-  end
-  title(h_f.Name);
-  box on;grid on;grid minor;
-
-  previousNaNidx = 1;
-  linenumber = 0;
-  for idx=3:(size(MCorFMC.examplePaths,2)+1)
-    if idx == size(MCorFMC.examplePaths,2)+1 || isnan(MCorFMC.examplePaths(1,idx))
-      linenumber = linenumber + 1;
-      xdata = MCorFMC.examplePaths(1,previousNaNidx+1:idx-1);
-      ydata = MCorFMC.examplePaths(2,previousNaNidx+1:idx-1);
-      zdata = MCorFMC.examplePaths(3,previousNaNidx+1:idx-1);
-      adata = MCorFMC.examplePaths(4,previousNaNidx+1:idx-1);
-      previousNaNidx = idx;
-      surface([xdata;xdata],...
-              [ydata;ydata],...
-              [zdata;zdata],...
-              'AlphaData',uint8(64*[adata;adata]),...
-              'EdgeColor',[0 0 0],...
-              'EdgeAlpha','flat',...
-              'FaceColor','none',...
-              'CDataMapping','direct',...
-              'AlphaDataMapping','direct',...
-              'LineWidth',2);
-    end
-  end
-end
-
-if MCorFMC.useLightCollector
-  %% If there's a light collector, show its orientation and the detected light
-  h_f = plotVolumetric(6 + figNumOffset,G.x,G.y,G.z,G.M_raw,'MCmatlab_GeometryIllustration',MCorFMC.mediaProperties_funcHandles);
-  if simFluorescence
-    h_f.Name = 'Fluorescence light collector illustration';
-  else
-    h_f.Name = 'Light collector illustration';
-  end
-  title(h_f.Name);
-  box on;grid on;grid minor;
-
-  arrowlength = sqrt((G.nx*G.dx)^2+(G.ny*G.dy)^2+(G.nz*G.dz)^2)/5;
-  Zvec = [sin(LC.theta)*cos(LC.phi) , sin(LC.theta)*sin(LC.phi) , cos(LC.theta)];
-  Xvec = [sin(LC.phi) , -cos(LC.phi) , 0];
-  Yvec = cross(Zvec,Xvec);
-  FPC = [LC.x , LC.y , LC.z]; % Focal Plane Center
-  FPC_X = FPC + arrowlength*Xvec;
-  line([FPC(1) FPC_X(1)],[FPC(2) FPC_X(2)],[FPC(3) FPC_X(3)],'Linewidth',2,'Color','r')
-  text(FPC_X(1),FPC_X(2),FPC_X(3),'X','HorizontalAlignment','center','FontSize',18)
-  FPC_Y = FPC + arrowlength*Yvec;
-  line([FPC(1) FPC_Y(1)],[FPC(2) FPC_Y(2)],[FPC(3) FPC_Y(3)],'Linewidth',2,'Color','r')
-  text(FPC_Y(1),FPC_Y(2),FPC_Y(3),'Y','HorizontalAlignment','center','FontSize',18)
-
-  if isfinite(LC.f)
-    fieldperimeter = LC.fieldSize/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + FPC;
-    h1 = line(fieldperimeter(:,1),fieldperimeter(:,2),fieldperimeter(:,3),'Color','b','LineWidth',2);
-    LCC = FPC - Zvec*LC.f; % Light Collector Center
-    detectoraperture = LC.diam/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
-    h2 = line(detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
-    legend([h1 h2],'Imaged area','Lens aperture','Location','northeast');
-  else
-    LCC = FPC;
-    detectoraperture = LC.diam/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
-    h2 = line(detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
-    legend(h2,'Fiber aperture','Location','northeast');
-  end
-
-  
-  if LC.res > 1
-    detFraction = 100*mean(mean(sum(MCorFMC.LC.image,3)))*LC.fieldSize^2;
-  else
-    detFraction = 100*sum(MCorFMC.LC.image,3);
-  end
-  fprintf(['%.3g%% of ' fluorescenceOrIncident 'light ends up on the detector.\n'],detFraction/P_in);
-
-  if ~isnan(MCorFMC.NFRdet(1))
-    %% Make NFRdet fluence rate plot
-    h_f = plotVolumetric(7 + figNumOffset,G.x,G.y,G.z,MCorFMC.NFRdet,'MCmatlab_fromZero');
-    h_f.Name = ['Normalized fluence rate of collected ' fluorescenceOrIncident 'light'];
-    title(['Normalized fluence rate of collected ' fluorescenceOrIncident 'light [W/cm^2/W.incident]'])
-  end
-  
-  if ~simFluorescence && LC.nTimeBins > 0
-    timevector = (-1/2:(LC.nTimeBins+1/2))*(LC.tEnd-LC.tStart)/LC.nTimeBins + LC.tStart;
-  end
-
-  if LC.res > 1 && ~simFluorescence && LC.nTimeBins > 0
-    h_f = plotVolumetric(8 + figNumOffset,LC.X,LC.Y,timevector,LC.image,'slicePositions',[1 1 0]);
-    h_f.Name = 'Image';
-    xlabel('X [cm]');
-    ylabel('Y [cm]');
-    zlabel('Time [s]');
-    title({'Normalized time-resolved fluence rate in the image plane','at 1x magnification [W/cm^2/W.incident]'});
-    fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
-  elseif LC.res > 1
-    if ~ishandle(8 + figNumOffset)
-      h_f = figure(8 + figNumOffset);
-      h_f.Position = [40 160 1100 650];
-    else
-      h_f = figure(8 + figNumOffset);
-    end
-    h_f.Color = 'w';
-    clf;
-    if simFluorescence
-      h_f.Name = 'Fluorescence image';
-    else
-      h_f.Name = 'Image';
-    end
-    imagesc(LC.X,LC.Y,LC.image.');
-    title({['Normalized ' fluorescenceOrNothing 'fluence rate in the image plane'],' at 1x magnification [W/cm^2/W.incident]'});
-    axis xy;axis equal;axis tight;xlabel('X [cm]');ylabel('Y [cm]');
-    set(gca,'FontSize',18);
-    colormap(inferno);
-    colorbar;
-  elseif ~simFluorescence && LC.nTimeBins > 0
-    if ~ishandle(8 + figNumOffset)
-      h_f = figure(8 + figNumOffset);
-      h_f.Position = [40 160 1100 650];
-    else
-      h_f = figure(8 + figNumOffset);
-    end
-    h_f.Color = 'w';
-    clf;
-    h_b = bar(timevector,squeeze(LC.image),1,'FaceColor','flat');
-    h_b.CData(1  ,:) = [.5 0 .5];
-    h_b.CData(end,:) = [.5 0 .5];
-    title('Normalized time-resolved power on the detector');
-    xlabel('Time [s]'); ylabel('Normalized power [W/W.incident]'); grid on; grid minor;
-    set(gca,'FontSize',18);
-    fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
-  end
-end
-
-if ~isnan(MCorFMC.farField)
-  fprintf(['%.3g%% of ' fluorescenceOrIncident 'light escapes.\n'],100*sum(sum(MCorFMC.farField))/P_in);
-  farFieldRes = length(MCorFMC.farField);
-  if farFieldRes > 1
-    theta_vec = linspace(0,pi,farFieldRes+1).'; % MCorFMC.farFieldTheta contains the theta values at the centers of the far field pixels, but we will not use those here since we need the corner positions to calculate the solid angle of the pixels
-    solidAngle_vec = 2*pi*(cos(theta_vec(1:end-1)) - cos(theta_vec(2:end)))/farFieldRes; % Solid angle extended by each far field pixel, as function of theta
-    if ~ishandle(9 + figNumOffset)
-      h_f = figure(9 + figNumOffset);
-      h_f.Position = [40 160 1100 650];
-    else
-      h_f = figure(9 + figNumOffset);
-    end
-    h_f.Color = 'w';
-    if simFluorescence
-      h_f.Name = 'Fluorescence far field';
-    else
-      h_f.Name = 'Far field';
-    end
-    clf;
-    h_a = axes;
-
-    [ux,uy,minus_uz] = sphere(farFieldRes); % This MATLAB function gives us the correct ux,uy,uz coordinates of the corners of the far field pixels, except that uz has the wrong sign
-    uz = -minus_uz;
-    plotdata = MCorFMC.farField./repmat(solidAngle_vec,1,farFieldRes);
-    plotdata(1,:) = mean(plotdata(1,:));
-    plotdata(end,:) = mean(plotdata(end,:));
-    surf(ux,uy,uz,plotdata,'EdgeColor','none');
-
-    colormap(inferno);colorbar;
-    xlabel('u_x');
-    ylabel('u_y');
-    zlabel('u_z');
-    title(['Far field radiant intensity of escaped ' fluorescenceOrNothing 'photons [W/sr/W.incident]']);
-    set(gca,'FontSize',18);
-    axis equal;
-    xlim([-1 1]);
-    ylim([-1 1]);
-    zlim([-1 1]);
-    h_a.ZDir = 'reverse';
-    h_a.CLim = [0 h_a.CLim(2)];
-    rotate3d on
-    if ~verLessThan('matlab','9.0')
-      setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera');
-    end
-  end
+  figure(4 + figNumOffset); % Make the NFR plot active so it's the first one people see
 end
 drawnow;
 end

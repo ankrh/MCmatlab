@@ -29,9 +29,12 @@ function plotMCmatlabGeom(model)
 %   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
 %%%%%
 
+com.mathworks.mde.desk.MLDesktop.getInstance.setDocumentBarPosition('Figures',7); % Set Figures window tabs to be on left side
+
 %% Make geometry plot
 mediaProperties = model.G.mediaPropertiesFunc(NaN,model.G.mediaPropParams); % We don't know what wavelength the user wants yet, so we just input NaN
 h_f = plotVolumetric(1,model.G.x,model.G.y,model.G.z,model.G.M_raw,'MCmatlab_GeometryIllustration',mediaProperties);
+set(h_f,'WindowStyle','Docked');
 h_f.Name = 'Geometry illustration';
 title('Geometry illustration');
 
