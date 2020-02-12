@@ -79,17 +79,8 @@ end
 LC = MCorFMC.LC;
 
 
-%% Make media properties plot
-h_f = plotMediaProperties(2+figNumOffset,model,simType);
-set(h_f,'WindowStyle','Docked');
-if simFluorescence
-  h_f.Name = 'Fluorescence media properties';
-else
-  h_f.Name = 'Media properties';
-end
-P_in = 1;
-
 %% Plot emitter distribution
+P_in = 1;
 if simFluorescence
   h_f = plotVolumetric(11,G.x,G.y,G.z,model.FMC.beam.sourceDistribution,'MCmatlab_fromZero');
   set(h_f,'WindowStyle','Docked');
@@ -115,6 +106,15 @@ if simFluorescence
   P_flu_emit = G.dx*G.dy*G.dz*sum(sum(sum(model.FMC.beam.sourceDistribution)));
   fprintf('%.3g%% of absorbed incident light was re-emitted as fluorescence.\n',100*P_flu_emit/P_exc_abs);
   P_in = P_flu_emit;
+end
+
+%% Make media properties plot
+h_f = plotMediaProperties(2+figNumOffset,model,simType);
+set(h_f,'WindowStyle','Docked');
+if simFluorescence
+  h_f.Name = 'Fluorescence media properties';
+else
+  h_f.Name = 'Media properties';
 end
 
 if ~isnan(MCorFMC.NFR(1))
