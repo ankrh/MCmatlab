@@ -1,6 +1,3 @@
-addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
-fprintf('\n');
-
 %% Description
 % This example illustrates simulation of refraction and reflection
 % according to Fresnel's equations. This requires the matchedInterfaces flag
@@ -23,7 +20,7 @@ fprintf('\n');
 % shown as lines in a 3D plot after completion.
 
 %% Geometry definition
-model = initializeMCmatlabModel();
+model = MCmatlab.model;
 
 model.G.nx                = 100; % Number of bins in the x direction
 model.G.ny                = 100; % Number of bins in the y direction

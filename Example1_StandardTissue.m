@@ -1,6 +1,3 @@
-addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
-fprintf('\n');
-
 %% Description
 % In this introductory example, a block of "standard tissue" (mu_a = 1,
 % mu_s = 100, g = 0.9) is illuminated by a pencil beam (infinitely thin
@@ -12,7 +9,7 @@ fprintf('\n');
 % rate and absorption distribution in the MC result.
 
 %% Geometry definition
-model = initializeMCmatlabModel();
+model = MCmatlab.model;
 
 model.G.nx                = 101; % Number of bins in the x direction
 model.G.ny                = 101; % Number of bins in the y direction

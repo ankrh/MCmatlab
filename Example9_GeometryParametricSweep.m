@@ -1,6 +1,3 @@
-addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
-fprintf('\n');
-
 %% Description
 % This example shows how to execute MC simulations in a for loop, in this
 % case simulating a pencil beam incident on a slab of "standard tissue"
@@ -36,7 +33,7 @@ fprintf('%2d/%2d\n',0,length(t_vec));
 for i=1:length(t_vec)
 fprintf('\b\b\b\b\b\b%2d/%2d\n',i,length(t_vec)); % Simple progress indicator
 %% Geometry definition
-model = initializeMCmatlabModel();
+model = MCmatlab.model;
 
 model.G.silentMode          = true; % Disables command window text and progress indication
 

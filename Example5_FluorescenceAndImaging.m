@@ -1,6 +1,3 @@
-addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
-fprintf('\n');
-
 %% Description
 % In this example, simulation of fluorescence (luminescence) is shown. The
 % test geometry is a fluorescing cylinder in which excitation light is
@@ -20,7 +17,7 @@ fprintf('\n');
 % photons.
 
 %% Geometry definition
-model = initializeMCmatlabModel();
+model = MCmatlab.model;
 
 model.G.nx                = 100; % Number of bins in the x direction
 model.G.ny                = 100; % Number of bins in the y direction

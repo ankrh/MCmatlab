@@ -1,6 +1,3 @@
-addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
-fprintf('\n');
-
 %% Decription
 % This example is very similar to example 4, the geometry and light
 % propagation part being the same. It illustrates the ability to sequence
@@ -16,7 +13,7 @@ fprintf('\n');
 % to 10 rather than 100, which speeds up the simulations considerably.
 
 %% Geometry definition
-model = initializeMCmatlabModel();
+model = MCmatlab.model;
 
 model.G.nx                = 100; % Number of bins in the x direction
 model.G.ny                = 100; % Number of bins in the y direction

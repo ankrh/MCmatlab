@@ -1,6 +1,3 @@
-addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
-fprintf('\n');
-
 %% Decription
 % This example simulates a collimated top hat beam of radius 300 µm
 % incident on skin, with some gel (water) on the top. This example is
@@ -16,7 +13,7 @@ fprintf('\n');
 % generation is also demonstrated.
 
 %% Geometry definition
-model = initializeMCmatlabModel();
+model = MCmatlab.model;
 
 model.G.nx                = 100; % Number of bins in the x direction
 model.G.ny                = 100; % Number of bins in the y direction

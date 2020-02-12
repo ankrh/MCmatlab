@@ -1,6 +1,3 @@
-addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
-fprintf('\n');
-
 %% Description
 % Here we demonstrate how to define beams using beamType = 4 or 5. The
 % geometry is only air, which has negligible scattering and absorption. All
@@ -16,7 +13,7 @@ fprintf('\n');
 % beam types (because exp(-R^2) = exp(-X^2)*exp(-Y^2)).
 
 %% Geometry definition
-model = initializeMCmatlabModel();
+model = MCmatlab.model;
 
 model.G.nx                = 201; % Number of bins in the x direction
 model.G.ny                = 201; % Number of bins in the y direction

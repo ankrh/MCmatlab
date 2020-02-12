@@ -1,6 +1,3 @@
-addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
-fprintf('\n');
-
 %% Description
 % Here we show an example of how to model fluence rate dependent optical
 % properties. We have a beam of light incident exactly on the interface
@@ -44,7 +41,7 @@ fprintf('\n');
 % the optical properties for each of the saturable absorbers.
 
 %% Geometry definition
-model = initializeMCmatlabModel();
+model = MCmatlab.model;
 
 model.G.nx                  = 100; % Number of bins in the x direction
 model.G.ny                  = 100; % Number of bins in the y direction

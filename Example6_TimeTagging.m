@@ -1,6 +1,3 @@
-addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
-fprintf('\n');
-
 %% Description
 % This example is concerned with time-tagging of the photons. The time of
 % arrival is registered and binned when(if) the photon hits the detector,
@@ -16,7 +13,7 @@ fprintf('\n');
 % depths are seen to arrive at later times.
 
 %% Geometry definition
-model = initializeMCmatlabModel();
+model = MCmatlab.model;
 
 model.G.nx                = 20; % Number of bins in the x direction
 model.G.ny                = 20; % Number of bins in the y direction

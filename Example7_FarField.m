@@ -1,6 +1,3 @@
-addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
-fprintf('\n');
-
 %% Description
 % Here, we demonstrate calculation and plotting of the far field of the
 % "escaped" photons, both for excitation light and for fluorescence light.
@@ -27,7 +24,7 @@ fprintf('\n');
 % cuboid plus the fraction of light escaping equals 1.
 
 %% Geometry definition
-model = initializeMCmatlabModel();
+model = MCmatlab.model;
 
 model.G.nx                = 101; % Number of bins in the x direction
 model.G.ny                = 101; % Number of bins in the y direction

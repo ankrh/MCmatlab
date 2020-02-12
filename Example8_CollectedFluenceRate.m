@@ -1,6 +1,3 @@
-addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
-fprintf('\n');
-
 %% Description
 % This example shows how to use the calcNFRdet flag to calculate and plot the
 % fluence rate of only that light which ends up on the light collector.
@@ -20,7 +17,7 @@ fprintf('\n');
 % rate data is still only tracked within the main cuboid.
 
 %% Geometry definition
-model = initializeMCmatlabModel();
+model = MCmatlab.model;
 
 model.G.nx                = 100; % Number of bins in the x direction
 model.G.ny                = 100; % Number of bins in the y direction

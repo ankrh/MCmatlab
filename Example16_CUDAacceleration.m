@@ -1,6 +1,3 @@
-addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
-fprintf('\n');
-
 %% Description
 % This example showcases GPU acceleration by executing on an Nvidia GPU
 % through the CUDA architecture. If you have a CUDA-capable GPU you can
@@ -23,7 +20,7 @@ fprintf('\n');
 % contact the MCmatlab developer Anders K. Hansen at ankrh@fotonik.dtu.dk
 
 %% Geometry definition
-model = initializeMCmatlabModel();
+model = MCmatlab.model;
 
 model.G.nx                = 100; % Number of bins in the x direction
 model.G.ny                = 100; % Number of bins in the y direction
