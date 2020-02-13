@@ -28,7 +28,7 @@ model.G.geomFunc          = @geometryDefinition_TimeTaggingExample; % Function t
 % Execution, do not modify the next line:
 model = defineGeometry(model);
 
-plotMCmatlabGeom(model);
+plot(model,'G');
 
 %% Monte Carlo simulation
 model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
@@ -69,7 +69,7 @@ model.MC.LC.nTimeBins = 100; % Number of bins between tStart and tEnd. If zero, 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
 
-plotMCmatlab(model);
+plot(model,'MC');
 
 %% Post-processing
 

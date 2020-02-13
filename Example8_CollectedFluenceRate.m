@@ -32,7 +32,7 @@ model.G.geomFunc          = @geometryDefinition_FluorescingCylinder; % Function 
 % Execution, do not modify the next line:
 model = defineGeometry(model);
 
-plotMCmatlabGeom(model);
+plot(model,'G');
 
 %% Monte Carlo simulation
 model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
@@ -76,7 +76,7 @@ model.MC.LC.res                   = 50; % X and Y resolution of light collector 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
 
-plotMCmatlab(model);
+plot(model,'MC');
 
 %% Fluorescence Monte Carlo
 model = clearMCmatlabModel(model,'FMC'); % Only necessary if you want to run this section repeatedly, re-using previous G and MC data
@@ -109,7 +109,7 @@ model.FMC.LC.res                  = 50; % X and Y resolution of light collector 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model,'fluorescence');
 
-plotMCmatlab(model,'fluorescence');
+plot(model,'FMC');
 
 %% Post-processing
 

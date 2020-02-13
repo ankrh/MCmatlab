@@ -39,7 +39,7 @@ model.G.geomFunc          = @geometryDefinition_FluorescingCylinder; % Function 
 % Execution, do not modify the next line:
 model = defineGeometry(model);
 
-plotMCmatlabGeom(model);
+plot(model,'G');
 
 %% Monte Carlo simulation
 model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
@@ -65,7 +65,7 @@ model.MC.beam.phi                 = -pi/2; % [rad] Azimuthal angle of beam cente
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
 
-plotMCmatlab(model);
+plot(model,'MC');
 
 %% Fluorescence Monte Carlo
 model.FMC.simulationTimeRequested  = 0.1; % [min] Time duration of the simulation
@@ -78,7 +78,7 @@ model.FMC.wavelength               = 550; % [nm] Fluorescence wavelength, used f
 % Execution, do not modify the next line:
 model = runMonteCarlo(model,'fluorescence');
 
-plotMCmatlab(model,'fluorescence');
+plot(model,'FMC');
 
 %% Post-processing
 

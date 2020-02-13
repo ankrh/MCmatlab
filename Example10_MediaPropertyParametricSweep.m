@@ -40,7 +40,7 @@ model.G.geomFunc          = @geometryDefinition_MediaPropertyParametricSweep; % 
 % Execution, do not modify the next line:
 model = defineGeometry(model);
 
-% plotMCmatlabGeom(model);
+% plot(model,'G');
 
 %% Monte Carlo simulation
 model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
@@ -79,13 +79,13 @@ model.MC.LC.res                   = 1; % X and Y resolution of light collector i
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
 
-% plotMCmatlab(model);
+% plot(model,'MC');
 
 %% Post-processing
 power_vec(i) = model.MC.LC.image; % "image" is in this case just a scalar, the normalized power collected by the fiber.
 end
-plotMCmatlabGeom(model);
-plotMCmatlab(model);
+plot(model,'G');
+plot(model,'MC');
 
 figure;clf;
 plot(g_vec,power_vec,'Linewidth',2);

@@ -38,6 +38,20 @@ classdef model
         end
         
         obj = runMonteCarlo(obj, varargin)
+        
+        function plot(obj, type)
+            switch type
+                case "FMC"
+                    plotMCmatlabMC(obj, "fluorescence")
+                case "G"
+                    plotMCmatlabGeom(obj)
+                case "HS"
+                    plotMCmatlabHeat(obj)
+                otherwise
+                    plotMCmatlabMC(obj)
+            end
+
+        end
        
         function plotMCmatlab(obj, varargin)
             %plotMCmatlab Summary of this method goes here

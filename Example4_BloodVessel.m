@@ -28,7 +28,7 @@ model.G.geomFunc          = @geometryDefinition_BloodVessel; % Function to use f
 % Execution, do not modify the next line:
 model = defineGeometry(model);
 
-plotMCmatlabGeom(model);
+plot(model,'G');
 
 %% Monte Carlo simulation
 model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
@@ -53,7 +53,7 @@ model.MC.beam.phi                 = 0; % [rad] Azimuthal angle of beam center ax
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
 
-plotMCmatlab(model);
+plot(model,'MC');
 
 %% Heat simulation
 model = clearMCmatlabModel(model,'HS'); % Only necessary if you want to run this section repeatedly, re-using previous G, MC and/or FMC data
@@ -83,7 +83,7 @@ model.HS.tempSensorPositions = [0 0 0.038
 % Execution, do not modify the next line:
 model = simulateHeatDistribution(model);
 
-plotMCmatlabHeat(model);
+plot(model,'HS');
 
 %% Post-processing
 

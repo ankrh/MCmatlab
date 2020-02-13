@@ -35,7 +35,7 @@ model.G.geomFunc          = @geometryDefinition_RefractionReflectionExample; % T
 % Execution, do not modify the next line:
 model = defineGeometry(model);
 
-plotMCmatlabGeom(model);
+plot(model,'G');
 
 %% Monte Carlo simulation
 model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
@@ -56,7 +56,7 @@ model.MC.beam.zFocus              = 0.04; % [cm] z position of focus
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
 
-plotMCmatlab(model);
+plot(model,'MC');
 
 %% Post-processing
 

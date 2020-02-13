@@ -41,7 +41,7 @@ model.G.geomFunc          = @geometryDefinition_Thermochromic; % Function to use
 % Execution, do not modify the next line:
 model = defineGeometry(model);
 
-plotMCmatlabGeom(model);
+plot(model,'G');
 
 %% Monte Carlo simulation
 model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
@@ -68,7 +68,7 @@ model.HS.Tinitial                 = 20; % [deg C] Initial temperature
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
 
-plotMCmatlab(model);
+plot(model,'MC');
 
 %% Heat simulation
 
@@ -92,9 +92,9 @@ model.HS.tempSensorPositions = [0 0.009 0.032
 % Execution, do not modify the next line:
 model = simulateHeatDistribution(model);
 
-plotMCmatlabHeat(model);
+plot(model,'HS');
 
-plotMCmatlab(model);
+plot(model,'MC');
 
 %% Post-processing
 

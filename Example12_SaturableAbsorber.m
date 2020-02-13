@@ -56,7 +56,7 @@ model.G.geomFunc            = @geometryDefinition_SaturableAbsorber; % Function 
 % Execution, do not modify the next line:
 model = defineGeometry(model);
 
-plotMCmatlabGeom(model);
+plot(model,'G');
 
 %% Monte Carlo simulation
 model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
@@ -85,7 +85,7 @@ model.MC.FRdepIterations = 15;
 % Execution, do not modify the next line:
 model = runMonteCarlo(model); % Iteratively run Monte Carlo the default number of times (20) with simulation time (or nPhotons) increasing by a factor of 2 each time. Last run has simulation time equal to MC.simulationTime (or nPhotons equal to MC.nPhotonsRequested).
 
-plotMCmatlab(model);
+plot(model,'MC');
 
 %% Post-processing
 

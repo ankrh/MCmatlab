@@ -28,7 +28,7 @@ model.G.geomFunc          = @geometryDefinition_Air; % Function to use for defin
 % Execution, do not modify the next line:
 model = defineGeometry(model);
 
-% plotMCmatlabGeom(model);
+% plot(model, 'G');
 
 %% Monte Carlo simulations
 %% Top-hat near field, Gaussian far field
@@ -57,7 +57,7 @@ model.MC.beam.psi                 = 0; % [rad] (Default: 0) Axial rotation angle
 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
-plotMCmatlab(model);
+plot(model,'MC');
 fprintf('Press enter to continue...\n');pause;
 
 %% LED-like emitter: Rectangular near field, Lambertian far field
@@ -74,7 +74,7 @@ model.MC.beam.psi                 = pi/4; % [rad] (Default: 0) Axial rotation an
 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
-plotMCmatlab(model);
+plot(model,'MC');
 fprintf('Press enter to continue...\n');pause;
 
 %% Custom radial near field and far field
@@ -86,7 +86,7 @@ model.MC.beam.FF.radialWidth      = pi/4; % [rad] Radial far field 1/e^2 half-an
 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
-plotMCmatlab(model);
+plot(model,'MC');
 fprintf('Press enter to continue...\n');pause;
 
 %% Custom XY near field, top-hat X far field and Gaussian Y far field
@@ -103,7 +103,7 @@ model.MC.beam.psi                 = -pi/4; % [rad] (Default: 0) Axial rotation a
 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
-plotMCmatlab(model);
+plot(model,'MC');
 
 %% Post-processing
 

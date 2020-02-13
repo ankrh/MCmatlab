@@ -24,7 +24,7 @@ model.G.geomFunc          = @geometryDefinition_StandardTissue; % Function to us
 % Execution, do not modify the next line:
 model = defineGeometry(model);
 
-plotMCmatlabGeom(model);
+plot(model,'G');
 
 %% Monte Carlo simulation
 model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
@@ -44,7 +44,7 @@ model.MC.beam.phi                 = 0; % [rad] Azimuthal angle of beam center ax
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
 
-plotMCmatlab(model);
+plot(model,'MC');
 
 %% Post-processing
 
