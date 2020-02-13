@@ -17,6 +17,8 @@ classdef fluorescenceMonteCarloSimulation
         matchedInterfaces = true;
         boundaryType = 1;
         wavelength = NaN;
+        
+        fluorescenceOrder = 1;
 
         useLightCollector logical = false
         LC MCmatlab.lightCollector
