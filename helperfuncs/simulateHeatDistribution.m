@@ -310,7 +310,7 @@ for j=1:model.HS.nPulses
         [model,heatSimParameters] = heatSimParamsRecalc(model,heatSimParameters); % Recalculate MC and FMC, if necessary, and get new thermal properties and a new media matrix
       end
     end
-    fprintf(1,repmat('\b',1,nCharsOnLine));
+    if ~model.HS.silentMode; fprintf(1,repmat('\b',1,nCharsOnLine)); end
   end
   
   %% Diffusion phase
@@ -372,7 +372,7 @@ for j=1:model.HS.nPulses
         [model,heatSimParameters] = heatSimParamsRecalc(model,heatSimParameters); % Recalculate MC and FMC, if necessary, and get new thermal properties and a new media matrix
       end
     end
-    fprintf(1,repmat('\b',1,nCharsOnLine));
+    if ~model.HS.silentMode; fprintf(1,repmat('\b',1,nCharsOnLine)); end
   end
 end
 
@@ -434,13 +434,15 @@ for i = 1:nUpdatesEnd
     [model,heatSimParameters] = heatSimParamsRecalc(model,heatSimParameters); % Recalculate MC and FMC, if necessary, and get new thermal properties and a new media matrix
   end
 end
-fprintf(1,repmat('\b',1,nCharsOnLine));
-
-if ~model.HS.silentMode; toc; end
+if ~model.HS.silentMode
+  if model.HS.durationEnd ~= 0
+    fprintf(1,repmat('\b',1,nCharsOnLine));
+  end
+  toc;
+  set(heatsimFigure,'WindowStyle','Docked');
+end
 
 clear heatSimParameters;
-
-set(heatsimFigure,'WindowStyle','Docked');
 
 for k=1:nM
   if model.HS.maxMediaTemps(k) > 100

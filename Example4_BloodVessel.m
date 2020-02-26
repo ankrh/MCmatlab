@@ -64,8 +64,8 @@ model = clearMCmatlabModel(model,'HS'); % Only necessary if you want to run this
 model.MC.P                   = 3; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
 
 model.HS.useAllCPUs          = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
-model.HS.makeMovie           = false;%true; % Requires silentMode = false.
-model.HS.largeTimeSteps      = true;%false; % (Default: false) If true, calculations will be faster, but some voxel temperatures may be slightly less precise. Test for yourself whether this precision is acceptable for your application.
+model.HS.makeMovie           = true; % Requires silentMode = false.
+model.HS.largeTimeSteps      = false; % (Default: false) If true, calculations will be faster, but some voxel temperatures may be slightly less precise. Test for yourself whether this precision is acceptable for your application.
 
 model.HS.heatBoundaryType    = 0; % 0: Insulating boundaries, 1: Constant-temperature boundaries (heat-sinked)
 model.HS.durationOn          = 0.001; % [s] Pulse on-duration
