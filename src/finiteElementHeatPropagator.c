@@ -668,7 +668,7 @@ void swapTempPointers(struct parameters *P, long n) {
     P->T2 = temp;
   } else if(P->nt%2) {
     P->T1 = P->T2;
-    P->T2 = (float *)malloc(P->nx*P->ny*P->nz*sizeof(float));
+    P->T2 = P->nt > 1? (float *)malloc(P->nx*P->ny*P->nz*sizeof(float)): NULL;
   } else {
     P->T1 = P->T2;
     P->T2 = P->Tfinal;

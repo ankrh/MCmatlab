@@ -7,10 +7,10 @@ fprintf('\n');
 % constructed identically to that on the mcxyz website, except that photons
 % escape on all boundaries and the voxel grid is only 100x100x100:
 % https://omlc.org/software/mc/mcxyz/
-%
+% 
 % The found absorption distribution is then passed into the heat simulator,
 % assuming the light is on for 5 pulses of 1 ms on time and 4 ms off time
-% each, with 4 W of peak power. Some demonstration values of the Arrhenius
+% each, with 3 W of peak power. Some demonstration values of the Arrhenius
 % E and A parameters for blood coagulation are used to calculate the
 % distribution of coagulated blood. Temperature sensors outputs and movie
 % generation is also demonstrated.
@@ -61,7 +61,7 @@ plotMCmatlab(model);
 %% Heat simulation
 model = clearMCmatlabModel(model,'HS'); % Only necessary if you want to run this section repeatedly, re-using previous G, MC and/or FMC data
 
-model.MC.P                   = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
+model.MC.P                   = 3; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
 
 model.HS.useAllCPUs          = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 model.HS.makeMovie           = true; % Requires silentMode = false.

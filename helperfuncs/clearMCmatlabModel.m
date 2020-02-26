@@ -217,7 +217,7 @@ if strcmp(string,'HS')
   
   model.HS.plotTempLimits = NaN; % [deg C] Expected range of temperatures, used only for setting the color scale in the plot
   model.HS.nUpdates = 10; % Number of times data is extracted for plots during each pulse. A minimum of 1 update is performed in each phase (2 for each pulse consisting of an illumination phase and a diffusion phase)
-  model.HS.mediaPropRecalcPeriod = 1; % If necessary, recalculates the fluence rate and thus any fluence rate dependent optical and thermal properties every N updates
+  model.HS.mediaPropRecalcPeriod = NaN; % If necessary, recalculates the fluence rate and thus any fluence rate dependent optical and thermal properties every N updates
   
   model.HS.slicePositions = [0.5 1 1];
   model.HS.tempSensorPositions = [];
