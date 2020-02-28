@@ -3,7 +3,7 @@
 % "escaped" photons, both for excitation light and for fluorescence light.
 % It is enabled by specifying the optional "farFieldRes" parameter, which
 % serves also to specify the resolution you want of the far field
-% distribution. The geometry is the same fluorescing cylinder as example 4,
+% distribution. The geometry is the same fluorescing cylinder as example 5,
 % but now illuminated by a tilted Gaussian beam.
 % 
 % In the far field of the excitation light, you can see that they primarily

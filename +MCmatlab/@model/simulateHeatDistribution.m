@@ -254,7 +254,13 @@ for j=1:model.HS.nPulses
   %% Illumination phase
   if model.HS.durationOn ~= 0
     if ~model.HS.silentMode
-      fprintf(['Illuminating pulse #%d... %' num2str(nDigitsOn) 'd/%d\n'],j,0,nUpdatesOn);
+      updateIdx = (j-1)*(nUpdatesOn+nUpdatesOff); % Index of the update
+      if updateIdx > 0
+        timeRemainingEstimate = toc/updateIdx*((nUpdatesOn+nUpdatesOff)*model.HS.nPulses+nUpdatesEnd - updateIdx);
+        nCharsOnLine = fprintf(1,'[%02.0f:%02.0f:%02.0f] Illuminating pulse #%d... 0/%d',floor(timeRemainingEstimate/3600),floor(rem(timeRemainingEstimate/60,60)),floor(rem(timeRemainingEstimate,60)),j,nUpdatesOn);
+      else
+        nCharsOnLine = fprintf(1,'[00:00:00] Illuminating pulse #%d... 0/%d',j,nUpdatesOn);
+      end
       drawnow;
     end
     
@@ -287,7 +293,9 @@ for j=1:model.HS.nPulses
       
       updateIdx = i+(j-1)*(nUpdatesOn+nUpdatesOff); % Index of the update
       if ~model.HS.silentMode
-        fprintf(1,[repmat('\b',1,2*nDigitsOn+2) '%' num2str(nDigitsOn) 'd/%d\n'],i,nUpdatesOn);
+        fprintf(repmat('\b',1,nCharsOnLine));
+        timeRemainingEstimate = toc/updateIdx*((nUpdatesOn+nUpdatesOff)*model.HS.nPulses+nUpdatesEnd - updateIdx);
+        nCharsOnLine = fprintf(1,'[%02.0f:%02.0f:%02.0f] Illuminating pulse #%d... %d/%d',floor(timeRemainingEstimate/3600),floor(rem(timeRemainingEstimate/60,60)),floor(rem(timeRemainingEstimate,60)),j,i,nUpdatesOn);
         updateVolumetric(heatsimFigure,model.HS.T);
         h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
         drawnow;
@@ -302,12 +310,19 @@ for j=1:model.HS.nPulses
         [model,heatSimParameters] = heatSimParamsRecalc(model,heatSimParameters); % Recalculate MC and FMC, if necessary, and get new thermal properties and a new media matrix
       end
     end
+    if ~model.HS.silentMode; fprintf(1,repmat('\b',1,nCharsOnLine)); end
   end
   
   %% Diffusion phase
   if model.HS.durationOff ~= 0
     if ~model.HS.silentMode
-      fprintf(['Diffusing heat... %' num2str(nDigitsOff) 'd/%d\n'],0,nUpdatesOff);
+      updateIdx = nUpdatesOn+(j-1)*(nUpdatesOn+nUpdatesOff); % Index of the update
+      if updateIdx > 0
+        timeRemainingEstimate = toc/updateIdx*((nUpdatesOn+nUpdatesOff)*model.HS.nPulses+nUpdatesEnd - updateIdx);
+        nCharsOnLine = fprintf(1,'[%02.0f:%02.0f:%02.0f] Diffusing heat after pulse #%d... 0/%d',floor(timeRemainingEstimate/3600),floor(rem(timeRemainingEstimate/60,60)),floor(rem(timeRemainingEstimate,60)),j,nUpdatesOff);
+      else
+        nCharsOnLine = fprintf(1,'[00:00:00] Diffusing heat after pulse #%d... 0/%d',j,nUpdatesOff);
+      end
       drawnow;
     end
     
@@ -340,7 +355,9 @@ for j=1:model.HS.nPulses
       
       updateIdx = nUpdatesOn+i+(j-1)*(nUpdatesOn+nUpdatesOff); % Index of the update
       if ~model.HS.silentMode
-        fprintf(1,[repmat('\b',1,2*nDigitsOff+2) '%' num2str(nDigitsOff) 'd/%d\n'],i,nUpdatesOff);
+        fprintf(repmat('\b',1,nCharsOnLine));
+        timeRemainingEstimate = toc/updateIdx*((nUpdatesOn+nUpdatesOff)*model.HS.nPulses+nUpdatesEnd - updateIdx);
+        nCharsOnLine = fprintf(1,'[%02.0f:%02.0f:%02.0f] Diffusing heat after pulse #%d... %d/%d',floor(timeRemainingEstimate/3600),floor(rem(timeRemainingEstimate/60,60)),floor(rem(timeRemainingEstimate,60)),j,i,nUpdatesOff);
         updateVolumetric(heatsimFigure,model.HS.T);
         h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
         drawnow;
@@ -355,12 +372,19 @@ for j=1:model.HS.nPulses
         [model,heatSimParameters] = heatSimParamsRecalc(model,heatSimParameters); % Recalculate MC and FMC, if necessary, and get new thermal properties and a new media matrix
       end
     end
+    if ~model.HS.silentMode; fprintf(1,repmat('\b',1,nCharsOnLine)); end
   end
 end
 
 %% End relaxation phase
 if ~model.HS.silentMode && model.HS.durationEnd ~= 0
-  fprintf(['Diffusing heat in end relaxation phase... %' num2str(nDigitsEnd) 'd/%d\n'],0,nUpdatesEnd);
+  updateIdx = model.HS.nPulses*(nUpdatesOn+nUpdatesOff); % Index of the update
+  if updateIdx > 0
+    timeRemainingEstimate = toc/updateIdx*((nUpdatesOn+nUpdatesOff)*model.HS.nPulses+nUpdatesEnd - updateIdx);
+    nCharsOnLine = fprintf(1,'[%02.0f:%02.0f:%02.0f] Diffusing heat in end relaxation phase... 0/%d',floor(timeRemainingEstimate/3600),floor(rem(timeRemainingEstimate/60,60)),floor(rem(timeRemainingEstimate,60)),nUpdatesEnd);
+  else
+    nCharsOnLine = fprintf(1,'[00:00:00] Diffusing heat in end relaxation phase... 0/%d',nUpdatesEnd);
+  end
   drawnow;
 end
 
@@ -393,7 +417,9 @@ for i = 1:nUpdatesEnd
 
   updateIdx = i + model.HS.nPulses*(nUpdatesOn+nUpdatesOff); % Index of the update
   if ~model.HS.silentMode
-    fprintf(1,[repmat('\b',1,2*nDigitsEnd+2) '%' num2str(nDigitsEnd) 'd/%d\n'],i,nUpdatesEnd);
+    fprintf(repmat('\b',1,nCharsOnLine));
+    timeRemainingEstimate = toc/updateIdx*((nUpdatesOn+nUpdatesOff)*model.HS.nPulses+nUpdatesEnd - updateIdx);
+    nCharsOnLine = fprintf(1,'[%02.0f:%02.0f:%02.0f] Diffusing heat in end relaxation phase... %d/%d',floor(timeRemainingEstimate/3600),floor(rem(timeRemainingEstimate/60,60)),floor(rem(timeRemainingEstimate,60)),i,nUpdatesEnd);
     updateVolumetric(heatsimFigure,model.HS.T);
     h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
     drawnow;
@@ -408,12 +434,21 @@ for i = 1:nUpdatesEnd
     [model,heatSimParameters] = heatSimParamsRecalc(model,heatSimParameters); % Recalculate MC and FMC, if necessary, and get new thermal properties and a new media matrix
   end
 end
-
-if ~model.HS.silentMode; toc; end
+if ~model.HS.silentMode
+  if model.HS.durationEnd ~= 0
+    fprintf(1,repmat('\b',1,nCharsOnLine));
+  end
+  toc;
+  set(heatsimFigure,'WindowStyle','Docked');
+end
 
 clear heatSimParameters;
 
-set(heatsimFigure,'WindowStyle','Docked');
+for k=1:nM
+  if model.HS.maxMediaTemps(k) > 100
+    fprintf("\nWarning: %s reaches a temperature above 100°C. If this medium contains\nwater, it will likely undergo changes not modeled in this code.\n\n", mP_fH(k).name);
+  end
+end
 
 %% Finalize and write movie
 if ~model.HS.silentMode && model.HS.makeMovie
