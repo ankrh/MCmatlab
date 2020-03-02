@@ -6,8 +6,9 @@ fprintf('\n');
 % "escaped" photons, both for excitation light and for fluorescence light.
 % It is enabled by specifying the optional "farFieldRes" parameter, which
 % serves also to specify the resolution you want of the far field
-% distribution. The geometry is the same fluorescing cylinder as example 5,
-% but now illuminated by a tilted Gaussian beam.
+% distribution. The geometry is almost the same fluorescing cylinder as
+% example 5, but now illuminated by a tilted Gaussian beam and now with
+% only one type of fluorescer.
 % 
 % In the far field of the excitation light, you can see that they primarily
 % escape in downward-pointing directions (in transmission), while the far
@@ -107,7 +108,7 @@ end
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 j=1;
-mediaProperties(j).name  = 'test fluorescence absorber';
+mediaProperties(j).name  = 'fluorescence absorber';
 if(wavelength<500)
   mediaProperties(j).mua = 1;
   mediaProperties(j).mus = 100;
@@ -120,13 +121,15 @@ end
 mediaProperties(j).n   = 1.3;
 
 j=2;
-mediaProperties(j).name  = 'test fluorescer';
+mediaProperties(j).name  = 'fluorescer';
 if(wavelength<500)
   mediaProperties(j).mua = 100;
   mediaProperties(j).mus = 100;
   mediaProperties(j).g   = 0.9;
 
-  mediaProperties(j).Y   = 0.5;
+  % Only one of PY and QY may be defined:
+  mediaProperties(j).PY   = 0.5; % Fluorescence power yield (ratio of power emitted to power absorbed)
+%   mediaProperties(j).QY   = 0.6; % Fluorescence quantum yield (ratio of photons emitted to photons absorbed)
 else
   mediaProperties(j).mua = 1;
   mediaProperties(j).mus = 100;

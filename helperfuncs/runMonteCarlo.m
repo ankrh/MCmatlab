@@ -121,19 +121,23 @@ else
   if simType == 2 % Since we're not iterating, we might be simulating fluorescence
     %% Calculate 3D fluorescence source distribution
     mua_vec = [model.MC.mediaProperties.mua];
-    Y_3d = NaN(size(G.M_raw));
+    PY_3d = NaN(size(G.M_raw)); % 3D distribution of power yields
     for i=1:length(model.MC.mediaProperties_funcHandles)
-      if isa(model.MC.mediaProperties_funcHandles(i).Y,'function_handle')
-        Y_3d(G.M_raw == i) = model.MC.mediaProperties_funcHandles(i).Y(model.MC.FR(G.M_raw == i),T(G.M_raw == i),FD(G.M_raw(:) == i));
-      else
-        Y_3d(G.M_raw == i) = model.MC.mediaProperties_funcHandles(i).Y;
+      if isa(model.MC.mediaProperties_funcHandles(i).PY,'function_handle')
+        PY_3d(G.M_raw == i) = model.MC.mediaProperties_funcHandles(i).PY(model.MC.FR(G.M_raw == i),T(G.M_raw == i),FD(G.M_raw(:) == i));
+      elseif isa(model.MC.mediaProperties_funcHandles(i).QY,'function_handle')
+        PY_3d(G.M_raw == i) = model.MC.mediaProperties_funcHandles(i).QY(model.MC.FR(G.M_raw == i),T(G.M_raw == i),FD(G.M_raw(:) == i))*model.MC.wavelength/model.FMC.wavelength;
+      elseif ~isnan(model.MC.mediaProperties_funcHandles(i).PY)
+        PY_3d(G.M_raw == i) = model.MC.mediaProperties_funcHandles(i).PY;
+      elseif ~isnan(model.MC.mediaProperties_funcHandles(i).QY)
+        PY_3d(G.M_raw == i) = model.MC.mediaProperties_funcHandles(i).QY*model.MC.wavelength/model.FMC.wavelength;
       end
     end
-    Y_3d(isnan(Y_3d)) = 0; % Set any media that have no Y specified to be non-fluorescing
-    if any(isinf(Y_3d(:)) | Y_3d(:) < 0)
-      error('Error: Invalid Y');
+    PY_3d(isnan(PY_3d)) = 0; % Set any media that have no PY specified to be non-fluorescing
+    if any(isinf(PY_3d(:)) | PY_3d(:) < 0)
+      error('Error: Invalid fluorescence power or quantum yields');
     end
-    model.FMC.beam.sourceDistribution = Y_3d.*mua_vec(model.MC.M).*model.MC.NFR; % [W/cm^3/W.incident]
+    model.FMC.beam.sourceDistribution = PY_3d.*mua_vec(model.MC.M).*model.MC.NFR; % [W/cm^3/W.incident]
     clear Y_3d
     if max(model.FMC.beam.sourceDistribution(:)) == 0; error('Error: No fluorescence emitters'); end
   end

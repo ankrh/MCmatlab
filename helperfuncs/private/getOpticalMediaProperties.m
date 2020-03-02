@@ -89,7 +89,6 @@ for i=1:length(mP_fH)
     mP(j).mus = mP_fH(i).mus;
     mP(j).g = mP_fH(i).g;
     mP(j).n = mP_fH(i).n;
-    mP(j).Y = mP_fH(i).Y; % May still be a function handle
     j = j + 1;
   else
     if isnan(mP_fH(i).nBins)
@@ -111,7 +110,6 @@ for i=1:length(mP_fH)
       mP(j+k).mus = double(downsampledParamVals(2,k+1));
       mP(j+k).g   = double(downsampledParamVals(3,k+1));
       mP(j+k).n = mP_fH(i).n;
-      mP(j+k).Y = mP_fH(i).Y; % May still be a function handle
     end
     j = j + N;
   end
