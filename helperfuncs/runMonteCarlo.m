@@ -124,9 +124,17 @@ else
     PY_3d = NaN(size(G.M_raw)); % 3D distribution of power yields
     for i=1:length(model.MC.mediaProperties_funcHandles)
       if isa(model.MC.mediaProperties_funcHandles(i).PY,'function_handle')
-        PY_3d(G.M_raw == i) = model.MC.mediaProperties_funcHandles(i).PY(model.MC.FR(G.M_raw == i),T(G.M_raw == i),FD(G.M_raw(:) == i));
+        if isnan(model.MC.FR(1))
+          PY_3d(G.M_raw == i) = model.MC.mediaProperties_funcHandles(i).PY(zeros(size(G.M_raw)),T(G.M_raw == i),FD(G.M_raw(:) == i));
+        else
+          PY_3d(G.M_raw == i) = model.MC.mediaProperties_funcHandles(i).PY(model.MC.FR(G.M_raw == i),T(G.M_raw == i),FD(G.M_raw(:) == i));
+        end
       elseif isa(model.MC.mediaProperties_funcHandles(i).QY,'function_handle')
-        PY_3d(G.M_raw == i) = model.MC.mediaProperties_funcHandles(i).QY(model.MC.FR(G.M_raw == i),T(G.M_raw == i),FD(G.M_raw(:) == i))*model.MC.wavelength/model.FMC.wavelength;
+        if isnan(model.MC.FR(1))
+          PY_3d(G.M_raw == i) = model.MC.mediaProperties_funcHandles(i).QY(zeros(size(G.M_raw)),T(G.M_raw == i),FD(G.M_raw(:) == i))*model.MC.wavelength/model.FMC.wavelength;
+        else
+          PY_3d(G.M_raw == i) = model.MC.mediaProperties_funcHandles(i).QY(model.MC.FR(G.M_raw == i),T(G.M_raw == i),FD(G.M_raw(:) == i))*model.MC.wavelength/model.FMC.wavelength;
+        end
       elseif ~isnan(model.MC.mediaProperties_funcHandles(i).PY)
         PY_3d(G.M_raw == i) = model.MC.mediaProperties_funcHandles(i).PY;
       elseif ~isnan(model.MC.mediaProperties_funcHandles(i).QY)
