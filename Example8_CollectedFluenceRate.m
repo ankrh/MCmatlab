@@ -1,9 +1,10 @@
 %% Description
-% This example shows how to use the calcNFRdet flag to calculate and plot the
-% fluence rate of only that light which ends up on the light collector.
+% This example shows how to use the calcNFRdet flag to calculate and plot
+% the fluence rate of only that light which ends up on the light collector.
 % This is shown for both excitation light and fluorescence light. The
-% geometry is the same as in example 5, into which a Gaussian beam is
-% injected at x = 0.02 and the light collector is looking at x = -0.02.
+% geometry is again almost the same as in example 5, into which a Gaussian
+% beam is injected at x = 0.02 and the light collector is looking at x =
+% -0.02.
 % 
 % In the fluence rate plot for collected light, you can see how the photons
 % all start at the source and end at the light collector.
@@ -135,7 +136,7 @@ end
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 j=1;
-mediaProperties(j).name  = 'test fluorescence absorber';
+mediaProperties(j).name  = 'fluorescence absorber';
 if(wavelength<500)
   mediaProperties(j).mua = 10;
   mediaProperties(j).mus = 100;
@@ -148,13 +149,15 @@ end
 mediaProperties(j).n   = 1.3;
 
 j=2;
-mediaProperties(j).name  = 'test fluorescer';
+mediaProperties(j).name  = 'fluorescer';
 if(wavelength<500)
   mediaProperties(j).mua = 100;
   mediaProperties(j).mus = 100;
   mediaProperties(j).g   = 0.9;
-
-  mediaProperties(j).Y   = 0.5;
+  
+  % Only one of PY and QY may be defined:
+  mediaProperties(j).PY   = 0.5; % Fluorescence power yield (ratio of power emitted to power absorbed)
+%   mediaProperties(j).QY   = 0.6; % Fluorescence quantum yield (ratio of photons emitted to photons absorbed)
 else
   mediaProperties(j).mua = 10;
   mediaProperties(j).mus = 100;

@@ -3,8 +3,13 @@
 % test geometry is a fluorescing cylinder in which excitation light is
 % predominantly absorbed embedded in a block of medium in which
 % fluorescence light is predominantly absorbed. The geometry is illuminated
-% with an infinite plane wave, for which the xFocus, yFocus, zFocus, waist
-% and divergence quantities are not used.
+% with an infinite plane wave.
+%
+% To illustrate the difference between specifying the fluorescence
+% efficiency in terms of power yield (PY) or quantum yield (QY), the
+% cylinder is composed of two different fluorescer materials, one with PY
+% specified and one with QY specified. Note the difference in fluorescence
+% of the two media.
 %
 % This example also shows detection of the light exiting the cuboid,
 % separately for excitation light and for fluorescence light. Although most
@@ -46,9 +51,6 @@ model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboi
 model.MC.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
 model.MC.beam.beamType            = 2; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
-model.MC.beam.xFocus              = 0; % [cm] x position of focus
-model.MC.beam.yFocus              = 0; % [cm] y position of focus
-model.MC.beam.zFocus              = model.G.Lz/2; % [cm] z position of focus
 model.MC.beam.theta               = 0; % [rad] Polar angle of beam center axis
 model.MC.beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
 
@@ -82,7 +84,7 @@ model.FMC.nExamplePaths           = 100; % (Default: 0) This number of photons w
 
 model.FMC.matchedInterfaces       = true; % Assumes all refractive indices are 1
 model.FMC.boundaryType            = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
-model.FMC.wavelength              = 550; % [nm] Fluorescence wavelength, used for determination of optical properties for fluorescence light
+model.FMC.wavelength              = 900; % [nm] Fluorescence wavelength, used for determination of optical properties for fluorescence light
 
 model.FMC.useLightCollector       = true;
 
@@ -117,6 +119,7 @@ function M = geometryDefinition_FluorescingCylinder(X,Y,Z,parameters)
 cylinderradius  = 0.0100;
 M = ones(size(X)); % fill background with fluorescence absorber
 M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 2; % fluorescer
+M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2 & X > 0) = 3; % fluorescer
 end
 
 %% Media Properties function
@@ -129,7 +132,7 @@ end
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 j=1;
-mediaProperties(j).name  = 'test fluorescence absorber';
+mediaProperties(j).name  = 'fluorescence absorber';
 if(wavelength<500)
   mediaProperties(j).mua = 1;
   mediaProperties(j).mus = 100;
@@ -141,13 +144,31 @@ else
 end
 
 j=2;
-mediaProperties(j).name  = 'test fluorescer';
+mediaProperties(j).name  = 'power yield fluorescer';
 if(wavelength<500)
   mediaProperties(j).mua = 100;
   mediaProperties(j).mus = 100;
   mediaProperties(j).g   = 0.9;
 
-  mediaProperties(j).Y   = 0.5;
+  % Only one of PY and QY may be defined:
+  mediaProperties(j).PY   = 0.4; % Fluorescence power yield (ratio of power emitted to power absorbed)
+%   mediaProperties(j).QY   = 0.4; % Fluorescence quantum yield (ratio of photons emitted to photons absorbed)
+else
+  mediaProperties(j).mua = 1;
+  mediaProperties(j).mus = 100;
+  mediaProperties(j).g   = 0.9;
+end
+
+j=3;
+mediaProperties(j).name  = 'quantum yield fluorescer';
+if(wavelength<500)
+  mediaProperties(j).mua = 100;
+  mediaProperties(j).mus = 100;
+  mediaProperties(j).g   = 0.9;
+
+  % Only one of PY and QY may be defined:
+%   mediaProperties(j).PY   = 0.4; % Fluorescence power yield (ratio of power emitted to power absorbed)
+  mediaProperties(j).QY   = 0.4; % Fluorescence quantum yield (ratio of photons emitted to photons absorbed)
 else
   mediaProperties(j).mua = 1;
   mediaProperties(j).mus = 100;

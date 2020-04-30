@@ -14,6 +14,10 @@ G = model.G;
 mP_raw = G.mediaPropertiesFunc(wavelength,G.mediaPropParams); % The raw media properties, as defined by the user in the model file
 mP_fH(length(mP_raw)) = struct();
 
+if isfield(mP_raw,'Y')
+  error('Error: Y has been deprecated. Please use either PY to specify the fluorescence power yield or QY to specify the fluorescence quantum yield');
+end
+
 % Loop over all the media and throw error if the char arrays did not contain FR or T
 anyFRdependence = false;
 anyTdependence = false;
@@ -69,19 +73,40 @@ for i=1:length(mP_raw)
     else
       mP_fH(i).g = mP_raw(i).g;
     end
-    
-    if ~isfield(mP_raw,'Y') || isempty(mP_raw(i).Y)
-      mP_fH(i).Y = NaN;
-    elseif ischar(mP_raw(i).Y)
-      FRdependence = contains(mP_raw(i).Y,'FR');
-      Tdependence = contains(mP_raw(i).Y,'T');
-      FDdependence = contains(mP_raw(i).Y,'FD');
-      if ~FRdependence && ~Tdependence && ~FDdependence
-        error('Error: Y of %s is a char array but depends on neither FR (Fluence Rate), T (Temperature) nor FD (Fractional Damage)',mP_raw(i).name);
+
+    PYdefined = isfield(mP_raw,'PY') && ~isempty(mP_raw(i).PY);
+    QYdefined = isfield(mP_raw,'QY') && ~isempty(mP_raw(i).QY);
+    if PYdefined && QYdefined
+      error('Error: Medium %s has both PY and QY defined',mP_raw(i).name);
+    elseif ~PYdefined && ~QYdefined
+      mP_fH(i).PY = NaN;
+      mP_fH(i).QY = NaN;
+    elseif PYdefined
+      if ischar(mP_raw(i).PY)
+        FRdependence = contains(mP_raw(i).PY,'FR');
+        Tdependence = contains(mP_raw(i).PY,'T');
+        FDdependence = contains(mP_raw(i).PY,'FD');
+        if ~FRdependence && ~Tdependence && ~FDdependence
+          error('Error: PY of %s is a char array but depends on neither FR (Fluence Rate), T (Temperature) nor FD (Fractional Damage)',mP_raw(i).name);
+        end
+        mP_fH(i).PY = str2func(['@(FR,T,FD)(' formulaToElementwiseFormula(mP_raw(i).PY) ')']);
+      else
+        mP_fH(i).PY = mP_raw(i).PY;
       end
-      mP_fH(i).Y = str2func(['@(FR,T,FD)(' formulaToElementwiseFormula(mP_raw(i).Y) ')']);
-    else
-      mP_fH(i).Y = mP_raw(i).Y;
+      mP_fH(i).QY = NaN;
+    else % QYdefined
+      if ischar(mP_raw(i).QY)
+        FRdependence = contains(mP_raw(i).QY,'FR');
+        Tdependence = contains(mP_raw(i).QY,'T');
+        FDdependence = contains(mP_raw(i).QY,'FD');
+        if ~FRdependence && ~Tdependence && ~FDdependence
+          error('Error: QY of %s is a char array but depends on neither FR (Fluence Rate), T (Temperature) nor FD (Fractional Damage)',mP_raw(i).name);
+        end
+        mP_fH(i).QY = str2func(['@(FR,T,FD)(' formulaToElementwiseFormula(mP_raw(i).QY) ')']);
+      else
+        mP_fH(i).QY = mP_raw(i).QY;
+      end
+      mP_fH(i).PY = NaN;
     end
     
     if ~isfield(mP_raw,'n') || isempty(mP_raw(i).n)
