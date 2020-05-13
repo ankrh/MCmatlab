@@ -86,6 +86,10 @@ for i=1:length(mP_raw)
         FRdependence = contains(mP_raw(i).PY,'FR');
         Tdependence = contains(mP_raw(i).PY,'T');
         FDdependence = contains(mP_raw(i).PY,'FD');
+        if simType == 2 % Only consider the FMC simulations dependent on T or FD
+          anyTdependence = anyTdependence || Tdependence;
+          anyFDdependence = anyFDdependence || FDdependence;
+        end
         if ~FRdependence && ~Tdependence && ~FDdependence
           error('Error: PY of %s is a char array but depends on neither FR (Fluence Rate), T (Temperature) nor FD (Fractional Damage)',mP_raw(i).name);
         end
@@ -99,6 +103,10 @@ for i=1:length(mP_raw)
         FRdependence = contains(mP_raw(i).QY,'FR');
         Tdependence = contains(mP_raw(i).QY,'T');
         FDdependence = contains(mP_raw(i).QY,'FD');
+        if simType == 2 % Only consider the FMC simulations dependent on T or FD
+          anyTdependence = anyTdependence || Tdependence;
+          anyFDdependence = anyFDdependence || FDdependence;
+        end
         if ~FRdependence && ~Tdependence && ~FDdependence
           error('Error: QY of %s is a char array but depends on neither FR (Fluence Rate), T (Temperature) nor FD (Fractional Damage)',mP_raw(i).name);
         end

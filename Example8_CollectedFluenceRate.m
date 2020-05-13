@@ -157,15 +157,15 @@ if(wavelength<500)
   mediaProperties(j).mua = 100;
   mediaProperties(j).mus = 100;
   mediaProperties(j).g   = 0.9;
-  
-  % Only one of PY and QY may be defined:
-  mediaProperties(j).PY   = 0.5; % Fluorescence power yield (ratio of power emitted to power absorbed)
-%   mediaProperties(j).QY   = 0.6; % Fluorescence quantum yield (ratio of photons emitted to photons absorbed)
 else
   mediaProperties(j).mua = 10;
   mediaProperties(j).mus = 100;
   mediaProperties(j).g   = 0.9;
 end
 mediaProperties(j).n   = 1.3;
+
+% Only one of PY and QY may be defined:
+mediaProperties(j).PY   = 0.5; % Fluorescence power yield (ratio of power emitted to power absorbed)
+% mediaProperties(j).QY   = 0.6; % Fluorescence quantum yield (ratio of photons emitted to photons absorbed)
 
 end

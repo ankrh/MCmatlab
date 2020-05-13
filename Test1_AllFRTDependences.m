@@ -2,7 +2,7 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 fprintf('\n');
 
 %% Decription
-% This is a test to see if enabling all possible FR and T dependences
+% This is a test to see if enabling all possible FR, FD and T dependences
 % works.
 
 %% Geometry definition
