@@ -90,13 +90,18 @@ if simFluorescence
   % Calculate 3D absorption distribution, which may be FR or T dependent
   mua_3d = NaN(size(G.M_raw));
   for i=1:length(model.MC.mediaProperties_funcHandles)
+    if isnan(model.MC.FR(1))
+      FR = zeros(size(G.M_raw));
+    else
+      FR = model.MC.FR;
+    end
     if isnan(model.HS.T(1))
       T = zeros(size(G.M_raw));
     else
       T = model.HS.T;
     end
     if isa(model.MC.mediaProperties_funcHandles(i).mua,'function_handle')
-      mua_3d(G.M_raw == i) = model.MC.mediaProperties_funcHandles(i).mua(model.MC.FR(G.M_raw == i),T(G.M_raw == i));
+      mua_3d(G.M_raw == i) = model.MC.mediaProperties_funcHandles(i).mua(FR(G.M_raw == i),T(G.M_raw == i));
     else
       mua_3d(G.M_raw == i) = model.MC.mediaProperties_funcHandles(i).mua;
     end

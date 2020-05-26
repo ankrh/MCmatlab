@@ -471,11 +471,11 @@ if ~model.HS.silentMode && model.HS.makeMovie
     writeVideo(writerObj,movieFrames);
     close(writerObj);
     if contains(computer, 'MAC') % macOS operating system
-      [~,~] = system(['./helperfuncs/x264_macOS -o "' fileparts(caller(1).file) '/' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '/temp.avi"']);
+      [~,~] = system([fileparts(caller(1).file) '/helperfuncs/x264_macOS -o "' fileparts(caller(1).file) '/' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '/temp.avi"']);
     elseif contains(computer, 'WIN') % Windows operating system
-      [~,~] = system(['.\helperfuncs\x264_win64.exe -o "' fileparts(caller(1).file) '\' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '\temp.avi"']);
+      [~,~] = system([fileparts(caller(1).file) '\helperfuncs\x264_win64.exe -o "' fileparts(caller(1).file) '\' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '\temp.avi"']);
     else % Linux operating system
-      [~,~] = system(['./helperfuncs/x264_linux -o "' fileparts(caller(1).file) '/' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '/temp.avi"']);
+      [~,~] = system([fileparts(caller(1).file) '/helperfuncs/x264_linux -o "' fileparts(caller(1).file) '/' caller(1).name '_heatSimoutput.mkv" "' fileparts(caller(1).file) '/temp.avi"']);
     end
     delete([fileparts(caller(1).file) '/temp.avi']);
     fprintf('\b Done\n');
