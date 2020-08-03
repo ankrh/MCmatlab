@@ -145,9 +145,9 @@ else
     if any(isinf(PY_3d(:)) | PY_3d(:) < 0)
       error('Error: Invalid fluorescence power or quantum yields');
     end
-    model.FMC.beam.sourceDistribution = PY_3d.*mua_vec(model.MC.M).*model.MC.NFR.^model.FMC.fluorescenceOrder; % [W/cm^3/W.incident]
+    model.FMC.sourceDistribution = PY_3d.*mua_vec(model.MC.M).*model.MC.NFR.^model.FMC.fluorescenceOrder; % [W/cm^3/W.incident]
     clear PY_3d
-    if max(model.FMC.beam.sourceDistribution(:)) == 0; error('Error: No fluorescence emitters'); end
+    if max(model.FMC.sourceDistribution(:)) == 0; error('Error: No fluorescence emitters'); end
   end
   if (simType == 1 && model.MC.useGPU) || (simType == 2 && model.FMC.useGPU)
     model = MCmatlab_CUDA(model,simType);
