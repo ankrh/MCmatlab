@@ -2,11 +2,11 @@ addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % 
 fprintf('\n');
 
 %% Description
-% This example is concerned with time-tagging of the photons. The time of
-% arrival is registered and binned when(if) the photon hits the detector,
-% which in this demonstration is spatially-resolved in addition to
-% time-resolved. Therefore, the output "image" is 3D, with two spatial
-% dimensions and one time dimension. The geometry consists of big
+% This example is concerned with time-tagging of the photons. The
+% time-of-flight is registered and binned when(if) the photon hits the
+% detector, which in this demonstration is spatially-resolved in addition
+% to time-resolved. Therefore, the output "image" is 3D, with two spatial
+% dimensions and one time-of-flight dimension. The geometry consists of big
 % scattering voxels placed diagonally along the xyz direction and along the
 % yz direction, illuminated with an infinite plane wave. The xyz-diagonally
 % placed voxels are all in the focal plane of the detection lens, so they
@@ -65,8 +65,8 @@ model.MC.LC.NA        = 0.22; % [-] Fiber NA. Only used for infinite f.
 
 model.MC.LC.res       = 100; % X and Y resolution of light collector in pixels, only used for finite f
 
-model.MC.LC.tStart    = -1.5e-13; % [s] Start of the detection time interval
-model.MC.LC.tEnd      = 5.5e-12; % [s] End of the detection time interval
+model.MC.LC.tStart    = -1.5e-13; % [s] Start of the detection time-of-flight interval
+model.MC.LC.tEnd      = 5.5e-12; % [s] End of the detection time-of-flight interval
 model.MC.LC.nTimeBins = 100; % Number of bins between tStart and tEnd. If zero, the measurement is not time-resolved.
 
 % Execution, do not modify the next line:
