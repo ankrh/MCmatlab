@@ -88,8 +88,8 @@ plotMCmatlabGeom(model);
 % % 
 % % model.MC.LC.res       = 50; % X and Y resolution of light collector in pixels, only used for finite f
 % % 
-% % % model.MC.LC.tStart    = -1e-13; % [s] Start of the detection time interval
-% % % model.MC.LC.tEnd      = 5e-12; % [s] End of the detection time interval
+% % % model.MC.LC.tStart    = -1e-13; % [s] Start of the detection time-of-flight interval
+% % % model.MC.LC.tEnd      = 5e-12; % [s] End of the detection time-of-flight interval
 % % % model.MC.LC.nTimeBins = 30; % (Default: 0) Number of bins between tStart and tEnd. If zero, the measurement is not time-resolved.
 % 
 % % Execution, do not modify the next line:
