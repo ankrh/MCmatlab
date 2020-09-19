@@ -22,9 +22,6 @@ classdef monteCarloSimulation
         FRdepIterations = 20
         useLightCollector logical = false
         LC MCmatlab.lightCollector
-    end
-    
-    properties (Hidden)
         
         simulationTime = NaN
         nPhotons = NaN

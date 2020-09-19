@@ -15,9 +15,7 @@ classdef beam
 
         NF MCmatlab.beamField
         FF MCmatlab.beamField
-    end
-    
-    properties (Hidden)
+
         sourceDistribution = NaN
     end
     

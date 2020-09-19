@@ -24,9 +24,7 @@ classdef heatSimulation
         
         slicePositions = [.5 1 1]               % Relative slice positions [x y z] for the 3D plots on a scale from 0 to 1
         tempSensorPositions                     % Each row is a temperature sensor's absolute [x y z] coordinates. Leave the matrix empty ([]) to disable temperature sensors. 
-    end
-    
-    properties (Hidden)
+
         mediaProperties = NaN
         mediaProperties_funcHandles = NaN
         

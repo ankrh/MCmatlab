@@ -14,9 +14,7 @@ classdef geometry
         mediaPropParams cell = {}               % Cell array containing any additional parameters to be passed to the getMediaProperties function
         geomFunc function_handle                % Function to use for defining the distribution of media in the cuboid. Defined at the end of the model file.
         geomFuncParams cell = {}                % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
-    end
-    
-    properties (Hidden)
+
         dx = NaN
         dy = NaN
         dz = NaN

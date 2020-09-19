@@ -24,7 +24,7 @@
  ** COMPILING ON WINDOWS
  * (Set the MATLAB current folder to the one with all the example files)
  * Can be compiled in MATLAB using the MinGW-w64 compiler (GCC) with
- * "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' -outdir +MCmatlab\@model\private .\src\MCmatlab.c ".\src\libut.lib""
+ * "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' -outdir +MCmatlab\@model\private .\+MCmatlab\src\MCmatlab.c ".\+MCmatlab\src\libut.lib""
  * ... or the Microsoft Visual C++ compiler (MSVC) with
  * "mex COMPFLAGS='/Zp8 /GR /EHs /nologo /MD /openmp /W4 /WX /wd4204 /wd4100' -outdir +MCmatlab\@model\private .\src\MCmatlab.c ".\src\libut.lib""
  * In my experience, GCC produces faster machine code than MSVC.
@@ -465,23 +465,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   
   mxArray *MCout = mxGetPropertyShared(plhs[0],0,S? "FMC": "MC");
   mxArray *LCout = mxGetPropertyShared(MCout,0,"LC");
-  mxDestroyArray(mxGetPropertyShared(MCout,0,"nPhotons"));
-  mxDestroyArray(mxGetPropertyShared(MCout,0,"nThreads"));
-  mxDestroyArray(mxGetPropertyShared(MCout,0,"simulationTime"));
-  
-  if(useLightCollector) mxDestroyArray(mxGetPropertyShared(LCout,0,"image"));
-  if(calcNFR) mxDestroyArray(mxGetPropertyShared(MCout,0,"NFR"));
-  if(calcNFRdet) mxDestroyArray(mxGetPropertyShared(MCout,0,"NFRdet"));
-  if(G->farFieldRes) mxDestroyArray(mxGetPropertyShared(MCout,0,"farField"));
-  if(G->boundaryType == 1) {
-    mxDestroyArray(mxGetPropertyShared(MCout,0,"NI_xpos"));
-    mxDestroyArray(mxGetPropertyShared(MCout,0,"NI_xneg"));
-    mxDestroyArray(mxGetPropertyShared(MCout,0,"NI_ypos"));
-    mxDestroyArray(mxGetPropertyShared(MCout,0,"NI_yneg"));
-    mxDestroyArray(mxGetPropertyShared(MCout,0,"NI_zpos"));
-    mxDestroyArray(mxGetPropertyShared(MCout,0,"NI_zneg"));
-  } else if(G->boundaryType == 2) mxDestroyArray(mxGetPropertyShared(MCout,0,"NI_zneg"));
-  
   
   if(calcNFR)           mxSetPropertyShared(MCout,0,"NFR",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
   if(calcNFRdet)        mxSetPropertyShared(MCout,0,"NFRdet",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
@@ -498,12 +481,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     mxSetPropertyShared(MCout,0,"NI_zpos", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
     mxSetPropertyShared(MCout,0,"NI_zneg", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
   } else if(G->boundaryType == 2) mxSetPropertyShared(MCout,0,"NI_zneg", mxCreateDoubleMatrix(KILLRANGE*G->n[0],KILLRANGE*G->n[1],mxREAL));
-  mxSetPropertyShared(MCout,0,"simulationTime",mxCreateDoubleMatrix(1,1,mxREAL));
-  mxSetPropertyShared(MCout,0,"nPhotons",mxCreateDoubleMatrix(1,1,mxREAL));
-  mxSetPropertyShared(MCout,0,"nThreads",mxCreateDoubleMatrix(1,1,mxREAL));
-  double *simTimePtr = mxGetPr(mxGetPropertyShared(MCout,0,"simulationTime"));
-  double *nPhotonsPtr = mxGetPr(mxGetPropertyShared(MCout,0,"nPhotons"));
-  double *nThreadsPtr = mxGetPr(mxGetPropertyShared(MCout,0,"nThreads"));
   
   struct outputs O_var = {
     0, // nPhotons
@@ -532,7 +509,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   // ============================ MAJOR CYCLE ========================
   #ifdef __NVCC__ // If compiling for CUDA
   int threadsPerBlock, blocks; gpuErrchk(cudaOccupancyMaxPotentialBlockSize(&blocks,&threadsPerBlock,&threadInitAndLoop,size_smallArrays,0));
-  *nThreadsPtr = threadsPerBlock*blocks;
+  double nThreads = threadsPerBlock*blocks;
 
   struct cudaDeviceProp CDP; gpuErrchk(cudaGetDeviceProperties(&CDP,DEVICE));
 //   if(!silentMode) printf("Using %s with CUDA compute capability %d.%d,\n    launching %d blocks, each with %d threads,\n    using %d/%d bytes of shared memory per block\n",CDP.name,CDP.major,CDP.minor,blocks,threadsPerBlock,384+size_smallArrays,CDP.sharedMemPerBlock);
@@ -630,21 +607,21 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   long long simulationTimeStart = getMicroSeconds();
   #ifdef _OPENMP
   bool useAllCPUs = mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabMC,0,"useAllCPUs"));
-  *nThreadsPtr = useAllCPUs? omp_get_num_procs(): max(omp_get_num_procs()-1,1);
-  #pragma omp parallel num_threads((long)*nThreadsPtr)
+  double nThreads = useAllCPUs? omp_get_num_procs(): max(omp_get_num_procs()-1,1);
+  #pragma omp parallel num_threads((long)nThreads)
   #else
-  *nThreadsPtr = 1;
+  double nThreads = 1;
   #endif
   {
     threadInitAndLoop(B,G,LC,Pa,O,nM,simulationTimeStart,(long long)(simulationTimeRequested*60000000),nPhotonsRequested,&ctrlc_caught,silentMode,D);
   }
   #endif
 
-  *nPhotonsPtr = (double)O->nPhotons;
-  *simTimePtr = (getMicroSeconds() - simulationTimeStart)/60000000.0; // In minutes
+  double nPhotons = (double)O->nPhotons;
+  double simTime = (getMicroSeconds() - simulationTimeStart)/60000000.0; // In minutes
   if(!silentMode) {
-    if(simulationTimed) printf("\nSimulated %0.2e photons at a rate of %0.2e photons per minute\n",*nPhotonsPtr, *nPhotonsPtr/(*simTimePtr));
-    else printf("\nSimulated for %0.2e minutes at a rate of %0.2e photons per minute\n",*simTimePtr, *nPhotonsPtr/(*simTimePtr));
+    if(simulationTimed) printf("\nSimulated %0.2e photons at a rate of %0.2e photons per minute\n",nPhotons, nPhotons/simTime);
+    else printf("\nSimulated for %0.2e minutes at a rate of %0.2e photons per minute\n",simTime, nPhotons/simTime);
     mexEvalString("drawnow;");
   }
   normalizeDeposition(B,G,LC,O); // Convert data to relative fluence rate
@@ -652,8 +629,19 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   free(B->S);
   free(smallArrays);
   
+  mxArray *output = mxCreateDoubleMatrix(1,1,mxREAL);
+  *mxGetPr(output) = nPhotons;
+  mxSetProperty(MCout,0,"nPhotons",output);
+  *mxGetPr(output) = nThreads;
+  mxSetProperty(MCout,0,"nThreads",output);
+  *mxGetPr(output) = simTime;
+  mxSetProperty(MCout,0,"simulationTime",output);
+  if(LC->res[0]*LC->res[1] == 1) {
+    *mxGetPr(output) = *O->image;
+    mxSetProperty(LCout,0,"image",output);
+  }
+  mxDestroyArray(output);
   if(Pa->nExamplePaths) {
-    mxDestroyArray(mxGetPropertyShared(MCout,0,"examplePaths"));
     mxSetPropertyShared(MCout,0,"examplePaths",mxCreateNumericMatrix(4,Pa->pathsElems,mxDOUBLE_CLASS,mxREAL));
     for(idx=0;idx<4*Pa->pathsElems;idx++) mxGetPr(mxGetPropertyShared(MCout,0,"examplePaths"))[idx] = Pa->data[idx];
     free(Pa->data);

@@ -22,9 +22,7 @@ classdef fluorescenceMonteCarloSimulation
 
         useLightCollector logical = false
         LC MCmatlab.lightCollector
-    end
-    
-    properties (Hidden)
+
         %% Fluorescence Monte Carlo parameters that are calculated
         simulationTime = NaN;
         nPhotons = NaN;

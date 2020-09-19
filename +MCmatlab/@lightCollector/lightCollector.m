@@ -19,9 +19,7 @@ classdef lightCollector
         tStart = NaN                            % [s] Start of the detection time interval
         tEnd = NaN                              % [s] End of the detection time interval
         nTimeBins  = 0                          % Number of bins between tStart and tEnd. If zero, the measurement is not time-resolved.
-    end
-    
-    properties (Hidden)
+
         image = NaN
         X = NaN
         Y = NaN
