@@ -161,7 +161,7 @@ __global__
 void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
           struct lightCollector *LC_global, struct paths *Pa, struct outputs *O_global, long nM,
           long long simulationTimeStart, long long microSecondsOrGPUCycles, unsigned long long nPhotonsRequested,
-          bool *ctrlc_caughtPtr, bool silentMode, struct debug *D) {
+          bool *ctrlc_caughtPtr, bool *launchesFailedPtr, bool silentMode, struct debug *D) {
   struct photon P_var;
   struct photon *P = &P_var;
 
@@ -216,10 +216,10 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
   dsfmt_init_gen_rand(&P->PRNGstate,(unsigned long)simulationTimeStart + THREADNUM); // Seed the photon's random number generator
   int pctProgress = 0;      // Simulation progress in percent
   // Launch major loop
-  while(pctProgress < 100 && O->nPhotons + THREADNUM < nPhotonsRequested && !*ctrlc_caughtPtr) { // "+ THREADNUM" ensures that we avoid race conditions that might launch more than nPhotonsRequested photons
+  while(pctProgress < 100 && O->nPhotons + THREADNUM < nPhotonsRequested && !*ctrlc_caughtPtr && !*launchesFailedPtr) { // "+ THREADNUM" ensures that we avoid race conditions that might launch more than nPhotonsRequested photons
   #endif
     atomicAddWrapperULL(&O_global->nPhotons,1); // We have to store the photon number in the global memory so it's visible to all blocks
-    launchPhoton(P,B,G,Pa);
+    launchPhoton(P,B,G,Pa,launchesFailedPtr);
 
     while(P->alive) {
       while(P->stepLeft>0) {
@@ -250,12 +250,15 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
           printf("\nCtrl+C detected, stopping.");
         }
         #endif
-
-        // Print out message about progress.
-        int newPctProgress = max(pctTimeProgress,pctPhotonsProgress);
-        if(newPctProgress != pctProgress && !silentMode && !*ctrlc_caughtPtr) {
-          printf("\b\b\b\b\b\b\b\b\b%3.i%% done", newPctProgress<100? newPctProgress: 100);
-          mexEvalString("drawnow;");
+        // Check whether launches failed
+        if(*launchesFailedPtr) printf("\nAll photons launch outside simulation cuboid, stopping.\n");
+        else {
+          // Print out message about progress.
+          int newPctProgress = max(pctTimeProgress,pctPhotonsProgress);
+          if(newPctProgress != pctProgress && !silentMode && !*ctrlc_caughtPtr) {
+            printf("\b\b\b\b\b\b\b\b\b%3.i%% done", newPctProgress<100? newPctProgress: 100);
+            mexEvalString("drawnow;");
+          }
         }
       }
       pctProgress = max(pctTimeProgress,pctPhotonsProgress);
@@ -285,6 +288,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   // Variables for timekeeping and number of photons
   bool            simulationTimed = mxIsNaN(*mxGetPr(mxGetPropertyShared(MatlabMC,0,"nPhotonsRequested")));
   bool            ctrlc_caught = false;
+  bool            launchesFailed = false;
   double          simulationTimeRequested = simulationTimed? *mxGetPr(mxGetPropertyShared(MatlabMC,0,"simulationTimeRequested")): INFINITY;
   unsigned long long nPhotonsRequested = simulationTimed? ULLONG_MAX: (unsigned long long)*mxGetPr(mxGetPropertyShared(MatlabMC,0,"nPhotonsRequested"));
   
@@ -549,16 +553,16 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   long long prevtime = simulationTimeStart;
   do {
     // Run kernel
-    threadInitAndLoop<<<blocks, threadsPerBlock, size_smallArrays>>>(B_dev,G_dev,LC_dev,Pa_dev,O_dev,nM,prevtime,clock*min((long long)KERNELTIME,timeLeft),nPhotonsRequested,NULL,false,D_dev);
+    threadInitAndLoop<<<blocks, threadsPerBlock, size_smallArrays>>>(B_dev,G_dev,LC_dev,Pa_dev,O_dev,nM,prevtime,clock*min((long long)KERNELTIME,timeLeft),nPhotonsRequested,NULL,NULL,false,D_dev);
     gpuErrchk(cudaPeekAtLastError());
     gpuErrchk(cudaDeviceSynchronize());
     // Progress indicator
     long long newtime = getMicroSeconds();
+    gpuErrchk(cudaMemcpy(O, O_dev, sizeof(unsigned long long),cudaMemcpyDeviceToHost)); // Copy just nPhotons, the first 8 bytes of O
     if(simulationTimed) {
       timeLeft = (long long)(simulationTimeRequested*60000000) - newtime + simulationTimeStart; // In microseconds
       pctProgress = (int)(100.0*(1.0 - timeLeft/(simulationTimeRequested*60000000.0)));
     } else {
-      gpuErrchk(cudaMemcpy(O, O_dev, sizeof(unsigned long long),cudaMemcpyDeviceToHost)); // Copy just nPhotons, the first 8 bytes of O
       pctProgress = (int)(100.0*O->nPhotons/nPhotonsRequested);
     }
     nvmlDeviceGetClockInfo(nvmldevice,NVML_CLOCK_GRAPHICS,&clock);
@@ -591,9 +595,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
       ctrlc_caught = true;
       printf("\nCtrl+C detected, stopping.");
     }
-  } while(timeLeft > 0 && O->nPhotons < nPhotonsRequested && !ctrlc_caught);
+    if(!O->nPhotons) {
+      launchesFailed = true;
+      printf("\nAll photons launch outside simulation cuboid, stopping.\n");
+    }
+
+  } while(timeLeft > 0 && O->nPhotons < nPhotonsRequested && !ctrlc_caught && !launchesFailed);
 //   if(!silentMode) printf("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b100%% done [GPU %4u MHz, memory used %3.1f/%3.1f GB]",clock,(double)memory.used/1024/1024/1024,(double)memory.total/1024/1024/1024);
-  if(!silentMode) printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgress);
+  if(!silentMode && !launchesFailed) printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgress);
 
   nvmlShutdown();
   retrieveAndFreeDeviceStructs(G,G_dev,B,B_dev,LC,LC_dev,Pa,Pa_dev,O,O_dev,L,D,D_dev);
@@ -613,13 +622,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   double nThreads = 1;
   #endif
   {
-    threadInitAndLoop(B,G,LC,Pa,O,nM,simulationTimeStart,(long long)(simulationTimeRequested*60000000),nPhotonsRequested,&ctrlc_caught,silentMode,D);
+    threadInitAndLoop(B,G,LC,Pa,O,nM,simulationTimeStart,(long long)(simulationTimeRequested*60000000),nPhotonsRequested,&ctrlc_caught,&launchesFailed,silentMode,D);
   }
   #endif
 
   double nPhotons = (double)O->nPhotons;
   double simTime = (getMicroSeconds() - simulationTimeStart)/60000000.0; // In minutes
-  if(!silentMode) {
+  if(!silentMode && !launchesFailed) {
     if(simulationTimed) printf("\nSimulated %0.2e photons at a rate of %0.2e photons per minute\n",nPhotons, nPhotons/simTime);
     else printf("\nSimulated for %0.2e minutes at a rate of %0.2e photons per minute\n",simTime, nPhotons/simTime);
     mexEvalString("drawnow;");

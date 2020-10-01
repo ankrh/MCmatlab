@@ -377,7 +377,7 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void launchPhoton(struct photon * const P, struct beam const * const B, struct geometry const * const G, struct paths * const Pa) {
+void launchPhoton(struct photon * const P, struct beam const * const B, struct geometry const * const G, struct paths * const Pa, bool *launchesFailedPtr) {
   FLOATORDBL X,Y,r,phi,tanphiX,tanphiY,costheta,sintheta;
   long   j,idx;
   FLOATORDBL target[3]={0},w0[3];
@@ -385,6 +385,7 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
   P->sameVoxel = false;
   P->weight = 1;
   P->recordElems = 0;
+  long launchAttempts = 0;
   do{
     if(B->S) { // If a 3D source distribution was defined
       // ... then search the cumulative distribution function via binary tree method to find the voxel to start the photon in
@@ -545,8 +546,13 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
                          P->i[2]                   >= 0);
         break;
     }
-  } while(!P->alive); // If photon happened to be initialized outside the volume in which it is allowed to travel, we try again
+  } while(!P->alive && ++launchAttempts < 1000000); // If photon happened to be initialized outside the volume in which it is allowed to travel, we try again
 
+  if(!P->alive) {
+    *launchesFailedPtr = true;
+    return;
+  }
+  
   // Calculate distances to next voxel boundary planes
   for(idx=0;idx<3;idx++) P->D[idx] = P->u[idx]? (FLOOR(P->i[idx]) + (P->u[idx]>0) - P->i[idx])*G->d[idx]/P->u[idx] : INFINITY;
   
