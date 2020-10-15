@@ -1,12 +1,6 @@
 function model = defineGeometry(model)
 %   Builds and saves a definition of the simulation geometry and the
 %   optical media it contains in a rectangular cuboid voxel mesh.
-%   The media properties are loaded from getMediaProperties.m.
-%
-%   Requires
-%       getMediaProperties.m
-%
-%   See also getMediaProperties, mediaPropertiesLibrary, runMonteCarlo
 
 %%%%%
 %   Copyright 2017, 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik

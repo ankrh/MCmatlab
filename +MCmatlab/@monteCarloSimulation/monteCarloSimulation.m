@@ -1,6 +1,6 @@
 classdef monteCarloSimulation
-    %MONTECARLOSIMULATION Summary of this class goes here
-    %   Detailed explanation goes here
+    %monteCarloSimulation This class includes all properties and methods
+    %related to the Monte Carlo simulation in an MCmatlab.model.
     
     properties
         silentMode logical = false              % Disables command window text and progress indication
@@ -55,8 +55,7 @@ classdef monteCarloSimulation
     
     methods
         function obj = monteCarloSimulation()
-            %MONTECARLOSIMULATION Construct an instance of this class
-            %   Detailed explanation goes here
+            %monteCarloSimulation Construct an instance of this class
             
             obj.beam = MCmatlab.beam;
             obj.LC = MCmatlab.lightCollector;

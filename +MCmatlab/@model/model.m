@@ -1,6 +1,8 @@
 classdef model
-    %MODEL Summary of this class goes here
-    %   Detailed explanation goes here
+    % MODEL Top-level MCmatlab model class
+    %
+    %   MCmatlab.model collects all objects (as properties) and methods
+    %   required to define a full MCmatlab model.
     
     properties
         G MCmatlab.geometry
@@ -11,8 +13,9 @@ classdef model
     
     methods
         function obj = model()
-            %MODEL Construct an instance of this class
-            %   Detailed explanation goes here
+            % MODEL Construct an instance of this class
+            %
+            %   Create a new, clean instance of MCmatlab.model
             
             obj.G = MCmatlab.geometry;
             obj.MC = MCmatlab.monteCarloSimulation;
@@ -55,6 +58,15 @@ classdef model
         obj = runMonteCarlo(obj, varargin)
         
         function plot(obj, type)
+            % PLOT(obj, type) Plot all calculated values
+            %
+            %   'obj' is an object of class MCmatlab.model.
+            %   'type' is one of 'G', 'MC', 'FMC', or 'HS'.
+            %
+            %   Plots the calculated values of either geometry ('G'),
+            %   monteCarloSimulation ('MC'), fluorescenceMonteCarloSimulation ('FMC'), or 
+            %   heatSimulation ('HS') in a MCmatlab.model.
+            
             switch type
                 case "FMC"
                     plotMCmatlabMC(obj, "fluorescence")
@@ -69,9 +81,9 @@ classdef model
         end
        
         function plotMCmatlab(obj, varargin)
-            %plotMCmatlab Summary of this method goes here
-            %   Detailed explanation goes here
-            
+            % plotMCmatlab(obj, type) is deprecated, use plot(obj, type)
+            % instead
+
             if nargin == 1
                 plotMCmatlabMC(obj)
                 return

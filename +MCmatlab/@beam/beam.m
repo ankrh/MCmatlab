@@ -1,6 +1,6 @@
 classdef beam
-    %BEAM Summary of this class goes here
-    %   Detailed explanation goes here
+    %BEAM This class includes all properties and methods
+    %related to a beam in an MCmatlab.model.monteCarloSimulation.
     
     properties
         beamType = NaN                          % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
@@ -22,7 +22,6 @@ classdef beam
     methods
         function obj = beam()
             %BEAM Construct an instance of this class
-            %   Detailed explanation goes here
             
             obj.NF = MCmatlab.beamField;
             obj.FF = MCmatlab.beamField;

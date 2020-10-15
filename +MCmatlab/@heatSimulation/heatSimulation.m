@@ -1,6 +1,6 @@
 classdef heatSimulation
-    %HEATSIMULATION Summary of this class goes here
-    %   Detailed explanation goes here
+    %HEATSIMULATION  This class includes all properties and methods
+    %related to the heat simulation in an MCmatlab.model.
     
     properties
         silentMode logical = false              % Disables command window text and progress indication
@@ -45,7 +45,6 @@ classdef heatSimulation
     methods
         function obj = heatSimulation()
             %HEATSIMULATION Construct an instance of this class
-            %   Detailed explanation goes here
             
         end
 

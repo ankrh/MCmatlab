@@ -4,7 +4,7 @@ function model = simulateHeatDistribution(model)
 %   Also calculates Arrhenius-based thermal damage.
 %
 %   Output
-%       ./Data/[name]_heatSimOutput.mkv
+%       [name]_heatSimOutput.mkv
 %           movie file showing the temperature evolution. The geometry cuboid
 %           is shown in the beginning of the video.
 %

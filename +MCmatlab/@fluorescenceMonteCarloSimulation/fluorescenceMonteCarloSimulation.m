@@ -1,6 +1,6 @@
 classdef fluorescenceMonteCarloSimulation
-    %FLUORESCENCEMONTECARLOSIMULATION Summary of this class goes here
-    %   Detailed explanation goes here
+    %FLUORESCENCEMONTECARLOSIMULATION This class includes all properties and methods
+    %related to the fluorescence Monte Carlo simulation in an MCmatlab.model.
     
     properties
         useGPU = false;
@@ -58,7 +58,6 @@ classdef fluorescenceMonteCarloSimulation
     methods
         function obj = fluorescenceMonteCarloSimulation()
             %FLUORESCENCEMONTECARLOSIMULATION Construct an instance of this class
-            %   Detailed explanation goes here
             
             obj.LC = MCmatlab.lightCollector;
         end

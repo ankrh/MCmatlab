@@ -1,6 +1,9 @@
 classdef geometry
-    %GEOMETRY Summary of this class goes here
-    %   Detailed explanation goes here
+    %GEOMETRY This class contains all properties related to the geometry of
+    %an MCmatlab.model.
+    %   This class defines the properties of a geometry to be used in a
+    %   monteCarloSimulation, fluorescenceMonteCarloSimulation or
+    %   heatSimulation.
     
     properties
         silentMode logical = false              % Disables command window text and progress indication
@@ -27,7 +30,6 @@ classdef geometry
     methods
         function obj = geometry()
             %GEOMETRY Construct an instance of this class
-            %   Detailed explanation goes here
             
         end
                 

@@ -1,6 +1,8 @@
 classdef lightCollector
-    %LIGHTCOLLECTOR Summary of this class goes here
-    %   Detailed explanation goes here
+    %LIGHTCOLLECTOR This class contains all properties related to a
+    %light collector of an MCmatlab.model.
+    %   This class defines the properties of a lightcollector to be used in
+    %   monteCarloSimulation or fluorescenceMonteCarloSimulation.
     
     properties
         x = NaN                                 % [cm] x position of either the center of the objective lens focal plane or the fiber tip
@@ -28,7 +30,6 @@ classdef lightCollector
     methods
         function obj = lightCollector()
             %LIGHTCOLLECTOR Construct an instance of this class
-            %   Detailed explanation goes here
             
         end
     end
