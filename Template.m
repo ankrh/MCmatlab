@@ -1,12 +1,9 @@
-addpath([fileparts(matlab.desktop.editor.getActiveFilename) '/helperfuncs']); % The helperfuncs folder is added to the path for the duration of this MATLAB session
-fprintf('\n');
-
 %% Description
 %
 %
 
 %% Geometry definition
-model = initializeMCmatlabModel();
+model = MCmatlab.model;
 
 model.G.silentMode        = false; % (Default: false) Disables command window text and progress indication
 
@@ -25,7 +22,7 @@ model.G.geomFunc          = @geometryDefinition_StandardTissue; % Function to us
 
 % Execution, do not modify the next line:
 model = defineGeometry(model);
-plotMCmatlabGeom(model);
+plot(model,'G');
 
 %% Monte Carlo simulation
 % model = reset(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
@@ -95,7 +92,7 @@ plotMCmatlabGeom(model);
 % % Execution, do not modify the next line:
 % model = runMonteCarlo(model);
 % 
-% plotMCmatlab(model);
+% plot(model,'MC');
 
 %% Fluorescence Monte Carlo
 % model = reset(model,'FMC'); % Only necessary if you want to run this section repeatedly, re-using previous G and MC data
@@ -134,7 +131,7 @@ plotMCmatlabGeom(model);
 % % Execution, do not modify the next line:
 % model = runMonteCarlo(model,'fluorescence');
 % 
-% plotMCmatlab(model,'fluorescence');
+% plot(model,'FMC');
 
 %% Heat simulation
 % model = reset(model,'HS'); % Only necessary if you want to run this section repeatedly, re-using previous G, MC and/or FMC data
@@ -167,7 +164,7 @@ plotMCmatlabGeom(model);
 % % Execution, do not modify the next line:
 % model = simulateHeatDistribution(model);
 % 
-% plotMCmatlabHeat(model);
+% plot(model,'HS');
 
 %% Post-processing
 
