@@ -44,8 +44,6 @@ model = defineGeometry(model);
 plot(model,'G');
 
 %% Monte Carlo simulation
-model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
-
 model.MC.simulationTimeRequested  = .02; % [min] Time duration of the simulation
 
 model.MC.matchedInterfaces        = true; % Assumes all refractive indices are 1
@@ -71,7 +69,6 @@ model = runMonteCarlo(model);
 plot(model,'MC');
 
 %% Heat simulation
-
 model.MC.P                   = 2; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
 
 model.HS.largeTimeSteps      = true; % (Default: false) If true, calculations will be faster, but some voxel temperatures may be slightly less precise. Test for yourself whether this precision is acceptable for your application.

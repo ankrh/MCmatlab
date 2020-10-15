@@ -31,8 +31,6 @@ model = defineGeometry(model);
 plot(model,'G');
 
 %% Monte Carlo simulation
-model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
-
 model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
 
 model.MC.matchedInterfaces        = true; % Assumes all refractive indices are 1
@@ -56,8 +54,6 @@ model = runMonteCarlo(model);
 plot(model,'MC');
 
 %% Heat simulation
-model = clearMCmatlabModel(model,'HS'); % Only necessary if you want to run this section repeatedly, re-using previous G, MC and/or FMC data
-
 model.MC.P                   = 3; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
 
 model.HS.useAllCPUs          = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.

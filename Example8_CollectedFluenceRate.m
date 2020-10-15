@@ -36,8 +36,6 @@ model = defineGeometry(model);
 plot(model,'G');
 
 %% Monte Carlo simulation
-model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
-
 model.MC.nPhotonsRequested        = 5e6; % # of photons to launch
 
 model.MC.calcNFR                  = true; % (Default: true) If true, the 3D fluence rate output matrix NFR will be calculated. Set to false if you have a light collector and you're only interested in the image output.
@@ -80,8 +78,6 @@ model = runMonteCarlo(model);
 plot(model,'MC');
 
 %% Fluorescence Monte Carlo
-model = clearMCmatlabModel(model,'FMC'); % Only necessary if you want to run this section repeatedly, re-using previous G and MC data
-
 model.FMC.nPhotonsRequested       = 5e6; % # of photons to launch
 
 model.FMC.calcNFR                 = true; % (Default: true) If true, the 3D fluence rate output matrix NFR will be calculated. Set to false if you have a light collector and you're only interested in the image output.

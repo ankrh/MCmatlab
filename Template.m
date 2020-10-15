@@ -28,7 +28,7 @@ model = defineGeometry(model);
 plotMCmatlabGeom(model);
 
 %% Monte Carlo simulation
-% model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
+% model = reset(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
 % 
 % model.MC.useGPU = false; % (Default: false) Use CUDA acceleration for NVIDIA GPUs
 % 
@@ -98,7 +98,7 @@ plotMCmatlabGeom(model);
 % plotMCmatlab(model);
 
 %% Fluorescence Monte Carlo
-% model = clearMCmatlabModel(model,'FMC'); % Only necessary if you want to run this section repeatedly, re-using previous G and MC data
+% model = reset(model,'FMC'); % Only necessary if you want to run this section repeatedly, re-using previous G and MC data
 % 
 % model.FMC.useGPU = false; % (Default: false) Use CUDA acceleration for NVIDIA GPUs
 % 
@@ -137,7 +137,7 @@ plotMCmatlabGeom(model);
 % plotMCmatlab(model,'fluorescence');
 
 %% Heat simulation
-% model = clearMCmatlabModel(model,'HS'); % Only necessary if you want to run this section repeatedly, re-using previous G, MC and/or FMC data
+% model = reset(model,'HS'); % Only necessary if you want to run this section repeatedly, re-using previous G, MC and/or FMC data
 % 
 % model.HS.useGPU = false; % (Default: false) Use CUDA acceleration for NVIDIA GPUs
 % % model.HS.silentMode          = false; % (Default: false) Disables command window text and progress indication

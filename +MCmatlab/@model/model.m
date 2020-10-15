@@ -21,9 +21,16 @@ classdef model
             
         end
         
-        function obj = clearMCmatlabModel(obj, type)
-            %clearMCmatlabModel Summary of this method goes here
-            %   Detailed explanation goes here
+        function obj = reset(obj, type)
+            % RESET(obj, type) Reset one of the sub-objects of an
+            % MCmatlab.model to its default values.
+            %
+            %   'obj' is an object of class MCmatlab.model.
+            %   'type' is one of 'G', 'MC', 'FMC', or 'HS'.
+            %
+            %   Reset the properties of either geometry ('G'),
+            %   monteCarloSimulation ('MC'), fluorescenceMonteCarloSimulation ('FMC'), or 
+            %   heatSimulation ('HS') in a MCmatlab.model to their defualt values.
             
             switch type
                 case "G"
@@ -35,6 +42,14 @@ classdef model
                 case "HS"
                     obj.HS = MCmatlab.heatSimulation;
             end
+        end
+
+        
+        function obj = clearMCmatlabModel(obj, type)
+            % clearMCmatlabModel(obj, type) is deprecated, use
+            % reset(obj, type) instead.
+            
+            reset(obj, type)
         end
         
         obj = runMonteCarlo(obj, varargin)

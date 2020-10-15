@@ -31,8 +31,6 @@ model = defineGeometry(model);
 plot(model,'G');
 
 %% Monte Carlo simulation
-model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
-
 model.MC.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 model.MC.simulationTimeRequested  = .5; % [min] Time duration of the simulation
 

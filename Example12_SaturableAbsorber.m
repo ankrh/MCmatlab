@@ -59,8 +59,6 @@ model = defineGeometry(model);
 plot(model,'G');
 
 %% Monte Carlo simulation
-model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
-
 model.MC.simulationTimeRequested  = .2; % [min] Time duration of the simulation
 
 model.MC.matchedInterfaces        = true; % Assumes all refractive indices are 1
