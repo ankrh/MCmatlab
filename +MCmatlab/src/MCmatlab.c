@@ -301,7 +301,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   long L_FF1 = beamType >= 4? (long)mxGetN(mxGetPropertyShared(MatlabBeamFF,0,beamType == 4? "radialDistr": "XDistr")): 0;
   long L_NF2 = beamType == 5? (long)mxGetN(mxGetPropertyShared(MatlabBeamNF,0,"YDistr")): 0;
   long L_FF2 = beamType == 5? (long)mxGetN(mxGetPropertyShared(MatlabBeamFF,0,"YDistr")): 0;
-  size_t size_smallArrays = (nM*3 + dimPtr[2] + L_NF1 + L_FF1 + L_NF2 + L_FF2)*sizeof(FLOATORDBL);
+  size_t size_smallArrays = (nM*4 + L_NF1 + L_FF1 + L_NF2 + L_FF2)*sizeof(FLOATORDBL);
   FLOATORDBL *smallArrays = (FLOATORDBL *)malloc(size_smallArrays);
 
   // Geometry struct definition
@@ -320,19 +320,19 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   G->muav = smallArrays;
   G->musv = G->muav + nM;
   G->gv   = G->musv + nM;
-  G->M = (unsigned char *)malloc(L*sizeof(unsigned char)); // M
   G->RIv  = G->gv + nM;
-
+  G->M = (unsigned char *)malloc(L*sizeof(unsigned char)); // M
+  G->interfaceNormals = (float *)mxGetData(mxGetPropertyShared(MatlabMC,0,"interfaceNormals"));
+  
   // Fill the geometry arrays
   for(idx=0;idx<nM;idx++) {
     G->muav[idx] = (FLOATORDBL)*mxGetPr(mxGetField(mediaProperties,idx,"mua"));
     G->musv[idx] = (FLOATORDBL)*mxGetPr(mxGetField(mediaProperties,idx,"mus"));
     G->gv[idx]   = (FLOATORDBL)*mxGetPr(mxGetField(mediaProperties,idx,"g"));
+    G->RIv[idx]  = (FLOATORDBL)*mxGetPr(mxGetField(mediaProperties,idx,"n"));
   }
   unsigned char *M_matlab = (unsigned char *)mxGetData(mxGetPropertyShared(MatlabMC,0,"M"));
   for(idx=0;idx<L;idx++) G->M[idx] = M_matlab[idx] - 1; // Convert from MATLAB 1-based indexing to C 0-based indexing
-  double *RI_matlab = (double *)mxGetData(mxGetPropertyShared(MatlabMC,0,"RI"));
-  for(idx=0;idx<dimPtr[2];idx++) G->RIv[idx] = (FLOATORDBL)RI_matlab[idx];
   
   // Beam struct definition
   FLOATORDBL power        = 0;

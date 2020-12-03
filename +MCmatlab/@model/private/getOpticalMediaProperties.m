@@ -134,27 +134,38 @@ end
 
 %% Extract the refractive indices if not assuming matched interfaces, otherwise assume all 1's
 if ~matchedInterfaces
-  n_vec = [mP.n];
-  if any(isnan(n_vec)) % Check that all media have a refractive index defined
+  RIs = [mP.n];
+  if any(isnan(RIs)) % Check that all media have a refractive index defined
     error('Error: matchedInterfaces is false, but refractive index isn''t defined for all media');
   end
-  for j=1:G.nz % Check that each xy slice has constant refractive index, so refractive index is only a function of z
-    if length(unique(n_vec(M(:,:,j)))) > 1
-      error('Error: matchedInterfaces is false, but refractive index isn''t constant for z index %d (z = %f).\nEach xy slice must have constant refractive index.',j,G.z(j));
-    end
+  [RI_unq , ~ , MtoRImap] = unique(RIs);
+  Gx = NaN(G.nx,G.ny,G.nz);
+  Gy = NaN(G.nx,G.ny,G.nz);
+  Gz = NaN(G.nx,G.ny,G.nz);
+  for iM = 1:numel(RI_unq)
+    n_mat = MtoRImap(M) == iM;
+    [Gy_Sobel, Gx_Sobel, Gz_Sobel] = imgradientxyz(n_mat);
+    smoothingparameter = 2;
+    G_cell = smoothn({Gx_Sobel,Gy_Sobel,Gz_Sobel},smoothingparameter);
+%     G_cell = {Gx_Sobel,Gy_Sobel,Gz_Sobel};
+    Gx(n_mat) = G_cell{1}(n_mat);
+    Gy(n_mat) = G_cell{2}(n_mat);
+    Gz(n_mat) = G_cell{3}(n_mat);
   end
-  RI = n_vec(M(1,1,:));
+  [phi,elevation,~] = cart2sph(Gx,Gy,Gz);
+  theta = pi/2 - elevation;
+  interfaceNormals = single([theta(:).' ; phi(:).']);
 else
-  RI = ones(G.nz,1);
+  interfaceNormals = single(NaN);
 end
 
 if simType == 1
   model.MC.mediaProperties = mP;
-  model.MC.RI = RI;
+  model.MC.interfaceNormals = interfaceNormals;
   model.MC.M = M;
 else
   model.FMC.mediaProperties = mP;
-  model.FMC.RI = RI;
+  model.FMC.interfaceNormals = interfaceNormals;
   model.FMC.M = M;
 end
 end

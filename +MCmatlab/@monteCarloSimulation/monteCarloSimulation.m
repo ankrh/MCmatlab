@@ -33,7 +33,7 @@ classdef monteCarloSimulation
         FDdependent = NaN
         Tdependent = NaN
         M = NaN % Splitting-dependent
-        RI = NaN
+        interfaceNormals = NaN
 
         examplePaths = NaN
 

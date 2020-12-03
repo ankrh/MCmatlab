@@ -9,9 +9,9 @@ struct geometry { // Struct type for the constant geometry definitions, includin
   long           n[3];
   long           farFieldRes;
   int            boundaryType;
-  FLOATORDBL     *muav,*musv,*gv;
+  FLOATORDBL     *muav,*musv,*gv,*RIv;
   unsigned char  *M;
-  FLOATORDBL     *RIv;    // Refractive index of each z slice
+  FLOATORDBL     *interfaceNormals;
 };
 
 struct beam { // Struct type for the constant beam definitions
@@ -706,7 +706,7 @@ void getNewVoxelProperties(struct photon * const P, struct geometry const * cons
   P->mua = G->muav[G->M[P->j]];
   P->mus = G->musv[G->M[P->j]];
   P->g   = G->gv  [G->M[P->j]];
-  P->RI  = G->RIv[(P->i[2] < 0)? 0: ((P->i[2] >= G->n[2])? G->n[2]-1: (long)FLOOR(P->i[2]))];
+  P->RI  = G->RIv [G->M[P->j]];
 }
 
 #ifdef __NVCC__ // If compiling for CUDA
@@ -723,49 +723,75 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, s
   
   for(idx=0;idx<3;idx++) {
     long i_old = (long)FLOOR(P->i[idx]);
-    long i_new = i_old + SIGN(P->u[idx]);
+//     long i_new = i_old + SIGN(P->u[idx]);
     if(s == P->D[idx]) { // If we're supposed to go to the voxel boundary along this dimension
-      int photondeflection = 0; // Switch that can be 0, 1 or 2. 0 means photon travels straight, 1 means photon is refracted at the voxel boundary, 2 means reflected
-      FLOATORDBL cos_new = 0;
-      if(idx == 2) { // If we're entering a new z slice
-        FLOATORDBL RI_ratio = P->RI/G->RIv[i_new>=0? (i_new<G->n[2]? i_new:G->n[2]-1):0];
-        if(RI_ratio != 1) { // If there's a refractive index change
-          FLOATORDBL sin_newsq = (P->u[0]*P->u[0] + P->u[1]*P->u[1])*RI_ratio*RI_ratio;
-          if(sin_newsq < 1) { // If we don't experience total internal reflection
-            cos_new = SIGN(P->u[2])*SQRT(1 - sin_newsq);
-            FLOATORDBL R = SQR((RI_ratio*P->u[2] - cos_new)/(RI_ratio*P->u[2] + cos_new))/2 +
-                           SQR((RI_ratio*cos_new - P->u[2])/(RI_ratio*cos_new + P->u[2]))/2; // R is the reflectivity assuming equal probability of p or s polarization (unpolarized light at all times)
-            photondeflection = RandomNum > R? (FABS(P->u[2]) == 1? 0: 1):2;
-          } else photondeflection = 2;
-        }
-      }
-      
-      switch(photondeflection) {
-        case 0: // Travel straight
-          P->i[idx] = (P->u[idx] > 0)? i_old + 1: i_old - FLOATORDBLEPS*(labs(i_old)+1);
-          P->sameVoxel = false;
-          P->D[idx] = G->d[idx]/FABS(P->u[idx]); // Reset voxel boundary distance
-          break;
-        case 1: // Refract, can only happen for idx = 2
-          P->i[2] = (P->u[2] > 0)? i_old + 1: i_old - FLOATORDBLEPS*(labs(i_old)+1);
-          P->sameVoxel = false;
-          P->u[0] *= SQRT((1 - cos_new*cos_new)/(1 - P->u[2]*P->u[2]));
-          P->D[0] = P->u[0]? (FLOOR(P->i[0]) + (P->u[0]>0) - P->i[0])*G->d[0]/P->u[0]: INFINITY; // Recalculate voxel boundary distance for x
-          P->u[1] *= SQRT((1 - cos_new*cos_new)/(1 - P->u[2]*P->u[2]));
-          P->D[1] = P->u[1]? (FLOOR(P->i[1]) + (P->u[1]>0) - P->i[1])*G->d[1]/P->u[1]: INFINITY; // Recalculate voxel boundary distance for y
-          P->u[2] = cos_new;
-          P->D[2] = G->d[2]/FABS(P->u[2]); // Reset voxel boundary distance for z. Note that here it is important that x and y propagations have already been applied before we here modify their D during the z propagation.
-          break;
-        case 2: // Reflect, can only happen for idx = 2
-          P->i[2] = (P->u[2] > 0)? i_old + 1 - FLOATORDBLEPS*(labs(i_old)+1): i_old;
-          P->u[2] *= -1;
-          P->D[2] = G->d[2]/FABS(P->u[2]); // Reset voxel boundary distance
-          break;
-      }
+//       int photondeflection = 0; // Switch that can be 0, 1 or 2. 0 means photon travels straight, 1 means photon is refracted at the voxel boundary, 2 means reflected
+//       FLOATORDBL cos_new = 0;
+// //       if(idx == 2) { // If we're entering a new z slice
+//       FLOATORDBL RI_ratio = P->RI/G->RIv[i_new>=0? (i_new<G->n[2]? i_new:G->n[2]-1):0];
+//       if(RI_ratio != 1) { // If there's a refractive index change
+//         FLOATORDBL sin_newsq = (P->u[0]*P->u[0] + P->u[1]*P->u[1])*RI_ratio*RI_ratio;
+//         if(sin_newsq < 1) { // If we don't experience total internal reflection
+//           cos_new = SIGN(P->u[2])*SQRT(1 - sin_newsq);
+//           FLOATORDBL R = SQR((RI_ratio*P->u[2] - cos_new)/(RI_ratio*P->u[2] + cos_new))/2 +
+//                          SQR((RI_ratio*cos_new - P->u[2])/(RI_ratio*cos_new + P->u[2]))/2; // R is the reflectivity assuming equal probability of p or s polarization (unpolarized light at all times)
+//           photondeflection = RandomNum > R? (FABS(P->u[2]) == 1? 0: 1):2;
+//         } else photondeflection = 2;
+//       }
+// //       }
+//       
+//       switch(photondeflection) {
+//         case 0: // Travel straight
+//           P->i[idx] = (P->u[idx] > 0)? i_old + 1: i_old - FLOATORDBLEPS*(labs(i_old)+1);
+//           P->sameVoxel = false;
+//           P->D[idx] = G->d[idx]/FABS(P->u[idx]); // Reset voxel boundary distance
+//           break;
+//         case 1: // Refract, can only happen for idx = 2
+//           P->i[2] = (P->u[2] > 0)? i_old + 1: i_old - FLOATORDBLEPS*(labs(i_old)+1);
+//           P->sameVoxel = false;
+//           P->u[0] *= SQRT((1 - cos_new*cos_new)/(1 - P->u[2]*P->u[2]));
+//           P->D[0] = P->u[0]? (FLOOR(P->i[0]) + (P->u[0]>0) - P->i[0])*G->d[0]/P->u[0]: INFINITY; // Recalculate voxel boundary distance for x
+//           P->u[1] *= SQRT((1 - cos_new*cos_new)/(1 - P->u[2]*P->u[2]));
+//           P->D[1] = P->u[1]? (FLOOR(P->i[1]) + (P->u[1]>0) - P->i[1])*G->d[1]/P->u[1]: INFINITY; // Recalculate voxel boundary distance for y
+//           P->u[2] = cos_new;
+//           P->D[2] = G->d[2]/FABS(P->u[2]); // Reset voxel boundary distance for z. Note that here it is important that x and y propagations have already been applied before we here modify their D during the z propagation.
+//           break;
+//         case 2: // Reflect, can only happen for idx = 2
+//           P->i[2] = (P->u[2] > 0)? i_old + 1 - FLOATORDBLEPS*(labs(i_old)+1): i_old;
+//           P->u[2] *= -1;
+//           P->D[2] = G->d[2]/FABS(P->u[2]); // Reset voxel boundary distance
+//           break;
+//       }
+      P->i[idx] = (P->u[idx] > 0)? i_old + 1: i_old - FLOATORDBLEPS*(labs(i_old)+1);
+//       P->D[idx] = G->d[idx]/FABS(P->u[idx]); // Reset voxel boundary distance
     } else { // We're supposed to remain in the same voxel along this dimension
       P->i[idx] += s*P->u[idx]/G->d[idx]; // First take the expected step (including various rounding errors)
       if(FLOOR(P->i[idx]) != i_old) P->i[idx] = (P->u[idx] > 0)? i_old + 1 - FLOATORDBLEPS*(labs(i_old)+1): i_old ; // If photon due to rounding errors actually crossed the border, set it to be barely in the original voxel
-      P->D[idx] -= s;
+//       P->D[idx] -= s;
+    }
+  }
+  long j_new = ((P->i[2] < 0)? 0: ((P->i[2] >= G->n[2])? G->n[2]-1: (long)FLOOR(P->i[2])))*G->n[0]*G->n[1] +
+               ((P->i[1] < 0)? 0: ((P->i[1] >= G->n[1])? G->n[1]-1: (long)FLOOR(P->i[1])))*G->n[0]         +
+               ((P->i[0] < 0)? 0: ((P->i[0] >= G->n[0])? G->n[0]-1: (long)FLOOR(P->i[0]))); // Index values are restrained to integers in the interval [0,n-1]
+  // https://physics.stackexchange.com/questions/435512/snells-law-in-vector-form  or  http://www.starkeffects.com/snells-law-vector.shtml#:~:text=Snell's%20Law%20in%20Vector%20Form&text=Since%20the%20incident%20ray%2C%20the,yourself%20to%20fit%20the%20equation.
+  FLOATORDBL mu = P->RI/G->RIv[G->M[j_new]]; // RI ratio
+  if(mu != 1) { // If there's a refractive index change
+    bool photonReflected = false;
+    float theta = G->interfaceNormals[2*j_new    ];
+    float phi   = G->interfaceNormals[2*j_new + 1];
+    FLOATORDBL nx = sin(theta)*cos(phi); // Normal vector x composant
+    FLOATORDBL ny = sin(theta)*sin(phi); // Normal vector y composant
+    FLOATORDBL nz = cos(theta); // Normal vector z composant
+    FLOATORDBL cos_in = nx*P->u[0] + ny*P->u[1] + nz*P->u[2]; // dot product of n and u
+    if(cos_in > 0) { // If cos_in is negative, we're dealing with a rare case in which fine structure in the voxel distribution has been smoothed out in the surface normal calculation (the photon is headed in a direction that, according to the surface normal, is actually away from the medium). Then we choose not to do any reflection or refraction.
+      FLOATORDBL cos_out_sqr = 1 - SQR(mu)*(1 - SQR(cos_in));
+      if(cos_out_sqr > 0) { // If we don't experience total internal reflection
+        FLOATORDBL cos_out = SQRT(cos_out_sqr);
+        FLOATORDBL R = SQR((RI_ratio*cos_in  - cos_out)/(RI_ratio*cos_in  + cos_out))/2 +
+                       SQR((RI_ratio*cos_out - cos_in )/(RI_ratio*cos_out + cos_in ))/2; // R is the reflectivity assuming equal probability of p or s polarization (unpolarized light at all times)
+        photonReflected = RandomNum <= R;
+      } else photonReflected = true;
+      
     }
   }
   
