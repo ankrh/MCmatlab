@@ -29,7 +29,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ### Requirements:
 - Windows 7 or macOS 10.12 (Sierra) or newer
-- MATLAB R2017a or newer
+- MATLAB R2018a or newer
 
 ### Helper files:
 All the helper functions needed for running MCmatlab are located in the folder (MATLAB package) "+MCmatlab", and its parent folder therefore has to be on your MATLAB path when trying to run any MCmatlab model files. You will not need to modify any of the contained files. We recommend keeping the model files in a folder together with the "+MCmatlab" folder, such that you don't need to manually add "+MCmatlab" to your MATLAB path.
