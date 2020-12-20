@@ -154,9 +154,9 @@ if ~matchedInterfaces
   end
   [phi,elevation,~] = cart2sph(Gx,Gy,Gz);
   theta = pi/2 - elevation;
-  interfaceNormals = single([theta(:).' ; phi(:).']);
+  interfaceNormals = double([theta(:).' ; phi(:).']); % Could be made single
 else
-  interfaceNormals = single(NaN);
+  interfaceNormals = double(NaN); % Could be made single
 end
 
 if simType == 1

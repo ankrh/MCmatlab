@@ -52,7 +52,7 @@
  * 1. Install XCode from the App Store
  * 2. Type "mex -setup" in the MATLAB command window
  ********************************************/
-// printf("Debug 1...\n");mexEvalString("drawnow;");mexEvalString("drawnow;");mexEvalString("drawnow;"); // For inserting into code for debugging purposes
+// printf("Reached line %d...\n",__LINE__);mexEvalString("drawnow;");mexEvalString("drawnow;");mexEvalString("drawnow;"); // For inserting into code for debugging purposes
 
 #include "mex.h"
 #include <math.h>
@@ -131,7 +131,7 @@
   #include "dSFMT-src-2.2.3/dSFMT.c" // Double precision SIMD oriented Fast Mersenne Twister(dSFMT)
   #define RandomNum   dsfmt_genrand_open_close(&P->PRNGstate) // Calls for a random number in (0,1]
   typedef dsfmt_t PRNG_t;
-  #ifdef _OPENMP
+  #ifndef _OPENMP
     #include <omp.h>
     #define THREADNUM omp_get_thread_num()
   #else
@@ -221,6 +221,7 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
     launchPhoton(P,B,G,Pa);
     if(P->alive) atomicAddWrapperULL(&O_global->nPhotons,1); // We have to store the photon number in the global memory so it's visible to all blocks
     else break;
+    P->RI = G->RIv[G->M[P->j]]; // Get refractive index
 
     while(P->alive) {
       while(P->stepLeft>0) {
@@ -240,7 +241,7 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
       int pctTimeProgress = (int)(100.0*(getMicroSeconds() - simulationTimeStart)/microSecondsOrGPUCycles);
       int pctPhotonsProgress = (int)(100.0*O->nPhotons/nPhotonsRequested);
 
-      #ifdef _OPENMP
+      #ifndef _OPENMP
       #pragma omp master
       #endif
       {
@@ -322,7 +323,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   G->gv   = G->musv + nM;
   G->RIv  = G->gv + nM;
   G->M = (unsigned char *)malloc(L*sizeof(unsigned char)); // M
-  G->interfaceNormals = (float *)mxGetData(mxGetPropertyShared(MatlabMC,0,"interfaceNormals"));
+  G->interfaceNormals = (FLOATORDBL *)mxGetData(mxGetPropertyShared(MatlabMC,0,"interfaceNormals"));
   
   // Fill the geometry arrays
   for(idx=0;idx<nM;idx++) {
@@ -608,7 +609,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     mexEvalString("drawnow;");
   }
   long long simulationTimeStart = getMicroSeconds();
-  #ifdef _OPENMP
+  #ifndef _OPENMP
   bool useAllCPUs = mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabMC,0,"useAllCPUs"));
   double nThreads = useAllCPUs? omp_get_num_procs(): max(omp_get_num_procs()-1,1);
   #pragma omp parallel num_threads((long)nThreads)
