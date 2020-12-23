@@ -119,6 +119,11 @@ if j-1 > 256
   error('Error: The total number of (sub-)media may not exceed 256');
 end
 
+%% If simulating with matched interfaces, we just set all refractive indices to that of the first medium
+if model.MC.matchedInterfaces
+  [mP.n] = deal(mP(1).n);
+end
+
 %% Throw an error if a variable doesn't conform to its required interval
 for j=1:length(mP)
   if ~isfinite(mP(j).mua) || mP(j).mua <= 0
@@ -145,7 +150,7 @@ if ~matchedInterfaces
   for iM = 1:numel(RI_unq)
     n_mat = MtoRImap(M) == iM;
     [Gy_Sobel, Gx_Sobel, Gz_Sobel] = imgradientxyz(n_mat);
-    smoothingparameter = 2;
+    smoothingparameter = 20;
     G_cell = smoothn({Gx_Sobel,Gy_Sobel,Gz_Sobel},smoothingparameter);
 %     G_cell = {Gx_Sobel,Gy_Sobel,Gz_Sobel};
     Gx(n_mat) = G_cell{1}(n_mat);
