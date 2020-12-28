@@ -324,7 +324,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   G->RIv  = G->gv + nM;
   G->M = (unsigned char *)malloc(L*sizeof(unsigned char)); // M
   G->interfaceNormals = (FLOATORDBL *)mxGetData(mxGetPropertyShared(MatlabMC,0,"interfaceNormals"));
-  
+  G->interpolateNormals = mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabMC,0,"interpolateNormals"));
+
   // Fill the geometry arrays
   for(idx=0;idx<nM;idx++) {
     G->muav[idx] = (FLOATORDBL)*mxGetPr(mxGetField(mediaProperties,idx,"mua"));

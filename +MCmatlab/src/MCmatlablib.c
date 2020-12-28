@@ -12,6 +12,7 @@ struct geometry { // Struct type for the constant geometry definitions, includin
   FLOATORDBL     *muav,*musv,*gv,*RIv;
   unsigned char  *M;
   FLOATORDBL     *interfaceNormals;
+  bool           interpolateNormals;
 };
 
 struct beam { // Struct type for the constant beam definitions
@@ -715,6 +716,106 @@ void getNewVoxelProperties(struct photon * const P, struct geometry const * cons
   // Refractive index is not retrieved here, but only when we refract in through a surface
 }
 
+void getNormal(struct geometry const * const G, FLOATORDBL *nxPtr, FLOATORDBL *nyPtr, FLOATORDBL *nzPtr, long j) {
+  FLOATORDBL theta = G->interfaceNormals[2*j    ];
+  FLOATORDBL phi   = G->interfaceNormals[2*j + 1];
+  *nxPtr = sin(theta)*cos(phi); // Normal vector x composant
+  *nyPtr = sin(theta)*sin(phi); // Normal vector y composant
+  *nzPtr = cos(theta); // Normal vector z composant
+}
+
+void getInterpolatedNormal(struct geometry const * const G, struct photon *P, FLOATORDBL *nxPtr, FLOATORDBL *nyPtr, FLOATORDBL *nzPtr, long j) {
+  // Determine which set of 8 voxels to interpolate between. Let the corner with lowest indices have indices ix,iy,iz and the corner with highest indices have indices ix+1,iy+1,iz+1.
+  long ix = (long)FLOOR(P->i[0] - 0.5); // May be as low as -1
+  long iy = (long)FLOOR(P->i[1] - 0.5); // May be as low as -1
+  long iz = (long)FLOOR(P->i[2] - 0.5); // May be as low as -1
+  
+  // Calculate weights based on where in the 8-voxel space the photon is
+  FLOATORDBL wx = (FLOATORDBL)(P->i[0] - 0.5 - ix);
+  FLOATORDBL wy = (FLOATORDBL)(P->i[1] - 0.5 - iy);
+  FLOATORDBL wz = (FLOATORDBL)(P->i[2] - 0.5 - iz);
+  
+  // Add up contributions from those of the 8 voxels that are of the same refractive index
+  *nxPtr = *nyPtr = *nzPtr = 0;
+  FLOATORDBL nx,ny,nz;
+  if(ix >= 0          && iy >= 0          && iz >= 0         ) {
+    long jcorner = ix      +  iy     *G->n[0] +  iz     *G->n[0]*G->n[1];
+    if(G->RIv[G->M[jcorner]] == G->RIv[G->M[j]]) {
+      getNormal(G,&nx,&ny,&nz,jcorner);
+      *nxPtr += (1-wx)*(1-wy)*(1-wz)*nx;
+      *nyPtr += (1-wx)*(1-wy)*(1-wz)*ny;
+      *nzPtr += (1-wx)*(1-wy)*(1-wz)*nz;
+    }
+  }
+  if(ix >= 0          && iy >= 0          && iz < G->n[2] - 1) {
+    long jcorner = ix      +  iy     *G->n[0] + (iz + 1)*G->n[0]*G->n[1];
+    if(G->RIv[G->M[jcorner]] == G->RIv[G->M[j]]) {
+      getNormal(G,&nx,&ny,&nz,jcorner);
+      *nxPtr += (1-wx)*(1-wy)*wz*nx;
+      *nyPtr += (1-wx)*(1-wy)*wz*ny;
+      *nzPtr += (1-wx)*(1-wy)*wz*nz;
+    }
+  }
+  if(ix >= 0          && iy < G->n[1] - 1 && iz >= 0         ) {
+    long jcorner = ix      + (iy + 1)*G->n[0] +  iz     *G->n[0]*G->n[1];
+    if(G->RIv[G->M[jcorner]] == G->RIv[G->M[j]]) {
+      getNormal(G,&nx,&ny,&nz,jcorner);
+      *nxPtr += (1-wx)*wy*(1-wz)*nx;
+      *nyPtr += (1-wx)*wy*(1-wz)*ny;
+      *nzPtr += (1-wx)*wy*(1-wz)*nz;
+    }
+  }
+  if(ix >= 0          && iy < G->n[1] - 1 && iz < G->n[2] - 1) {
+    long jcorner = ix      + (iy + 1)*G->n[0] + (iz + 1)*G->n[0]*G->n[1];
+    if(G->RIv[G->M[jcorner]] == G->RIv[G->M[j]]) {
+      getNormal(G,&nx,&ny,&nz,jcorner);
+      *nxPtr += (1-wx)*wy*wz*nx;
+      *nyPtr += (1-wx)*wy*wz*ny;
+      *nzPtr += (1-wx)*wy*wz*nz;
+    }
+  }
+  if(ix < G->n[0] - 1 && iy >= 0          && iz >= 0         ) {
+    long jcorner = (ix + 1) +  iy     *G->n[0] +  iz     *G->n[0]*G->n[1];
+    if(G->RIv[G->M[jcorner]] == G->RIv[G->M[j]]) {
+      getNormal(G,&nx,&ny,&nz,jcorner);
+      *nxPtr += wx*(1-wy)*(1-wz)*nx;
+      *nyPtr += wx*(1-wy)*(1-wz)*ny;
+      *nzPtr += wx*(1-wy)*(1-wz)*nz;
+    }
+  }
+  if(ix < G->n[0] - 1 && iy >= 0          && iz < G->n[2] - 1) {
+    long jcorner = (ix + 1) +  iy     *G->n[0] + (iz + 1)*G->n[0]*G->n[1];
+    if(G->RIv[G->M[jcorner]] == G->RIv[G->M[j]]) {
+      getNormal(G,&nx,&ny,&nz,jcorner);
+      *nxPtr += wx*(1-wy)*wz*nx;
+      *nyPtr += wx*(1-wy)*wz*ny;
+      *nzPtr += wx*(1-wy)*wz*nz;
+    }
+  }
+  if(ix < G->n[0] - 1 && iy < G->n[1] - 1 && iz >= 0         ) {
+    long jcorner = (ix + 1) + (iy + 1)*G->n[0] +  iz     *G->n[0]*G->n[1];
+    if(G->RIv[G->M[jcorner]] == G->RIv[G->M[j]]) {
+      getNormal(G,&nx,&ny,&nz,jcorner);
+      *nxPtr += wx*wy*(1-wz)*nx;
+      *nyPtr += wx*wy*(1-wz)*ny;
+      *nzPtr += wx*wy*(1-wz)*nz;
+    }
+  }
+  if(ix < G->n[0] - 1 && iy < G->n[1] - 1 && iz < G->n[2] - 1) {
+    long jcorner = (ix + 1) + (iy + 1)*G->n[0] + (iz + 1)*G->n[0]*G->n[1];
+    if(G->RIv[G->M[jcorner]] == G->RIv[G->M[j]]) {
+      getNormal(G,&nx,&ny,&nz,jcorner);
+      *nxPtr += wx*wy*wz*nx;
+      *nyPtr += wx*wy*wz*ny;
+      *nzPtr += wx*wy*wz*nz;
+    }
+  }
+  FLOATORDBL norm = SQRT(SQR(*nxPtr) + SQR(*nyPtr) + SQR(*nzPtr));
+  *nxPtr /= norm;
+  *nyPtr /= norm;
+  *nzPtr /= norm;
+}
+
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
@@ -748,11 +849,9 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, s
     FLOATORDBL mu = P->RI/G->RIv[G->M[j_new]]; // RI ratio
     if(mu != 1) { // If there's a refractive index change
       bool photonReflected = false;
-      FLOATORDBL theta = G->interfaceNormals[2*j_new    ];
-      FLOATORDBL phi   = G->interfaceNormals[2*j_new + 1];
-      FLOATORDBL nx = sin(theta)*cos(phi); // Normal vector x composant
-      FLOATORDBL ny = sin(theta)*sin(phi); // Normal vector y composant
-      FLOATORDBL nz = cos(theta); // Normal vector z composant
+      FLOATORDBL nx,ny,nz;
+      if(G->interpolateNormals) getInterpolatedNormal(G,P,&nx,&ny,&nz,j_new);
+      else getNormal(G,&nx,&ny,&nz,j_new);
       FLOATORDBL cos_in = nx*P->u[0] + ny*P->u[1] + nz*P->u[2]; // dot product of n and u
       if(cos_in > 0) { // If cos_in is negative, we're dealing with a case in which the photon is headed in a direction that, according to the surface normal, is actually away from the medium. Then we choose not to do any reflection or refraction.
         FLOATORDBL cos_out_sqr = 1 - SQR(mu)*(1 - SQR(cos_in));

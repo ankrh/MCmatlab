@@ -31,9 +31,11 @@ M_raw = G.M_raw;
 if simType == 2
   mP_fH = model.FMC.mediaProperties_funcHandles;
   matchedInterfaces = model.FMC.matchedInterfaces;
+  smoothingLengthScale = model.FMC.smoothingLengthScale;
 else
   mP_fH = model.MC.mediaProperties_funcHandles;
   matchedInterfaces = model.MC.matchedInterfaces;
+  smoothingLengthScale = model.MC.smoothingLengthScale;
 end
 
 if isnan(model.MC.FR(1))
@@ -120,7 +122,7 @@ if j-1 > 256
 end
 
 %% If simulating with matched interfaces, we just set all refractive indices to that of the first medium
-if model.MC.matchedInterfaces
+if matchedInterfaces
   [mP.n] = deal(mP(1).n);
 end
 
@@ -150,15 +152,18 @@ if ~matchedInterfaces
   for iM = 1:numel(RI_unq)
     n_mat = MtoRImap(M) == iM;
     [Gy_Sobel, Gx_Sobel, Gz_Sobel] = imgradientxyz(n_mat);
-    smoothingparameter = 20;
-    G_cell = smoothn({Gx_Sobel,Gy_Sobel,Gz_Sobel},smoothingparameter);
-%     G_cell = {Gx_Sobel,Gy_Sobel,Gz_Sobel};
+    if smoothingLengthScale > 0
+      G_cell = smoothn({Gx_Sobel,Gy_Sobel,Gz_Sobel},max(1,round(smoothingLengthScale/max([G.dx,G.dy,G.dz]))),struct('Spacing',[G.dx G.dy G.dz]));
+    else
+      G_cell = {Gx_Sobel,Gy_Sobel,Gz_Sobel};
+    end
     Gx(n_mat) = G_cell{1}(n_mat);
     Gy(n_mat) = G_cell{2}(n_mat);
     Gz(n_mat) = G_cell{3}(n_mat);
   end
   [phi,elevation,~] = cart2sph(Gx,Gy,Gz);
   theta = pi/2 - elevation;
+%   plotVolumetric(101,G.x,G.y,G.z,theta,'MCmatlab_fromZero');
   interfaceNormals = double([theta(:).' ; phi(:).']); % Could be made single
 else
   interfaceNormals = double(NaN); % Could be made single
