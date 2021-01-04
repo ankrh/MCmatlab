@@ -41,7 +41,7 @@
  * installed. As of January 2020, mexcuda does not work with MSVC 2019,
  * so I'd recommend MSVC 2017. You also need the Parallel Computing
  * Toolbox, which you will find in the MATLAB addon manager. To compile, run:
- * "copyfile ./+MCmatlab/src/MCmatlab.c ./+MCmatlab/src/MCmatlab_CUDA.cu; mexcuda -llibut COMPFLAGS='-use_fast_math -res-usage $COMPFLAGS' -outdir +MCmatlab\@model\private .\+MCmatlab\src\MCmatlab_CUDA.cu ".\+MCmatlab\src\nvml.lib""
+ * "copyfile ./+MCmatlab/src/MCmatlab.c ./+MCmatlab/src/MCmatlab_CUDA.cu; mexcuda -llibut COMPFLAGS='-use_fast_math -res-usage $COMPFLAGS' -outdir +MCmatlab\@model\private .\+MCmatlab\src\MCmatlab_CUDA.cu"
  * 
  ** COMPILING ON MAC
  * As of June 2017, the macOS compiler doesn't support libut (for ctrl+c 
@@ -120,7 +120,6 @@
   #define DEVICE 0
   #define GPUHEAPMEMORYLIMIT 500000000 // Bytes to allow the GPU to allocate, mostly for tracking photons prior to storage in NFRdet. Must be less than the available memory.
   #define KERNELTIME 50000 // Microseconds to spend in each kernel call (watchdog timer is said to termine kernel function that take more than a few seconds)
-  #include <nvml.h>
   #include <curand_kernel.h>
   typedef curandStateXORWOW_t PRNG_t;
 //   typedef curandStateMRG32k3a_t PRNG_t;
@@ -523,13 +522,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     gpuErrchk(cudaDeviceSetLimit(cudaLimitMallocHeapSize,GPUHEAPMEMORYLIMIT));
   }
 
-  nvmlInit();
-  nvmlDevice_t nvmldevice; int returnvar = nvmlDeviceGetHandleByIndex(DEVICE,&nvmldevice);
-  unsigned int clock; nvmlDeviceGetClockInfo(nvmldevice,NVML_CLOCK_GRAPHICS,&clock);
-//   unsigned int fanspeed; nvmlDeviceGetFanSpeed(nvmldevice,&fanspeed);
-//   nvmlMemory_t memory; nvmlDeviceGetMemoryInfo(nvmldevice,&memory);
-//   unsigned int T; nvmlDeviceGetTemperature(nvmldevice,NVML_TEMPERATURE_GPU,&T);
-//   nvmlUtilization_t utilization; nvmlDeviceGetUtilizationRates(nvmldevice,&utilization);
+  int clock; gpuErrchk(cudaDeviceGetAttribute(&clock,cudaDevAttrClockRate,DEVICE));
 
   struct geometry *G_dev;
   struct beam *B_dev;
@@ -540,10 +533,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   createDeviceStructs(G,&G_dev,B,&B_dev,LC,&LC_dev,Pa,&Pa_dev,O,&O_dev,nM,L,D,&D_dev);
 
   int pctProgress = 0;
-  int callnumber = 0;
   long long timeLeft = simulationTimed? (long long)(simulationTimeRequested*60000000): LLONG_MAX; // microseconds
   if(!silentMode) {
-//     printf("Calculating...   0%% done [GPU      MHz, memory used    /    GB]");
     printf("Calculating...   0%% done");
     mexEvalString("drawnow;");
   }
@@ -551,7 +542,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   long long prevtime = simulationTimeStart;
   do {
     // Run kernel
-    threadInitAndLoop<<<blocks, threadsPerBlock, size_smallArrays>>>(B_dev,G_dev,LC_dev,Pa_dev,O_dev,nM,prevtime,clock*min((long long)KERNELTIME,timeLeft),nPhotonsRequested,NULL,false,D_dev);
+    threadInitAndLoop<<<blocks, threadsPerBlock, size_smallArrays>>>(B_dev,G_dev,LC_dev,Pa_dev,O_dev,nM,prevtime,clock/1000*min((long long)KERNELTIME,timeLeft),nPhotonsRequested,NULL,false,D_dev);
     gpuErrchk(cudaPeekAtLastError());
     gpuErrchk(cudaDeviceSynchronize());
     // Progress indicator
@@ -563,13 +554,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     } else {
       pctProgress = (int)(100.0*O->nPhotons/nPhotonsRequested);
     }
-    nvmlDeviceGetClockInfo(nvmldevice,NVML_CLOCK_GRAPHICS,&clock);
-    if(!(callnumber++%5) && !silentMode) {
-//       nvmlDeviceGetFanSpeed(nvmldevice,&fanspeed);
-//       nvmlDeviceGetMemoryInfo(nvmldevice,&memory);
-//       nvmlDeviceGetTemperature(nvmldevice,NVML_TEMPERATURE_GPU,&T);
-//       nvmlDeviceGetUtilizationRates(nvmldevice,&utilization);
-//       printf("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b%3d%% done [GPU %4u MHz, memory used %3.1f/%3.1f GB]",pctProgress,clock,(double)memory.used/1024/1024/1024,(double)memory.total/1024/1024/1024);
+    if(!silentMode) {
       printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgress);
       mexEvalString("drawnow;");
     }
@@ -595,10 +580,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
       printf("\nCtrl+C detected, stopping.");
     }
   } while(timeLeft > 0 && O->nPhotons < nPhotonsRequested && !ctrlc_caught && O->nPhotons); // The O->nPhotons is there to stop looping if launches failed
-//   if(!silentMode) printf("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b100%% done [GPU %4u MHz, memory used %3.1f/%3.1f GB]",clock,(double)memory.used/1024/1024/1024,(double)memory.total/1024/1024/1024);
   if(!silentMode && O->nPhotons) printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgress);
 
-  nvmlShutdown();
   retrieveAndFreeDeviceStructs(G,G_dev,B,B_dev,LC,LC_dev,Pa,Pa_dev,O,O_dev,L,D,D_dev);
 
   #else
