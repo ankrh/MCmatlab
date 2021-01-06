@@ -13,6 +13,7 @@ classdef monteCarloSimulation
         nExamplePaths = 0                       % This number of photons will have their paths stored and shown after completion, for illustrative purposes
         farFieldRes = 0                         % If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
         matchedInterfaces logical = true        % If true, assumes all refractive indices are 1. If false, uses the refractive indices defined in getMediaProperties
+        smoothingLengthScale = 0                % Length scale over which smoothing of the Sobel interface gradients should be performed
         boundaryType = 1                        % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
         wavelength = NaN                        % [nm] Excitation wavelength, used for determination of optical properties for excitation light
         beam MCmatlab.beam
@@ -29,11 +30,11 @@ classdef monteCarloSimulation
 
         mediaProperties_funcHandles = NaN % Wavelength-dependent
         mediaProperties = NaN % Wavelength- and splitting-dependent
-        FRdependent = NaN
-        FDdependent = NaN
-        Tdependent = NaN
+        FRdependent logical = false
+        FDdependent logical = false
+        Tdependent logical = false
         M = NaN % Splitting-dependent
-        RI = NaN
+        interfaceNormals single = NaN
 
         examplePaths = NaN
 

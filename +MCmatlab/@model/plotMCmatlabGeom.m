@@ -33,7 +33,10 @@ com.mathworks.mde.desk.MLDesktop.getInstance.setDocumentBarPosition('Figures',7)
 
 %% Make geometry plot
 mediaProperties = model.G.mediaPropertiesFunc(NaN,model.G.mediaPropParams); % We don't know what wavelength the user wants yet, so we just input NaN
-h_f = plotVolumetric(1,model.G.x,model.G.y,model.G.z,model.G.M_raw,'MCmatlab_GeometryIllustration',mediaProperties);
+[uniqueMedia,~,M_trimmed] = unique(model.G.M_raw);
+M_trimmed = reshape(M_trimmed,model.G.nx,model.G.ny,model.G.nz);
+mediaProperties_trimmed = mediaProperties(uniqueMedia);
+h_f = plotVolumetric(1,model.G.x,model.G.y,model.G.z,M_trimmed,'MCmatlab_GeometryIllustration',mediaProperties_trimmed);
 set(h_f,'WindowStyle','Docked');
 h_f.Name = 'Geometry illustration';
 title('Geometry illustration');

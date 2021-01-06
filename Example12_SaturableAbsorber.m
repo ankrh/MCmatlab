@@ -61,7 +61,7 @@ plot(model,'G');
 %% Monte Carlo simulation
 model.MC.simulationTimeRequested  = .2; % [min] Time duration of the simulation
 
-model.MC.matchedInterfaces        = true; % Assumes all refractive indices are 1
+model.MC.matchedInterfaces        = true; % Assumes all refractive indices are the same
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 

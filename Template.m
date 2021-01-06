@@ -39,7 +39,8 @@ plot(model,'G');
 % % model.MC.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
 % % model.MC.farFieldRes              = 50; % (Default: 0) If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
 % 
-% model.MC.matchedInterfaces        = true; % (Default: true) If true, assumes all refractive indices are 1. If false, uses the refractive indices defined in getMediaProperties
+% model.MC.matchedInterfaces        = true; % (Default: true) If false, uses the refractive indices as defined in mediaPropertiesFunc at the end of this file
+% model.MC.smoothingLengthScale     = model.G.Lx*2; % [cm] The characteristic length scale to smoothe the map of surface normal vectors over, for use when simulating refraction and reflection angles
 % model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 % model.MC.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 % 
@@ -109,7 +110,8 @@ plot(model,'G');
 % % model.FMC.nExamplePaths          = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
 % % model.FMC.farFieldRes            = 50; % (Default: 0) If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
 % 
-% model.FMC.matchedInterfaces        = true; % (Default: true) If true, assumes all refractive indices are 1. If false, uses the refractive indices defined in getMediaProperties
+% model.FMC.matchedInterfaces        = true; % (Default: true) If false, uses the refractive indices as defined in mediaPropertiesFunc at the end of this file
+% model.FMC.smoothingLengthScale     = model.G.Lx*2; % [cm] The characteristic length scale to smoothe the map of surface normal vectors over, for use when simulating refraction and reflection angles
 % model.FMC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 % model.FMC.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 % 

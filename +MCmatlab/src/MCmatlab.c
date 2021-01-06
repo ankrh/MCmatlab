@@ -52,7 +52,7 @@
  * 1. Install XCode from the App Store
  * 2. Type "mex -setup" in the MATLAB command window
  ********************************************/
-// printf("Debug 1...\n");mexEvalString("drawnow;");mexEvalString("drawnow;");mexEvalString("drawnow;"); // For inserting into code for debugging purposes
+// printf("Reached line %d...\n",__LINE__);mexEvalString("drawnow;");mexEvalString("drawnow;");mexEvalString("drawnow;"); // For inserting into code for debugging purposes
 
 #include "mex.h"
 #include <math.h>
@@ -185,13 +185,13 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
     G_var = *G_global;
     LC_var = *LC_global;
     O_var = *O_global;
-    memcpy(smallArrays,G->muav,(nM*3 + G->n[2] + B->L_NF1 + B->L_FF1 + B->L_NF2 + B->L_FF2)*sizeof(FLOATORDBL));
+    memcpy(smallArrays,G->muav,(nM*4 + B->L_NF1 + B->L_FF1 + B->L_NF2 + B->L_FF2)*sizeof(FLOATORDBL));
     // Set all array pointers to the correct new locations in the shared memory version of smallArrays
     G->muav = smallArrays;
     G->musv = G->muav + nM;
     G->gv = G->musv + nM;
     G->RIv = G->gv + nM;
-    B->NFdist1 = G->RIv + G->n[2];
+    B->NFdist1 = G->RIv + nM;
     B->FFdist1 = B->NFdist1 + B->L_NF1;
     B->NFdist2 = B->FFdist1 + B->L_FF1;
     B->FFdist2 = B->NFdist2 + B->L_NF2;
@@ -217,21 +217,20 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
   // Launch major loop
   while(pctProgress < 100 && O->nPhotons + THREADNUM < nPhotonsRequested && !*ctrlc_caughtPtr) { // "+ THREADNUM" ensures that we avoid race conditions that might launch more than nPhotonsRequested photons
   #endif
-    launchPhoton(P,B,G,Pa);
+    launchPhoton(P,B,G,Pa,D);
+    if(P->alive) getNewVoxelProperties(P,G,D);
     if(P->alive) atomicAddWrapperULL(&O_global->nPhotons,1); // We have to store the photon number in the global memory so it's visible to all blocks
-    else break;
 
-    while(P->alive) {
-      while(P->stepLeft>0) {
-        if(!P->sameVoxel) {
-          checkEscape(P,G,LC,O);
-          if(!P->alive) break;
-          getNewVoxelProperties(P,G); // If photon has just entered a new voxel or has just been launched
-        }
+    while(P->alive) { // keep doing scattering events
+      while(P->alive && P->stepLeft>0) { // keep propagating
         propagatePhoton(P,G,O,Pa,D);
+        if(!P->sameVoxel) {
+          checkEscape(P,G,LC,O); // photon may die here
+          if(P->alive) getNewVoxelProperties(P,G,D);
+        }
       }
-      checkRoulette(P);
-      scatterPhoton(P,G);
+      if(P->alive) checkRoulette(P);
+      if(P->alive) scatterPhoton(P,G,D);
     }
 
     #ifndef __NVCC__
@@ -281,7 +280,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   
   // To know if we are simulating fluorescence, we check if a "sourceDistribution" field exists. If so, we will use it later in the beam definition.
   mxArray *MatlabBeam = mxGetProperty(MatlabMC,0,"beam");
-  double *S_PDF       = (double *)mxGetData(mxGetProperty(MatlabMC,0,"sourceDistribution")); // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
+  double *S_PDF       = simFluorescence? (double *)mxGetData(mxGetProperty(MatlabMC,0,"sourceDistribution")): NULL; // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
   
   // Variables for timekeeping and number of photons
   bool            simulationTimed = mxIsNaN(*mxGetPr(mxGetPropertyShared(MatlabMC,0,"nPhotonsRequested")));
@@ -300,7 +299,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   long L_FF1 = beamType >= 4? (long)mxGetN(mxGetPropertyShared(MatlabBeamFF,0,beamType == 4? "radialDistr": "XDistr")): 0;
   long L_NF2 = beamType == 5? (long)mxGetN(mxGetPropertyShared(MatlabBeamNF,0,"YDistr")): 0;
   long L_FF2 = beamType == 5? (long)mxGetN(mxGetPropertyShared(MatlabBeamFF,0,"YDistr")): 0;
-  size_t size_smallArrays = (nM*3 + dimPtr[2] + L_NF1 + L_FF1 + L_NF2 + L_FF2)*sizeof(FLOATORDBL);
+  size_t size_smallArrays = (nM*4 + L_NF1 + L_FF1 + L_NF2 + L_FF2)*sizeof(FLOATORDBL);
   FLOATORDBL *smallArrays = (FLOATORDBL *)malloc(size_smallArrays);
 
   // Geometry struct definition
@@ -319,19 +318,19 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   G->muav = smallArrays;
   G->musv = G->muav + nM;
   G->gv   = G->musv + nM;
-  G->M = (unsigned char *)malloc(L*sizeof(unsigned char)); // M
   G->RIv  = G->gv + nM;
+  G->M = (unsigned char *)malloc(L*sizeof(unsigned char)); // M
+  G->interfaceNormals = (float *)mxGetData(mxGetPropertyShared(MatlabMC,0,"interfaceNormals"));
 
   // Fill the geometry arrays
   for(idx=0;idx<nM;idx++) {
     G->muav[idx] = (FLOATORDBL)*mxGetPr(mxGetField(mediaProperties,idx,"mua"));
     G->musv[idx] = (FLOATORDBL)*mxGetPr(mxGetField(mediaProperties,idx,"mus"));
     G->gv[idx]   = (FLOATORDBL)*mxGetPr(mxGetField(mediaProperties,idx,"g"));
+    G->RIv[idx]  = (FLOATORDBL)*mxGetPr(mxGetField(mediaProperties,idx,"n"));
   }
   unsigned char *M_matlab = (unsigned char *)mxGetData(mxGetPropertyShared(MatlabMC,0,"M"));
   for(idx=0;idx<L;idx++) G->M[idx] = M_matlab[idx] - 1; // Convert from MATLAB 1-based indexing to C 0-based indexing
-  double *RI_matlab = (double *)mxGetData(mxGetPropertyShared(MatlabMC,0,"RI"));
-  for(idx=0;idx<dimPtr[2];idx++) G->RIv[idx] = (FLOATORDBL)RI_matlab[idx];
   
   // Beam struct definition
   FLOATORDBL power        = 0;
@@ -348,7 +347,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   FLOATORDBL *NFdist1 = NULL, *NFdist2 = NULL, *FFdist1 = NULL, *FFdist2 = NULL;
   if(beamType >= 4) {
     double *MatlabNFdist1 = mxGetPr(mxGetPropertyShared(MatlabBeamNF,0,beamType == 4? "radialDistr": "XDistr"));
-    NFdist1 = G->RIv + dimPtr[2];
+    NFdist1 = G->RIv + nM;
     if(L_NF1 == 1) {
       *NFdist1 = -1 - (FLOATORDBL)MatlabNFdist1[0];
     } else {
@@ -534,6 +533,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 
   int pctProgress = 0;
   long long timeLeft = simulationTimed? (long long)(simulationTimeRequested*60000000): LLONG_MAX; // microseconds
+
   if(!silentMode) {
     printf("Calculating...   0%% done");
     mexEvalString("drawnow;");
@@ -554,6 +554,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     } else {
       pctProgress = (int)(100.0*O->nPhotons/nPhotonsRequested);
     }
+
+    // Check for ctrl+c
+    if(utIsInterruptPending()) {
+      ctrlc_caught = true;
+      printf("\nCtrl+C detected, stopping.");
+    }
+
     if(!silentMode) {
       printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgress);
       mexEvalString("drawnow;");
@@ -572,12 +579,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         gpuErrchk(cudaMalloc(&Pa_temp.data, 4*Pa->pathsSize*sizeof(FLOATORDBL)));
         gpuErrchk(cudaMemcpy(Pa_dev,&Pa_temp,sizeof(struct paths),cudaMemcpyHostToDevice));
       }
-    }
-
-    // Check for ctrl+c
-    if(utIsInterruptPending()) {
-      ctrlc_caught = true;
-      printf("\nCtrl+C detected, stopping.");
     }
   } while(timeLeft > 0 && O->nPhotons < nPhotonsRequested && !ctrlc_caught && O->nPhotons); // The O->nPhotons is there to stop looping if launches failed
   if(!silentMode && O->nPhotons) printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgress);
