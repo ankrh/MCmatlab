@@ -44,7 +44,7 @@ model.MC.useAllCPUs               = true; % If false, MCmatlab will leave one pr
 model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
 model.MC.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
 
-model.MC.matchedInterfaces        = true; % Assumes all refractive indices are 1
+model.MC.matchedInterfaces        = true; % Assumes all refractive indices are the same
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 model.MC.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
@@ -78,7 +78,7 @@ model.FMC.useAllCPUs              = true; % If false, MCmatlab will leave one pr
 model.FMC.simulationTimeRequested = .1; % [min] Time duration of the simulation
 model.FMC.nExamplePaths           = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
 
-model.FMC.matchedInterfaces       = true; % Assumes all refractive indices are 1
+model.FMC.matchedInterfaces       = true; % Assumes all refractive indices are the same
 model.FMC.boundaryType            = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 model.FMC.wavelength              = 900; % [nm] Fluorescence wavelength, used for determination of optical properties for fluorescence light
 

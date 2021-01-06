@@ -21,11 +21,11 @@ model = defineGeometry(model);
 plotMCmatlabGeom(model);
 
 %% Monte Carlo simulation
-model = clearMCmatlabModel(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
+model = reset(model,'MC'); % Only necessary if you want to run this section repeatedly, re-using previous G data
 
 model.MC.simulationTimeRequested  = .05; % [min] Time duration of the simulation
 
-model.MC.matchedInterfaces        = true; % Assumes all refractive indices are 1
+model.MC.matchedInterfaces        = true; % Assumes all refractive indices are the same
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
@@ -56,7 +56,7 @@ model = runMonteCarlo(model);
 plotMCmatlab(model);
 
 %% Fluorescence Monte Carlo
-model = clearMCmatlabModel(model,'FMC'); % Only necessary if you want to run this section repeatedly, re-using previous G and MC data
+model = reset(model,'FMC'); % Only necessary if you want to run this section repeatedly, re-using previous G and MC data
 
 model.FMC.simulationTimeRequested = .1; % [min] Time duration of the simulation
 model.FMC.wavelength              = 600; % [nm] Fluorescence wavelength, used for determination of optical properties for fluorescence light

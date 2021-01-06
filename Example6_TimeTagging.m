@@ -34,7 +34,7 @@ plot(model,'G');
 model.MC.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
 model.MC.simulationTimeRequested  = .5; % [min] Time duration of the simulation
 
-model.MC.matchedInterfaces        = true; % Assumes all refractive indices are 1
+model.MC.matchedInterfaces        = true; % Assumes all refractive indices are the same
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 

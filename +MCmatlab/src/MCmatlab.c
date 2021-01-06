@@ -41,7 +41,7 @@
  * installed. As of January 2020, mexcuda does not work with MSVC 2019,
  * so I'd recommend MSVC 2017. You also need the Parallel Computing
  * Toolbox, which you will find in the MATLAB addon manager. To compile, run:
- * "copyfile ./+MCmatlab/src/MCmatlab.c ./+MCmatlab/src/MCmatlab_CUDA.cu; mexcuda -llibut COMPFLAGS='-use_fast_math -res-usage $COMPFLAGS' -outdir +MCmatlab\@model\private .\+MCmatlab\src\MCmatlab_CUDA.cu ".\+MCmatlab\src\nvml.lib""
+ * "copyfile ./+MCmatlab/src/MCmatlab.c ./+MCmatlab/src/MCmatlab_CUDA.cu; mexcuda -llibut COMPFLAGS='-use_fast_math -res-usage $COMPFLAGS' -outdir +MCmatlab\@model\private .\+MCmatlab\src\MCmatlab_CUDA.cu"
  * 
  ** COMPILING ON MAC
  * As of June 2017, the macOS compiler doesn't support libut (for ctrl+c 
@@ -120,7 +120,6 @@
   #define DEVICE 0
   #define GPUHEAPMEMORYLIMIT 500000000 // Bytes to allow the GPU to allocate, mostly for tracking photons prior to storage in NFRdet. Must be less than the available memory.
   #define KERNELTIME 50000 // Microseconds to spend in each kernel call (watchdog timer is said to termine kernel function that take more than a few seconds)
-  #include <nvml.h>
   #include <curand_kernel.h>
   typedef curandStateXORWOW_t PRNG_t;
 //   typedef curandStateMRG32k3a_t PRNG_t;
@@ -186,13 +185,13 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
     G_var = *G_global;
     LC_var = *LC_global;
     O_var = *O_global;
-    memcpy(smallArrays,G->muav,(nM*3 + G->n[2] + B->L_NF1 + B->L_FF1 + B->L_NF2 + B->L_FF2)*sizeof(FLOATORDBL));
+    memcpy(smallArrays,G->muav,(nM*4 + B->L_NF1 + B->L_FF1 + B->L_NF2 + B->L_FF2)*sizeof(FLOATORDBL));
     // Set all array pointers to the correct new locations in the shared memory version of smallArrays
     G->muav = smallArrays;
     G->musv = G->muav + nM;
     G->gv = G->musv + nM;
     G->RIv = G->gv + nM;
-    B->NFdist1 = G->RIv + G->n[2];
+    B->NFdist1 = G->RIv + nM;
     B->FFdist1 = B->NFdist1 + B->L_NF1;
     B->NFdist2 = B->FFdist1 + B->L_FF1;
     B->FFdist2 = B->NFdist2 + B->L_NF2;
@@ -218,22 +217,20 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
   // Launch major loop
   while(pctProgress < 100 && O->nPhotons + THREADNUM < nPhotonsRequested && !*ctrlc_caughtPtr) { // "+ THREADNUM" ensures that we avoid race conditions that might launch more than nPhotonsRequested photons
   #endif
-    launchPhoton(P,B,G,Pa);
+    launchPhoton(P,B,G,Pa,D);
+    if(P->alive) getNewVoxelProperties(P,G,D);
     if(P->alive) atomicAddWrapperULL(&O_global->nPhotons,1); // We have to store the photon number in the global memory so it's visible to all blocks
-    else break;
-    P->RI = G->RIv[G->M[P->j]]; // Get refractive index
 
-    while(P->alive) {
-      while(P->stepLeft>0) {
-        if(!P->sameVoxel) {
-          checkEscape(P,G,LC,O);
-          if(!P->alive) break;
-          getNewVoxelProperties(P,G); // If photon has just entered a new voxel or has just been launched
-        }
+    while(P->alive) { // keep doing scattering events
+      while(P->alive && P->stepLeft>0) { // keep propagating
         propagatePhoton(P,G,O,Pa,D);
+        if(!P->sameVoxel) {
+          checkEscape(P,G,LC,O); // photon may die here
+          if(P->alive) getNewVoxelProperties(P,G,D);
+        }
       }
-      checkRoulette(P);
-      scatterPhoton(P,G);
+      if(P->alive) checkRoulette(P);
+      if(P->alive) scatterPhoton(P,G,D);
     }
 
     #ifndef __NVCC__
@@ -283,7 +280,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   
   // To know if we are simulating fluorescence, we check if a "sourceDistribution" field exists. If so, we will use it later in the beam definition.
   mxArray *MatlabBeam = mxGetProperty(MatlabMC,0,"beam");
-  double *S_PDF       = (double *)mxGetData(mxGetProperty(MatlabMC,0,"sourceDistribution")); // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
+  double *S_PDF       = simFluorescence? (double *)mxGetData(mxGetProperty(MatlabMC,0,"sourceDistribution")): NULL; // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
   
   // Variables for timekeeping and number of photons
   bool            simulationTimed = mxIsNaN(*mxGetPr(mxGetPropertyShared(MatlabMC,0,"nPhotonsRequested")));
@@ -323,8 +320,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   G->gv   = G->musv + nM;
   G->RIv  = G->gv + nM;
   G->M = (unsigned char *)malloc(L*sizeof(unsigned char)); // M
-  G->interfaceNormals = (FLOATORDBL *)mxGetData(mxGetPropertyShared(MatlabMC,0,"interfaceNormals"));
-  G->interpolateNormals = mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabMC,0,"interpolateNormals"));
+  G->interfaceNormals = (float *)mxGetData(mxGetPropertyShared(MatlabMC,0,"interfaceNormals"));
 
   // Fill the geometry arrays
   for(idx=0;idx<nM;idx++) {
@@ -351,7 +347,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   FLOATORDBL *NFdist1 = NULL, *NFdist2 = NULL, *FFdist1 = NULL, *FFdist2 = NULL;
   if(beamType >= 4) {
     double *MatlabNFdist1 = mxGetPr(mxGetPropertyShared(MatlabBeamNF,0,beamType == 4? "radialDistr": "XDistr"));
-    NFdist1 = G->RIv + dimPtr[2];
+    NFdist1 = G->RIv + nM;
     if(L_NF1 == 1) {
       *NFdist1 = -1 - (FLOATORDBL)MatlabNFdist1[0];
     } else {
@@ -525,13 +521,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     gpuErrchk(cudaDeviceSetLimit(cudaLimitMallocHeapSize,GPUHEAPMEMORYLIMIT));
   }
 
-  nvmlInit();
-  nvmlDevice_t nvmldevice; int returnvar = nvmlDeviceGetHandleByIndex(DEVICE,&nvmldevice);
-  unsigned int clock; nvmlDeviceGetClockInfo(nvmldevice,NVML_CLOCK_GRAPHICS,&clock);
-//   unsigned int fanspeed; nvmlDeviceGetFanSpeed(nvmldevice,&fanspeed);
-//   nvmlMemory_t memory; nvmlDeviceGetMemoryInfo(nvmldevice,&memory);
-//   unsigned int T; nvmlDeviceGetTemperature(nvmldevice,NVML_TEMPERATURE_GPU,&T);
-//   nvmlUtilization_t utilization; nvmlDeviceGetUtilizationRates(nvmldevice,&utilization);
+  int clock; gpuErrchk(cudaDeviceGetAttribute(&clock,cudaDevAttrClockRate,DEVICE));
 
   struct geometry *G_dev;
   struct beam *B_dev;
@@ -542,10 +532,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   createDeviceStructs(G,&G_dev,B,&B_dev,LC,&LC_dev,Pa,&Pa_dev,O,&O_dev,nM,L,D,&D_dev);
 
   int pctProgress = 0;
-  int callnumber = 0;
   long long timeLeft = simulationTimed? (long long)(simulationTimeRequested*60000000): LLONG_MAX; // microseconds
+
   if(!silentMode) {
-//     printf("Calculating...   0%% done [GPU      MHz, memory used    /    GB]");
     printf("Calculating...   0%% done");
     mexEvalString("drawnow;");
   }
@@ -553,7 +542,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   long long prevtime = simulationTimeStart;
   do {
     // Run kernel
-    threadInitAndLoop<<<blocks, threadsPerBlock, size_smallArrays>>>(B_dev,G_dev,LC_dev,Pa_dev,O_dev,nM,prevtime,clock*min((long long)KERNELTIME,timeLeft),nPhotonsRequested,NULL,false,D_dev);
+    threadInitAndLoop<<<blocks, threadsPerBlock, size_smallArrays>>>(B_dev,G_dev,LC_dev,Pa_dev,O_dev,nM,prevtime,clock/1000*min((long long)KERNELTIME,timeLeft),nPhotonsRequested,NULL,false,D_dev);
     gpuErrchk(cudaPeekAtLastError());
     gpuErrchk(cudaDeviceSynchronize());
     // Progress indicator
@@ -565,13 +554,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     } else {
       pctProgress = (int)(100.0*O->nPhotons/nPhotonsRequested);
     }
-    nvmlDeviceGetClockInfo(nvmldevice,NVML_CLOCK_GRAPHICS,&clock);
-    if(!(callnumber++%5) && !silentMode) {
-//       nvmlDeviceGetFanSpeed(nvmldevice,&fanspeed);
-//       nvmlDeviceGetMemoryInfo(nvmldevice,&memory);
-//       nvmlDeviceGetTemperature(nvmldevice,NVML_TEMPERATURE_GPU,&T);
-//       nvmlDeviceGetUtilizationRates(nvmldevice,&utilization);
-//       printf("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b%3d%% done [GPU %4u MHz, memory used %3.1f/%3.1f GB]",pctProgress,clock,(double)memory.used/1024/1024/1024,(double)memory.total/1024/1024/1024);
+
+    // Check for ctrl+c
+    if(utIsInterruptPending()) {
+      ctrlc_caught = true;
+      printf("\nCtrl+C detected, stopping.");
+    }
+
+    if(!silentMode) {
       printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgress);
       mexEvalString("drawnow;");
     }
@@ -590,17 +580,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         gpuErrchk(cudaMemcpy(Pa_dev,&Pa_temp,sizeof(struct paths),cudaMemcpyHostToDevice));
       }
     }
-
-    // Check for ctrl+c
-    if(utIsInterruptPending()) {
-      ctrlc_caught = true;
-      printf("\nCtrl+C detected, stopping.");
-    }
   } while(timeLeft > 0 && O->nPhotons < nPhotonsRequested && !ctrlc_caught && O->nPhotons); // The O->nPhotons is there to stop looping if launches failed
-//   if(!silentMode) printf("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b100%% done [GPU %4u MHz, memory used %3.1f/%3.1f GB]",clock,(double)memory.used/1024/1024/1024,(double)memory.total/1024/1024/1024);
   if(!silentMode && O->nPhotons) printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgress);
 
-  nvmlShutdown();
   retrieveAndFreeDeviceStructs(G,G_dev,B,B_dev,LC,LC_dev,Pa,Pa_dev,O,O_dev,L,D,D_dev);
 
   #else

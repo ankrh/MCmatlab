@@ -52,7 +52,7 @@ classdef model
             % clearMCmatlabModel(obj, type) is deprecated, use
             % reset(obj, type) instead.
             
-            reset(obj, type)
+            reset(obj, type);
         end
         
         obj = runMonteCarlo(obj, varargin)

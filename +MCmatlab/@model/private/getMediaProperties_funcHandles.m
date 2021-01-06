@@ -3,8 +3,10 @@ function model = getMediaProperties_funcHandles(model,simType)
 switch simType
   case 1 % Monte Carlo
     wavelength = model.MC.wavelength;
+    matchedInterfaces = model.MC.matchedInterfaces;
   case 2 % Fluorescence Monte Carlo
     wavelength = model.FMC.wavelength;
+    matchedInterfaces = model.FMC.matchedInterfaces;
   case 3 % Heat Simulations
     wavelength = NaN;
 end
@@ -12,7 +14,7 @@ end
 G = model.G;
 
 mP_raw = G.mediaPropertiesFunc(wavelength,G.mediaPropParams); % The raw media properties, as defined by the user in the model file
-mP_fH(length(mP_raw)) = struct();
+mP_fH(numel(mP_raw)) = struct();
 
 if isfield(mP_raw,'Y')
   error('Error: Y has been deprecated. Please use either PY to specify the fluorescence power yield or QY to specify the fluorescence quantum yield');
@@ -118,7 +120,11 @@ for i=1:length(mP_raw)
     end
     
     if ~isfield(mP_raw,'n') || isempty(mP_raw(i).n)
-      mP_fH(i).n = NaN;
+      if ~matchedInterfaces
+        error('Error: matchedInterfaces is false, but medium %s has no n.',mP_raw(i).name);
+      else
+        mP_fH(i).n = NaN;
+      end
     else
       mP_fH(i).n = mP_raw(i).n;
     end

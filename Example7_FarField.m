@@ -16,9 +16,9 @@
 % Note that MCmatlab distinguishes between "escaped" photons and "killed"
 % photons. An "escaping" photon is one that hits the top cuboid boundary
 % (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1)
-% where the medium has refractive index 1 (or matchedInterfaces == true). A
-% "killed" photon is one that strays too far from the main cuboid (5 times
-% further than the cuboid dimensions).
+% where the medium has refractive index 1. A "killed" photon is one that
+% strays too far from the main cuboid (5 times further than the cuboid
+% dimensions).
 % 
 % If boundaryType == 1, there are no "killed" photons since no photons can
 % travel outside the cuboid, and the fraction of light absorbed in the
@@ -46,7 +46,7 @@ plot(model,'G');
 model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
 model.MC.farFieldRes              = 50; % (Default: 0) If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
 
-model.MC.matchedInterfaces        = true; % Assumes all refractive indices are 1
+model.MC.matchedInterfaces        = true; % Assumes all refractive indices are the same
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 model.MC.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
@@ -70,7 +70,7 @@ plot(model,'MC');
 model.FMC.simulationTimeRequested  = 0.1; % [min] Time duration of the simulation
 model.FMC.farFieldRes              = 50; % (Default: 0) If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
 
-model.FMC.matchedInterfaces        = true; % Assumes all refractive indices are 1
+model.FMC.matchedInterfaces        = true; % Assumes all refractive indices are the same
 model.FMC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 model.FMC.wavelength               = 550; % [nm] Fluorescence wavelength, used for determination of optical properties for fluorescence light
 
@@ -113,7 +113,7 @@ else
   mediaProperties(j).mus = 100;
   mediaProperties(j).g   = 0.9;
 end
-mediaProperties(j).n   = 1.3;
+mediaProperties(j).n   = 1;
 
 j=2;
 mediaProperties(j).name  = 'fluorescer';
@@ -126,7 +126,7 @@ else
   mediaProperties(j).mus = 100;
   mediaProperties(j).g   = 0.9;
 end
-mediaProperties(j).n   = 1.3;
+mediaProperties(j).n   = 1;
 
 % Only one of PY and QY may be defined:
 mediaProperties(j).PY   = 0.5; % Fluorescence power yield (ratio of power emitted to power absorbed)

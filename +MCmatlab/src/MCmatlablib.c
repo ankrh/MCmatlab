@@ -11,8 +11,7 @@ struct geometry { // Struct type for the constant geometry definitions, includin
   int            boundaryType;
   FLOATORDBL     *muav,*musv,*gv,*RIv;
   unsigned char  *M;
-  FLOATORDBL     *interfaceNormals;
-  bool           interpolateNormals;
+  float          *interfaceNormals;
 };
 
 struct beam { // Struct type for the constant beam definitions
@@ -223,6 +222,9 @@ long binaryTreeSearch(FLOATORDBL rand, long N, FLOATORDBL *D) {
   return j;
 }
 
+#ifdef __NVCC__ // If compiling for CUDA
+__device__
+#endif
 void getNewj(struct geometry const *G, struct photon *P) {
   P->j = ((P->i[2] < 0)? 0: ((P->i[2] >= G->n[2])? G->n[2]-1: (long)FLOOR(P->i[2])))*G->n[0]*G->n[1] +
          ((P->i[1] < 0)? 0: ((P->i[1] >= G->n[1])? G->n[1]-1: (long)FLOOR(P->i[1])))*G->n[0]         +
@@ -237,13 +239,18 @@ void createDeviceStructs(struct geometry const *G, struct geometry **G_devptr,
                          struct outputs *O, struct outputs **O_devptr,
                          int nM, long L,
                          struct debug *D, struct debug **D_devptr) {
+  bool matchedInterfaces = true;
+  for(long iM=1;iM<nM;iM++) matchedInterfaces &= G->RIv[iM] == G->RIv[iM-1];
+
   // Allocate and copy geometry struct, including smallArrays
   struct geometry G_tempvar = *G;
-  long size_smallArrays = (nM*3 + G->n[2] + B->L_NF1 + B->L_FF1 + B->L_NF2 + B->L_FF2)*sizeof(FLOATORDBL);
+  long size_smallArrays = (nM*4 + B->L_NF1 + B->L_FF1 + B->L_NF2 + B->L_FF2)*sizeof(FLOATORDBL);
   gpuErrchk(cudaMalloc(&G_tempvar.muav,size_smallArrays)); // This is to allocate all of smallArrays
-  gpuErrchk(cudaMemcpy(G_tempvar.muav,G->muav,size_smallArrays,cudaMemcpyHostToDevice)); // And for copying all of it to global device memory
-  gpuErrchk(cudaMalloc(&G_tempvar.M   ,       L*sizeof(unsigned char)));
-  gpuErrchk(cudaMemcpy(G_tempvar.M   , G->M   ,       L*sizeof(unsigned char),cudaMemcpyHostToDevice));
+  gpuErrchk(cudaMemcpy( G_tempvar.muav,G->muav,size_smallArrays,cudaMemcpyHostToDevice)); // And for copying all of it to global device memory
+  gpuErrchk(cudaMalloc(&G_tempvar.M, L*sizeof(unsigned char)));
+  gpuErrchk(cudaMemcpy( G_tempvar.M, G->M, L*sizeof(unsigned char),cudaMemcpyHostToDevice));
+  gpuErrchk(cudaMalloc(&G_tempvar.interfaceNormals, (matchedInterfaces? 1:2*L)*sizeof(float)));
+  gpuErrchk(cudaMemcpy( G_tempvar.interfaceNormals, G->interfaceNormals, (matchedInterfaces? 1:2*L)*sizeof(float),cudaMemcpyHostToDevice));
 
   gpuErrchk(cudaMalloc(G_devptr, sizeof(struct geometry)));
   gpuErrchk(cudaMemcpy(*G_devptr,&G_tempvar,sizeof(struct geometry),cudaMemcpyHostToDevice));
@@ -384,7 +391,7 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void launchPhoton(struct photon * const P, struct beam const * const B, struct geometry const * const G, struct paths * const Pa) {
+void launchPhoton(struct photon * const P, struct beam const * const B, struct geometry const * const G, struct paths * const Pa, struct debug * D) {
   FLOATORDBL X,Y,r,phi,tanphiX,tanphiY,costheta,sintheta;
   long   j,idx;
   FLOATORDBL target[3]={0},w0[3];
@@ -406,6 +413,8 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
       P->u[0] = sintheta*COS(phi);
       P->u[1] = sintheta*SIN(phi);
       P->u[2] = costheta;
+      getNewj(G,P);
+      P->RI = G->RIv[G->M[P->j]]; // Set the refractive index
       P->time = 0;
     } else switch (B->beamType) {
       case 0: // pencil beam
@@ -413,9 +422,11 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->i[1] = (B->focus[1] - B->focus[2]*B->u[1]/B->u[2])/G->d[1] + G->n[1]/2.0f;
         P->i[2] = 0;
         for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
-        P->time = -G->RIv[0]/C*SQRT(SQR((P->i[0] - G->n[0]/2.0f)*G->d[0] - B->focus[0]) +
-                                    SQR((P->i[1] - G->n[1]/2.0f)*G->d[1] - B->focus[1]) +
-                                    SQR((P->i[2]               )*G->d[2] - B->focus[2])); // Starting time is set so that the wave crosses the focal plane at time = 0
+        getNewj(G,P);
+        P->RI = G->RIv[G->M[P->j]]; // Set the refractive index
+        P->time = -P->RI/C*SQRT(SQR((P->i[0] - G->n[0]/2.0f)*G->d[0] - B->focus[0]) +
+                                SQR((P->i[1] - G->n[1]/2.0f)*G->d[1] - B->focus[1]) +
+                                SQR((P->i[2]               )*G->d[2] - B->focus[2])); // Starting time is set so that the wave crosses the focal plane at time = 0
         break;
       case 1: // isotropically emitting point source
         P->i[0] = B->focus[0]/G->d[0] + G->n[0]/2.0f;
@@ -427,6 +438,8 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->u[0] = sintheta*COS(phi);
         P->u[1] = sintheta*SIN(phi);
         P->u[2] = costheta;
+        getNewj(G,P);
+        P->RI = G->RIv[G->M[P->j]]; // Set the refractive index
         P->time = 0;
         break;
       case 2: // infinite plane wave
@@ -434,9 +447,11 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->i[1] = ((G->boundaryType==1)? 1: KILLRANGE)*G->n[1]*(RandomNum-0.5f) + G->n[1]/2.0f; // Generates a random iy coordinate within the cuboid
         P->i[2] = 0;
         for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
-        P->time = G->RIv[0]/C*((P->i[0] - G->n[0]/2.0f)*G->d[0]*B->u[0] +
-                               (P->i[1] - G->n[1]/2.0f)*G->d[1]*B->u[1] +
-                               (P->i[2]               )*G->d[2]*B->u[2]); // Starting time is set so that the wave crosses (x=0,y=0,z=0) at time = 0
+        getNewj(G,P);
+        P->RI = G->RIv[G->M[P->j]]; // Set the refractive index
+        P->time = P->RI/C*((P->i[0] - G->n[0]/2.0f)*G->d[0]*B->u[0] +
+                           (P->i[1] - G->n[1]/2.0f)*G->d[1]*B->u[1] +
+                           (P->i[2]               )*G->d[2]*B->u[2]); // Starting time is set so that the wave crosses (x=0,y=0,z=0) at time = 0
         break;
       case 3: // Laguerre-Gaussian LG01 beam
         phi     = RandomNum*2*PI;
@@ -448,9 +463,11 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0f; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
         P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0f;
         P->i[2] = 0;
-        P->time = -G->RIv[0]/C*SQRT(SQR((P->i[0] - G->n[0]/2.0f)*G->d[0] - target[0]) +
-                                    SQR((P->i[1] - G->n[1]/2.0f)*G->d[1] - target[1]) +
-                                    SQR((P->i[2]               )*G->d[2] - target[2])); // Starting time is set so that the wave crosses the focal plane at time = 0
+        getNewj(G,P);
+        P->RI = G->RIv[G->M[P->j]]; // Set the refractive index
+        P->time = -P->RI/C*SQRT(SQR((P->i[0] - G->n[0]/2.0f)*G->d[0] - target[0]) +
+                                SQR((P->i[1] - G->n[1]/2.0f)*G->d[1] - target[1]) +
+                                SQR((P->i[2]               )*G->d[2] - target[2])); // Starting time is set so that the wave crosses the focal plane at time = 0
         break;
       case 4: // Radial
         // Near Field
@@ -482,9 +499,11 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0f; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
         P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0f;
         P->i[2] = 0;
-        P->time = -G->RIv[0]/C*SQRT(SQR((P->i[0] - G->n[0]/2.0f)*G->d[0] - target[0]) +
-                                    SQR((P->i[1] - G->n[1]/2.0f)*G->d[1] - target[1]) +
-                                    SQR((P->i[2]               )*G->d[2] - target[2])); // Starting time is set so that the wave crosses the focal plane at time = 0
+        getNewj(G,P);
+        P->RI = G->RIv[G->M[P->j]]; // Set the refractive index
+        P->time = -P->RI/C*SQRT(SQR((P->i[0] - G->n[0]/2.0f)*G->d[0] - target[0]) +
+                                SQR((P->i[1] - G->n[1]/2.0f)*G->d[1] - target[1]) +
+                                SQR((P->i[2]               )*G->d[2] - target[2])); // Starting time is set so that the wave crosses the focal plane at time = 0
         break;
       case 5: // X/Y
         // Near Field
@@ -529,9 +548,11 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0f; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
         P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0f;
         P->i[2] = 0;
-        P->time = -G->RIv[0]/C*SQRT(SQR((P->i[0] - G->n[0]/2.0f)*G->d[0] - target[0]) +
-                                    SQR((P->i[1] - G->n[1]/2.0f)*G->d[1] - target[1]) +
-                                    SQR((P->i[2]               )*G->d[2] - target[2])); // Starting time is set so that the wave crosses the focal plane at time = 0
+        getNewj(G,P);
+        P->RI = G->RIv[G->M[P->j]]; // Set the refractive index
+        P->time = -P->RI/C*SQRT(SQR((P->i[0] - G->n[0]/2.0f)*G->d[0] - target[0]) +
+                                SQR((P->i[1] - G->n[1]/2.0f)*G->d[1] - target[1]) +
+                                SQR((P->i[2]               )*G->d[2] - target[2])); // Starting time is set so that the wave crosses the focal plane at time = 0
         break;
     }
 
@@ -557,9 +578,11 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
 
   // Calculate distances to next voxel boundary planes
   for(idx=0;idx<3;idx++) P->D[idx] = P->u[idx]? (FLOOR(P->i[idx]) + (P->u[idx]>0) - P->i[idx])*G->d[idx]/P->u[idx] : INFINITY;
-  
-  getNewj(G,P);
-  
+
+  P->insideVolume = P->i[0] < G->n[0] && P->i[0] >= 0 &&
+                    P->i[1] < G->n[1] && P->i[1] >= 0 &&
+                    P->i[2] < G->n[2] && P->i[2] >= 0;
+
   P->stepLeft  = -LOG(RandomNum);
   
   #ifdef __NVCC__ // If compiling for CUDA
@@ -705,7 +728,7 @@ void checkEscape(struct photon * const P, struct geometry const * const G, struc
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void getNewVoxelProperties(struct photon * const P, struct geometry const * const G) {
+void getNewVoxelProperties(struct photon * const P, struct geometry const * const G, struct debug *D) {
   /* Get optical properties of current voxel.
    * If photon is outside cuboid, properties are those of
    * the closest defined voxel. */
@@ -716,14 +739,20 @@ void getNewVoxelProperties(struct photon * const P, struct geometry const * cons
   // Refractive index is not retrieved here, but only when we refract in through a surface
 }
 
+#ifdef __NVCC__ // If compiling for CUDA
+__device__
+#endif
 void getNormal(struct geometry const * const G, FLOATORDBL *nxPtr, FLOATORDBL *nyPtr, FLOATORDBL *nzPtr, long j) {
-  FLOATORDBL theta = G->interfaceNormals[2*j    ];
-  FLOATORDBL phi   = G->interfaceNormals[2*j + 1];
+  float theta = G->interfaceNormals[2*j    ];
+  float phi   = G->interfaceNormals[2*j + 1];
   *nxPtr = sin(theta)*cos(phi); // Normal vector x composant
   *nyPtr = sin(theta)*sin(phi); // Normal vector y composant
   *nzPtr = cos(theta); // Normal vector z composant
 }
 
+#ifdef __NVCC__ // If compiling for CUDA
+__device__
+#endif
 void getInterpolatedNormal(struct geometry const * const G, struct photon *P, FLOATORDBL *nxPtr, FLOATORDBL *nyPtr, FLOATORDBL *nzPtr, long j) {
   // Determine which set of 8 voxels to interpolate between. Let the corner with lowest indices have indices ix,iy,iz and the corner with highest indices have indices ix+1,iy+1,iz+1.
   long ix = (long)FLOOR(P->i[0] - 0.5); // May be as low as -1
@@ -825,6 +854,7 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, s
   P->sameVoxel = true;
   
   FLOATORDBL s = min(P->stepLeft/P->mus,min(P->D[0],min(P->D[1],P->D[2])));
+
   P->stepLeft  = s==P->stepLeft/P->mus? 0: P->stepLeft - s*P->mus; // zero case is to avoid rounding errors
   P->time     += s*P->RI/C;
   
@@ -850,8 +880,7 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, s
     if(mu != 1) { // If there's a refractive index change
       bool photonReflected = false;
       FLOATORDBL nx,ny,nz;
-      if(G->interpolateNormals) getInterpolatedNormal(G,P,&nx,&ny,&nz,j_new);
-      else getNormal(G,&nx,&ny,&nz,j_new);
+      getInterpolatedNormal(G,P,&nx,&ny,&nz,j_new);
       FLOATORDBL cos_in = nx*P->u[0] + ny*P->u[1] + nz*P->u[2]; // dot product of n and u
       if(cos_in > 0) { // If cos_in is negative, we're dealing with a case in which the photon is headed in a direction that, according to the surface normal, is actually away from the medium. Then we choose not to do any reflection or refraction.
         FLOATORDBL cos_out_sqr = 1 - SQR(mu)*(1 - SQR(cos_in));
@@ -944,9 +973,11 @@ void checkRoulette(struct photon * const P) {
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void scatterPhoton(struct photon * const P, struct geometry const * const G) {
+void scatterPhoton(struct photon * const P, struct geometry const * const G, struct debug *D) {
   // Sample for costheta using Henyey-Greenstein scattering
-  FLOATORDBL costheta = FABS(P->g) > SQRT(FLOATORDBLEPS)? (1 + P->g*P->g - SQR((1 - P->g*P->g)/(1 - P->g + 2*P->g*RandomNum)))/(2*P->g) : 2*RandomNum - 1;
+  FLOATORDBL costheta = FABS(P->g) == 1.0? P->g:
+                        FABS(P->g) <= SQRT(FLOATORDBLEPS)? 2*RandomNum - 1:
+                        (1 + P->g*P->g - SQR((1 - P->g*P->g)/(1 - P->g + 2*P->g*RandomNum)))/(2*P->g);
   FLOATORDBL sintheta = SQRT(1 - costheta*costheta);
   FLOATORDBL phi = 2*PI*RandomNum;
   FLOATORDBL cosphi = COS(phi);
@@ -964,7 +995,7 @@ void scatterPhoton(struct photon * const P, struct geometry const * const G) {
     P->u[1] = sintheta*sinphi;
     P->u[2] = costheta*SIGN(P->u[2]);
   }
-  
+
   // Calculate distances to next voxel boundary planes
   for(idx=0;idx<3;idx++) P->D[idx] = P->u[idx]? (FLOOR(P->i[idx]) + (P->u[idx]>0) - P->i[idx])*G->d[idx]/P->u[idx] : INFINITY;
   

@@ -12,6 +12,9 @@ switch simType
     mP_fH = model.HS.mediaProperties_funcHandles;
 end
 
+uniqueMedia = unique(model.G.M_raw);
+mP_fH = mP_fH(uniqueMedia);
+
 if(~ishandle(nFig))
   h_f = figure(nFig);
 else
@@ -43,10 +46,10 @@ if simType <= 2
       nameCellArray(barIdx) = {mP_fH(mediumIdx).name};
       barIdx = barIdx+1;
     end
-    if ~isa(mP_fH(mediumIdx).mua,'function_handle')
-      splitMediumIdx = splitMediumIdx + 1;
-    else
+    if isa(mP_fH(mediumIdx).mua,'function_handle') || isa(mP_fH(mediumIdx).mus,'function_handle') || isa(mP_fH(mediumIdx).g,'function_handle')
       splitMediumIdx = splitMediumIdx + mP_fH(mediumIdx).nBins;
+    else
+      splitMediumIdx = splitMediumIdx + 1;
     end
   end
   set(gca,'XTick',1:(barIdx-1),'XTickLabel',nameCellArray,'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
@@ -70,10 +73,10 @@ if simType <= 2
       nameCellArray(barIdx) = {mP_fH(mediumIdx).name};
       barIdx = barIdx+1;
     end
-    if ~isa(mP_fH(mediumIdx).mus,'function_handle')
-      splitMediumIdx = splitMediumIdx + 1;
-    else
+    if isa(mP_fH(mediumIdx).mua,'function_handle') || isa(mP_fH(mediumIdx).mus,'function_handle') || isa(mP_fH(mediumIdx).g,'function_handle')
       splitMediumIdx = splitMediumIdx + mP_fH(mediumIdx).nBins;
+    else
+      splitMediumIdx = splitMediumIdx + 1;
     end
   end
   set(gca,'XTick',1:(barIdx-1),'XTickLabel',nameCellArray,'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
@@ -97,10 +100,10 @@ if simType <= 2
       nameCellArray(barIdx) = {mP_fH(mediumIdx).name};
       barIdx = barIdx+1;
     end
-    if ~isa(mP_fH(mediumIdx).g,'function_handle')
-      splitMediumIdx = splitMediumIdx + 1;
-    else
+    if isa(mP_fH(mediumIdx).mua,'function_handle') || isa(mP_fH(mediumIdx).mus,'function_handle') || isa(mP_fH(mediumIdx).g,'function_handle')
       splitMediumIdx = splitMediumIdx + mP_fH(mediumIdx).nBins;
+    else
+      splitMediumIdx = splitMediumIdx + 1;
     end
   end
   set(gca,'XTick',1:(barIdx-1),'XTickLabel',nameCellArray,'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
@@ -118,7 +121,7 @@ if simType <= 2
     ax = gca;
     ax.XAxis.Visible = 'off';
     ax.YAxis.Visible = 'off';
-    str = {'Assuming index','matched interfaces:','n = 1'};
+    str = {'Assuming index','matched interfaces'};
     text(0.5,0.5,str,'FontSize',12,'HorizontalAlignment','center');
   end
   title('n','FontSize',12);
@@ -141,10 +144,10 @@ else
       nameCellArray(barIdx) = {mP_fH(mediumIdx).name};
       barIdx = barIdx+1;
     end
-    if ~isa(mP_fH(mediumIdx).VHC,'function_handle')
-      splitMediumIdx = splitMediumIdx + 1;
-    else
+    if isa(mP_fH(mediumIdx).VHC,'function_handle') || isa(mP_fH(mediumIdx).TC,'function_handle')
       splitMediumIdx = splitMediumIdx + mP_fH(mediumIdx).nBins;
+    else
+      splitMediumIdx = splitMediumIdx + 1;
     end
   end
   set(gca,'XTick',1:(barIdx-1),'XTickLabel',nameCellArray,'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');
@@ -168,10 +171,10 @@ else
       nameCellArray(barIdx) = {mP_fH(mediumIdx).name};
       barIdx = barIdx+1;
     end
-    if ~isa(mP_fH(mediumIdx).TC,'function_handle')
-      splitMediumIdx = splitMediumIdx + 1;
-    else
+    if isa(mP_fH(mediumIdx).VHC,'function_handle') || isa(mP_fH(mediumIdx).TC,'function_handle')
       splitMediumIdx = splitMediumIdx + mP_fH(mediumIdx).nBins;
+    else
+      splitMediumIdx = splitMediumIdx + 1;
     end
   end
   set(gca,'XTick',1:(barIdx-1),'XTickLabel',nameCellArray,'XTickLabelRotation',45,'FontSize',12,'Box','on','YGrid','on','YMinorGrid','on');

@@ -3,18 +3,19 @@ classdef fluorescenceMonteCarloSimulation
     %related to the fluorescence Monte Carlo simulation in an MCmatlab.model.
     
     properties
-        useGPU = false;
+        useGPU logical = false;
 
         simulationTimeRequested = 0.1;
         nPhotonsRequested = NaN;
-        silentMode = false;
-        useAllCPUs = false;
-        calcNFR = true;
-        calcNFRdet = false;
+        silentMode logical = false;
+        useAllCPUs logical = false;
+        calcNFR logical = true;
+        calcNFRdet logical = false;
         nExamplePaths = 0;
         farFieldRes = 0;
 
         matchedInterfaces = true;
+        smoothingLengthScale = 0                % Length scale over which smoothing of the Sobel interface gradients should be performed
         boundaryType = 1;
         wavelength = NaN;
         
@@ -30,11 +31,11 @@ classdef fluorescenceMonteCarloSimulation
 
         mediaProperties_funcHandles = NaN; % Wavelength-dependent
         mediaProperties = NaN; % Wavelength- and splitting-dependent
-        FRdependent = NaN;
-        FDdependent = NaN;
-        Tdependent = NaN;
+        FRdependent logical = false;
+        FDdependent logical = false;
+        Tdependent logical = false;
         M = NaN; % Splitting-dependent
-        interfaceNormals = NaN
+        interfaceNormals single = NaN
 
         examplePaths = NaN;
 
