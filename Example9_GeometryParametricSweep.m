@@ -1,15 +1,17 @@
 %% Description
 % This example shows how to execute MC simulations in a for loop, in this
 % case simulating a pencil beam incident on a slab of "standard tissue"
-% with variable (parametrically sweeped) thickness. Lz minus the slab
-% thickness is passed in as a part of the GeomFuncParams field and used in
-% the geometry function to get the correct thickness. Light is collected in
-% transmission at a 45° angle in a fiber. At the end of the script,
-% collected power as a function of thickness is plotted. The fiber-coupled
-% power is seen to be zero for zero slab thickness, since there is nothing
-% to scatter the light over into the fiber, and the power starts to drop
-% off when the slab thickness passes 0.05 cm because then much of the light
-% is either absorbed or scattered backwards rather than into the fiber.
+% with variable (parametrically sweeped) thickness. The slab thickness is
+% passed in as a part of the GeomFuncParams field and used in the geometry
+% function to get the correct thickness. Light is collected in transmission
+% at a 45° angle in a fiber. A small layer of air is present underneath the
+% slab so that the refraction out of the slab is correctly modeled. At the
+% end of the script, collected power as a function of thickness is plotted.
+% The fiber-coupled power is seen to be zero for zero slab thickness, since
+% there is nothing to scatter the light over into the fiber, and the power
+% starts to drop off when the slab thickness passes 0.05 cm because then
+% much of the light is either absorbed or scattered backwards rather than
+% into the fiber.
 %
 % Lz and nz have been carefully chosen so that the slab interfaces always
 % coincide with voxel boundaries, so we get exactly correct slab
@@ -37,16 +39,16 @@ model = MCmatlab.model;
 
 model.G.silentMode          = true; % Disables command window text and progress indication
 
-model.G.nx                  = 21; % Number of bins in the x direction
+model.G.nx                  = 11; % Number of bins in the x direction
 model.G.ny                  = 21; % Number of bins in the y direction
-model.G.nz                  = 20; % Number of bins in the z direction
+model.G.nz                  = 21; % Number of bins in the z direction
 model.G.Lx                  = .1; % [cm] x size of simulation cuboid
-model.G.Ly                  = .1; % [cm] y size of simulation cuboid
-model.G.Lz                  = .1; % [cm] z size of simulation cuboid
+model.G.Ly                  = .2; % [cm] y size of simulation cuboid
+model.G.Lz                  = .105; % [cm] z size of simulation cuboid
 
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 model.G.geomFunc            = @geometryDefinition_VariableThicknessStandardTissue; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
-model.G.geomFuncParams      = {model.G.Lz-t_vec(i)}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
+model.G.geomFuncParams      = {t_vec(i)}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
 
 % Execution, do not modify the next line:
 model = defineGeometry(model);
@@ -59,7 +61,7 @@ model.MC.useAllCPUs               = true; % If false, MCmatlab will leave one pr
 model.MC.simulationTimeRequested  = 2/60; % [min] Time duration of the simulation
 model.MC.calcNFR                  = false; % (Default: true) If true, the 3D fluence rate output array NFR will be calculated. Set to false if you have a light collector and you're only interested in the image output.
 
-model.MC.matchedInterfaces        = true; % Assumes all refractive indices are the same
+model.MC.matchedInterfaces        = false; % Assumes all refractive indices are the same
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
@@ -97,7 +99,7 @@ plot(model,'MC');
 
 figure;clf;
 plot(t_vec,power_vec,'Linewidth',2);
-set(gcf,'Position',[40 160 1100 650]);
+set(gcf,'Position',[40 80 800 550]);
 xlabel('Slab thickness [cm]');
 ylabel('Normalized power collected by fiber');
 set(gca,'FontSize',18);grid on; grid minor;
@@ -110,7 +112,7 @@ set(gca,'FontSize',18);grid on; grid minor;
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition_VariableThicknessStandardTissue(X,Y,Z,parameters)
 M = ones(size(X)); % Air
-M(Z > parameters{1}) = 2; % "Standard" tissue
+M(Z > 0.1 - parameters{1} & Z < 0.1) = 2; % "Standard" tissue
 end
 
 %% Media Properties function

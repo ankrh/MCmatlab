@@ -87,7 +87,7 @@ plot(model,'MC');
 
 figure;clf;
 plot(g_vec,power_vec,'Linewidth',2);
-set(gcf,'Position',[40 160 1100 650]);
+set(gcf,'Position',[40 80 800 550]);
 xlabel('Scattering anisotropy g');
 ylabel('Normalized power collected by fiber');
 set(gca,'FontSize',18);grid on; grid minor;
