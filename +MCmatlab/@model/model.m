@@ -35,6 +35,11 @@ classdef model
             %   monteCarloSimulation ('MC'), fluorescenceMonteCarloSimulation ('FMC'), or 
             %   heatSimulation ('HS') in a MCmatlab.model to their defualt values.
             
+            if nargin == 1
+                obj = MCmatlab.model;
+                return
+            end
+            
             switch type
                 case "G"
                     obj.G = MCmatlab.geometry;
@@ -44,13 +49,14 @@ classdef model
                     obj.FMC = MCmatlab.fluorescenceMonteCarloSimulation;
                 case "HS"
                     obj.HS = MCmatlab.heatSimulation;
+                otherwise
+                    error("No valid type to reset specified (G, MC, FMC, HS)");
             end
         end
 
         
         function obj = clearMCmatlabModel(obj, type)
-            % clearMCmatlabModel(obj, type) is deprecated, use
-            % reset(obj, type) instead.
+            warning('clearMCmatlabModel(obj, type) is deprecated, use reset(obj, type) instead.')
             
             reset(obj, type);
         end
@@ -67,6 +73,15 @@ classdef model
             %   monteCarloSimulation ('MC'), fluorescenceMonteCarloSimulation ('FMC'), or 
             %   heatSimulation ('HS') in a MCmatlab.model.
             
+            if nargin == 1
+                % plot everything that is calculated
+                if ~isnan(obj.G.nx); plotMCmatlabGeom(obj); end
+                if ~isnan(obj.MC.nPhotons); plotMCmatlabMC(obj); end
+                if ~isnan(obj.FMC.nPhotons); plotMCmatlabMC(obj, "fluorescence"); end
+                if ~isnan(obj.HS.T); plotMCmatlabHeat(obj); end
+                return
+            end
+            
             switch type
                 case "FMC"
                     plotMCmatlabMC(obj, "fluorescence")
@@ -74,15 +89,16 @@ classdef model
                     plotMCmatlabGeom(obj)
                 case "HS"
                     plotMCmatlabHeat(obj)
-                otherwise
+                case "MC"
                     plotMCmatlabMC(obj)
+                otherwise
+                    error("No valid plot type specified (G, MC, FMC, HS)");
             end
 
         end
        
         function plotMCmatlab(obj, varargin)
-            % plotMCmatlab(obj, type) is deprecated, use plot(obj, type)
-            % instead
+            warning("plotMCmatlab(obj, type) is deprecated, use plot(obj, type) instead.")
 
             if nargin == 1
                 plotMCmatlabMC(obj)
