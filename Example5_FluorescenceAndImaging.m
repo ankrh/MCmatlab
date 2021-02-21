@@ -16,7 +16,11 @@
 % of the fluorescence light is absorbed in the medium surrounding the
 % cylinder, some of it escapes to the detector, showing a slightly blurred
 % image of the cylinder.
-% 
+%
+% To use a light collector, the cuboid boundary type towards the detector
+% has to be set to "escaping". Additionally, the voxels touching that
+% boundary must have a refractive index of 1.
+%
 % The "nExamplePaths" parameter (see example 3) is used for both the
 % excitation and fluorescence simulations, showing paths of both kinds of
 % photons.

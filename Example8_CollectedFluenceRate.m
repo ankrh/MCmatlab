@@ -8,6 +8,10 @@
 % 
 % In the fluence rate plot for collected light, you can see how the photons
 % all start at the source and end at the light collector.
+%
+% To use a light collector, the cuboid boundary type towards the detector
+% has to be set to "escaping". Additionally, the voxels touching that
+% boundary must have a refractive index of 1.
 % 
 % This example also shows two other features: (1) That the Monte Carlo
 % simulation can be set to launch a set number of photons rather than run
