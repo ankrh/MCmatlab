@@ -261,6 +261,7 @@ if MCorFMC.useLightCollector
     h_f = figure(8 + figNumOffset);
     h_f.Color = 'w';
     clf;
+    h_f.Name = 'Time-resolved detected power';
     h_b = bar(timevector,squeeze(LC.image),1,'FaceColor','flat');
     h_b.CData(1  ,:) = [.5 0 .5];
     h_b.CData(end,:) = [.5 0 .5];
