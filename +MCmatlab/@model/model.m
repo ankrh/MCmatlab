@@ -133,8 +133,6 @@ classdef model
         getThermalMediaProperties(model)
         
         plotMediaProperties(nFig,model,simType)
-        plotVolumetric(nFig,xraw,yraw,zraw,Mraw,varargin)
-        updateVolumetric(h_f,M)
         inferno(m)
         
         MCmatlab(model,simType)

@@ -45,7 +45,7 @@ end
 
 %% Plot the geometry showing the temperature sensor locations and the sensor data
 if numTemperatureSensors
-  h_f = plotVolumetric(23,G.x,G.y,G.z,G.M_raw,'MCmatlab_GeometryIllustration',mP_fH,'slicePositions',model.HS.slicePositions);
+  h_f = plotVolumetric.plotVolumetric(23,G.x,G.y,G.z,G.M_raw,'MCmatlab_GeometryIllustration',mP_fH,'slicePositions',model.HS.slicePositions);
   set(h_f,'WindowStyle','Docked');
   h_f.Name = 'Temperature sensor illustration';
   title('Temperature sensor illustration');
@@ -84,13 +84,13 @@ if ~isnan(model.HS.Omega(1))
   M_damage = G.M_raw;
   M_damage(model.HS.Omega > 1) = nM + 1;
   mP_fH(nM + 1).name = 'damage';
-  h_f = plotVolumetric(25,G.x,G.y,G.z,M_damage,'MCmatlab_GeometryIllustration',mP_fH,'slicePositions',model.HS.slicePositions);
+  h_f = plotVolumetric.plotVolumetric(25,G.x,G.y,G.z,M_damage,'MCmatlab_GeometryIllustration',mP_fH,'slicePositions',model.HS.slicePositions);
   set(h_f,'WindowStyle','Docked');
   h_f.Name = 'Thermal damage illustration';
   title('Thermal damage illustration');
   fprintf('%.2e cm^3 was thermally damaged.\n',G.dx*G.dy*G.dz*sum(sum(sum(model.HS.Omega > 1))));
   
-  h_f = plotVolumetric(26,G.x,G.y,G.z,1-exp(-model.HS.Omega),'MCmatlab_fromZero','slicePositions',model.HS.slicePositions);
+  h_f = plotVolumetric.plotVolumetric(26,G.x,G.y,G.z,1-exp(-model.HS.Omega),'MCmatlab_fromZero','slicePositions',model.HS.slicePositions);
   set(h_f,'WindowStyle','Docked');
   h_f.Name = 'Fractional damage';
   title('Fractional damage (1 - e^{-\Omega})');

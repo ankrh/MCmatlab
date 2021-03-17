@@ -82,7 +82,7 @@ LC = MCorFMC.LC;
 %% Plot emitter distribution
 P_in = 1;
 if simFluorescence
-  h_f = plotVolumetric(11,G.x,G.y,G.z,model.FMC.sourceDistribution,'MCmatlab_fromZero');
+  h_f = plotVolumetric.plotVolumetric(11,G.x,G.y,G.z,model.FMC.sourceDistribution,'MCmatlab_fromZero');
   set(h_f,'WindowStyle','Docked');
   h_f.Name = 'Fluorescence emitters';
   title('Fluorescence emitter distribution [W/cm^3/W.incident]')
@@ -126,13 +126,13 @@ if ~isnan(MCorFMC.NFR(1))
   %% Make power absorption plot
   % Calculate 3D absorption distribution, which may be FR or T dependent
   mua_vec = [MCorFMC.mediaProperties.mua];
-  h_f = plotVolumetric(3 + figNumOffset,G.x,G.y,G.z,mua_vec(MCorFMC.M).*MCorFMC.NFR,'MCmatlab_fromZero');
+  h_f = plotVolumetric.plotVolumetric(3 + figNumOffset,G.x,G.y,G.z,mua_vec(MCorFMC.M).*MCorFMC.NFR,'MCmatlab_fromZero');
   set(h_f,'WindowStyle','Docked');
   h_f.Name = ['Normalized ' fluorescenceOrNothing 'absorption'];
   title(['Normalized ' fluorescenceOrNothing 'absorbed power per unit volume [W/cm^3/W.incident]'])
   
   %% Make fluence rate plot
-  h_f = plotVolumetric(4 + figNumOffset,G.x,G.y,G.z,MCorFMC.NFR,'MCmatlab_fromZero');
+  h_f = plotVolumetric.plotVolumetric(4 + figNumOffset,G.x,G.y,G.z,MCorFMC.NFR,'MCmatlab_fromZero');
   set(h_f,'WindowStyle','Docked');
   h_f.Name = ['Normalized ' fluorescenceOrNothing 'fluence rate'];
   title(['Normalized ' fluorescenceOrNothing 'fluence rate [W/cm^2/W.incident]'])
@@ -142,7 +142,7 @@ end
 
 %% Plot example paths
 if MCorFMC.nExamplePaths > 0
-  h_f = plotVolumetric(5 + figNumOffset,G.x,G.y,G.z,G.M_raw,'MCmatlab_GeometryIllustration',MCorFMC.mediaProperties_funcHandles);
+  h_f = plotVolumetric.plotVolumetric(5 + figNumOffset,G.x,G.y,G.z,G.M_raw,'MCmatlab_GeometryIllustration',MCorFMC.mediaProperties_funcHandles);
   set(h_f,'WindowStyle','Docked');
   if simFluorescence
     h_f.Name = 'Fluorescence photon paths';
@@ -178,7 +178,7 @@ end
 
 if MCorFMC.useLightCollector
   %% If there's a light collector, show its orientation and the detected light
-  h_f = plotVolumetric(6 + figNumOffset,G.x,G.y,G.z,G.M_raw,'MCmatlab_GeometryIllustration',MCorFMC.mediaProperties_funcHandles);
+  h_f = plotVolumetric.plotVolumetric(6 + figNumOffset,G.x,G.y,G.z,G.M_raw,'MCmatlab_GeometryIllustration',MCorFMC.mediaProperties_funcHandles);
   set(h_f,'WindowStyle','Docked');
   if simFluorescence
     h_f.Name = 'Fluorescence light collector illustration';
@@ -224,7 +224,7 @@ if MCorFMC.useLightCollector
 
   if ~isnan(MCorFMC.NFRdet(1))
     %% Make NFRdet fluence rate plot
-    h_f = plotVolumetric(7 + figNumOffset,G.x,G.y,G.z,MCorFMC.NFRdet,'MCmatlab_fromZero');
+    h_f = plotVolumetric.plotVolumetric(7 + figNumOffset,G.x,G.y,G.z,MCorFMC.NFRdet,'MCmatlab_fromZero');
     set(h_f,'WindowStyle','Docked');
     h_f.Name = ['Normalized fluence rate of collected ' fluorescenceOrIncident 'light'];
     title(['Normalized fluence rate of collected ' fluorescenceOrIncident 'light [W/cm^2/W.incident]'])
@@ -235,7 +235,7 @@ if MCorFMC.useLightCollector
   end
 
   if LC.res > 1 && ~simFluorescence && LC.nTimeBins > 0
-    h_f = plotVolumetric(8 + figNumOffset,LC.X,LC.Y,timevector,LC.image,'slicePositions',[1 1 0]);
+    h_f = plotVolumetric.plotVolumetric(8 + figNumOffset,LC.X,LC.Y,timevector,LC.image,'slicePositions',[1 1 0]);
     h_f.Name = 'Image';
     xlabel('X [cm]');
     ylabel('Y [cm]');

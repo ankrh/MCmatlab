@@ -202,7 +202,7 @@ if ~model.HS.silentMode
     drawnow;
     heatsimFigure.Position = [40 160 1100 650]; % The size defined here will determine the movie resolution
     if firstHSrun % Make a temporary figure showing the geometry illustration to put into the beginning of the movie
-      heatsimFigure = plotVolumetric(21,G.x,G.y,G.z,G.M_raw,'MCmatlab_GeometryIllustration',mP,'slicePositions',model.HS.slicePositions);
+      heatsimFigure = plotVolumetric.plotVolumetric(21,G.x,G.y,G.z,G.M_raw,'MCmatlab_GeometryIllustration',mP,'slicePositions',model.HS.slicePositions);
       title('Geometry illustration');
       drawnow;
       movieFrames(movieFrameidx) = getframe(heatsimFigure);
@@ -212,7 +212,7 @@ if ~model.HS.silentMode
     set(heatsimFigure,'WindowStyle','Docked');
   end
   
-  heatsimFigure = plotVolumetric(21,G.x,G.y,G.z,model.HS.T,'MCmatlab_heat','slicePositions',model.HS.slicePositions);
+  heatsimFigure = plotVolumetric.plotVolumetric(21,G.x,G.y,G.z,model.HS.T,'MCmatlab_heat','slicePositions',model.HS.slicePositions);
   heatsimFigure.Name = 'Temperature evolution';
   h_title = title(['Temperature evolution, t = ' num2str(updatesTimeVector(1),'%#.2g') ' s']);
   caxis(model.HS.plotTempLimits); % User-defined color scale limits
@@ -296,7 +296,7 @@ for j=1:model.HS.nPulses
         fprintf(repmat('\b',1,nCharsOnLine));
         timeRemainingEstimate = toc/updateIdx*((nUpdatesOn+nUpdatesOff)*model.HS.nPulses+nUpdatesEnd - updateIdx);
         nCharsOnLine = fprintf(1,'[%02.0f:%02.0f:%02.0f] Illuminating pulse #%d... %d/%d',floor(timeRemainingEstimate/3600),floor(rem(timeRemainingEstimate/60,60)),floor(rem(timeRemainingEstimate,60)),j,i,nUpdatesOn);
-        updateVolumetric(heatsimFigure,model.HS.T);
+        plotVolumetric.updateVolumetric(heatsimFigure,model.HS.T);
         h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
         drawnow;
         
@@ -358,7 +358,7 @@ for j=1:model.HS.nPulses
         fprintf(repmat('\b',1,nCharsOnLine));
         timeRemainingEstimate = toc/updateIdx*((nUpdatesOn+nUpdatesOff)*model.HS.nPulses+nUpdatesEnd - updateIdx);
         nCharsOnLine = fprintf(1,'[%02.0f:%02.0f:%02.0f] Diffusing heat after pulse #%d... %d/%d',floor(timeRemainingEstimate/3600),floor(rem(timeRemainingEstimate/60,60)),floor(rem(timeRemainingEstimate,60)),j,i,nUpdatesOff);
-        updateVolumetric(heatsimFigure,model.HS.T);
+        plotVolumetric.updateVolumetric(heatsimFigure,model.HS.T);
         h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
         drawnow;
         
@@ -420,7 +420,7 @@ for i = 1:nUpdatesEnd
     fprintf(repmat('\b',1,nCharsOnLine));
     timeRemainingEstimate = toc/updateIdx*((nUpdatesOn+nUpdatesOff)*model.HS.nPulses+nUpdatesEnd - updateIdx);
     nCharsOnLine = fprintf(1,'[%02.0f:%02.0f:%02.0f] Diffusing heat in end relaxation phase... %d/%d',floor(timeRemainingEstimate/3600),floor(rem(timeRemainingEstimate/60,60)),floor(rem(timeRemainingEstimate,60)),i,nUpdatesEnd);
-    updateVolumetric(heatsimFigure,model.HS.T);
+    plotVolumetric.updateVolumetric(heatsimFigure,model.HS.T);
     h_title.String = ['Temperature evolution, t = ' num2str(updatesTimeVector(updateIdx+1),'%#.2g') ' s'];
     drawnow;
 

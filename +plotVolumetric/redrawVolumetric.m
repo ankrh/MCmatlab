@@ -10,6 +10,7 @@ zs = vars.z(zsi);
 
 xl = vars.x(1); % x low
 xh = vars.x(end); % x high
+xbi = vars.xbi; % z back index
 yl = vars.y(1); % y low
 yh = vars.y(end); % y high
 zl = vars.z(1); % z low
@@ -21,7 +22,7 @@ h_f = get(vars.h_checkbox1,'Parent');
 switch src
   case vars.h_checkbox1
     if plotLog
-      set(vars.h_surfxback ,'CData',squeeze(log10(h_f.UserData(end,:,:))));
+      set(vars.h_surfxback ,'CData',squeeze(log10(h_f.UserData(xbi,:,:))));
       set(vars.h_surfyback ,'CData',squeeze(log10(h_f.UserData(:,end,:))));
       set(vars.h_surfzback ,'CData',squeeze(log10(h_f.UserData(:,:,zbi))));
       set(vars.h_surfxslice,'CData',squeeze(log10(h_f.UserData(xsi,:,:))));
@@ -36,7 +37,7 @@ switch src
         end
       end
     else
-      set(vars.h_surfxback ,'CData',squeeze(h_f.UserData(end,:,:)));
+      set(vars.h_surfxback ,'CData',squeeze(h_f.UserData(xbi,:,:)));
       set(vars.h_surfyback ,'CData',squeeze(h_f.UserData(:,end,:)));
       set(vars.h_surfzback ,'CData',squeeze(h_f.UserData(:,:,zbi)));
       set(vars.h_surfxslice,'CData',squeeze(h_f.UserData(xsi,:,:)));
