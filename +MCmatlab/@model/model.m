@@ -126,6 +126,12 @@ classdef model
 
     end
     
+    methods (Static)
+        function obj = loadobj(obj)
+            warning('You have loaded an MCmatlab model from a mat-file. To enable working with the loaded model, you should now manually run the two lines from the original model file that set ''model.G.mediaPropertiesFunc'' and ''model.G.geomFunc''.')
+        end
+    end
+    
     methods (Access = private)
         finiteElementHeatPropagator(T,Omega,heatSimParameters)
         finiteElementHeatPropagator_CUDA(T,Omega,heatSimParameters)
