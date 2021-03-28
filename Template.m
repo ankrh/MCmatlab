@@ -20,8 +20,6 @@ model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined a
 model.G.geomFunc          = @geometryDefinition_StandardTissue; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 % model.G.geomFuncParams    = {0.03}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
 
-% Execution, do not modify the next line:
-model = defineGeometry(model);
 plot(model,'G');
 
 %% Monte Carlo simulation

@@ -114,7 +114,9 @@ classdef model
             end
         end
         
-        obj = defineGeometry(obj)
+        function defineGeometry(obj)
+            warning('Calling ''defineGeometry'' is no longer required. You can delete any calls to ''defineGeometry'' from your model files.')
+        end
         
         obj = simulateHeatDistribution(obj)
         

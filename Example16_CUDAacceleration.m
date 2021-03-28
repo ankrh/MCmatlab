@@ -32,9 +32,6 @@ model.G.Lz                = .1; % [cm] z size of simulation cuboid
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 model.G.geomFunc          = @geometryDefinition_BloodVessel; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
-% Execution, do not modify the next line:
-model = defineGeometry(model);
-
 plotMCmatlabGeom(model);
 
 %% Monte Carlo simulation

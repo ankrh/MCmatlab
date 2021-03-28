@@ -2,7 +2,7 @@ function model = runMonteCarlo(model,varargin)
 %   Requires
 %       MCmatlab.mex (architecture specific)
 %
-%   See also defineGeometry, plotMCmatlab, runMonteCarloFluorescence, simulateHeatDistribution
+%   See also plot, runMonteCarloFluorescence, simulateHeatDistribution
 
 %%%%%
 %   Copyright 2017, 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik

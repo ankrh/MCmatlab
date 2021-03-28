@@ -32,9 +32,6 @@ model.G.Lz                = .1; % [cm] z size of simulation cuboid
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 model.G.geomFunc          = @geometryDefinition_RefractionReflectionExample; % The distribution of media in the cuboid, also defined as a function at the end of this file.
 
-% Execution, do not modify the next line:
-model = defineGeometry(model);
-
 plot(model,'G');
 
 %% Monte Carlo simulation

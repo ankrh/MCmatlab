@@ -17,14 +17,16 @@ classdef geometry
         mediaPropParams cell = {}               % Cell array containing any additional parameters to be passed to the getMediaProperties function
         geomFunc function_handle                % Function to use for defining the distribution of media in the cuboid. Defined at the end of the model file.
         geomFuncParams cell = {}                % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
-
-        dx = NaN
-        dy = NaN
-        dz = NaN
-        x = NaN
-        y = NaN
-        z = NaN
-        M_raw uint8 = NaN
+    end
+    
+    properties (Dependent)
+        dx
+        dy
+        dz
+        x
+        y
+        z
+        M_raw uint8
     end
     
     methods
@@ -32,7 +34,32 @@ classdef geometry
             %GEOMETRY Construct an instance of this class
             
         end
-                
+        
+        function value = get.dx(obj)
+            value = obj.Lx/obj.nx; % [cm] size of x bins
+        end
+        function value = get.dy(obj)
+            value = obj.Ly/obj.ny; % [cm] size of y bins
+        end
+        function value = get.dz(obj)
+            value = obj.Lz/obj.nz; % [cm] size of z bins
+        end
+        
+        function value = get.x(obj)
+            value = ((0:obj.nx-1)-(obj.nx-1)/2)*obj.dx; % [cm] x position of centers of voxels
+        end
+        function value = get.y(obj)
+            value = ((0:obj.ny-1)-(obj.ny-1)/2)*obj.dy; % [cm] y position of centers of voxels
+        end
+        function value = get.z(obj)
+            value = ((0:obj.nz-1)+1/2)*obj.dz; % [cm] z position of centers of voxels
+        end
+        
+        function value = get.M_raw(obj)
+            [X,Y,Z] = ndgrid(single(obj.x),single(obj.y),single(obj.z)); % The single data type is used to conserve memory
+            value = uint8(obj.geomFunc(X,Y,Z,obj.geomFuncParams));
+        end
+
     end
 end
 

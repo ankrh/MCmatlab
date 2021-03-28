@@ -2,7 +2,7 @@ function model = getThermalMediaProperties(model)
 %   Returns the reduced medium matrix, using only numbers from 1 up to the number of used media, and
 %   the known media properties (optical, thermal and/or fluorescence) at the specified wavelength.
 %
-%   See also mediaPropertiesLibrary, defineGeometry
+%   See also mediaPropertiesLibrary
 
 %%%%%
 %   Copyright 2017, 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
