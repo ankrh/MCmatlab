@@ -103,5 +103,5 @@ If you want to report a bug or are missing a feature, shoot us an email, see bel
 
 ### Who do I talk to?
 
-This repository is part of the DTU "biophotonics" team.
+This repository is part of the Technical University of Denmark "biophotonics" team.
 The main responsible is Anders Kragh Hansen: ankrh@fotonik.dtu.dk
