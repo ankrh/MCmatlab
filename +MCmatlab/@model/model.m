@@ -114,7 +114,7 @@ classdef model
             end
         end
         
-        function defineGeometry(obj)
+        function obj = defineGeometry(obj)
             warning('Calling ''defineGeometry'' is no longer required. You can delete any calls to ''defineGeometry'' from your model files.')
         end
         
