@@ -293,6 +293,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   int     nM = (int)mxGetN(mediaProperties);
   mwSize const *dimPtr = mxGetDimensions(mxGetPropertyShared(MatlabMC,0,"M"));
   long beamType = S_PDF? -1: (int)*mxGetPr(mxGetPropertyShared(MatlabBeam,0,"beamType"));
+  FLOATORDBL emitterLength = S_PDF? 0: (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabBeam,0,"emitterLength"));
   mxArray *MatlabBeamNF = S_PDF? 0: mxGetPropertyShared(MatlabBeam,0,"NF");
   mxArray *MatlabBeamFF = S_PDF? 0: mxGetPropertyShared(MatlabBeam,0,"FF");
   long L_NF1 = beamType >= 4? (long)mxGetN(mxGetPropertyShared(MatlabBeamNF,0,beamType == 4? "radialDistr": "XDistr")): 0;
@@ -403,6 +404,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   
   struct beam B_var = {
     S? 0: beamType,
+    S? 0: emitterLength,
     S? 0: NFdist1,
     S? 0: L_NF1,
     S? 0: (FLOATORDBL)(beamType == 5? *mxGetPr(mxGetPropertyShared(MatlabBeamNF,0,"XWidth")): *mxGetPr(mxGetPropertyShared(MatlabBeamNF,0,"radialWidth"))),

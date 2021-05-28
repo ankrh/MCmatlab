@@ -49,7 +49,7 @@ model.MC.matchedInterfaces        = true; % Assumes all refractive indices are t
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 model.MC.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
-model.MC.beam.beamType            = 2; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+model.MC.beam.beamType            = 2; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
 model.MC.beam.theta               = 0; % [rad] Polar angle of beam center axis
 model.MC.beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
 

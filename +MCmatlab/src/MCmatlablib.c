@@ -16,6 +16,7 @@ struct geometry { // Struct type for the constant geometry definitions, includin
 
 struct beam { // Struct type for the constant beam definitions
   int            beamType;
+  FLOATORDBL     emitterLength;
   FLOATORDBL     *NFdist1; // Radial or X
   long           L_NF1;
   FLOATORDBL     NFwidth1;
@@ -429,9 +430,10 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
                                 SQR((P->i[2]               )*G->d[2] - B->focus[2])); // Starting time is set so that the wave crosses the focal plane at time = 0
         break;
       case 1: // isotropically emitting point source
-        P->i[0] = B->focus[0]/G->d[0] + G->n[0]/2.0f;
-        P->i[1] = B->focus[1]/G->d[1] + G->n[1]/2.0f;
-        P->i[2] = B->focus[2]/G->d[2];
+        r = RandomNum;
+        P->i[0] = (B->focus[0] + B->u[0]*(r-0.5)*B->emitterLength)/G->d[0] + G->n[0]/2.0f;
+        P->i[1] = (B->focus[1] + B->u[1]*(r-0.5)*B->emitterLength)/G->d[1] + G->n[1]/2.0f;
+        P->i[2] = (B->focus[2] + B->u[2]*(r-0.5)*B->emitterLength)/G->d[2];
         costheta = 1 - 2*RandomNum;
         sintheta = SQRT(1 - costheta*costheta);
         phi = 2*PI*RandomNum;
