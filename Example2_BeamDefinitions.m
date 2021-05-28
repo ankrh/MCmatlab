@@ -1,16 +1,24 @@
 %% Description
-% Here we demonstrate how to define beams using beamType = 4 or 5. The
-% geometry is only air, which has negligible scattering and absorption. All
-% beams have their focus placed at x=y=z=0 in these simulations, and go
-% straight down. See other examples for beams with focus placed inside the
-% cuboid and for tilted input beams. The farFieldRes input will be further
-% illustrated in example 7.
+% Here we demonstrate how to define beams using beamType = 1, 4 or 5. The
+% geometry is only air, which has negligible scattering and absorption. The
+% farFieldRes input will be further illustrated in example 7.
 % 
-% This example will execute four different simulations. Press any key with
+% This example will execute five different simulations. Press any key with
 % the command window in focus to start the next simulation.
 % 
-% In principle, Gaussian beams can be simulated using either of the two
-% beam types (because exp(-R^2) = exp(-X^2)*exp(-Y^2)).
+% First we demonstrate an isotropically emitting line source with beamType
+% = 1 with length specified using beam.emitterLength and focus in the
+% middle of the cuboid. If emitterLength is set to 0, the source would be a
+% point. The theta and phi parameters determine what direction the line is
+% pointing.
+
+% Next, we set the focus at x=y=z=0 and theta = 0 so that the beam goes
+% straight down. Then we define various simple and complicated beams using
+% beamType 4 and 5. See other examples for more beams with focus placed
+% inside the cuboid and for tilted input beams.
+% 
+% In principle, Gaussian beams can be simulated using either beamType 4 or
+% 5 (because exp(-R^2) = exp(-X^2)*exp(-Y^2)).
 
 %% Geometry definition
 model = MCmatlab.model;
@@ -28,7 +36,7 @@ model.G.geomFunc          = @geometryDefinition_Air; % Function to use for defin
 % plot(model, 'G');
 
 %% Monte Carlo simulations
-%% Top-hat near field, Gaussian far field
+%% Isotropic line emitter
 model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
 model.MC.farFieldRes              = 200; % (Default: 0) If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
 
@@ -36,18 +44,15 @@ model.MC.matchedInterfaces        = true; % Assumes all refractive indices are t
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
-model.MC.beam.beamType            = 4; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
-model.MC.beam.NF.radialDistr      = 0; % Radial near field distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
-model.MC.beam.NF.radialWidth      = .01; % [cm] Radial near field 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
-model.MC.beam.FF.radialDistr      = 1; % Radial far field distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
-model.MC.beam.FF.radialWidth      = pi/6; % [rad] Radial far field 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom. For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength*1e-9/(pi*model.MC.beam.NF.radialWidth*1e-2))
+model.MC.beam.beamType            = 1; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+model.MC.beam.emitterLength       = 0.05; % [cm] (Optional) Length of the isotropically emitting line source (if 0, the source is a point source)
 
 model.MC.beam.xFocus              = 0; % [cm] x position of focus
 model.MC.beam.yFocus              = 0; % [cm] y position of focus
-model.MC.beam.zFocus              = 0; % [cm] z position of focus
+model.MC.beam.zFocus              = 0.05; % [cm] z position of focus
 
-model.MC.beam.theta               = 0; % [rad] Polar angle of beam center axis
-model.MC.beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
+model.MC.beam.theta               = pi/4; % [rad] Polar angle of beam center axis
+model.MC.beam.phi                 = pi/2; % [rad] Azimuthal angle of beam center axis
 model.MC.beam.psi                 = 0; % [rad] (Default: 0) Axial rotation angle of beam, relevant only for XY distributed beams
 
 % Execution, do not modify the next line:
@@ -55,8 +60,25 @@ model = runMonteCarlo(model);
 plot(model,'MC');
 fprintf('Press enter to continue...\n');pause;
 
+%% Top-hat near field, Gaussian far field
+model.MC.beam.xFocus              = 0; % [cm] x position of focus
+model.MC.beam.yFocus              = 0; % [cm] y position of focus
+model.MC.beam.zFocus              = 0; % [cm] z position of focus
+
+model.MC.beam.beamType            = 4; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+model.MC.beam.NF.radialDistr      = 0; % Radial near field distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
+model.MC.beam.NF.radialWidth      = .01; % [cm] Radial near field 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
+model.MC.beam.FF.radialDistr      = 1; % Radial far field distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
+model.MC.beam.FF.radialWidth      = pi/6; % [rad] Radial far field 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom. For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength*1e-9/(pi*model.MC.beam.NF.radialWidth*1e-2))
+model.MC.beam.theta               = 0; % [rad] Polar angle of beam center axis
+
+% Execution, do not modify the next line:
+model = runMonteCarlo(model);
+plot(model,'MC');
+fprintf('Press enter to continue...\n');pause;
+
 %% LED-like emitter: Rectangular near field, Lambertian far field
-model.MC.beam.beamType            = 5; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+model.MC.beam.beamType            = 5; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
 model.MC.beam.NF.XDistr           = 0; % X near field distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
 model.MC.beam.NF.XWidth           = .02; % [cm] X near field 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
 model.MC.beam.NF.YDistr           = 0; % Y near field distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
@@ -73,7 +95,7 @@ plot(model,'MC');
 fprintf('Press enter to continue...\n');pause;
 
 %% Custom radial near field and far field
-model.MC.beam.beamType            = 4; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+model.MC.beam.beamType            = 4; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
 model.MC.beam.NF.radialDistr      = exp(-(linspace(0,20,1000)-4).^2); % Radial near field distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
 model.MC.beam.NF.radialWidth      = .025; % [cm] Radial near field 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
 model.MC.beam.FF.radialDistr      = 1+cos(linspace(0,7*pi,1000)); % Radial far field distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
@@ -85,7 +107,7 @@ plot(model,'MC');
 fprintf('Press enter to continue...\n');pause;
 
 %% Custom XY near field, top-hat X far field and Gaussian Y far field
-model.MC.beam.beamType            = 5; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+model.MC.beam.beamType            = 5; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
 model.MC.beam.NF.XDistr           = sin(linspace(0,2*pi,1000)).^2; % X near field distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
 model.MC.beam.NF.XWidth           = .02; % [cm] X near field 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
 model.MC.beam.NF.YDistr           = sin(linspace(0,3*pi,1000)).^2; % Y near field distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
