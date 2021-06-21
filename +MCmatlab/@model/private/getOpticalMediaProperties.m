@@ -65,7 +65,7 @@ end
 M = zeros(size(M_raw),'uint8');
 j = 1; % Position in mediaProperties
 for i=1:length(mP_fH)
-  if any(M_raw == i,'all')
+  if any(M_raw(:) == i)
     paramVals = NaN(3,sum(M_raw(:) == i),'single'); % Number of columns is number of voxels with this medium, and rows are (mua, mus, g)
     if isa(mP_fH(i).mua,'function_handle')
       paramVals(1,:) = mP_fH(i).mua(FR(M_raw(:) == i),T(M_raw(:) == i),FD(M_raw(:) == i));
