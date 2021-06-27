@@ -331,6 +331,7 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
   struct geometry G_temp; gpuErrchk(cudaMemcpy(&G_temp, G_dev, sizeof(struct geometry),cudaMemcpyDeviceToHost));
   gpuErrchk(cudaFree(G_temp.muav)); // This frees all of smallArrays in the global memory on the device
   gpuErrchk(cudaFree(G_temp.M));
+  gpuErrchk(cudaFree(G_temp.interfaceNormals));
   gpuErrchk(cudaFree(G_dev));
 
   struct beam B_temp; gpuErrchk(cudaMemcpy(&B_temp, B_dev, sizeof(struct beam),cudaMemcpyDeviceToHost));
