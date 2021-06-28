@@ -1,4 +1,4 @@
-classdef geometry
+classdef geometry < handle
     %GEOMETRY This class contains all properties related to the geometry of
     %an MCmatlab.model.
     %   This class defines the properties of a geometry to be used in a
@@ -19,6 +19,9 @@ classdef geometry
         geomFuncParams cell = {}                % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
     end
     
+    properties (Access = private)
+        M_raw_cache cell = {NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN}
+    end
     properties (Dependent)
         dx
         dy
@@ -30,11 +33,6 @@ classdef geometry
     end
     
     methods
-        function obj = geometry()
-            %GEOMETRY Construct an instance of this class
-            
-        end
-        
         function value = get.dx(obj)
             value = obj.Lx/obj.nx; % [cm] size of x bins
         end
@@ -56,10 +54,14 @@ classdef geometry
         end
         
         function value = get.M_raw(obj)
-            [X,Y,Z] = ndgrid(single(obj.x),single(obj.y),single(obj.z)); % The single data type is used to conserve memory
-            value = uint8(obj.geomFunc(X,Y,Z,obj.geomFuncParams));
+            if obj.nx ~= obj.M_raw_cache{1} || obj.ny ~= obj.M_raw_cache{2} || obj.nz ~= obj.M_raw_cache{3} || ...
+                    obj.Lx ~= obj.M_raw_cache{4} || obj.Ly ~= obj.M_raw_cache{5} || obj.Lz ~= obj.M_raw_cache{6} || ...
+                    ~isequal(obj.geomFunc, obj.M_raw_cache{7}) || ~isequal(obj.geomFuncParams, obj.M_raw_cache{8})
+                [X,Y,Z] = ndgrid(single(obj.x),single(obj.y),single(obj.z)); % The single data type is used to conserve memory
+                obj.M_raw_cache = {obj.nx, obj.ny, obj.nz, obj.Lx, obj.Ly, obj.Lz, obj.geomFunc, obj.geomFuncParams, uint8(obj.geomFunc(X,Y,Z,obj.geomFuncParams))}; % We want to cache the value of M_raw to avoid costly recalculation every time M_raw is referenced
+            end
+            value = obj.M_raw_cache{9};
         end
-
     end
 end
 
