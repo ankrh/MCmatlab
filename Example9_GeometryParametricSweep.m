@@ -29,11 +29,6 @@
 % and setting calcF to false will speed up the simulation a bit (10-30%).
 
 
-t_vec = linspace(0,0.1,21); % Thicknesses to simulate
-power_vec = zeros(1,length(t_vec));
-fprintf('%2d/%2d\n',0,length(t_vec));
-for i=1:length(t_vec)
-fprintf('\b\b\b\b\b\b%2d/%2d\n',i,length(t_vec)); % Simple progress indicator
 %% Geometry definition
 model = MCmatlab.model;
 
@@ -48,9 +43,6 @@ model.G.Lz                  = .105; % [cm] z size of simulation cuboid
 
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 model.G.geomFunc            = @geometryDefinition_VariableThicknessStandardTissue; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
-model.G.geomFuncParams      = {t_vec(i)}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
-
-plot(model,'G');
 
 %% Monte Carlo simulation
 model.MC.silentMode               = true; % Disables command window text and progress indication
@@ -84,13 +76,21 @@ model.MC.LC.NA                    = 0.22; % [-] Fiber NA. Only used for infinite
 
 model.MC.LC.res                   = 1; % X and Y resolution of light collector in pixels, only used for finite f
 
-% Execution, do not modify the next line:
-model = runMonteCarlo(model);
+t_vec = linspace(0,0.1,21); % Thicknesses to simulate
+power_vec = zeros(1,length(t_vec));
+fprintf('%2d/%2d\n',0,length(t_vec));
+for i=1:length(t_vec)
+  fprintf('\b\b\b\b\b\b%2d/%2d\n',i,length(t_vec)); % Simple progress indicator
+  
+  %% Adjust geometry
+  model.G.geomFuncParams      = {t_vec(i)}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
+  plot(model,'G');
 
-% plot(model,'MC');
+  %% Run MC
+  model = runMonteCarlo(model);
 
-%% Post-processing
-power_vec(i) = model.MC.LC.image; % "image" is in this case just a scalar, the normalized power collected by the fiber.
+  %% Post-processing
+  power_vec(i) = model.MC.LC.image; % "image" is in this case just a scalar, the normalized power collected by the fiber.
 end
 plot(model,'MC');
 
