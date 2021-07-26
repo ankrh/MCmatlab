@@ -96,15 +96,41 @@ switch method
         hz(:,:,2) = [0 0 0; 0 0 0; 0 0 0];
         hz(:,:,3) = [1 3 1; 3 6 3; 1 3 1];
 
+%         Gx = imfilter(I,hx,'replicate');
+%         if nargout > 1
+%             Gy = imfilter(I,hy,'replicate');
+%         end
+%         if nargout > 2
+%             Gz = imfilter(I,hz,'replicate');
+%         end
+        
+        % ================
+        % Addition by ankrh, add replicated padding:
+        I_pad = NaN(size(I)+[2 2 2]);
+        
+        I_pad([1 end],[1 end],[1 end]) = I([1 end],[1 end],[1 end]);
 
-        Gx = imfilter(I,hx,'replicate');
-        if nargout > 1
-            Gy = imfilter(I,hy,'replicate');
-        end
-        if nargout > 2
-            Gz = imfilter(I,hz,'replicate');
-        end
+        I_pad(2:end-1,[1 end],[1 end]) = I(:,[1 end],[1 end]);
+        I_pad([1 end],2:end-1,[1 end]) = I([1 end],:,[1 end]);
+        I_pad([1 end],[1 end],2:end-1) = I([1 end],[1 end],:);
 
+        I_pad([1 end],2:end-1,2:end-1) = I([1 end],:,:);
+        I_pad(2:end-1,[1 end],2:end-1) = I(:,[1 end],:);
+        I_pad(2:end-1,2:end-1,[1 end]) = I(:,:,[1 end]);
+        
+        I_pad(2:end-1,2:end-1,2:end-1) = I;
+        
+        % Run the filter assuming zero-boundaries:
+        Gx = imfilter(I_pad,hx);
+        Gy = imfilter(I_pad,hy);
+        Gz = imfilter(I_pad,hz);
+        
+        % Remove padding again:
+        Gx = Gx(2:end-1,2:end-1,2:end-1);
+        Gy = Gy(2:end-1,2:end-1,2:end-1);
+        Gz = Gz(2:end-1,2:end-1,2:end-1);
+        % ================
+        
     case 'prewitt'
 
         % 3-D Kernel for prewitt along X, Y and Z direction
