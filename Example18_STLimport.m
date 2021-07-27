@@ -1,45 +1,76 @@
 %% Description
-% In this introductory example, a block of "standard tissue" (mu_a = 1,
-% mu_s = 100, g = 0.9) is illuminated by a pencil beam (infinitely thin
-% beam). A small slice of air is present in the top of the simulation
-% volume. nx and ny are set to odd values so that when the pencil beam is
-% launched at x = y = 0 and travels straight down, it travels along a
-% well-defined center column of voxels (the middle of the 51st column). Use
-% the log10 plot checkbox in the visualizations to better see the fluence
-% rate and absorption distribution in the MC result.
+% This example shows how to import a shape from an STL file (sample.stl)
+% and optionally apply scaling (unit conversion), rotation and mirroring on
+% the mesh before using a function to voxelise the mesh.
+% 
+% Importing is done inside the geometry function at the end of the model
+% file (this file). The function findInsideVoxels returns a logical 3D
+% array which is true in the indices of those voxels that are inside the
+% (watertight) shape stored in the STL file. The function takes six inputs.
+% The first three are always just the X, Y, and Z arrays exactly as they
+% are passed into the geometry function. The fourth is the file name of the
+% STL file. The fifth is a 3x3 matrix A that will be multiplied onto the
+% STL mesh [x;y;z] coordinates. The sixth is a 1D array v of length 3 that
+% defines the translation that will be applied to the mesh points after
+% multiplication and before voxelisation. In other words, the mesh points
+% are transformed according to    [x';y';z'] = A*[x;y;z] + v     and the
+% voxelisation is then performed based on the mesh with positions
+% [x';y';z'].
+% 
+% The multiplication matrix A can contain a scaling factor, e.g., for
+% converting from the units of the STL file to centimeters, which is the
+% unit used in MCmatlab. It can also contain various rotation matrices, see
+% https://en.wikipedia.org/wiki/Rotation_matrix#In_three_dimensions
+% You may also mirror the coordinates by inverting the sign of the
+% appropriate elements in the matrix.
+% 
+% The example runs four separate sub-examples showing various
+% transformations. Press enter to advance from one sub-example to the next.
+% The MC simulation is not run in this example.
+% 
+% Remember that since the z-axis in MCmatlab points down, the coordinate
+% system is a left-handed coordinate system. Therefore a rotation that is
+% clockwise in a right-handed coordinate system will be counter-clockwise
+% in MCmatlab's coordinate system.
+% 
+% The STL import feature uses the function VOXELISE written by Adam H.
+% Aitkenhead
+% https://se.mathworks.com/matlabcentral/fileexchange/27390-mesh-voxelisation
+% although the function has been lightly modified by Anders K. Hansen for
+% use in MCmatlab.
 
 %% Geometry definition
 model = MCmatlab.model;
 
-model.G.nx                = 101; % Number of bins in the x direction
-model.G.ny                = 101; % Number of bins in the y direction
-model.G.nz                = 150; % Number of bins in the z direction
-model.G.Lx                = 40; % [cm] x size of simulation cuboid
-model.G.Ly                = 40; % [cm] y size of simulation cuboid
-model.G.Lz                = 40; % [cm] z size of simulation cuboid
+model.G.nx                = 100; % Number of bins in the x direction
+model.G.ny                = 100; % Number of bins in the y direction
+model.G.nz                = 100; % Number of bins in the z direction
+model.G.Lx                = 4; % [cm] x size of simulation cuboid
+model.G.Ly                = 4; % [cm] y size of simulation cuboid
+model.G.Lz                = 4; % [cm] z size of simulation cuboid
 
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
-model.G.geomFunc          = @geometryDefinition_StandardTissue; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
+% No rotation or mirroring, only scaling to convert from mm to cm and a
+% translation along +z:
+model.G.geomFunc          = @geometryDefinition_1;
 plot(model,'G');
+fprintf('Press enter to continue...\n');pause;
 
-%% Monte Carlo simulation
-% model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
-% model.MC.matchedInterfaces        = true; % Assumes all refractive indices are the same
-% model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
-% model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
-% 
-% model.MC.beam.beamType            = 0; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
-% model.MC.beam.xFocus              = 0; % [cm] x position of focus
-% model.MC.beam.yFocus              = 0; % [cm] y position of focus
-% model.MC.beam.zFocus              = model.G.Lz/2; % [cm] z position of focus
-% model.MC.beam.theta               = 0; % [rad] Polar angle of beam center axis
-% model.MC.beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
-% 
-% % Execution, do not modify the next line:
-% model = runMonteCarlo(model);
-% 
-% plot(model,'MC');
+% Mirror along the z direction, scale and translate:
+model.G.geomFunc          = @geometryDefinition_2;
+plot(model,'G');
+fprintf('Press enter to continue...\n');pause;
+
+% Rotate by pi/2 (90 degrees) around the x axis, then scale and translate:
+model.G.geomFunc          = @geometryDefinition_3;
+plot(model,'G');
+fprintf('Press enter to continue...\n');pause;
+
+% Rotate by pi/2 (90 degrees) around the x axis, then -pi/2 (-90 degrees)
+% around the z axis, then scale and translate:
+model.G.geomFunc          = @geometryDefinition_4;
+plot(model,'G');
 
 %% Post-processing
 
@@ -49,35 +80,85 @@ plot(model,'G');
 % provided in the definition of Ginput. It returns the media matrix M,
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
-function M = geometryDefinition_StandardTissue(X,Y,Z,parameters)
-M = ones(size(X)); % Air
-xyzRotAngles = [-pi/6 pi/2 pi/4];
-translation = [0 0 10];
-inside = findInsideVoxels(X,Y,Z,'sample.stl',xyzRotAngles,translation);
-% inside = VOXELISE(nx,ny,nz,'sample.stl','xyz');
-M(inside) = 2;
+function M = geometryDefinition_1(X,Y,Z,parameters)
+% Don't rotate or mirror the STL mesh points, but convert the coordinates
+% from mm to cm by multiplying by 0.1:
+A = 0.1*eye(3);
 
-% figure(101);
-% subplot(1,3,1);
-% imagesc(squeeze(sum(inside,1)));
-% colormap(gray(256));
-% xlabel('Z-direction');
-% ylabel('Y-direction');
-% axis equal tight
-% 
-% subplot(1,3,2);
-% imagesc(squeeze(sum(inside,2)));
-% colormap(gray(256));
-% xlabel('Z-direction');
-% ylabel('X-direction');
-% axis equal tight
-% 
-% subplot(1,3,3);
-% imagesc(squeeze(sum(inside,3)));
-% colormap(gray(256));
-% xlabel('Y-direction');
-% ylabel('X-direction');
-% axis equal tight
+% Then translate the points by 1.5 in the +z direction:
+v = [0 0 1.5];
+
+% Find out which voxels are located inside this mesh:
+insideVoxels = findInsideVoxels(X,Y,Z,'sample.stl',A,v);
+
+% Set the background to air and the inside voxels to standard tissue:
+M = ones(size(X)); % Air
+M(insideVoxels) = 2;
+end
+
+function M = geometryDefinition_2(X,Y,Z,parameters)
+% Invert the z-coordinates of the STL mesh points, and scale the result by
+% 0.1:
+A = 0.1*[1  0  0;
+         0  1  0;
+         0  0 -1];
+
+% Then translate the points by 2.5 in the +z direction:
+v = [0 0 2.5];
+
+% Find out which voxels are located inside this mesh:
+insideVoxels = findInsideVoxels(X,Y,Z,'sample.stl',A,v);
+
+% Set the background to air and the inside voxels to standard tissue:
+M = ones(size(X)); % Air
+M(insideVoxels) = 2;
+end
+
+function M = geometryDefinition_3(X,Y,Z,parameters)
+% First rotate the STL file mesh points by theta around the x axis, then
+% scale by 0.1:
+theta = pi/2;
+A = 0.1*[1     0            0    ;
+         0 cos(theta) -sin(theta);
+         0 sin(theta)  cos(theta)]; % Rotation around the x axis
+
+% Then translate the mesh by 2.5 in the +z direction:
+v = [0 0 2.5];
+
+% Find out which voxels are located inside this mesh:
+insideVoxels = findInsideVoxels(X,Y,Z,'sample.stl',A,v);
+
+% Set the background to air and the inside voxels to standard tissue:
+M = ones(size(X)); % Air
+M(insideVoxels) = 2;
+end
+
+function M = geometryDefinition_4(X,Y,Z,parameters)
+% Construct some rotation matrices for rotation around the x and z axes:
+theta = pi/2;
+Rx = [   1         0           0     ;
+         0     cos(theta) -sin(theta);
+         0     sin(theta)  cos(theta)]; % Rotation around the x axis
+
+phi = -pi/2;
+Rz = [cos(phi) -sin(phi)       0     ;
+      sin(phi)  cos(phi)       0     ;
+         0         0           1     ]; % Rotation around the z axis
+
+% First rotate the STL file mesh points by theta around the x axis, then
+% phi around the z axis (multiplication onto [x;y;z] happens from right to
+% left), then scale by 0.1:
+A = 0.1*Rz*Rx;
+
+% Then translate the mesh by 2.5 in the +z direction:
+v = [0 0 2.5];
+
+% Find out which voxels are located inside this mesh:
+insideVoxels = findInsideVoxels(X,Y,Z,'sample.stl',A,v);
+
+% Set the background to air and the inside voxels to standard tissue:
+M = ones(size(X)); % Air
+M(insideVoxels) = 2;
 end
 
 %% Media Properties function

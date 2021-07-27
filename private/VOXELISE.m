@@ -1,11 +1,15 @@
-function [gridOUTPUT,varargout] = VOXELISE(gridX,gridY,gridZ,STLin,xyzRotAngles,translation,raydirection)
+function [gridOUTPUT,varargout] = VOXELISE(gridX,gridY,gridZ,STLin,A,v,raydirection)
 % VOXELISE  Voxelise a 3D triangular-polygon mesh.
+% 
+% (modified by Anders Kragh Hansen, DTU Fotonik, and is not guaranteed to work 
+% when it's called in other ways than it is in MCmatlab)
+% 
 %==========================================================================
 % AUTHOR        Adam H. Aitkenhead
 % CONTACT       adam.aitkenhead@christie.nhs.uk
 % INSTITUTION   The Christie NHS Foundation Trust
 %
-% USAGE        gridOUTPUT = VOXELISE(gridX,gridY,gridZ,STLin,xyzRotAngles,translation,raydirection)
+% USAGE        gridOUTPUT = VOXELISE(gridX,gridY,gridZ,STLin,scaling,xyzRotAngles,translation,raydirection)
 %
 % INPUTS
 %
@@ -20,11 +24,10 @@ function [gridOUTPUT,varargout] = VOXELISE(gridX,gridY,gridZ,STLin,xyzRotAngles,
 %
 %     STLin   - Optional  - string        - Filename of the STL file.
 % 
-%     xyzRotAngles        - 1x3 array     - Angles with which to perform an extrinsic
-%                                           set of Tait-Bryan rotations (x then y then z) on
-%                                           the mesh points before voxelisation.
+%     R                   - 3x3 matrix    - matrix to pre-multiply onto the mesh
+%                                           coordinates before translation
 %
-%     translation         - 1x3 array     - xyz shift to perform on the mesh points before
+%     v                   - 1x3 array     - xyz translation to perform on the mesh points before
 %                                           voxelisation.
 %
 %     raydirection        - String        - Defines the directions in which ray-tracing
@@ -106,25 +109,17 @@ end
 if nargin~=7
   error('Incorrect number of input arguments.')
 end
-translation = translation(:);
+v = v(:);
 meshXYZ = READ_stl(STLin);
 
 %======================================================
-% ROTATE WITH TAIT-BRYAN ANGLES (EXTRINSIC), SHIFT AND TRANSLATE
+% SCALE, ROTATE AND/OR MIRROR WITH THE PROVIDED MULTIPLICATION MATRIX AND
+% TRANSLATE WITH THE PROVIDED VECTOR
 %======================================================
 
-c1 = cos(xyzRotAngles(3)); % The angle with label "1" is the third one to be applied according to convention, oddly enough
-s1 = sin(xyzRotAngles(3));
-c2 = cos(xyzRotAngles(2));
-s2 = sin(xyzRotAngles(2));
-c3 = cos(xyzRotAngles(1));
-s3 = sin(xyzRotAngles(1));
-R = [c1*c2 , c1*s2*s3 - c3*s1 , s1*s3 + c1*c3*s2 ;
-     c2*s1 , c1*c3 + s1*s2*s3 , c3*s1*s2 - c1*s3 ;
-     -s2   , c2*s3            , c2*c3            ];
 for iRow = 1:size(meshXYZ,1)
   for iFacet = 1:size(meshXYZ,3)
-    meshXYZ(iRow,:,iFacet) = R*meshXYZ(iRow,:,iFacet).' + translation;
+    meshXYZ(iRow,:,iFacet) = A*meshXYZ(iRow,:,iFacet).' + v;
   end
 end
 
