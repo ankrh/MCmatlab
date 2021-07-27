@@ -57,6 +57,7 @@ You build a model in a separate m-file. Each model requires the first two and op
  - Modify or add to "mediaPropertiesFunc" at the end of the model file to include the definitions of the media you're interested in. You may optionally include thermal and/or fluorescence properties.
  - In your model file, specify the geometry of your model.
  - The "GeomFunc" you define at the end of the model file simply returns a 3D-matrix containing the media definition for each voxel in the model cube. The media are referred to by a number, corresponding to the "j" defined in "mediaPropertiesFunc" at the end of the model file.
+ - You may optionally import your geometry from STL files as shown in example 18.
  - After this step, when calling "plot(model,'G')", you will be shown a figure with the geometry you defined.
 
 2. Calculate light distribution (check out "Example1_StandardTissue.m", section "%% Monte Carlo simulation")
