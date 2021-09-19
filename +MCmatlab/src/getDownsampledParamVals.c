@@ -20,7 +20,7 @@
  * along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
  *
  ** COMPILING ON WINDOWS
- * Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' -outdir helperfuncs\private .\src\getDownsampledParamVals.c"
+ * Can be compiled in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' -outdir +MCmatlab\@model\private .\+MCmatlab\src\getDownsampledParamVals.c"
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Go to MATLAB's addon manager and tell it to install the "Support for MinGW-w64 compiler"
@@ -30,10 +30,17 @@
  ** COMPILING ON MAC
  * As of June 2017, the macOS compiler doesn't support libut (for ctrl+c 
  * breaking) or openmp (for multithreading).
- * Compile in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -std=c11 -Wall -pedantic' -outdir helperfuncs/private ./src/getDownsampledParamVals.c"
+ * Compile in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -std=c11 -Wall' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -std=c11 -Wall' -outdir +MCmatlab/@model/private ./+MCmatlab/src/getDownsampledParamVals.c"
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Install XCode from the App Store
+ * 2. Type "mex -setup" in the MATLAB command window
+ *
+ ** Compiling on Linux
+ * "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' -outdir +MCmatlab/@model/private ./+MCmatlab/src/getDownsampledParamVals.c"
+ *
+ * To get the MATLAB C compiler to work, try this:
+ * 1. Use a package manager like apt to install GCC (on Ubuntu, part of the build-essential package)
  * 2. Type "mex -setup" in the MATLAB command window
  ********************************************/
 

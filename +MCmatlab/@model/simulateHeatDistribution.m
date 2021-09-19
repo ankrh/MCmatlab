@@ -229,6 +229,9 @@ heatSimParameters = struct('M',model.HS.M-1,'A',A,'E',E,'dTdtperdeltaT',dTdtperd
 
 %% Check for GPU compatibility if needed, and start timer
 if model.HS.useGPU
+  if ~ispc
+    error('GPU computing is only supported on Windows');
+  end
   v = ver;
   if ~any(strcmp({v.Name},'Parallel Computing Toolbox'))
     error('You must have the Parallel Computing Toolbox installed to use GPU acceleration');

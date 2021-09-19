@@ -51,6 +51,13 @@
  * To get the MATLAB C compiler to work, try this:
  * 1. Install XCode from the App Store
  * 2. Type "mex -setup" in the MATLAB command window
+ *
+ ** Compiling on Linux
+ * "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' -outdir +MCmatlab/@model/private ./+MCmatlab/src/MCmatlab.c ./+MCmatlab/src/libut.so"
+ *
+ * To get the MATLAB C compiler to work, try this:
+ * 1. Use a package manager like apt to install GCC (on Ubuntu, part of the build-essential package)
+ * 2. Type "mex -setup" in the MATLAB command window
  ********************************************/
 // printf("Reached line %d...\n",__LINE__);mexEvalString("drawnow;");mexEvalString("drawnow;");mexEvalString("drawnow;"); // For inserting into code for debugging purposes
 

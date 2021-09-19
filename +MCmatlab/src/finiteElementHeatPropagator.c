@@ -22,9 +22,9 @@
  *
  ** COMPILING ON WINDOWS
  * Can be compiled in MATLAB using the MinGW-w64 compiler (GCC) with
- * "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall -pedantic' -outdir helperfuncs\private .\src\finiteElementHeatPropagator.c ".\src\libut.lib""
+ * "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' -outdir +MCmatlab\@model\private .\+MCmatlab\src\finiteElementHeatPropagator.c .\+MCmatlab\src\libut.lib"
  * ... or the Microsoft Visual C++ compiler (MSVC) with
- * "mex COMPFLAGS='/Zp8 /GR /EHs /nologo /MD /openmp /W4 /WX /wd4204 /wd4100' -outdir helperfuncs\private .\src\finiteElementHeatPropagator.c ".\src\libut.lib""
+ * "mex COMPFLAGS='/Zp8 /GR /EHs /nologo /MD /openmp /W4 /WX /wd4204 /wd4100' -outdir +MCmatlab\@model\private .\+MCmatlab\src\finiteElementHeatPropagator.c .\+MCmatlab\src\libut.lib"
  * In my experience, GCC produces faster machine code than MSVC.
  *
  * To get the MATLAB C compiler to work, try this:
@@ -39,15 +39,22 @@
  * installed. As of January 2020, mexcuda does not work with MSVC 2019,
  * so I'd recommend MSVC 2017. You also need the Parallel Computing
  * Toolbox, which you will find in the MATLAB addon manager. To compile, run:
- * "copyfile ./src/finiteElementHeatPropagator.c ./src/finiteElementHeatPropagator_CUDA.cu; mexcuda -llibut COMPFLAGS='-use_fast_math -res-usage $COMPFLAGS' -outdir helperfuncs\private .\src\finiteElementHeatPropagator_CUDA.cu ".\src\nvml.lib""
+ * "copyfile ./+MCmatlab/src/finiteElementHeatPropagator.c ./+MCmatlab/src/finiteElementHeatPropagator_CUDA.cu; mexcuda -llibut COMPFLAGS='-use_fast_math -res-usage $COMPFLAGS' -outdir +MCmatlab\@model\private .\+MCmatlab\src\finiteElementHeatPropagator_CUDA.cu .\+MCmatlab\src\nvml.lib"
  *
  ** COMPILING ON MAC
  * As of June 2017, the macOS compiler doesn't support libut (for ctrl+c 
  * breaking) or openmp (for multithreading).
- * This file can then be compiled with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -std=c11 -Wall -pedantic' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -std=c11 -Wall -pedantic' -outdir helperfuncs/private ./src/finiteElementHeatPropagator.c"
+ * This file can then be compiled with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -std=c11 -Wall' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -std=c11 -Wall' -outdir +MCmatlab/@model/private ./+MCmatlab/src/finiteElementHeatPropagator.c"
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Install XCode from the App Store
+ * 2. Type "mex -setup" in the MATLAB command window
+ *
+ ** Compiling on Linux
+ * "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' -outdir +MCmatlab/@model/private ./+MCmatlab/src/finiteElementHeatPropagator.c ./+MCmatlab/src/libut.so"
+ *
+ * To get the MATLAB C compiler to work, try this:
+ * 1. Use a package manager like apt to install GCC (on Ubuntu, part of the build-essential package)
  * 2. Type "mex -setup" in the MATLAB command window
  ********************************************/
 // printf("Reached line %d...\n",__LINE__);mexEvalString("drawnow;");mexEvalString("drawnow;");mexEvalString("drawnow;"); // For inserting into code for debugging purposes

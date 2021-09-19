@@ -36,6 +36,9 @@ model = getMediaProperties_funcHandles(model,simType); % Calls the mediaProperti
 
 %% Check for GPU compatibility if needed
 if (simType == 1 && model.MC.useGPU) || (simType == 2 && model.FMC.useGPU)
+  if ~ispc
+    error('GPU computing is only supported on Windows');
+  end
   v = ver;
   if ~any(strcmp({v.Name},'Parallel Computing Toolbox'))
     error('You must have the Parallel Computing Toolbox installed to use GPU acceleration');
