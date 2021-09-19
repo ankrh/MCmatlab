@@ -39,7 +39,7 @@
  * installed. As of January 2020, mexcuda does not work with MSVC 2019,
  * so I'd recommend MSVC 2017. You also need the Parallel Computing
  * Toolbox, which you will find in the MATLAB addon manager. To compile, run:
- * "copyfile ./+MCmatlab/src/finiteElementHeatPropagator.c ./+MCmatlab/src/finiteElementHeatPropagator_CUDA.cu; mexcuda -llibut COMPFLAGS='-use_fast_math -res-usage $COMPFLAGS' -outdir +MCmatlab\@model\private .\+MCmatlab\src\finiteElementHeatPropagator_CUDA.cu .\+MCmatlab\src\nvml.lib"
+ * "copyfile ./+MCmatlab/src/finiteElementHeatPropagator.c ./+MCmatlab/src/finiteElementHeatPropagator_CUDA.cu; mexcuda -llibut COMPFLAGS='-use_fast_math -res-usage $COMPFLAGS' -outdir +MCmatlab\@model\private .\+MCmatlab\src\finiteElementHeatPropagator_CUDA.cu"
  *
  ** COMPILING ON MAC
  * As of June 2017, the macOS compiler doesn't support libut (for ctrl+c 
