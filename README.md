@@ -28,7 +28,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ## How do I get set up?
 
 ### Requirements:
-- Windows 7 or macOS 10.12 (Sierra) or newer
+- Windows 7, macOS 10.12 (Sierra) or newer or Linux
 - MATLAB R2018a or newer
 
 ### Helper files:
