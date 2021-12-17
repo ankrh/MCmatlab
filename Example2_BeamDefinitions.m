@@ -33,8 +33,6 @@ model.G.Lz                = .1; % [cm] z size of simulation cuboid
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 model.G.geomFunc          = @geometryDefinition_Air; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
-% plot(model, 'G');
-
 %% Monte Carlo simulations
 %% Isotropic line emitter
 model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
@@ -147,6 +145,4 @@ function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
     mediaProperties(j).mus   = 1e-8; % [cm^-1]
     mediaProperties(j).g     = 1;
     mediaProperties(j).n     = 1;
-    mediaProperties(j).VHC   = 1.2e-3;
-    mediaProperties(j).TC    = 0; % Real value is 2.6e-4, but we set it to zero to neglect the heat transport to air
 end

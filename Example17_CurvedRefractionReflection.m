@@ -88,8 +88,6 @@ function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
     mediaProperties(j).mus   = 1e-8; % [cm^-1]
     mediaProperties(j).g     = 1;
     mediaProperties(j).n     = 1;
-    mediaProperties(j).VHC   = 1.2e-3;
-    mediaProperties(j).TC    = 0; % Real value is 2.6e-4, but we set it to zero to neglect the heat transport to air
     
     j=2;
     mediaProperties(j).name  = 'water';
@@ -97,8 +95,6 @@ function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
     mediaProperties(j).mus   = 10; % [cm^-1]
     mediaProperties(j).g     = 1.0;
     mediaProperties(j).n     = 1.3;
-    mediaProperties(j).VHC   = 4.19;
-    mediaProperties(j).TC    = 5.8e-3;
     
     % j=3;
     % mediaProperties(j).name  = 'reflector';
