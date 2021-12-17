@@ -133,8 +133,8 @@ function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
     mediaProperties(j).mus   = 10; % [cm^-1]
     mediaProperties(j).g     = 1.0;
     mediaProperties(j).n     = 1.3;
-    mediaProperties(j).VHC   = 4.19;
-    mediaProperties(j).TC    = 5.8e-3;
+    mediaProperties(j).VHC   = 4.19; % [J cm^-3 K^-1]
+    mediaProperties(j).TC    = 5.8e-3; % [W cm^-1 K^-1]
     
     j=2;
     mediaProperties(j).name  = 'epidermis';
@@ -152,8 +152,8 @@ function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
     mediaProperties(j).mus = musp/(1-gg); % [cm^-1]
     mediaProperties(j).g   = gg;
     mediaProperties(j).n   = 1.3;
-    mediaProperties(j).VHC = 3391*1.109e-3;
-    mediaProperties(j).TC  = 0.37e-2;
+    mediaProperties(j).VHC = 3391*1.109e-3; % [J cm^-3 K^-1]
+    mediaProperties(j).TC  = 0.37e-2; % [W cm^-1 K^-1]
     
     j=3;
     mediaProperties(j).name = 'dermis';
@@ -171,8 +171,8 @@ function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
     mediaProperties(j).mus = musp/(1-gg); % [cm^-1]
     mediaProperties(j).g   = gg;
     mediaProperties(j).n   = 1.3;
-    mediaProperties(j).VHC = 3391*1.109e-3;
-    mediaProperties(j).TC  = 0.37e-2;
+    mediaProperties(j).VHC = 3391*1.109e-3; % [J cm^-3 K^-1]
+    mediaProperties(j).TC  = 0.37e-2; % [W cm^-1 K^-1]
     
     j=4;
     mediaProperties(j).name  = 'blood';
@@ -190,8 +190,8 @@ function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
     mediaProperties(j).mus = musp/(1-gg); % [cm^-1]
     mediaProperties(j).g   = gg;
     mediaProperties(j).n   = 1.3;
-    mediaProperties(j).VHC = 3617*1.050e-3;
-    mediaProperties(j).TC  = 0.52e-2;
+    mediaProperties(j).VHC = 3617*1.050e-3; % [J cm^-3 K^-1]
+    mediaProperties(j).TC  = 0.52e-2; % [W cm^-1 K^-1]
     mediaProperties(j).E   = 422.5e3; % J/mol    PLACEHOLDER DATA ONLY
     mediaProperties(j).A   = 7.6e66; % 1/s        PLACEHOLDER DATA ONLY
 end

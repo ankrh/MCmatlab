@@ -117,15 +117,15 @@ function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
     mediaProperties(j).mua   = 0.00036; % [cm^-1]
     mediaProperties(j).mus   = 10; % [cm^-1]
     mediaProperties(j).g     = 1.0;
-    mediaProperties(j).VHC   = 4.19;
-    mediaProperties(j).TC    = 5.8e-3;
+    mediaProperties(j).VHC   = 4.19; % [J cm^-3 K^-1]
+    mediaProperties(j).TC    = 5.8e-3; % [W cm^-1 K^-1]
     
     j=2;
     mediaProperties(j).name  = 'thermochromic material';
     mediaProperties(j).mua = '150*max(1e-8,(40-T)/(40-20))'; % [cm^-1]
     mediaProperties(j).mus = 30; % [cm^-1]
     mediaProperties(j).g   = 0.8;
-    mediaProperties(j).VHC = 2000;
-    mediaProperties(j).TC  = 5e-3;
+    mediaProperties(j).VHC = 2000; % [J cm^-3 K^-1]
+    mediaProperties(j).TC  = 5e-3; % [W cm^-1 K^-1]
     mediaProperties(j).nBins = 150;
 end
