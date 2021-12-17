@@ -11,7 +11,7 @@
 % middle of the cuboid. If emitterLength is set to 0, the source would be a
 % point. The theta and phi parameters determine what direction the line is
 % pointing.
-
+%
 % Next, we set the focus at x=y=z=0 and theta = 0 so that the beam goes
 % straight down. Then we define various simple and complicated beams using
 % beamType 4 and 5. See other examples for more beams with focus placed
@@ -122,8 +122,6 @@ model.MC.beam.psi                 = -pi/4; % [rad] (Default: 0) Axial rotation a
 model = runMonteCarlo(model);
 plot(model,'MC');
 
-%% Post-processing
-
 %% Geometry function(s)
 % A geometry function takes as input X,Y,Z matrices as returned by the
 % "ndgrid" MATLAB function as well as any parameters the user may have
@@ -131,7 +129,7 @@ plot(model,'MC');
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition_Air(X,Y,Z,parameters)
-M = ones(size(X)); % Air
+    M = ones(size(X)); % Air
 end
 
 %% Media Properties function
@@ -143,12 +141,12 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-j=1;
-mediaProperties(j).name  = 'air';
-mediaProperties(j).mua   = 1e-8;
-mediaProperties(j).mus   = 1e-8;
-mediaProperties(j).g     = 1;
-mediaProperties(j).n     = 1;
-mediaProperties(j).VHC   = 1.2e-3;
-mediaProperties(j).TC    = 0; % Real value is 2.6e-4, but we set it to zero to neglect the heat transport to air
+    j=1;
+    mediaProperties(j).name  = 'air';
+    mediaProperties(j).mua   = 1e-8; % [cm^-1]
+    mediaProperties(j).mus   = 1e-8; % [cm^-1]
+    mediaProperties(j).g     = 1;
+    mediaProperties(j).n     = 1;
+    mediaProperties(j).VHC   = 1.2e-3;
+    mediaProperties(j).TC    = 0; % Real value is 2.6e-4, but we set it to zero to neglect the heat transport to air
 end

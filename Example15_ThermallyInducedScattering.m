@@ -93,8 +93,6 @@ model = simulateHeatDistribution(model);
 plot(model,'HS');
 plot(model,'MC');
 
-%% Post-processing
-
 %% Geometry function(s)
 % A geometry function takes as input X,Y,Z matrices as returned by the
 % "ndgrid" MATLAB function as well as any parameters the user may have
@@ -102,9 +100,9 @@ plot(model,'MC');
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition_BloodVessel(X,Y,Z,parameters)
-M = ones(size(X)); % fill background with water
-M(Z > 0.03) = 2; % egg white
-M(Z > 0.08) = 3; % absorber
+    M = ones(size(X)); % fill background with water
+    M(Z > 0.03) = 2; % egg white
+    M(Z > 0.08) = 3; % absorber
 end
 
 %% Media Properties function
@@ -116,30 +114,30 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-j=1;
-mediaProperties(j).name  = 'water';
-mediaProperties(j).mua   = 0.00036;
-mediaProperties(j).mus   = 10;
-mediaProperties(j).g     = 1.0;
-mediaProperties(j).VHC   = 4.19;
-mediaProperties(j).TC    = 5.8e-3;
-
-j=2;
-mediaProperties(j).name  = 'egg white';
-mediaProperties(j).mua   = 1;
-mediaProperties(j).mus   = '1+1000*FD';
-mediaProperties(j).g     = 0.5;
-mediaProperties(j).VHC   = 4.19;
-mediaProperties(j).TC    = 5.8e-3;
-mediaProperties(j).E     = 390e3; % J/mol    PLACEHOLDER DATA ONLY
-mediaProperties(j).A     = 7.6e67; % 1/s        PLACEHOLDER DATA ONLY
-mediaProperties(j).nBins = 20;
-
-j=3;
-mediaProperties(j).name  = 'absorber';
-mediaProperties(j).mua   = 300;
-mediaProperties(j).mus   = 100;
-mediaProperties(j).g     = 0.9;
-mediaProperties(j).VHC   = 4.19;
-mediaProperties(j).TC    = 5.8e-3;
+    j=1;
+    mediaProperties(j).name  = 'water';
+    mediaProperties(j).mua   = 0.00036; % [cm^-1]
+    mediaProperties(j).mus   = 10; % [cm^-1]
+    mediaProperties(j).g     = 1.0;
+    mediaProperties(j).VHC   = 4.19;
+    mediaProperties(j).TC    = 5.8e-3;
+    
+    j=2;
+    mediaProperties(j).name  = 'egg white';
+    mediaProperties(j).mua   = 1; % [cm^-1]
+    mediaProperties(j).mus   = '1+1000*FD'; % [cm^-1]
+    mediaProperties(j).g     = 0.5;
+    mediaProperties(j).VHC   = 4.19;
+    mediaProperties(j).TC    = 5.8e-3;
+    mediaProperties(j).E     = 390e3; % J/mol    PLACEHOLDER DATA ONLY
+    mediaProperties(j).A     = 7.6e67; % 1/s        PLACEHOLDER DATA ONLY
+    mediaProperties(j).nBins = 20;
+    
+    j=3;
+    mediaProperties(j).name  = 'absorber';
+    mediaProperties(j).mua   = 300; % [cm^-1]
+    mediaProperties(j).mus   = 100; % [cm^-1]
+    mediaProperties(j).g     = 0.9;
+    mediaProperties(j).VHC   = 4.19;
+    mediaProperties(j).TC    = 5.8e-3;
 end

@@ -4,7 +4,7 @@
 % with variable (parametrically sweeped) thickness. The slab thickness is
 % passed in as a part of the GeomFuncParams field and used in the geometry
 % function to get the correct thickness. Light is collected in transmission
-% at a 45° angle in a fiber. A small layer of air is present underneath the
+% at a 45Â° angle in a fiber. A small layer of air is present underneath the
 % slab so that the refraction out of the slab is correctly modeled. At the
 % end of the script, collected power as a function of thickness is plotted.
 % The fiber-coupled power is seen to be zero for zero slab thickness, since
@@ -76,24 +76,26 @@ model.MC.LC.NA                    = 0.22; % [-] Fiber NA. Only used for infinite
 
 model.MC.LC.res                   = 1; % X and Y resolution of light collector in pixels, only used for finite f
 
+%% Looping over the different tissue thicknesses
 t_vec = linspace(0,0.1,21); % Thicknesses to simulate
 power_vec = zeros(1,length(t_vec));
 fprintf('%2d/%2d\n',0,length(t_vec));
 for i=1:length(t_vec)
-  fprintf('\b\b\b\b\b\b%2d/%2d\n',i,length(t_vec)); % Simple progress indicator
-  
-  %% Adjust geometry
-  model.G.geomFuncParams      = {t_vec(i)}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
-  plot(model,'G');
-
-  %% Run MC
-  model = runMonteCarlo(model);
-
-  %% Post-processing
-  power_vec(i) = model.MC.LC.image; % "image" is in this case just a scalar, the normalized power collected by the fiber.
+    fprintf('\b\b\b\b\b\b%2d/%2d\n',i,length(t_vec)); % Simple progress indicator
+    
+    % Adjust geometry
+    model.G.geomFuncParams      = {t_vec(i)}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
+    plot(model,'G');
+    
+    % Run MC
+    model = runMonteCarlo(model);
+    
+    % Post-processing
+    power_vec(i) = model.MC.LC.image; % "image" is in this case just a scalar, the normalized power collected by the fiber.
 end
 plot(model,'MC');
 
+%% Plotting the collected power vs. tissue thickness
 figure;clf;
 plot(t_vec,power_vec,'Linewidth',2);
 set(gcf,'Position',[40 80 800 550]);
@@ -108,8 +110,8 @@ set(gca,'FontSize',18);grid on; grid minor;
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition_VariableThicknessStandardTissue(X,Y,Z,parameters)
-M = ones(size(X)); % Air
-M(Z > 0.1 - parameters{1} & Z < 0.1) = 2; % "Standard" tissue
+    M = ones(size(X)); % Air
+    M(Z > 0.1 - parameters{1} & Z < 0.1) = 2; % "Standard" tissue
 end
 
 %% Media Properties function
@@ -121,21 +123,21 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-j=1;
-mediaProperties(j).name  = 'air';
-mediaProperties(j).mua   = 1e-8;
-mediaProperties(j).mus   = 1e-8;
-mediaProperties(j).g     = 1;
-mediaProperties(j).n     = 1;
-mediaProperties(j).VHC   = 1.2e-3;
-mediaProperties(j).TC    = 0; % Real value is 2.6e-4, but we set it to zero to neglect the heat transport to air
-
-j=2;
-mediaProperties(j).name  = 'standard tissue';
-mediaProperties(j).mua   = 1;
-mediaProperties(j).mus   = 100;
-mediaProperties(j).g     = 0.9;
-mediaProperties(j).n     = 1.3;
-mediaProperties(j).VHC   = 3391*1.109e-3;
-mediaProperties(j).TC    = 0.37e-2;
+    j=1;
+    mediaProperties(j).name  = 'air';
+    mediaProperties(j).mua   = 1e-8; % [cm^-1]
+    mediaProperties(j).mus   = 1e-8; % [cm^-1]
+    mediaProperties(j).g     = 1;
+    mediaProperties(j).n     = 1;
+    mediaProperties(j).VHC   = 1.2e-3;
+    mediaProperties(j).TC    = 0; % Real value is 2.6e-4, but we set it to zero to neglect the heat transport to air
+    
+    j=2;
+    mediaProperties(j).name  = 'standard tissue';
+    mediaProperties(j).mua   = 1; % [cm^-1]
+    mediaProperties(j).mus   = 100; % [cm^-1]
+    mediaProperties(j).g     = 0.9;
+    mediaProperties(j).n     = 1.3;
+    mediaProperties(j).VHC   = 3391*1.109e-3;
+    mediaProperties(j).TC    = 0.37e-2;
 end

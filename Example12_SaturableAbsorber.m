@@ -9,7 +9,7 @@
 % at the bottom of the file, using standard MATLAB syntax. In the formulas,
 % FR is simply the normalized fluence rate times the power, FR =
 % model.MC.NFR*model.MC.P.
-
+%
 % When simulating fluence rate or temperature dependent optical or thermal
 % properties, the algorithm "bins" voxels of similar optical or thermal
 % properties together. The number of bins used for fluence rate,
@@ -82,8 +82,6 @@ model = runMonteCarlo(model); % Iteratively run Monte Carlo the default number o
 
 plot(model,'MC');
 
-%% Post-processing
-
 %% Geometry function(s)
 % A geometry function takes as input X,Y,Z matrices as returned by the
 % "ndgrid" MATLAB function as well as any parameters the user may have
@@ -91,10 +89,10 @@ plot(model,'MC');
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition_SaturableAbsorber(X,Y,Z,parameters)
-absorberdepth = 0.03;
-M = ones(size(X)); % Air
-M(Z > absorberdepth) = 2; % Saturable absorber 1
-M(Z > absorberdepth & Y > 0) = 3; % Saturable absorber 2
+    absorberdepth = 0.03;
+    M = ones(size(X)); % Air
+    M(Z > absorberdepth) = 2; % Saturable absorber 1
+    M(Z > absorberdepth & Y > 0) = 3; % Saturable absorber 2
 end
 
 %% Media Properties function
@@ -106,24 +104,23 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-j=1;
-mediaProperties(j).name    = 'air';
-mediaProperties(j).mua     = 1e-8;
-mediaProperties(j).mus     = 1e-8;
-mediaProperties(j).g       = 0;
-
-j=2;
-mediaProperties(j).name    = 'saturable absorber 1';
-mediaProperties(j).mua     = '50./(1+FR/2000)';
-mediaProperties(j).mus     = 10;
-mediaProperties(j).g       = 0.9;
-mediaProperties(j).nBins = 50; % Number of bins to use for the fluence rate- or temperature dependent (FRTDep) simulations. Higher is better and slower
-
-j=3;
-mediaProperties(j).name    = 'saturable absorber 2';
-mediaProperties(j).mua     = '50./(1+FR/1000)';
-mediaProperties(j).mus     = '10./(1+FR/500)';
-mediaProperties(j).g       = '1-0.1./(1+FR/300)';
-mediaProperties(j).nBins = 9; % Number of bins to use for the fluence rate- or temperature dependent (FRTDep) simulations. Higher is better and slower
-
+    j=1;
+    mediaProperties(j).name    = 'air';
+    mediaProperties(j).mua     = 1e-8; % [cm^-1]
+    mediaProperties(j).mus     = 1e-8; % [cm^-1]
+    mediaProperties(j).g       = 0;
+    
+    j=2;
+    mediaProperties(j).name    = 'saturable absorber 1';
+    mediaProperties(j).mua     = '50./(1+FR/2000)'; % [cm^-1]
+    mediaProperties(j).mus     = 10; % [cm^-1]
+    mediaProperties(j).g       = 0.9;
+    mediaProperties(j).nBins = 50; % Number of bins to use for the fluence rate- or temperature dependent (FRTDep) simulations. Higher is better and slower
+    
+    j=3;
+    mediaProperties(j).name    = 'saturable absorber 2';
+    mediaProperties(j).mua     = '50./(1+FR/1000)'; % [cm^-1]
+    mediaProperties(j).mus     = '10./(1+FR/500)'; % [cm^-1]
+    mediaProperties(j).g       = '1-0.1./(1+FR/300)';
+    mediaProperties(j).nBins = 9; % Number of bins to use for the fluence rate- or temperature dependent (FRTDep) simulations. Higher is better and slower
 end

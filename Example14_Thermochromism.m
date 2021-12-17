@@ -87,10 +87,7 @@ model.HS.tempSensorPositions = [0 0.009 0.032
 model = simulateHeatDistribution(model);
 
 plot(model,'HS');
-
 plot(model,'MC');
-
-%% Post-processing
 
 %% Geometry function(s)
 % A geometry function takes as input X,Y,Z matrices as returned by the
@@ -99,11 +96,11 @@ plot(model,'MC');
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition_Thermochromic(X,Y,Z,parameters)
-M = ones(size(X)); % fill background with water
-M(0.2*Y + (Z - 0.03) > 0) = 2; % Thermochromic material
-M(-0.2*Y + (Z - 0.05) > 0) = 1; % Water
-M(Z > 0.07) = 2;
-M(Z > 0.09) = 1;
+    M = ones(size(X)); % fill background with water
+    M(0.2*Y + (Z - 0.03) > 0) = 2; % Thermochromic material
+    M(-0.2*Y + (Z - 0.05) > 0) = 1; % Water
+    M(Z > 0.07) = 2;
+    M(Z > 0.09) = 1;
 end
 
 %% Media Properties function
@@ -115,20 +112,20 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-j=1;
-mediaProperties(j).name  = 'water';
-mediaProperties(j).mua   = 0.00036;
-mediaProperties(j).mus   = 10;
-mediaProperties(j).g     = 1.0;
-mediaProperties(j).VHC   = 4.19;
-mediaProperties(j).TC    = 5.8e-3;
-
-j=2;
-mediaProperties(j).name  = 'thermochromic material';
-mediaProperties(j).mua = '150*max(1e-8,(40-T)/(40-20))';
-mediaProperties(j).mus = 30;
-mediaProperties(j).g   = 0.8;
-mediaProperties(j).VHC = 2000;
-mediaProperties(j).TC  = 5e-3;
-mediaProperties(j).nBins = 150;
+    j=1;
+    mediaProperties(j).name  = 'water';
+    mediaProperties(j).mua   = 0.00036; % [cm^-1]
+    mediaProperties(j).mus   = 10; % [cm^-1]
+    mediaProperties(j).g     = 1.0;
+    mediaProperties(j).VHC   = 4.19;
+    mediaProperties(j).TC    = 5.8e-3;
+    
+    j=2;
+    mediaProperties(j).name  = 'thermochromic material';
+    mediaProperties(j).mua = '150*max(1e-8,(40-T)/(40-20))'; % [cm^-1]
+    mediaProperties(j).mus = 30; % [cm^-1]
+    mediaProperties(j).g   = 0.8;
+    mediaProperties(j).VHC = 2000;
+    mediaProperties(j).TC  = 5e-3;
+    mediaProperties(j).nBins = 150;
 end

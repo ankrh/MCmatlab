@@ -53,8 +53,6 @@ model = runMonteCarlo(model);
 
 plot(model,'MC');
 
-%% Post-processing
-
 %% Geometry function(s)
 % A geometry function takes as input X,Y,Z matrices as returned by the
 % "ndgrid" MATLAB function as well as any parameters the user may have
@@ -78,8 +76,8 @@ end
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 j=1;
 mediaProperties(j).name  = 'air';
-mediaProperties(j).mua   = 1e-8;
-mediaProperties(j).mus   = 1e-8;
+mediaProperties(j).mua   = 1e-8; % [cm^-1]
+mediaProperties(j).mus   = 1e-8; % [cm^-1]
 mediaProperties(j).g     = 1;
 mediaProperties(j).n     = 1;
 mediaProperties(j).VHC   = 1.2e-3;
@@ -87,8 +85,8 @@ mediaProperties(j).TC    = 0; % Real value is 2.6e-4, but we set it to zero to n
 
 j=2;
 mediaProperties(j).name  = 'water';
-mediaProperties(j).mua   = 0.00036;
-mediaProperties(j).mus   = 10;
+mediaProperties(j).mua   = 0.00036; % [cm^-1]
+mediaProperties(j).mus   = 10; % [cm^-1]
 mediaProperties(j).g     = 1.0;
 mediaProperties(j).n     = 1.3;
 mediaProperties(j).VHC   = 4.19;
@@ -96,8 +94,8 @@ mediaProperties(j).TC    = 5.8e-3;
 
 j=3;
 mediaProperties(j).name  = 'reflector';
-mediaProperties(j).mua   = 1;
-mediaProperties(j).mus   = 1;
+mediaProperties(j).mua   = 1; % [cm^-1]
+mediaProperties(j).mus   = 1; % [cm^-1]
 mediaProperties(j).g     = 0;
 mediaProperties(j).n     = Inf;
 end
