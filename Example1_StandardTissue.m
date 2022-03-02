@@ -41,8 +41,6 @@ model = runMonteCarlo(model);
 
 plot(model,'MC');
 
-%% Post-processing
-
 %% Geometry function(s)
 % A geometry function takes as input X,Y,Z matrices as returned by the
 % "ndgrid" MATLAB function as well as any parameters the user may have
@@ -50,9 +48,9 @@ plot(model,'MC');
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition_StandardTissue(X,Y,Z,parameters)
-tissuedepth = 0.03;
-M = ones(size(X)); % Air
-M(Z > tissuedepth) = 2; % "Standard" tissue
+    tissuedepth = 0.03;
+    M = ones(size(X)); % Air
+    M(Z > tissuedepth) = 2; % "Standard" tissue
 end
 
 %% Media Properties function
@@ -64,21 +62,17 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-j=1;
-mediaProperties(j).name  = 'air';
-mediaProperties(j).mua   = 1e-8;
-mediaProperties(j).mus   = 1e-8;
-mediaProperties(j).g     = 1;
-mediaProperties(j).n     = 1;
-mediaProperties(j).VHC   = 1.2e-3;
-mediaProperties(j).TC    = 0; % Real value is 2.6e-4, but we set it to zero to neglect the heat transport to air
-
-j=2;
-mediaProperties(j).name  = 'standard tissue';
-mediaProperties(j).mua   = 1;
-mediaProperties(j).mus   = 100;
-mediaProperties(j).g     = 0.9;
-mediaProperties(j).n     = 1.3;
-mediaProperties(j).VHC   = 3391*1.109e-3;
-mediaProperties(j).TC    = 0.37e-2;
+    j=1;
+    mediaProperties(j).name  = 'air';
+    mediaProperties(j).mua   = 1e-8; % [cm^-1]
+    mediaProperties(j).mus   = 1e-8; % [cm^-1]
+    mediaProperties(j).g     = 1;
+    mediaProperties(j).n     = 1;
+    
+    j=2;
+    mediaProperties(j).name  = 'standard tissue';
+    mediaProperties(j).mua   = 1; % [cm^-1]
+    mediaProperties(j).mus   = 100; % [cm^-1]
+    mediaProperties(j).g     = 0.9;
+    mediaProperties(j).n     = 1.3;
 end

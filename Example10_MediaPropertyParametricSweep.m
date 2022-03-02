@@ -1,16 +1,16 @@
 %% Description
 % This example is another illustration of MC simulations inside a for loop,
-% this time simulating a pencil beam incident on a 100µm slab of scattering
+% this time simulating a pencil beam incident on a 100Âµm slab of scattering
 % medium with a variable (parametrically sweeped) scattering anisotropy g.
 % g is passed in through the mediaPropParams field and used within
-% mediaPropertiesFunc. Light is collected in transmission at a 45° angle in
+% mediaPropertiesFunc. Light is collected in transmission at a 45Â° angle in
 % a fiber, similar to example 8. At the end of the script, collected power
 % as a function of g is plotted. The power is seen to be zero for g = +- 1,
 % which is because then the light can only be scattered exactly forward or
 % backward. The max is at about 0.6, fitting well with a single scattering
-% event at 45°. There is a secondary hump around -0.7, which fits with
+% event at 45Â°. There is a secondary hump around -0.7, which fits with
 % photons experiencing two scattering events at a scattering angle of
-% 157.5°.
+% 157.5Â°.
 % 
 % As in example 9, calcNFR is again set to false to speed up the simulation
 % slightly.
@@ -30,7 +30,7 @@ model.G.Lz                = .01; % [cm] z size of simulation cuboid
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 model.G.geomFunc          = @geometryDefinition_MediaPropertyParametricSweep; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
-% plot(model,'G');
+plot(model,'G');
 
 %% Monte Carlo simulation
 model.MC.silentMode               = true; % Disables command window text and progress indication
@@ -64,24 +64,26 @@ model.MC.LC.NA                    = 0.22; % [-] Fiber NA. Only used for infinite
 
 model.MC.LC.res                   = 1; % X and Y resolution of light collector in pixels, only used for finite f
 
+%% Looping over the different scattering anisotropies g
 g_vec = linspace(-1,1,21); % g values to simulate
 power_vec = zeros(1,length(g_vec));
 fprintf('%2d/%2d\n',0,length(g_vec));
 for i=1:length(g_vec)
-  fprintf('\b\b\b\b\b\b%2d/%2d\n',i,length(g_vec)); % Simple progress indicator
-
-  %% Adjust media properties
-  model.G.mediaPropParams   = {g_vec(i)}; % Cell array containing any additional parameters to be passed to the mediaPropertiesFunc function
-
-  %% Run MC
-  model = runMonteCarlo(model);
-
-  %% Post-processing
-  power_vec(i) = model.MC.LC.image; % "image" is in this case just a scalar, the normalized power collected by the fiber.
+    fprintf('\b\b\b\b\b\b%2d/%2d\n',i,length(g_vec)); % Simple progress indicator
+    
+    % Adjust media properties
+    model.G.mediaPropParams   = {g_vec(i)}; % Cell array containing any additional parameters to be passed to the mediaPropertiesFunc function
+    
+    % Run MC
+    model = runMonteCarlo(model);
+    
+    % Post-processing
+    power_vec(i) = model.MC.LC.image; % "image" is in this case just a scalar, the normalized power collected by the fiber.
 end
 plot(model,'G');
 plot(model,'MC');
 
+%% Plotting the collected power vs. scattering anisotropy g
 figure;clf;
 plot(g_vec,power_vec,'Linewidth',2);
 set(gcf,'Position',[40 80 800 550]);
@@ -96,7 +98,7 @@ set(gca,'FontSize',18);grid on; grid minor;
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition_MediaPropertyParametricSweep(X,Y,Z,parameters)
-M = ones(size(X)); % Variable g medium
+    M = ones(size(X)); % Variable g medium
 end
 
 %% Media Properties function
@@ -108,9 +110,9 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-j=1;
-mediaProperties(j).name  = 'variable g medium';
-mediaProperties(j).mua   = 10;
-mediaProperties(j).mus   = 100;
-mediaProperties(j).g = parameters{1};
+    j=1;
+    mediaProperties(j).name  = 'variable g medium';
+    mediaProperties(j).mua   = 10; % [cm^-1]
+    mediaProperties(j).mus   = 100; % [cm^-1]
+    mediaProperties(j).g = parameters{1};
 end

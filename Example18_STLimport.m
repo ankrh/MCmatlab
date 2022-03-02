@@ -72,8 +72,6 @@ fprintf('Press enter to continue...\n');pause;
 model.G.geomFunc          = @geometryDefinition_4;
 plot(model,'G');
 
-%% Post-processing
-
 %% Geometry function(s)
 % A geometry function takes as input X,Y,Z matrices as returned by the
 % "ndgrid" MATLAB function as well as any parameters the user may have
@@ -81,84 +79,81 @@ plot(model,'G');
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition_1(X,Y,Z,parameters)
-% Don't rotate or mirror the STL mesh points, but convert the coordinates
-% from mm to cm by multiplying by 0.1:
-A = 0.1*eye(3);
-
-% Then translate the points by 1.5 in the +z direction:
-v = [0 0 1.5];
-
-% Find out which voxels are located inside this mesh:
-insideVoxels = findInsideVoxels(X,Y,Z,'sample.stl',A,v);
-
-% Set the background to air and the inside voxels to standard tissue:
-M = ones(size(X)); % Air
-M(insideVoxels) = 2;
+    % Don't rotate or mirror the STL mesh points, but convert the coordinates from mm to cm by multiplying by 0.1:
+    A = 0.1*eye(3);
+    
+    % Then translate the points by 1.5 in the +z direction:
+    v = [0 0 1.5];
+    
+    % Find out which voxels are located inside this mesh:
+    insideVoxels = findInsideVoxels(X,Y,Z,'sample.stl',A,v);
+    
+    % Set the background to air and the inside voxels to standard tissue:
+    M = ones(size(X)); % Air
+    M(insideVoxels) = 2;
 end
 
 function M = geometryDefinition_2(X,Y,Z,parameters)
-% Invert the z-coordinates of the STL mesh points, and scale the result by
-% 0.1:
-A = 0.1*[1  0  0;
-         0  1  0;
-         0  0 -1];
-
-% Then translate the points by 2.5 in the +z direction:
-v = [0 0 2.5];
-
-% Find out which voxels are located inside this mesh:
-insideVoxels = findInsideVoxels(X,Y,Z,'sample.stl',A,v);
-
-% Set the background to air and the inside voxels to standard tissue:
-M = ones(size(X)); % Air
-M(insideVoxels) = 2;
+    % Invert the z-coordinates of the STL mesh points, and scale the result by 0.1:
+    A = 0.1*[1  0  0;
+             0  1  0;
+             0  0 -1];
+    
+    % Then translate the points by 2.5 in the +z direction:
+    v = [0 0 2.5];
+    
+    % Find out which voxels are located inside this mesh:
+    insideVoxels = findInsideVoxels(X,Y,Z,'sample.stl',A,v);
+    
+    % Set the background to air and the inside voxels to standard tissue:
+    M = ones(size(X)); % Air
+    M(insideVoxels) = 2;
 end
 
 function M = geometryDefinition_3(X,Y,Z,parameters)
-% First rotate the STL file mesh points by theta around the x axis, then
-% scale by 0.1:
-theta = pi/2;
-A = 0.1*[1     0            0    ;
-         0 cos(theta) -sin(theta);
-         0 sin(theta)  cos(theta)]; % Rotation around the x axis
-
-% Then translate the mesh by 2.5 in the +z direction:
-v = [0 0 2.5];
-
-% Find out which voxels are located inside this mesh:
-insideVoxels = findInsideVoxels(X,Y,Z,'sample.stl',A,v);
-
-% Set the background to air and the inside voxels to standard tissue:
-M = ones(size(X)); % Air
-M(insideVoxels) = 2;
+    % First rotate the STL file mesh points by theta around the x axis, then scale by 0.1:
+    theta = pi/2;
+    A = 0.1*[1     0            0    ;
+             0 cos(theta) -sin(theta);
+             0 sin(theta)  cos(theta)]; % Rotation around the x axis
+    
+    % Then translate the mesh by 2.5 in the +z direction:
+    v = [0 0 2.5];
+    
+    % Find out which voxels are located inside this mesh:
+    insideVoxels = findInsideVoxels(X,Y,Z,'sample.stl',A,v);
+    
+    % Set the background to air and the inside voxels to standard tissue:
+    M = ones(size(X)); % Air
+    M(insideVoxels) = 2;
 end
 
 function M = geometryDefinition_4(X,Y,Z,parameters)
-% Construct some rotation matrices for rotation around the x and z axes:
-theta = pi/2;
-Rx = [   1         0           0     ;
-         0     cos(theta) -sin(theta);
-         0     sin(theta)  cos(theta)]; % Rotation around the x axis
-
-phi = -pi/2;
-Rz = [cos(phi) -sin(phi)       0     ;
-      sin(phi)  cos(phi)       0     ;
-         0         0           1     ]; % Rotation around the z axis
-
-% First rotate the STL file mesh points by theta around the x axis, then
-% phi around the z axis (multiplication onto [x;y;z] happens from right to
-% left), then scale by 0.1:
-A = 0.1*Rz*Rx;
-
-% Then translate the mesh by 2.5 in the +z direction:
-v = [0 0 2.5];
-
-% Find out which voxels are located inside this mesh:
-insideVoxels = findInsideVoxels(X,Y,Z,'sample.stl',A,v);
-
-% Set the background to air and the inside voxels to standard tissue:
-M = ones(size(X)); % Air
-M(insideVoxels) = 2;
+    % Construct some rotation matrices for rotation around the x and z axes:
+    theta = pi/2;
+    Rx = [   1         0           0     ;
+             0     cos(theta) -sin(theta);
+             0     sin(theta)  cos(theta)]; % Rotation around the x axis
+    
+    phi = -pi/2;
+    Rz = [cos(phi) -sin(phi)       0     ;
+          sin(phi)  cos(phi)       0     ;
+             0         0           1     ]; % Rotation around the z axis
+    
+    % First rotate the STL file mesh points by theta around the x axis, then
+    % phi around the z axis (multiplication onto [x;y;z] happens from right to
+    % left), then scale by 0.1:
+    A = 0.1*Rz*Rx;
+    
+    % Then translate the mesh by 2.5 in the +z direction:
+    v = [0 0 2.5];
+    
+    % Find out which voxels are located inside this mesh:
+    insideVoxels = findInsideVoxels(X,Y,Z,'sample.stl',A,v);
+    
+    % Set the background to air and the inside voxels to standard tissue:
+    M = ones(size(X)); % Air
+    M(insideVoxels) = 2;
 end
 
 %% Media Properties function
@@ -170,21 +165,21 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-j=1;
-mediaProperties(j).name  = 'air';
-mediaProperties(j).mua   = 1e-8;
-mediaProperties(j).mus   = 1e-8;
-mediaProperties(j).g     = 1;
-mediaProperties(j).n     = 1;
-mediaProperties(j).VHC   = 1.2e-3;
-mediaProperties(j).TC    = 0; % Real value is 2.6e-4, but we set it to zero to neglect the heat transport to air
-
-j=2;
-mediaProperties(j).name  = 'standard tissue';
-mediaProperties(j).mua   = 1;
-mediaProperties(j).mus   = 100;
-mediaProperties(j).g     = 0.9;
-mediaProperties(j).n     = 1.3;
-mediaProperties(j).VHC   = 3391*1.109e-3;
-mediaProperties(j).TC    = 0.37e-2;
+    j=1;
+    mediaProperties(j).name  = 'air';
+    mediaProperties(j).mua   = 1e-8; % [cm^-1]
+    mediaProperties(j).mus   = 1e-8; % [cm^-1]
+    mediaProperties(j).g     = 1;
+    mediaProperties(j).n     = 1;
+    mediaProperties(j).VHC   = 1.2e-3;
+    mediaProperties(j).TC    = 0; % Real value is 2.6e-4, but we set it to zero to neglect the heat transport to air
+    
+    j=2;
+    mediaProperties(j).name  = 'standard tissue';
+    mediaProperties(j).mua   = 1; % [cm^-1]
+    mediaProperties(j).mus   = 100; % [cm^-1]
+    mediaProperties(j).g     = 0.9;
+    mediaProperties(j).n     = 1.3;
+    mediaProperties(j).VHC   = 3391*1.109e-3;
+    mediaProperties(j).TC    = 0.37e-2;
 end

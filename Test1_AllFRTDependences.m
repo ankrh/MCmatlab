@@ -111,8 +111,8 @@ end
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 j=1;
 mediaProperties(j).name  = 'material 1';
-mediaProperties(j).mua   = '0.00036 + (T+FR)/100';
-mediaProperties(j).mus   = '10+FR/1000-T/100';
+mediaProperties(j).mua   = '0.00036 + (T+FR)/100'; % [cm^-1]
+mediaProperties(j).mus   = '10+FR/1000-T/100'; % [cm^-1]
 mediaProperties(j).g     = '1./exp(T+FR/500)';
 mediaProperties(j).PY    = '0.5/(1+FR/700+T/10)';
 mediaProperties(j).VHC   = '4.19 + T/200';
@@ -121,8 +121,8 @@ mediaProperties(j).nBins = 20;
 
 j=2;
 mediaProperties(j).name  = 'material 2';
-mediaProperties(j).mua   = '0.0073 + (T+2*FR)/60';
-mediaProperties(j).mus   = '50+FR/7000+T/150';
+mediaProperties(j).mua   = '0.0073 + (T+2*FR)/60'; % [cm^-1]
+mediaProperties(j).mus   = '50+FR/7000+T/150'; % [cm^-1]
 mediaProperties(j).g     = '0.2*(0.5+0.5*tanh(T))+0.05*(0.5+0.5*tanh(FR/500))';
 mediaProperties(j).QY    = '0.35-0.25*tanh((FR-250)/100)+0.1*tanh((T-10)/10)';
 mediaProperties(j).VHC   = '2.19 + T/400';

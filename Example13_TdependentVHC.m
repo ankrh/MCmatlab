@@ -2,14 +2,14 @@
 % This example showcases the option of letting the thermal media properties
 % depend on temperature. A medium is defined that has a volumetric heat
 % capacity (VHC) that increases drastically when the temperature is around
-% 40 deg C. Such a medium is not particularly realistic, but serves to
+% 40° C. Such a medium is not particularly realistic, but serves to
 % showcase the feature.
 % 
-% As the medium heats up, the regions that approach 40 deg C will not heat
+% As the medium heats up, the regions that approach 40° C will not heat
 % much further due to the very high VHC, despite still absorbing the same
-% power as before. In the plot, the yellow color (40 deg C) can be seen to
+% power as before. In the plot, the yellow color (40° C) can be seen to
 % extend further and further down into the medium as time goes, but even
-% the top layer has not become white (45 deg C) by the end of the
+% the top layer has not become white (45° C) by the end of the
 % simulation.
 % 
 % In models where optical or thermal properties depend on temperature or
@@ -81,8 +81,6 @@ model = simulateHeatDistribution(model);
 
 plot(model,'HS');
 
-%% Post-processing
-
 %% Geometry function(s)
 % A geometry function takes as input X,Y,Z matrices as returned by the
 % "ndgrid" MATLAB function as well as any parameters the user may have
@@ -90,8 +88,8 @@ plot(model,'HS');
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition_TdependentVHC(X,Y,Z,parameters)
-M = ones(size(X)); % fill background with water
-M(Z > 0.01) = 2; % Temperature dependent VHC material
+    M = ones(size(X)); % fill background with water
+    M(Z > 0.01) = 2; % Temperature dependent VHC material
 end
 
 %% Media Properties function
@@ -103,20 +101,20 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-j=1;
-mediaProperties(j).name  = 'water';
-mediaProperties(j).mua   = 0.00036;
-mediaProperties(j).mus   = 10;
-mediaProperties(j).g     = 1.0;
-mediaProperties(j).VHC   = 4.19;
-mediaProperties(j).TC    = 5.8e-3;
-
-j=2;
-mediaProperties(j).name  = 'temp. dep. VHC material';
-mediaProperties(j).mua = 30;
-mediaProperties(j).mus = 50;
-mediaProperties(j).g   = 0.8;
-mediaProperties(j).VHC = '3.5 + 500./(1+exp(40-T))';
-mediaProperties(j).TC  = 0.52e-2;
-mediaProperties(j).nBins = 30;
+    j=1;
+    mediaProperties(j).name  = 'water';
+    mediaProperties(j).mua   = 0.00036; % [cm^-1]
+    mediaProperties(j).mus   = 10; % [cm^-1]
+    mediaProperties(j).g     = 1.0;
+    mediaProperties(j).VHC   = 4.19; % [J cm^-3 K^-1]
+    mediaProperties(j).TC    = 5.8e-3; % [W cm^-1 K^-1]
+    
+    j=2;
+    mediaProperties(j).name  = 'temp. dep. VHC material';
+    mediaProperties(j).mua = 30; % [cm^-1]
+    mediaProperties(j).mus = 50; % [cm^-1]
+    mediaProperties(j).g   = 0.8;
+    mediaProperties(j).VHC = '3.5 + 500./(1+exp(40-T))'; % [J cm^-3 K^-1]
+    mediaProperties(j).TC  = 0.52e-2; % [W cm^-1 K^-1]
+    mediaProperties(j).nBins = 30;
 end

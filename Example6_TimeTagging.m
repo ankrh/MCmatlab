@@ -66,8 +66,6 @@ model = runMonteCarlo(model);
 
 plot(model,'MC');
 
-%% Post-processing
-
 %% Geometry function(s)
 % A geometry function takes as input X,Y,Z matrices as returned by the
 % "ndgrid" MATLAB function as well as any parameters the user may have
@@ -75,10 +73,10 @@ plot(model,'MC');
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition_TimeTaggingExample(X,Y,Z,parameters)
-[nx,ny,~] = size(X);
-M = ones(size(X)); % Air background
-M(1:(nx*(ny+1)+1):end) = 2; % Set xyz diagonal positions to test scatterer
-M(1:(nx*(ny+1)):end) = 2; % Set yz diagonal positions to test scatterer
+    [nx,ny,~] = size(X);
+    M = ones(size(X)); % Air background
+    M(1:(nx*(ny+1)+1):end) = 2; % Set xyz diagonal positions to test scatterer
+    M(1:(nx*(ny+1)):end) = 2; % Set yz diagonal positions to test scatterer
 end
 
 %% Media Properties function
@@ -90,15 +88,15 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-j=1;
-mediaProperties(j).name  = 'air';
-mediaProperties(j).mua   = 1e-8;
-mediaProperties(j).mus   = 1e-8;
-mediaProperties(j).g     = 1;
-
-j=2;
-mediaProperties(j).name  = 'test scatterer';
-mediaProperties(j).mua   = 0.0000001;
-mediaProperties(j).mus   = 100;
-mediaProperties(j).g     = 0;
+    j=1;
+    mediaProperties(j).name  = 'air';
+    mediaProperties(j).mua   = 1e-8; % [cm^-1]
+    mediaProperties(j).mus   = 1e-8; % [cm^-1]
+    mediaProperties(j).g     = 1;
+    
+    j=2;
+    mediaProperties(j).name  = 'test scatterer';
+    mediaProperties(j).mua   = 0.0000001; % [cm^-1]
+    mediaProperties(j).mus   = 100; % [cm^-1]
+    mediaProperties(j).g     = 0;
 end
