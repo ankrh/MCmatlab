@@ -59,7 +59,7 @@
  * 1. Use a package manager like apt to install GCC (on Ubuntu, part of the build-essential package)
  * 2. Type "mex -setup" in the MATLAB command window
  ********************************************/
-// printf("Reached line %d...\n",__LINE__);mexEvalString("drawnow;");mexEvalString("drawnow;");mexEvalString("drawnow;"); // For inserting into code for debugging purposes
+// printf("Reached line %d...\n",__LINE__);mexEvalString("drawnow; pause(.001);");mexEvalString("drawnow; pause(.001);");mexEvalString("drawnow; pause(.001);"); // For inserting into code for debugging purposes
 
 #include "mex.h"
 #include <math.h>
@@ -260,8 +260,8 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
           // Print out message about progress.
           int newPctProgress = max(pctTimeProgress,pctPhotonsProgress);
           if(newPctProgress != pctProgress && !silentMode && !*abortingPtr) {
-            printf("\b\b\b\b\b\b\b\b\b%3.i%% done", newPctProgress<100? newPctProgress: 100);
-            mexEvalString("drawnow;");
+            mexPrintf("\b\b\b\b\b\b\b\b\b%3.i%% done", newPctProgress<100? newPctProgress: 100);
+            mexEvalString("drawnow; pause(.001);");
           }
         }
       }
@@ -545,7 +545,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 
   if(!silentMode) {
     printf("Calculating...   0%% done");
-    mexEvalString("drawnow;");
+    mexEvalString("drawnow; pause(.001);");
   }
   long long simulationTimeStart = getMicroSeconds();
   long long prevtime = simulationTimeStart;
@@ -572,7 +572,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 
     if(!silentMode) {
       printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgress);
-      mexEvalString("drawnow;");
+      mexEvalString("drawnow; pause(.001);");
     }
     prevtime = newtime;
     // Resize Pa->data if necessary
@@ -598,7 +598,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 
   if(!silentMode) {
     printf("Calculating...   0%% done");
-    mexEvalString("drawnow;");
+    mexEvalString("drawnow; pause(.001);");
   }
   long long simulationTimeStart = getMicroSeconds();
   #ifdef _OPENMP
@@ -621,7 +621,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
       if(simulationTimed) printf("\nSimulated %0.2e photons at a rate of %0.2e photons per minute\n",nPhotons, nPhotons/simTime);
       else printf("\nSimulated for %0.2e minutes at a rate of %0.2e photons per minute\n",simTime, nPhotons/simTime);
     }
-    mexEvalString("drawnow;");
+    mexEvalString("drawnow; pause(.001);");
   }
   normalizeDeposition(B,G,LC,O); // Convert data to relative fluence rate
   free(G->M);

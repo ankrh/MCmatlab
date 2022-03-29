@@ -57,7 +57,7 @@
  * 1. Use a package manager like apt to install GCC (on Ubuntu, part of the build-essential package)
  * 2. Type "mex -setup" in the MATLAB command window
  ********************************************/
-// printf("Reached line %d...\n",__LINE__);mexEvalString("drawnow;");mexEvalString("drawnow;");mexEvalString("drawnow;"); // For inserting into code for debugging purposes
+// printf("Reached line %d...\n",__LINE__);mexEvalString("drawnow; pause(.001);");mexEvalString("drawnow; pause(.001);");mexEvalString("drawnow; pause(.001);"); // For inserting into code for debugging purposes
 
 #include <math.h>
 #include "mex.h"
@@ -156,7 +156,7 @@ void atomicMaxWrapperFLT(float *ptr, float val) { // Atomic maximum wrapper for 
 inline void gpuAssert(cudaError_t code, const char *file, int line) {
    if (code != cudaSuccess) {
       printf("GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
-      mexEvalString("drawnow;");
+      mexEvalString("drawnow; pause(.001);");
       while(true) {;}
    }
 }
