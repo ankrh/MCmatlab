@@ -299,7 +299,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   mxArray *mediaProperties = mxGetPropertyShared(MatlabMC,0,"mediaProperties");
   int     nM = (int)mxGetN(mediaProperties);
   mwSize const *dimPtr = mxGetDimensions(mxGetPropertyShared(MatlabMC,0,"M"));
-  long beamType = S_PDF? -1: (int)*mxGetPr(mxGetPropertyShared(MatlabBeam,0,"beamType"));
+  int beamType = S_PDF? -1: (int)*mxGetPr(mxGetPropertyShared(MatlabBeam,0,"beamType"));
   FLOATORDBL emitterLength = S_PDF? 0: (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabBeam,0,"emitterLength"));
   mxArray *MatlabBeamNF = S_PDF? 0: mxGetPropertyShared(MatlabBeam,0,"NF");
   mxArray *MatlabBeamFF = S_PDF? 0: mxGetPropertyShared(MatlabBeam,0,"FF");
@@ -524,7 +524,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 //   if(!silentMode) printf("Using %s with CUDA compute capability %d.%d,\n    launching %d blocks, each with %d threads,\n    using %d/%d bytes of shared memory per block\n",CDP.name,CDP.major,CDP.minor,blocks,threadsPerBlock,384+size_smallArrays,CDP.sharedMemPerBlock);
   if(!silentMode) printf("Using %s with CUDA compute capability %d.%d\n",CDP.name,CDP.major,CDP.minor);
 
-  unsigned long long heapSizeLimit; gpuErrchk(cudaDeviceGetLimit(&heapSizeLimit,cudaLimitMallocHeapSize));
+  size_t heapSizeLimit; gpuErrchk(cudaDeviceGetLimit(&heapSizeLimit,cudaLimitMallocHeapSize));
   if(calcNFRdet && heapSizeLimit < GPUHEAPMEMORYLIMIT) {
     gpuErrchk(cudaDeviceReset());
     gpuErrchk(cudaDeviceSetLimit(cudaLimitMallocHeapSize,GPUHEAPMEMORYLIMIT));
