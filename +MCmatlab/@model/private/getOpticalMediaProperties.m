@@ -123,13 +123,9 @@ if j-1 > 256
   error('Error: The total number of (sub-)media may not exceed 256');
 end
 
-%% If simulating with matched interfaces, we just set all refractive indices to that of the first medium
+%% If simulating with matched interfaces, we just set all refractive indices to 1
 if matchedInterfaces
-  if ~isempty(find(isfinite([mP.n]),1))
-    [mP.n] = deal(mP(find(isfinite([mP.n]),1)).n);
-  else
-    [mP.n] = deal(1);
-  end
+  [mP.n] = deal(1);
 end
 
 %% Throw an error if a variable doesn't conform to its required interval
