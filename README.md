@@ -38,6 +38,26 @@ In MCmatlab, you set up your model in a single m-file. You can find some example
 ### Media properties:
 The optical properties of all media are defined in a function at the end of the model file. The examples contain some media you can modify or copy-paste to your own model file, or you define your own media from scratch in your own models. Make sure that each media in a single model file has its distinct "j"-number, as this is the number you will refer to when building your model in the geometry function (see below).
 
+Each medium can be specified with up to 10 properties (fields in the struct):
+- `name` - A char array containing the name of the medium, used for the visualization.
+- `mua` - The absorption coefficient in units of 1/cm.
+- `mus` - The scattering coefficient in units of 1/cm.
+- `g` - The scattering anisotropy (the mean cosine to the scattering angle). It has no units.
+- `PY` - The power yield of fluorescence, that is, watts of fluorescence emitted relative to watts of excitation light absorbed. This field is mutually exclusive with `QY`. It has no units.
+- `QY` - The quantum yield of fluorescence, that is, photons of fluorescence emitted relative to excitation photons absorbed. This is related to the power yield through a factor of model.MC.lambda/model.FMC.lambda. This field is mutually exclusive with `PY`. It has no units.
+- `VHC` - The volumetric heat capacity of the medium in units of J/(cm^3 K).
+- `TC` - The thermal conductivity of the medium in units of W/(cm K).
+- `E` - The Arrhenius activation energy in units of J/mol.
+- `A` - The Arrhenius pre-exponential factor in units of 1/s.
+
+For Monte Carlo simulations, `name`, `mua`, `mus` and `g` need be specified for all media.
+
+For fluorescence Monte Carlo simulations, the `PY` or `QY` field must additionally be specified for those media that fluoresce.
+
+For heat simulations, `VHC` and `TC` must be specified for all media.
+
+For heat simulations with calculation of tissue damage, `E` and `A` must be specified for those media that can be damaged.
+
 ### Building the model
 You build each model in a separate m-file. Each model requires the first two and optionally more of the following steps:
 #### 1. Build geometry
