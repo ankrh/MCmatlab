@@ -14,6 +14,10 @@
 % 
 % As in example 9, calcNFR is again set to false to speed up the simulation
 % slightly.
+% 
+% The results of the last run will be plotted and MCmatlab will give a
+% warning because in that last one, no photons were collected in the
+% detector. This is not a problem in our case since we were expecting this.
 
 %% Geometry definition
 model = MCmatlab.model;
@@ -29,8 +33,6 @@ model.G.Lz                = .01; % [cm] z size of simulation cuboid
 
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 model.G.geomFunc          = @geometryDefinition_MediaPropertyParametricSweep; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
-
-plot(model,'G');
 
 %% Monte Carlo simulation
 model.MC.silentMode               = true; % Disables command window text and progress indication
