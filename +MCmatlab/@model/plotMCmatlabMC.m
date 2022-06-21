@@ -53,6 +53,7 @@ function plotMCmatlabMC(model,varargin)
 % 24: Temperature sensor data
 % 25: Thermal damage illustration
 % 26: Fractional damage plot
+% 31: STL shape
 
 com.mathworks.mde.desk.MLDesktop.getInstance.setDocumentBarPosition('Figures',7); % Set Figures window tabs to be on left side
 

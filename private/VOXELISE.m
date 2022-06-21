@@ -117,11 +117,32 @@ meshXYZ = READ_stl(STLin);
 % TRANSLATE WITH THE PROVIDED VECTOR
 %======================================================
 
-for iRow = 1:size(meshXYZ,1)
-  for iFacet = 1:size(meshXYZ,3)
-    meshXYZ(iRow,:,iFacet) = A*meshXYZ(iRow,:,iFacet).' + v;
+for iFacet = 1:size(meshXYZ,1)
+  for iVertex = 1:size(meshXYZ,3)
+    meshXYZ(iFacet,:,iVertex) = A*meshXYZ(iFacet,:,iVertex).' + v;
   end
 end
+
+x = squeeze(meshXYZ(:,1,:)).'; x = x(:);
+y = squeeze(meshXYZ(:,2,:)).'; y = y(:);
+z = squeeze(meshXYZ(:,3,:)).'; z = z(:);
+
+h_f = figure(31);clf reset;
+patch(x,y,z,[0 0 0],'FaceColor','none');
+axis equal tight;
+grid on; grid minor;
+view(3);
+set(gca,'ZDir','reverse');
+xlabel('x [cm]');
+ylabel('y [cm]');
+zlabel('z [cm]');
+set(h_f,'WindowStyle','Docked');
+h_f.Name = 'STL shape';
+title('STL import illustration');
+if ~verLessThan('matlab','9.0')
+  setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera');
+end
+rotate3d on
 
 %======================================================
 % IDENTIFY THE MIN AND MAX X,Y,Z COORDINATES OF THE POLYGON MESH
