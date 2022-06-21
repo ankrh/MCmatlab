@@ -1,5 +1,14 @@
 function redrawVolumetric(src,event,vars)
 
+switch src
+  case vars.h_centerbutton1
+    set(vars.h_slider1,'Value',(numel(vars.x)-1)/2 + 1);
+  case vars.h_centerbutton2
+    set(vars.h_slider2,'Value',(numel(vars.y)-1)/2 + 1);
+  case vars.h_centerbutton3
+    set(vars.h_slider3,'Value',(numel(vars.z)-1)/2 + 1);
+end
+
 plotLog = get(vars.h_checkbox1,'Value');
 xsi = floor(get(vars.h_slider1,'Value')); % x slice index
 xs = vars.x(xsi);
@@ -51,7 +60,7 @@ switch src
         end
       end
     end
-  case vars.h_slider1
+  case {vars.h_slider1, vars.h_centerbutton1}
     set(vars.h_surfxslice,'XData',xs*ones(length(vars.y),length(vars.z)));
     if plotLog
       set(vars.h_surfxslice,'CData',squeeze(log10(h_f.UserData(xsi,:,:))));
@@ -60,7 +69,7 @@ switch src
     end
     set(vars.h_xline,'XData',xs*ones(1,7));
     set(vars.h_zline,'XData',[xs xh xh xl xl xs xs]);
-  case vars.h_slider2
+  case {vars.h_slider2, vars.h_centerbutton2}
     set(vars.h_surfyslice,'YData',ys*ones(length(vars.x),length(vars.z)));
     if plotLog
       set(vars.h_surfyslice,'CData',squeeze(log10(h_f.UserData(:,ysi,:))));
@@ -69,7 +78,7 @@ switch src
     end
     set(vars.h_yline,'YData',ys*ones(1,7));
     set(vars.h_xline,'YData',[ys yh yh yl yl ys ys]);
-  case vars.h_slider3
+  case {vars.h_slider3, vars.h_centerbutton3}
     set(vars.h_surfzslice,'ZData',zs*ones(length(vars.x),length(vars.y)));
     if plotLog
       set(vars.h_surfzslice,'CData',squeeze(log10(h_f.UserData(:,:,zsi))));

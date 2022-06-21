@@ -30,8 +30,16 @@ if(any(strcmp(varargin,'MCmatlab_GeometryIllustration')))
   checkboxvisible = false;
   directmapping = true;
   colormap(lines(length(mediaProperties)));
-  colorbar('TickLabels',{mediaProperties.name},'Ticks',(1:length(mediaProperties))+0.5);
   linecolor = [0 0 0]; % Black lines around slices
+
+  % To get the legend to display properly, we have to cheat MATLAB a bit by
+  % introducing some invisible patches with the colors we want:
+  h_patches = NaN(1,length(mediaProperties));
+  for iColor = 1:length(mediaProperties)
+    h_patches(iColor) = patch(NaN,NaN,NaN,iColor);
+  end
+  legend(h_patches,mediaProperties.name,'AutoUpdate','off','FontSize',8);
+  colorbar off;
 elseif(any(strcmp(varargin,'MCmatlab_fromZero')))
   xyzaxes = true;
   reverseZ = true;
@@ -132,10 +140,13 @@ end
 warning('off','MATLAB:hg:UIControlSliderStepValueDifference');
 h_slider1 = uicontrol('Parent',h_f,'Style','slider','Position',[30,20,200,20],...
   'value',xsi, 'min',1, 'max',nx,'SliderStep',[1/(nx-1) 0.1]);
+h_centerbutton1 = uicontrol('Parent',h_f,'Style','pushbutton','String','Center','Position',[235,20,40,20]);
 h_slider2 = uicontrol('Parent',h_f,'Style','slider','Position',[30,40,200,20],...
   'value',ysi, 'min',1, 'max',ny,'SliderStep',[1/(ny-1) 0.1]);
+h_centerbutton2 = uicontrol('Parent',h_f,'Style','pushbutton','String','Center','Position',[235,40,40,20]);
 h_slider3 = uicontrol('Parent',h_f,'Style','slider','Position',[30,60,200,20],...
   'value',zsi, 'min',1, 'max',nz,'SliderStep',[1/(nz-1) 0.1]);
+h_centerbutton3 = uicontrol('Parent',h_f,'Style','pushbutton','String','Center','Position',[235,60,40,20]);
 warning('on','MATLAB:hg:UIControlSliderStepValueDifference');
 uicontrol('style','text','String','x','BackgroundColor','w','Position',[10,18,20,20])
 if swapYZ
@@ -197,6 +208,7 @@ end
 
 vars = struct('h_checkbox1',h_checkbox1,...
   'h_slider1',h_slider1,'h_slider2',h_slider2,'h_slider3',h_slider3,...
+  'h_centerbutton1',h_centerbutton1,'h_centerbutton2',h_centerbutton2,'h_centerbutton3',h_centerbutton3,...
   'x',x,'y',y,'z',z,...
   'h_surfxback',h_surfxback,'h_surfyback',h_surfyback,'h_surfzback',h_surfzback,...
   'h_surfxslice',h_surfxslice,'h_surfyslice',h_surfyslice,'h_surfzslice',h_surfzslice,...
@@ -204,8 +216,11 @@ vars = struct('h_checkbox1',h_checkbox1,...
 
 set(h_checkbox1,'Callback',{@plotVolumetric.redrawVolumetric,vars});
 set(h_slider1,'Callback',{@plotVolumetric.redrawVolumetric,vars});
+set(h_centerbutton1,'Callback',{@plotVolumetric.redrawVolumetric,vars});
 set(h_slider2,'Callback',{@plotVolumetric.redrawVolumetric,vars});
+set(h_centerbutton2,'Callback',{@plotVolumetric.redrawVolumetric,vars});
 set(h_slider3,'Callback',{@plotVolumetric.redrawVolumetric,vars});
+set(h_centerbutton3,'Callback',{@plotVolumetric.redrawVolumetric,vars});
 
 rotate3d on
 return
