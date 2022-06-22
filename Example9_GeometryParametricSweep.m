@@ -24,7 +24,7 @@
 % simulating in a for- or while-loop like this.
 % 
 % Also, the optional calcNFR flag in the MCinput is here set to false, which
-% means the MC simulation does not calculate the 3D fluence rate matrix.
+% means the MC simulation does not calculate the 3D fluence rate array.
 % This is useful because we're here only interested in the "image" data,
 % and setting calcF to false will speed up the simulation a bit (10-30%).
 

@@ -5,10 +5,10 @@ classdef model
     %   required to define a full MCmatlab model.
     
     properties
-        G MCmatlab.geometry
-        MC MCmatlab.monteCarloSimulation
-        FMC MCmatlab.fluorescenceMonteCarloSimulation
-        HS MCmatlab.heatSimulation
+        G   (1,1) MCmatlab.geometry
+        MC  (1,1) MCmatlab.monteCarloSimulation
+        FMC (1,1) MCmatlab.fluorescenceMonteCarloSimulation
+        HS  (1,1) MCmatlab.heatSimulation
     end
     
     methods

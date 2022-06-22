@@ -148,7 +148,7 @@ else
     if any(isinf(PY_3d(:)) | PY_3d(:) < 0)
       error('Error: Invalid fluorescence power or quantum yields');
     end
-    model.FMC.sourceDistribution = PY_3d.*mua_vec(model.MC.M).*model.MC.NFR.^model.FMC.fluorescenceOrder; % [W/cm^3/W.incident]
+    model.FMC.sourceDistribution = PY_3d.*mua_vec(model.MC.M).*model.MC.NFR; % [W/cm^3/W.incident]
     clear PY_3d
     if max(model.FMC.sourceDistribution(:)) == 0; error('Error: No fluorescence emitters'); end
   end

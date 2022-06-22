@@ -469,7 +469,7 @@ if ~model.HS.silentMode && model.HS.makeMovie
     movieFrames = [repmat(movieFrames(1),1,30) movieFrames(1:end) repmat(movieFrames(end),1,30)];
     caller = dbstack(1,'-completenames');
     writerObj = VideoWriter([fileparts(caller(1).file) '/temp.avi'],'Uncompressed AVI');
-    fprintf('Writing video...\n');
+    fprintf('Writing video. This may take a few minutes and require a lot of temporary disk space...\n');
     open(writerObj);
     writeVideo(writerObj,movieFrames);
     close(writerObj);
