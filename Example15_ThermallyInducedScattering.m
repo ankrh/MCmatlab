@@ -38,7 +38,7 @@ model.G.Ly                = .1; % [cm] y size of simulation cuboid
 model.G.Lz                = .1; % [cm] z size of simulation cuboid
 
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
-model.G.geomFunc          = @geometryDefinition_BloodVessel; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
+model.G.geomFunc          = @geometryDefinition; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
 plot(model,'G');
 
@@ -99,7 +99,7 @@ plot(model,'MC');
 % provided in the definition of Ginput. It returns the media matrix M,
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
-function M = geometryDefinition_BloodVessel(X,Y,Z,parameters)
+function M = geometryDefinition(X,Y,Z,parameters)
     M = ones(size(X)); % fill background with water
     M(Z > 0.03) = 2; % egg white
     M(Z > 0.08) = 3; % absorber

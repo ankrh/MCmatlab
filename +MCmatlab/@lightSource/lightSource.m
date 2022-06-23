@@ -2,10 +2,6 @@ classdef lightSource
   %BEAM This class includes all properties and methods
   %related to a beam in an MCmatlab.model.monteCarloSimulation.
 
-  % Rename to lightSource
-  % use focalPlaneIntensityDistribution
-  % use angularIntensityDistribution
-
   properties
     %% Input properties
     sourceType (1,1) double {mustBeInteger, mustBeInRange(sourceType,0,5)} = 0 % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)

@@ -32,7 +32,7 @@ model.G.Ly                = .1; % [cm] y size of simulation cuboid
 model.G.Lz                = .01; % [cm] z size of simulation cuboid
 
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
-model.G.geomFunc          = @geometryDefinition_MediaPropertyParametricSweep; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
+model.G.geomFunc          = @geometryDefinition; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
 %% Monte Carlo simulation
 model.MC.silentMode               = true; % Disables command window text and progress indication
@@ -99,7 +99,7 @@ set(gca,'FontSize',18);grid on; grid minor;
 % provided in the definition of Ginput. It returns the media matrix M,
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
-function M = geometryDefinition_MediaPropertyParametricSweep(X,Y,Z,parameters)
+function M = geometryDefinition(X,Y,Z,parameters)
     M = ones(size(X)); % Variable g medium
 end
 
