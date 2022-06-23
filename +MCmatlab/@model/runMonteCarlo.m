@@ -213,59 +213,55 @@ if simType == 2
   end
 else
   
-  if isnan(MCorFMC.beam.beamType)
-    error('Error: No beamType defined');
+  if isnan(MCorFMC.lightSource.sourceType)
+    error('Error: No sourceType defined');
   end
-  if (MCorFMC.beam.beamType == 3 || MCorFMC.beam.beamType == 4) && (isnan(MCorFMC.beam.NF.radialWidth) || isnan(MCorFMC.beam.FF.radialWidth))
-    error('Error: beam.NF.radialWidth and beam.FF.radialWidth must both be specified when beamType is 3 or 4');
+  if (MCorFMC.lightSource.sourceType == 3 || MCorFMC.lightSource.sourceType == 4) && (isnan(MCorFMC.lightSource.focalPlaneIntensityDistribution.radialWidth) || isnan(MCorFMC.lightSource.angularIntensityDistribution.radialWidth))
+    error('Error: lightSource.focalPlaneIntensityDistribution.radialWidth and lightSource.angularIntensityDistribution.radialWidth must both be specified when sourceType is 3 or 4');
   end
-  if MCorFMC.beam.beamType == 4 && (isnan(MCorFMC.beam.NF.radialDistr(1)) || isnan(MCorFMC.beam.FF.radialDistr(1)))
-    error('Error: beam.NF.radialDistr and beam.FF.radialDistr must both be specified when beamType is 4');
+  if MCorFMC.lightSource.sourceType == 4 && (isnan(MCorFMC.lightSource.focalPlaneIntensityDistribution.radialDistr(1)) || isnan(MCorFMC.lightSource.angularIntensityDistribution.radialDistr(1)))
+    error('Error: lightSource.focalPlaneIntensityDistribution.radialDistr and lightSource.angularIntensityDistribution.radialDistr must both be specified when sourceType is 4');
   end
-  if MCorFMC.beam.beamType == 5
-    if isnan(MCorFMC.beam.NF.XDistr(1))
-      error('Error: beam.NF.XDistr must be specified when beamType is 5');
+  if MCorFMC.lightSource.sourceType == 5
+    if isnan(MCorFMC.lightSource.focalPlaneIntensityDistribution.XDistr(1))
+      error('Error: lightSource.focalPlaneIntensityDistribution.XDistr must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.beam.NF.XWidth)
-      error('Error: beam.NF.Xwidth must be specified when beamType is 5');
+    if isnan(MCorFMC.lightSource.focalPlaneIntensityDistribution.XWidth)
+      error('Error: lightSource.focalPlaneIntensityDistribution.Xwidth must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.beam.NF.YDistr(1))
-      error('Error: beam.NF.YDistr must be specified when beamType is 5');
+    if isnan(MCorFMC.lightSource.focalPlaneIntensityDistribution.YDistr(1))
+      error('Error: lightSource.focalPlaneIntensityDistribution.YDistr must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.beam.NF.YWidth)
-      error('Error: beam.NF.YWidth must be specified when beamType is 5');
+    if isnan(MCorFMC.lightSource.focalPlaneIntensityDistribution.YWidth)
+      error('Error: lightSource.focalPlaneIntensityDistribution.YWidth must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.beam.FF.XDistr(1))
-      error('Error: beam.FF.XDistr must be specified when beamType is 5');
+    if isnan(MCorFMC.lightSource.angularIntensityDistribution.XDistr(1))
+      error('Error: lightSource.angularIntensityDistribution.XDistr must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.beam.FF.XWidth)
-      error('Error: beam.FF.Xwidth must be specified when beamType is 5');
+    if isnan(MCorFMC.lightSource.angularIntensityDistribution.XWidth)
+      error('Error: lightSource.angularIntensityDistribution.Xwidth must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.beam.FF.YDistr(1))
-      error('Error: beam.FF.YDistr must be specified when beamType is 5');
+    if isnan(MCorFMC.lightSource.angularIntensityDistribution.YDistr(1))
+      error('Error: lightSource.angularIntensityDistribution.YDistr must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.beam.FF.YWidth)
-      error('Error: beam.FF.YWidth must be specified when beamType is 5');
+    if isnan(MCorFMC.lightSource.angularIntensityDistribution.YWidth)
+      error('Error: lightSource.angularIntensityDistribution.YWidth must be specified when sourceType is 5');
     end
-    if xor(MCorFMC.beam.FF.XDistr == 2,MCorFMC.beam.FF.YDistr == 2)
-      error('Error: beam.FF.XDistr and beam.FF.YDistr must either both be set to cosine (Lambertian), or neither');
+    if xor(MCorFMC.lightSource.angularIntensityDistribution.XDistr == 2,MCorFMC.lightSource.angularIntensityDistribution.YDistr == 2)
+      error('Error: lightSource.angularIntensityDistribution.XDistr and lightSource.angularIntensityDistribution.YDistr must either both be set to cosine (Lambertian), or neither');
     end
   end
-  if size(MCorFMC.beam.NF.radialDistr,1) > 1 || size(MCorFMC.beam.NF.XDistr,1) > 1 || size(MCorFMC.beam.NF.YDistr,1) > 1 ||...
-     size(MCorFMC.beam.FF.radialDistr,1) > 1 || size(MCorFMC.beam.FF.XDistr,1) > 1 || size(MCorFMC.beam.FF.YDistr,1) > 1
+  if size(MCorFMC.lightSource.focalPlaneIntensityDistribution.radialDistr,1) > 1 || size(MCorFMC.lightSource.focalPlaneIntensityDistribution.XDistr,1) > 1 || size(MCorFMC.lightSource.focalPlaneIntensityDistribution.YDistr,1) > 1 ||...
+     size(MCorFMC.lightSource.angularIntensityDistribution.radialDistr,1) > 1 || size(MCorFMC.lightSource.angularIntensityDistribution.XDistr,1) > 1 || size(MCorFMC.lightSource.angularIntensityDistribution.YDistr,1) > 1
     error('Error: Beam distribution functions must be scalars or row-vectors, not column-vectors');
   end
-  if (numel(MCorFMC.beam.NF.radialDistr) > 1 && numel(MCorFMC.beam.NF.radialDistr) < 1000) ||...
-     (numel(MCorFMC.beam.NF.XDistr)      > 1 && numel(MCorFMC.beam.NF.XDistr)      < 1000) ||...
-     (numel(MCorFMC.beam.NF.YDistr)      > 1 && numel(MCorFMC.beam.NF.YDistr)      < 1000) ||...
-     (numel(MCorFMC.beam.FF.radialDistr) > 1 && numel(MCorFMC.beam.FF.radialDistr) < 1000) ||...
-     (numel(MCorFMC.beam.FF.XDistr)      > 1 && numel(MCorFMC.beam.FF.XDistr)      < 1000) ||...
-     (numel(MCorFMC.beam.FF.YDistr)      > 1 && numel(MCorFMC.beam.FF.YDistr)      < 1000)
+  if (numel(MCorFMC.lightSource.focalPlaneIntensityDistribution.radialDistr) > 1 && numel(MCorFMC.lightSource.focalPlaneIntensityDistribution.radialDistr) < 1000) ||...
+     (numel(MCorFMC.lightSource.focalPlaneIntensityDistribution.XDistr)      > 1 && numel(MCorFMC.lightSource.focalPlaneIntensityDistribution.XDistr)      < 1000) ||...
+     (numel(MCorFMC.lightSource.focalPlaneIntensityDistribution.YDistr)      > 1 && numel(MCorFMC.lightSource.focalPlaneIntensityDistribution.YDistr)      < 1000) ||...
+     (numel(MCorFMC.lightSource.angularIntensityDistribution.radialDistr) > 1 && numel(MCorFMC.lightSource.angularIntensityDistribution.radialDistr) < 1000) ||...
+     (numel(MCorFMC.lightSource.angularIntensityDistribution.XDistr)      > 1 && numel(MCorFMC.lightSource.angularIntensityDistribution.XDistr)      < 1000) ||...
+     (numel(MCorFMC.lightSource.angularIntensityDistribution.YDistr)      > 1 && numel(MCorFMC.lightSource.angularIntensityDistribution.YDistr)      < 1000)
     error('Error: Beam definition distributions must have 1000 elements (or more, if necessary)');
-  end
-  if any([MCorFMC.beam.NF.radialDistr , MCorFMC.beam.NF.XDistr , MCorFMC.beam.NF.YDistr , ...
-          MCorFMC.beam.FF.radialDistr , MCorFMC.beam.FF.XDistr , MCorFMC.beam.FF.YDistr] < 0)
-    error('Error: Beam definition distributions may not contain negative numbers');
   end
 end
 

@@ -93,7 +93,7 @@ You build each model in a separate m-file. Each model requires the first two and
 - After running and calling either "plot(model,'MC')" or "plot(model,'FMC')", you will see an illustration of the geometry of your imaging system and the image of the scattered and/or fluorescence light.
 - You can also choose to show the light impinging on the light collector in a time-resolved manner. Check out "Example6_TimeTagging.m" on how to do so.
 
-#### 7. (Optional) Calculate the far field distribution of light escaping the simulation volume
+#### 7. (Optional) Calculate the far field angular distribution of light escaping the simulation volume
 - See "Example7_FarField.m". Note that the far field does not include "killed" photons, that is, photons that have exited at a boundary where the refractive index is different to 1, or photons that exit on boundaries that are not "escaping".
 
 #### 8. (Optional) Calculate the normalized fluence rate array of only those photons which end up on the detector
@@ -219,7 +219,7 @@ The more boundaries are escaping, the faster the simulation will run because few
 [nm]
 The wavelength of the light. This is used only to be passed on as an input to the mediaPropertiesFunc because most (if not all) optical parameters are dependent on the wavelength of the light. The wavelengths does not actually change anything in the MC simulation itself aside from the change in mua, mus and g of the involved media. The only exception is when simulation fluorescence (see below) and specifying a quantum yield fluorescer.
 
-`model.MC.beam.beamType`
+`model.MC.lightSource.sourceType`
 [-]
 0: Pencil beam
 A pencil beam is a beam with zero width and zero divergence.
@@ -230,88 +230,88 @@ A beam with infinite width, but zero divergence.
 3: Laguerre-Gaussian LG01 beam
 A ray-based emulation of the donut-shaped Laguerre-Gaussian LG01 beam.
 4: Radial-factorizable beam
-A beam in which the focus beam profile can be written as I(x,y) = Ir\(r\), where r = sqrt(x\^2+y\^2), and similarly for the far field. Circular Gaussian beams can be written in this form.
+A beam in which the focus beam profile can be written as I(x,y) = Ir\(r\), where r = sqrt(x\^2+y\^2), and similarly for the angular distribution. Circular Gaussian beams can be written in this form.
 5: X/Y factorizable beam
-A beam in which the focus beam profile can be written as I(x,y) = Ix(x)*Iy(y), and similarly for the far field. Rectangular LED emitters can be written in this way, as well as Gaussian (circular and elliptical) beams.
+A beam in which the focus beam profile can be written as I(x,y) = Ix(x)*Iy(y), and similarly for the angular distribution. Rectangular LED emitters can be written in this way, as well as Gaussian (circular and elliptical) beams.
 
-`model.MC.beam.emitterLength`
+`model.MC.lightSource.emitterLength`
 [cm]
-(Only used for model.MC.beam.beamType = 1. Default: 0)
+(Only used for model.MC.lightSource.sourceType = 1. Default: 0)
 The length of the line emitter. If zero, the emitter is a point source.
 
-`model.MC.beam.NF.radialDistr`
+`model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr`
 [-]
-(Only used for beamType = 4)
-Radial near field distribution
+(Only used for sourceType = 4)
+Radial intensity distribution in the focal plane.
 0: Top-hat
 1: Gaussian
 Array: Custom. Doesn't need to be normalized.
 
-`model.MC.beam.NF.radialWidth`
+`model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth`
 [cm]
-(Only used for beamType = 4)
-Radial near field width.
-If NF.radialDistr is set to 0 or 1, this is the 1/e^2 radius
-If NF.radialDistr is set to an array, this is the half-width of the full distribution
+(Only used for sourceType = 4)
+Radial width of the intensity distribution in the focal plane.
+If focalPlaneIntensityDistribution.radialDistr is set to 0 or 1, this is the 1/e^2 radius
+If focalPlaneIntensityDistribution.radialDistr is set to an array, this is the half-width of the full distribution
 
-`model.MC.beam.NF.XDistr`, `model.MC.beam.NF.YDistr`
+`model.MC.lightSource.focalPlaneIntensityDistribution.XDistr`, `model.MC.lightSource.focalPlaneIntensityDistribution.YDistr`
 [-]
-(Only used for beamType = 5)
-X and Y near field distributions
+(Only used for sourceType = 5)
+X and Y distribution of the intensity in the focal plane.
 0: Top-hat
 1: Gaussian
 Array: Custom. Doesn't need to be normalized.
 
-`model.MC.beam.NF.XWidth`, `model.MC.beam.NF.YWidth`
+`model.MC.lightSource.focalPlaneIntensityDistribution.XWidth`, `model.MC.lightSource.focalPlaneIntensityDistribution.YWidth`
 [cm]
-(Only used for beamType = 5)
-X and Y near field width.
-If NF.XDistr/NF.YDistr is set to 0 or 1, this is the 1/e^2 radius
-If NF.XDistr/Nf.YDistr is set to an array, this is the half-width of the full distribution
+(Only used for sourceType = 5)
+X and Y width of the intensity distribution in the focal plane.
+If focalPlaneIntensityDistribution.XDistr/focalPlaneIntensityDistribution.YDistr is set to 0 or 1, this is the 1/e^2 radius
+If focalPlaneIntensityDistribution.XDistr/focalPlaneIntensityDistribution.YDistr is set to an array, this is the half-width of the full distribution
 
-`model.MC.beam.FF.radialDistr`
+`model.MC.lightSource.angularIntensityDistribution.radialDistr`
 [-]
-(Only used for beamType = 4)
-Radial far field distribution
+(Only used for sourceType = 4)
+Radial distribution of the angular intensity.
 0: Top-hat
 1: Gaussian
 2: Cosine (Lambertian)
 Array: Custom. Doesn't need to be normalized.
 
-`model.MC.beam.FF.radialWidth`
+`model.MC.lightSource.angularIntensityDistribution.radialWidth`
 [rad]
-(Only used for beamType = 4 and if FF.radialDistr is not 2)
-Radial far field width
-If FF.radialDistr is set to 0 or 1, this is the 1/e^2 half-angle.
-If FF.radialDistr is set to an array, this is the half-angle of the full distribution.
-For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength\*1e-9/(pi\*model.MC.beam.NF.radialWidth\*1e-2))
+(Only used for sourceType = 4 and if angularIntensityDistribution.radialDistr is not 2)
+Radial width of the angular intensity distribution.
+If angularIntensityDistribution.radialDistr is set to 0 or 1, this is the 1/e^2 half-angle.
+If angularIntensityDistribution.radialDistr is set to an array, this is the half-angle of the full distribution.
+For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength\*1e-9/(pi\*model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth\*1e-2))
 
-`model.MC.beam.FF.XDistr`, `model.MC.beam.FF.YDistr`
+`model.MC.lightSource.angularIntensityDistribution.XDistr`, `model.MC.lightSource.angularIntensityDistribution.YDistr`
 [-]
-(Only used for beamType = 5)
-X and Y far field distributions
+(Only used for sourceType = 5)
+X and Y distribution of the angular intensity.
 0: Top-hat
 1: Gaussian
 2: Cosine (Lambertian)
 Array: Custom. Doesn't need to be normalized.
 
-`model.MC.beam.FF.XWidth`, `model.MC.beam.FF.YWidth`
+`model.MC.lightSource.angularIntensityDistribution.XWidth`, `model.MC.lightSource.angularIntensityDistribution.YWidth`
 [rad]
-(Only used for beamType = 5 and if FF.XDistr or FF.YDistr is not 2)
-Radial far field width.
-If FF.XDistr/FF.YDistr is set to 0 or 1, this is the 1/e^2 half-angle.
-If FF.XDistr/FF.YDistr is set to an array, this is the half-angle of the full distribution.
+(Only used for sourceType = 5 and if angularIntensityDistribution.XDistr or angularIntensityDistribution.YDistr is not 2)
+Radial width of the angular intensity distribution.
+If angularIntensityDistribution.XDistr/angularIntensityDistribution.YDistr is set to 0 or 1, this is the 1/e^2 half-angle.
+If angularIntensityDistribution.XDistr/angularIntensityDistribution.YDistr is set to an array, this is the half-angle of the full distribution.
 
-`model.MC.beam.xFocus`, `model.MC.beam.yFocus`, `model.MC.beam.zFocus`
+`model.MC.lightSource.xFocus`, `model.MC.lightSource.yFocus`, `model.MC.lightSource.zFocus`
 [cm]
 The focus position x,y,z coordinates.
 
-`model.MC.beam.psi`
+`model.MC.lightSource.psi`
 [rad]
-(Only used for beamType = 5. Default: 0)
+(Only used for sourceType = 5. Default: 0)
 Axial rotation angle of the beam.
 
-`model.MC.beam.theta`, `model.MC.beam.phi`
+`model.MC.lightSource.theta`, `model.MC.lightSource.phi`
 [rad]
 Polar and azimuthal angle of the beam center axis.
 

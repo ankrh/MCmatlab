@@ -378,7 +378,7 @@ if MCorFMC.boundaryType == 1
     setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera');
   end
 elseif MCorFMC.boundaryType == 2
-  if simFluorescence || isnan(MCorFMC.beam.beamType) || MCorFMC.beam.beamType ~= 2
+  if simFluorescence || isnan(MCorFMC.lightSource.sourceType) || MCorFMC.lightSource.sourceType ~= 2
     fprintf(['%.3g%% of ' fluorescenceOrIncident 'light hits the top cuboid boundary.\n'],100*(sum(sum(MCorFMC.NI_zneg*G.dx*G.dy)))/P_in);
   end
   

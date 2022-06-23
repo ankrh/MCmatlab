@@ -34,16 +34,16 @@ model.MC.matchedInterfaces        = true; % Assumes all refractive indices are t
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
-model.MC.beam.beamType            = 4; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
-model.MC.beam.NF.radialDistr      = 0; % Radial near field distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
-model.MC.beam.NF.radialWidth      = .03; % [cm] Radial near field 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
-model.MC.beam.FF.radialDistr      = 0; % Radial far field distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
-model.MC.beam.FF.radialWidth      = 0; % [rad] Radial far field 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom. For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength*1e-9/(pi*model.MC.beam.NF.radialWidth*1e-2))
-model.MC.beam.xFocus              = 0; % [cm] x position of focus
-model.MC.beam.yFocus              = 0; % [cm] y position of focus
-model.MC.beam.zFocus              = 0; % [cm] z position of focus
-model.MC.beam.theta               = 0; % [rad] Polar angle of beam center axis
-model.MC.beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
+model.MC.lightSource.sourceType   = 4; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr = 0; % Radial focal plane distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
+model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth = .03; % [cm] Radial focal plane 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
+model.MC.lightSource.angularIntensityDistribution.radialDistr = 0; % Radial angular distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
+model.MC.lightSource.angularIntensityDistribution.radialWidth = 0; % [rad] Radial angular 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom. For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength*1e-9/(pi*model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth*1e-2))
+model.MC.lightSource.xFocus       = 0; % [cm] x position of focus
+model.MC.lightSource.yFocus       = 0; % [cm] y position of focus
+model.MC.lightSource.zFocus       = 0; % [cm] z position of focus
+model.MC.lightSource.theta        = 0; % [rad] Polar angle of beam center axis
+model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of beam center axis
 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
