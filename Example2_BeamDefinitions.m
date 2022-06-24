@@ -39,7 +39,7 @@ model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
 model.MC.farFieldRes              = 200; % (Default: 0) If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
 
 model.MC.matchedInterfaces        = true; % Assumes all refractive indices are the same
-model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
 model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
 model.MC.lightSource.sourceType   = 1; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
@@ -53,7 +53,6 @@ model.MC.lightSource.zFocus       = 0.05; % [cm] z position of focus
 
 model.MC.lightSource.theta        = pi/4; % [rad] Polar angle of light source center axis
 model.MC.lightSource.phi          = pi/2; % [rad] Azimuthal angle of light source center axis
-model.MC.lightSource.psi          = 0; % [rad] (Default: 0) Axial rotation angle of the light source, relevant only for XY distributed beams
 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
@@ -96,6 +95,10 @@ fprintf('Press enter to continue...\n');pause;
 
 %% Custom radial focal plane and angular distribution
 model.MC.lightSource.sourceType    = 4; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+% To demonstrate the custom beam definitions, we will construct some
+% artificial intensity distributions with some arbitrary analytical
+% expressions. In this case the distribution in the focal plane forms a
+% ring, while the angular distribution forms four lobes.
 model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr = exp(-(linspace(0,20,1000)-4).^2); % Radial focal plane distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
 model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth = .025; % [cm] Radial focal plane 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
 model.MC.lightSource.angularIntensityDistribution.radialDistr = 1+cos(linspace(0,7*pi,1000)); % Radial angular distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
@@ -108,6 +111,10 @@ fprintf('Press enter to continue...\n');pause;
 
 %% Custom XY focal plane, top-hat X angular distribution and Gaussian Y angular distribution
 model.MC.lightSource.sourceType      = 5; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+% Here, the arbitrarily chosen distribution for the focal plane in the X
+% direction consists of two sine wave lobes while the distribution in Y
+% consists of three sine wave lobes. For the angular intensity
+% distribution, we choose a top-hat along X and a Gaussian along Y.
 model.MC.lightSource.focalPlaneIntensityDistribution.XDistr = sin(linspace(0,2*pi,1000)).^2; % X focal plane distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
 model.MC.lightSource.focalPlaneIntensityDistribution.XWidth = .02; % [cm] X focal plane 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
 model.MC.lightSource.focalPlaneIntensityDistribution.YDistr = sin(linspace(0,3*pi,1000)).^2; % Y focal plane distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.

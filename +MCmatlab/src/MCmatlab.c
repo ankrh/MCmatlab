@@ -232,7 +232,7 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
       while(P->alive && P->stepLeft>0) { // keep propagating
         propagatePhoton(P,G,O,Pa,D);
         if(!P->sameVoxel) {
-          checkEscape(P,G,LC,O); // photon may die here
+          checkEscape(P,Pa,G,LC,O); // photon may die here
           if(P->alive) getNewVoxelProperties(P,G,D);
         }
       }
@@ -490,6 +490,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     mxSetPropertyShared(MCout,0,"NI_zpos", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
     mxSetPropertyShared(MCout,0,"NI_zneg", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
   } else if(G->boundaryType == 2) mxSetPropertyShared(MCout,0,"NI_zneg", mxCreateDoubleMatrix(KILLRANGE*G->n[0],KILLRANGE*G->n[1],mxREAL));
+  else if(G->boundaryType == 3) {
+    mxSetPropertyShared(MCout,0,"NI_zpos", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
+    mxSetPropertyShared(MCout,0,"NI_zneg", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
+  }
   
   struct outputs O_var = {
     0, // nPhotons
@@ -501,7 +505,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     G->boundaryType == 1? mxGetPr(mxGetPropertyShared(MCout,0,"NI_xneg")): NULL,
     G->boundaryType == 1? mxGetPr(mxGetPropertyShared(MCout,0,"NI_ypos")): NULL,
     G->boundaryType == 1? mxGetPr(mxGetPropertyShared(MCout,0,"NI_yneg")): NULL,
-    G->boundaryType == 1? mxGetPr(mxGetPropertyShared(MCout,0,"NI_zpos")): NULL,
+    G->boundaryType == 1 || G->boundaryType == 3?
+                          mxGetPr(mxGetPropertyShared(MCout,0,"NI_zpos")): NULL,
     G->boundaryType != 0? mxGetPr(mxGetPropertyShared(MCout,0,"NI_zneg")): NULL
   };
   struct outputs *O = &O_var;

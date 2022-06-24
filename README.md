@@ -210,10 +210,12 @@ The use of such smoothing enables simulation of reflection and refraction even o
 0: No escaping boundaries
 1: All cuboid boundaries are escaping
 2: Top cuboid boundary only is escaping
+3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
 Photons that hit a boundary that is "escaping" and where the refractive index is equal to 1 will be considered an "escaped" photon, and may, depending on the position and direction, be registered by the detector/light collector.
 When a photon encounters a boundary that is not escaping, it is allowed to propagate beyond the edge up to a distance of 2½ times the value of (Lx or Ly or Lz) before the photon is finally killed and no longer simulated.
 Allowing photons to propagate beyond the cuboid boundaries enable the photons to potentially scatter back into the simulation volume.
 The more boundaries are escaping, the faster the simulation will run because fewer photons outside the cuboid have to be simulated.
+When a photon hits a cyclic boundary, it will exit and immediately enter the cuboid again on the opposite boundary, as if the cuboid is periodic. In other words, if your geometry and light source is periodically repeating in x and y (such as a simple layered model illuminated by an infinite plane wave), you need only simulate just one unit cell of this pattern and use cyclic x and y boundaries.
 
 `model.MC.wavelength`
 [nm]

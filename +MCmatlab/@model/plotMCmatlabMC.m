@@ -144,6 +144,7 @@ end
 %% Plot example paths
 if MCorFMC.nExamplePaths > 0
   h_f = plotVolumetric.plotVolumetric(5 + figNumOffset,G.x,G.y,G.z,G.M_raw,'MCmatlab_GeometryIllustration',MCorFMC.mediaProperties_funcHandles);
+  legend off;
   set(h_f,'WindowStyle','Docked');
   if simFluorescence
     h_f.Name = 'Fluorescence photon paths';
@@ -398,6 +399,40 @@ elseif MCorFMC.boundaryType == 2
   xlabel('x [cm]');
   ylabel('y [cm]');
   set(gca,'fontsize',18)
+elseif MCorFMC.boundaryType == 3
+  if simFluorescence || isnan(MCorFMC.lightSource.sourceType) || MCorFMC.lightSource.sourceType ~= 2
+    fprintf(['%.3g%% of ' fluorescenceOrIncident 'light hits the top or bottom cuboid boundaries.\n'],100*(sum(sum((MCorFMC.NI_zneg + MCorFMC.NI_zpos)*G.dx*G.dy)))/P_in);
+  end
+
+  h_f = figure(10 + figNumOffset);
+  set(h_f,'WindowStyle','Docked');
+  h_f.Color = 'w';
+  h_f.Name = ['Normalized ' fluorescenceOrNothing 'boundary irradiance'];
+  clf;
+
+  subplot(2,1,1);
+  imagesc(size(MCorFMC.NI_zneg,1)/2*[-G.dx G.dx],size(MCorFMC.NI_zneg,2)/2*[-G.dy G.dy],MCorFMC.NI_zneg.');
+  set(gca,'YDir','normal');
+  title(['Normalized ' fluorescenceOrNothing 'top surface boundary irradiance [W/cm^2/W.incident]']);
+  colormap(inferno);
+  colorbar;
+  axis tight
+  axis equal
+  xlabel('x [cm]');
+  ylabel('y [cm]');
+  set(gca,'fontsize',18);
+
+  subplot(2,1,2);
+  imagesc(size(MCorFMC.NI_zpos,1)/2*[-G.dx G.dx],size(MCorFMC.NI_zpos,2)/2*[-G.dy G.dy],MCorFMC.NI_zpos.');
+  set(gca,'YDir','normal');
+  title(['Normalized ' fluorescenceOrNothing 'bottom surface boundary irradiance [W/cm^2/W.incident]']);
+  colormap(inferno);
+  colorbar;
+  axis tight
+  axis equal
+  xlabel('x [cm]');
+  ylabel('y [cm]');
+  set(gca,'fontsize',18);
 end
 if ~isnan(MCorFMC.NFR(1))
   figure(4 + figNumOffset); % Make the NFR plot active so it's the first one people see
