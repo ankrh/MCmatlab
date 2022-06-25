@@ -1,0 +1,14 @@
+Thanks to Will Grissom who figured this method out for his tool kpTx (https://github.com/wgrissom)
+
+The following strategy worked for MATLAB R2022a running on Mac OS Monterey, 12.4:
+
+- Install Homebrew: https://brew.sh
+- Use Homebrew to install LLVM and OpenMP: brew install llvm libomp
+- Tell MATLAB to use a custom MEX setup for C compilation, which points to your llvm compiler and includes OpenMP flags: mex -setup:/path/to/clang_openmp_maci64.xml C (clang_openmp_maci64.xml is included in this repo)
+Compile using: mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' -outdir +MCmatlab/@model/private ./+MCmatlab/src/MCmatlab.c
+
+The following sites were helpful in figuring this out:
+
+https://github.com/wgrissom/kpTx, and therein
+https://stackoverflow.com/questions/37362414/openmp-with-mex-in-matlab-on-mac
+https://stackoverflow.com/questions/43555410/enable-openmp-support-in-clang-in-mac-os-x-sierra-mojave

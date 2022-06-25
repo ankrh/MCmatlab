@@ -28,9 +28,10 @@
  * 3. mex should now be able to compile the code using the above command
  *
  ** COMPILING ON MAC
- * As of June 2017, the macOS compiler doesn't support libut (for ctrl+c 
+ * As of June 2022, the macOS compiler doesn't support libut (for ctrl+c 
  * breaking) or openmp (for multithreading).
  * Compile in MATLAB with "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -std=c11 -Wall' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -std=c11 -Wall' -outdir +MCmatlab/@model/private ./+MCmatlab/src/getDownsampledParamVals.c"
+ * You can enable openmp and multithreading if you're willing to install a custom version of llvm: Check "enable-openmp-on-macos.txt"
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Install XCode from the App Store
