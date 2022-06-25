@@ -37,6 +37,12 @@ function model = simulateHeatDistribution(model)
 %   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
 %%%%%
 
+% checking on macOS whether the mex-file is quarantined and clearing it
+if ismac
+    [~,cmdout] = system('xattr -l ./+MCmatlab/@model/private/finiteElementHeatPropagator.mexmaci64')
+    if contains(cmdout,'com.apple.quarantine'); system('xattr -d com.apple.quarantine ./+MCmatlab/@model/private/finiteElementHeatPropagator.mexmaci64'); end
+end
+
 if isnan(model.MC.NFR(1))
   error('Error: MC.NFR was not calculated');
 end

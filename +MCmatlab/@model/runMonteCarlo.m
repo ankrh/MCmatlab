@@ -23,6 +23,14 @@ function model = runMonteCarlo(model,varargin)
 %   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
 %%%%%
 
+% checking on macOS whether the mex-file is quarantined and clearing it
+if ismac
+    [~,cmdout] = system('xattr -l ./+MCmatlab/@model/private/MCmatlab.mexmaci64');
+    if contains(cmdout,'com.apple.quarantine'); system('xattr -d com.apple.quarantine ./+MCmatlab/@model/private/MCmatlab.mexmaci64'); end
+    [~,cmdout] = system('xattr -l ./+MCmatlab/@model/private/getDownsampledParamVals.mexmaci64');
+    if contains(cmdout,'com.apple.quarantine'); system('xattr -d com.apple.quarantine ./+MCmatlab/@model/private/getDownsampledParamVals.mexmaci64'); end
+end
+
 G = model.G;
 
 if any(strcmp(varargin,'fluorescence'))
