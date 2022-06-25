@@ -110,7 +110,7 @@ You build each model in a separate m-file. Each model requires the first two and
 - See Example16_CUDAacceleration.m.
 - If you have an Nvidia graphics card with compute capability at least 3.0, you can set useGPU = true to enable running on the GPU, greatly speeding up both the Monte Carlo and heat simulations.
 
-### List and explanation of parameters
+### List and explanation of input parameters
 In the following we assume that the model object variable has been named “model”. In principle, it could be given any name you want.
 #### Geometry parameters
 `model.G.silentMode`
@@ -384,11 +384,11 @@ Start and end time of the detection time-of-flight interval. Note that photons a
 (Default: 0)
 Number of bins between tStart and tEnd. If zero, the measurement is not time-resolved.
 
-### Fluorescence Monte Carlo parameters
+#### Fluorescence Monte Carlo parameters
 The following properties exist for fluorescence Monte Carlo simulations, and they work the same as for regular MC simulations:
 `FMC.useGPU`, `FMC.simulationTimeRequested`, `FMC.nPhotonsRequested`, `FMC.silentMode`, `FMC.useAllCPUs`, `FMC.calcNFR`, `FMC.calcNFRdet`, `FMC.nExamplePaths`, `FMC.farFieldRes`, `FMC.matchedInterfaces`, `FMC.smoothingLengthScale`, `FMC.boundaryType`, `FMC.wavelength`, `FMC.useLightCollector`, `FMC.LC.x`, `FMC.LC.y`, `FMC.LC.z`, `FMC.LC.theta`, `FMC.LC.phi`, `FMC.LC.f`, `FMC.LC.diam`, `FMC.LC.fieldSize`, `FMC.LC.NA`, `FMC.LC.res`
 
-### Heat solver parameters
+#### Heat solver parameters
 `model.HS.useGPU`
 [-]
 (Default: false)
@@ -469,6 +469,105 @@ An array of three values, describing the fractional x, y, z positions on a scale
 A 2D array with three columns.
 Each row describes the x, y, z coordinates of a temperature sensor placed within the cuboid, at which the temperature will be recorded for subsequent plotting as a function of time.
 Leave the matrix empty ([]) to disable temperature sensors.
+
+### List and explanation of output properties
+As in the previous section, we assume that the model object variable has been named “model”. In principle, it could be given any name you want.
+
+#### Geometry properties
+`model.G.dx`, `model.G.dy`, `model.G.dz`
+[cm]
+The side lengths of the voxels. They are simply calculated as the side length of the simulation cuboid divided by the number of bins, for example, model.G.Lx/model.G.nx.
+
+`model.G.x`, `model.G.y`, `model.G.z`
+[cm]
+1D arrays with the x, y or z coordinate values corresponding to the centers of the voxels
+You can use these for easy plotting of slices, see for example the entry on NFR in the MC section below.
+
+`model.G.M_raw`
+[-]
+3D (xyz) array in coordinate order of the tissue indices as calculated from the geomFunc. This is the array that is plotted in the figure called Geometry Illustration.
+
+#### (Excitation) Monte Carlo properties
+`model.MC.simulationTime`
+[min]
+The actual simulation time of the most recent Monte Carlo simulation run. If you did not define model.MC.nPhotonsRequested, then the simulation is timed and model.MC.simulationTime should be very close to `model.MC.simulationTimeRequested.
+
+`model.MC.nPhotons`
+[-]
+The actual number of photon packets launched in the most recent Monte Carlo simulation run. If you defined model.MC.nPhotonsRequested, then model.MC.nPhotons will be equal to that number.
+
+`model.MC.mediaProperties`
+[-]
+A struct that contains the media properties as evaluated at the specified excitation Monte Carlo wavelength, model.MC.wavelength.
+
+`model.MC.M`
+[-]
+A 3D (xyz) array. If the media properties do not contain dependences on fluence rate (FR), temperature (T) or fractional damage (FD), then this array will simply be equal to model.G.M_raw. Otherwise, model.MC.M will be the "split" version of model.G.M_raw, in which those media that have dependences have been split into the specified number of sub-media with different optical/thermal properties for the purposes of the simulations.
+
+`model.MC.interfaceNormals`
+[-]
+A 2D array of dimension (2 x (nx*ny*nz)) where local interface normal vector angles are stored. Each column contains the theta, phi angles for one voxel's interface normal vector. Used for calculated of refraction and reflection on oblique and curved interfaces between media with different refractive index.
+
+`model.MC.examplePaths`
+[cm] and [-]
+A 2D array which stores the example paths' coordinates and remaining weight. Each column is a data point where the first three rows are the x, y, z position of the photon packet and the fourth row is the remaining weight (energy) of the photon packet. Different photon trajectories are separated by a column of NaNs.
+
+`model.MC.NFR`
+[W/cm^2/W.incident]
+A 3D (xyz) array of normalized fluence rate values. This is what's plotted in figure 4. If you want to plot a slice out of this distribution, you could for example do it with these three lines of code:
+- `NFRslice = squeeze(model.MC.NFR(51,:,:));` Extracts the slice corresponding to the 51st x value. `squeeze` is to remove the x singleton dimension, giving you a 2D (yz) array of normalized fluence rates.
+- `figure(100);`
+- `imagesc(model.G.y,model.G.z,NFRslice.');` We can use the 1D coordinate arrays from model.G for the y and z coordinate values. The `.'` is there because Mathworks has designed the imagesc function to plot the first coordinate along the vertical axis and the second coordinate along the horizontal axis, which is the opposite of what we want.
+
+`model.MC.NFRdet`
+[W/cm^2/W.incident]
+A 3D (xyz) array of normalized fluence rate values like model.MC.NFR, but only counting those photons that ended up on the light collector.
+
+`model.MC.farField`
+[W/sr/W.incident]
+A 2D (theta,phi) array of normalized radiant intensity values for the light that escaped the simulation cuboid. The axes are the polar and azimuthal angles, described below.
+
+`model.MC.farFieldTheta`
+[rad]
+A 1D array of polar angles corresponding to the first dimension of model.MC.farField.
+
+`model.MC.farFieldPhi`
+[rad]
+A 1D array of azimuthal angles corresponding to the second dimension of model.MC.farField.
+
+`model.MC.NI_xpos`, `model.MC.NI_xneg`, `model.MC.NI_ypos`, `model.MC.NI_yneg`, `model.MC.NI_zpos`, `model.MC.NI_zneg`
+[W/cm^2/W.incident]
+2D (xy, xz or yz) arrays of normalized irradiances of the light hitting the boundaries (either escaping or killed). For example, the property named `model.MC.NI_xpos` designates the light that hits the surface that is orthogonal to the x axis and placed on the positive x side, whereas the `model.MC.NI_xneg` refers to the surface orthogonal to the x axis and placed on the negative x side. model.MC.boundaryType determine which of these arrays are calculated.
+`model.MC.NI_zneg` is of special interest to users interested in calculating the surface reflectance, which can be found as the integral over this array:
+- `R = model.G.dx*model.G.dy*sum(model.MC.NI_zneg(:));`
+
+#### Fluorescence Monte Carlo properties
+All the output properties described above for excitation Monte Carlo are also provided for fluorescence Monte Carlo in the model.FMC object.
+
+#### Heat solver properties
+`model.HS.M`
+[-]
+A 3D (xyz) array. If the media properties do not contain dependences on fluence rate (FR), temperature (T) or fractional damage (FD), then this array will simply be equal to model.G.M_raw. Otherwise, model.HS.M will be the "split" version of model.G.M_raw, in which those media that have dependences have been split into the specified number of sub-media with different optical/thermal properties for the purposes of the simulations.
+
+`model.HS.T`
+[deg C]
+A 3D (xyz) array with the final temperature values of the simulation.
+
+`model.HS.Omega`
+[-]
+A 3D (xyz) array with the final Omega values of the simulation. Omega describes the thermally induced tissue damage calculated according to the Arrhenius damage integral.
+
+`model.HS.maxMediaTemps`
+[deg C]
+A 1D array that contains the maximal temperatures obtained in each tissue type involved in the simulation.
+
+`model.HS.sensorsTimeVector`
+[s]
+A 1D array of time values that should be used for plotting the sensorTemps data (see below).
+
+`model.HS.sensorTemps`
+[deg C]
+A 2D array of temperatures measured at the specified sensor positions. Each row corresponds to one sensor. Use the model.HS.sensorsTimeVector as the time values when plotting this data.
 
 ## Contribution guidelines
 You are very welcome to clone the repository and add features of your own. If you want to report a bug or are missing a feature, shoot me an email, see below.
