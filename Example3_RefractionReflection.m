@@ -30,7 +30,7 @@ model.G.Ly                = .1; % [cm] y size of simulation cuboid
 model.G.Lz                = .1; % [cm] z size of simulation cuboid
 
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
-model.G.geomFunc          = @geometryDefinition_RefractionReflectionExample; % The distribution of media in the cuboid, also defined as a function at the end of this file.
+model.G.geomFunc          = @geometryDefinition; % The distribution of media in the cuboid, also defined as a function at the end of this file.
 
 plot(model,'G');
 
@@ -40,13 +40,13 @@ model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
 model.MC.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
 
 model.MC.matchedInterfaces        = false; % If false, uses the refractive indices as defined in mediaPropertiesFunc at the end of this file
-model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
 model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
-model.MC.beam.beamType            = 1; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
-model.MC.beam.xFocus              = 0; % [cm] x position of focus
-model.MC.beam.yFocus              = 0; % [cm] y position of focus
-model.MC.beam.zFocus              = 0.04; % [cm] z position of focus
+model.MC.lightSource.sourceType   = 1; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+model.MC.lightSource.xFocus       = 0; % [cm] x position of focus
+model.MC.lightSource.yFocus       = 0; % [cm] y position of focus
+model.MC.lightSource.zFocus       = 0.04; % [cm] z position of focus
 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
@@ -59,7 +59,7 @@ plot(model,'MC');
 % provided in the definition of Ginput. It returns the media matrix M,
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
-function M = geometryDefinition_RefractionReflectionExample(X,Y,Z,parameters)
+function M = geometryDefinition(X,Y,Z,parameters)
 M = ones(size(X)); % Air background
 M(Z>0.03) = 2; % Water
 M(Z>0.09) = 3; % Reflector

@@ -16,13 +16,13 @@ classdef monteCarloSimulation
 
     matchedInterfaces (1,1) logical = true % If true, assumes all refractive indices are 1. If false, uses the refractive indices defined in getMediaProperties
     smoothingLengthScale (1,1) double {mustBePositive} = 0.1 % Length scale over which smoothing of the Sobel interface gradients should be performed
-    boundaryType (1,1) double {mustBeInteger, mustBeInRange(boundaryType,0,3)} = 1 % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Periodic boundaries on sides, escaping top and bottom
+    boundaryType (1,1) double {mustBeInteger, mustBeInRange(boundaryType,0,3)} = 1 % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
     wavelength (1,1) double {mustBeFinitePositiveOrNaN} = NaN % [nm] Excitation wavelength, used for determination of optical properties for excitation light
     P (1,1) double {mustBeFinitePositiveOrNaN} = NaN % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
     FRinitial (:,:,:) double {mustBeFiniteNonnegativeArrayOrNaNScalar} = NaN % [W/cm^2] Initial guess for the intensity distribution, to be used for fluence rate dependent simulations
     FRdepIterations (1,1) double {mustBeInteger, mustBePositive} = 20
 
-    beam (1,1) MCmatlab.beam
+    lightSource (1,1) MCmatlab.lightSource
 
     useLightCollector (1,1) logical = false
     LC (1,1) MCmatlab.lightCollector
@@ -58,11 +58,18 @@ classdef monteCarloSimulation
     NI_zneg = NaN
   end
 
+  properties (Hidden)
+    beam
+  end
+
   methods
-    function obj = monteCarloSimulation()
-      %monteCarloSimulation Construct an instance of this class
-      obj.beam = MCmatlab.beam;
-      obj.LC = MCmatlab.lightCollector;
+    function x = get.beam(obj)
+      warning('beam has been renamed lightSource. The ability to reference lightSource through beam will be deprecated in a future version.');
+      x = obj.lightSource;
+    end
+    function obj = set.beam(obj,x)
+      warning('beam has been renamed lightSource. The ability to reference lightSource through beam will be deprecated in a future version.');
+      obj.lightSource = x; %#ok<MCSUP> 
     end
   end
 end

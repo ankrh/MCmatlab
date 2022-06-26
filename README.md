@@ -93,7 +93,7 @@ You build each model in a separate m-file. Each model requires the first two and
 - After running and calling either "plot(model,'MC')" or "plot(model,'FMC')", you will see an illustration of the geometry of your imaging system and the image of the scattered and/or fluorescence light.
 - You can also choose to show the light impinging on the light collector in a time-resolved manner. Check out "Example6_TimeTagging.m" on how to do so.
 
-#### 7. (Optional) Calculate the far field distribution of light escaping the simulation volume
+#### 7. (Optional) Calculate the far field angular distribution of light escaping the simulation volume
 - See "Example7_FarField.m". Note that the far field does not include "killed" photons, that is, photons that have exited at a boundary where the refractive index is different to 1, or photons that exit on boundaries that are not "escaping".
 
 #### 8. (Optional) Calculate the normalized fluence rate array of only those photons which end up on the detector
@@ -110,7 +110,7 @@ You build each model in a separate m-file. Each model requires the first two and
 - See Example16_CUDAacceleration.m.
 - If you have an Nvidia graphics card with compute capability at least 3.0, you can set useGPU = true to enable running on the GPU, greatly speeding up both the Monte Carlo and heat simulations.
 
-### List and explanation of parameters
+### List and explanation of input parameters
 In the following we assume that the model object variable has been named “model”. In principle, it could be given any name you want.
 #### Geometry parameters
 `model.G.silentMode`
@@ -210,16 +210,18 @@ The use of such smoothing enables simulation of reflection and refraction even o
 0: No escaping boundaries
 1: All cuboid boundaries are escaping
 2: Top cuboid boundary only is escaping
+3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
 Photons that hit a boundary that is "escaping" and where the refractive index is equal to 1 will be considered an "escaped" photon, and may, depending on the position and direction, be registered by the detector/light collector.
 When a photon encounters a boundary that is not escaping, it is allowed to propagate beyond the edge up to a distance of 2½ times the value of (Lx or Ly or Lz) before the photon is finally killed and no longer simulated.
 Allowing photons to propagate beyond the cuboid boundaries enable the photons to potentially scatter back into the simulation volume.
 The more boundaries are escaping, the faster the simulation will run because fewer photons outside the cuboid have to be simulated.
+When a photon hits a cyclic boundary, it will exit and immediately enter the cuboid again on the opposite boundary, as if the cuboid is periodic. In other words, if your geometry and light source is periodically repeating in x and y (such as a simple layered model illuminated by an infinite plane wave), you need only simulate just one unit cell of this pattern and use cyclic x and y boundaries.
 
 `model.MC.wavelength`
 [nm]
 The wavelength of the light. This is used only to be passed on as an input to the mediaPropertiesFunc because most (if not all) optical parameters are dependent on the wavelength of the light. The wavelengths does not actually change anything in the MC simulation itself aside from the change in mua, mus and g of the involved media. The only exception is when simulation fluorescence (see below) and specifying a quantum yield fluorescer.
 
-`model.MC.beam.beamType`
+`model.MC.lightSource.sourceType`
 [-]
 0: Pencil beam
 A pencil beam is a beam with zero width and zero divergence.
@@ -230,88 +232,88 @@ A beam with infinite width, but zero divergence.
 3: Laguerre-Gaussian LG01 beam
 A ray-based emulation of the donut-shaped Laguerre-Gaussian LG01 beam.
 4: Radial-factorizable beam
-A beam in which the focus beam profile can be written as I(x,y) = Ir\(r\), where r = sqrt(x\^2+y\^2), and similarly for the far field. Circular Gaussian beams can be written in this form.
+A beam in which the focus beam profile can be written as I(x,y) = Ir\(r\), where r = sqrt(x\^2+y\^2), and similarly for the angular distribution. Circular Gaussian beams can be written in this form.
 5: X/Y factorizable beam
-A beam in which the focus beam profile can be written as I(x,y) = Ix(x)*Iy(y), and similarly for the far field. Rectangular LED emitters can be written in this way, as well as Gaussian (circular and elliptical) beams.
+A beam in which the focus beam profile can be written as I(x,y) = Ix(x)*Iy(y), and similarly for the angular distribution. Rectangular LED emitters can be written in this way, as well as Gaussian (circular and elliptical) beams.
 
-`model.MC.beam.emitterLength`
+`model.MC.lightSource.emitterLength`
 [cm]
-(Only used for model.MC.beam.beamType = 1. Default: 0)
+(Only used for model.MC.lightSource.sourceType = 1. Default: 0)
 The length of the line emitter. If zero, the emitter is a point source.
 
-`model.MC.beam.NF.radialDistr`
+`model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr`
 [-]
-(Only used for beamType = 4)
-Radial near field distribution
+(Only used for sourceType = 4)
+Radial intensity distribution in the focal plane.
 0: Top-hat
 1: Gaussian
 Array: Custom. Doesn't need to be normalized.
 
-`model.MC.beam.NF.radialWidth`
+`model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth`
 [cm]
-(Only used for beamType = 4)
-Radial near field width.
-If NF.radialDistr is set to 0 or 1, this is the 1/e^2 radius
-If NF.radialDistr is set to an array, this is the half-width of the full distribution
+(Only used for sourceType = 4)
+Radial width of the intensity distribution in the focal plane.
+If focalPlaneIntensityDistribution.radialDistr is set to 0 or 1, this is the 1/e^2 radius
+If focalPlaneIntensityDistribution.radialDistr is set to an array, this is the half-width of the full distribution
 
-`model.MC.beam.NF.XDistr`, `model.MC.beam.NF.YDistr`
+`model.MC.lightSource.focalPlaneIntensityDistribution.XDistr`, `model.MC.lightSource.focalPlaneIntensityDistribution.YDistr`
 [-]
-(Only used for beamType = 5)
-X and Y near field distributions
+(Only used for sourceType = 5)
+X and Y distribution of the intensity in the focal plane.
 0: Top-hat
 1: Gaussian
 Array: Custom. Doesn't need to be normalized.
 
-`model.MC.beam.NF.XWidth`, `model.MC.beam.NF.YWidth`
+`model.MC.lightSource.focalPlaneIntensityDistribution.XWidth`, `model.MC.lightSource.focalPlaneIntensityDistribution.YWidth`
 [cm]
-(Only used for beamType = 5)
-X and Y near field width.
-If NF.XDistr/NF.YDistr is set to 0 or 1, this is the 1/e^2 radius
-If NF.XDistr/Nf.YDistr is set to an array, this is the half-width of the full distribution
+(Only used for sourceType = 5)
+X and Y width of the intensity distribution in the focal plane.
+If focalPlaneIntensityDistribution.XDistr/focalPlaneIntensityDistribution.YDistr is set to 0 or 1, this is the 1/e^2 radius
+If focalPlaneIntensityDistribution.XDistr/focalPlaneIntensityDistribution.YDistr is set to an array, this is the half-width of the full distribution
 
-`model.MC.beam.FF.radialDistr`
+`model.MC.lightSource.angularIntensityDistribution.radialDistr`
 [-]
-(Only used for beamType = 4)
-Radial far field distribution
+(Only used for sourceType = 4)
+Radial distribution of the angular intensity.
 0: Top-hat
 1: Gaussian
 2: Cosine (Lambertian)
 Array: Custom. Doesn't need to be normalized.
 
-`model.MC.beam.FF.radialWidth`
+`model.MC.lightSource.angularIntensityDistribution.radialWidth`
 [rad]
-(Only used for beamType = 4 and if FF.radialDistr is not 2)
-Radial far field width
-If FF.radialDistr is set to 0 or 1, this is the 1/e^2 half-angle.
-If FF.radialDistr is set to an array, this is the half-angle of the full distribution.
-For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength\*1e-9/(pi\*model.MC.beam.NF.radialWidth\*1e-2))
+(Only used for sourceType = 4 and if angularIntensityDistribution.radialDistr is not 2)
+Radial width of the angular intensity distribution.
+If angularIntensityDistribution.radialDistr is set to 0 or 1, this is the 1/e^2 half-angle.
+If angularIntensityDistribution.radialDistr is set to an array, this is the half-angle of the full distribution.
+For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength\*1e-9/(pi\*model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth\*1e-2))
 
-`model.MC.beam.FF.XDistr`, `model.MC.beam.FF.YDistr`
+`model.MC.lightSource.angularIntensityDistribution.XDistr`, `model.MC.lightSource.angularIntensityDistribution.YDistr`
 [-]
-(Only used for beamType = 5)
-X and Y far field distributions
+(Only used for sourceType = 5)
+X and Y distribution of the angular intensity.
 0: Top-hat
 1: Gaussian
 2: Cosine (Lambertian)
 Array: Custom. Doesn't need to be normalized.
 
-`model.MC.beam.FF.XWidth`, `model.MC.beam.FF.YWidth`
+`model.MC.lightSource.angularIntensityDistribution.XWidth`, `model.MC.lightSource.angularIntensityDistribution.YWidth`
 [rad]
-(Only used for beamType = 5 and if FF.XDistr or FF.YDistr is not 2)
-Radial far field width.
-If FF.XDistr/FF.YDistr is set to 0 or 1, this is the 1/e^2 half-angle.
-If FF.XDistr/FF.YDistr is set to an array, this is the half-angle of the full distribution.
+(Only used for sourceType = 5 and if angularIntensityDistribution.XDistr or angularIntensityDistribution.YDistr is not 2)
+Radial width of the angular intensity distribution.
+If angularIntensityDistribution.XDistr/angularIntensityDistribution.YDistr is set to 0 or 1, this is the 1/e^2 half-angle.
+If angularIntensityDistribution.XDistr/angularIntensityDistribution.YDistr is set to an array, this is the half-angle of the full distribution.
 
-`model.MC.beam.xFocus`, `model.MC.beam.yFocus`, `model.MC.beam.zFocus`
+`model.MC.lightSource.xFocus`, `model.MC.lightSource.yFocus`, `model.MC.lightSource.zFocus`
 [cm]
 The focus position x,y,z coordinates.
 
-`model.MC.beam.psi`
+`model.MC.lightSource.psi`
 [rad]
-(Only used for beamType = 5. Default: 0)
+(Only used for sourceType = 5. Default: 0)
 Axial rotation angle of the beam.
 
-`model.MC.beam.theta`, `model.MC.beam.phi`
+`model.MC.lightSource.theta`, `model.MC.lightSource.phi`
 [rad]
 Polar and azimuthal angle of the beam center axis.
 
@@ -382,11 +384,11 @@ Start and end time of the detection time-of-flight interval. Note that photons a
 (Default: 0)
 Number of bins between tStart and tEnd. If zero, the measurement is not time-resolved.
 
-### Fluorescence Monte Carlo parameters
+#### Fluorescence Monte Carlo parameters
 The following properties exist for fluorescence Monte Carlo simulations, and they work the same as for regular MC simulations:
 `FMC.useGPU`, `FMC.simulationTimeRequested`, `FMC.nPhotonsRequested`, `FMC.silentMode`, `FMC.useAllCPUs`, `FMC.calcNFR`, `FMC.calcNFRdet`, `FMC.nExamplePaths`, `FMC.farFieldRes`, `FMC.matchedInterfaces`, `FMC.smoothingLengthScale`, `FMC.boundaryType`, `FMC.wavelength`, `FMC.useLightCollector`, `FMC.LC.x`, `FMC.LC.y`, `FMC.LC.z`, `FMC.LC.theta`, `FMC.LC.phi`, `FMC.LC.f`, `FMC.LC.diam`, `FMC.LC.fieldSize`, `FMC.LC.NA`, `FMC.LC.res`
 
-### Heat solver parameters
+#### Heat solver parameters
 `model.HS.useGPU`
 [-]
 (Default: false)
@@ -467,6 +469,105 @@ An array of three values, describing the fractional x, y, z positions on a scale
 A 2D array with three columns.
 Each row describes the x, y, z coordinates of a temperature sensor placed within the cuboid, at which the temperature will be recorded for subsequent plotting as a function of time.
 Leave the matrix empty ([]) to disable temperature sensors.
+
+### List and explanation of output properties
+As in the previous section, we assume that the model object variable has been named “model”. In principle, it could be given any name you want.
+
+#### Geometry properties
+`model.G.dx`, `model.G.dy`, `model.G.dz`
+[cm]
+The side lengths of the voxels. They are simply calculated as the side length of the simulation cuboid divided by the number of bins, for example, model.G.Lx/model.G.nx.
+
+`model.G.x`, `model.G.y`, `model.G.z`
+[cm]
+1D arrays with the x, y or z coordinate values corresponding to the centers of the voxels
+You can use these for easy plotting of slices, see for example the entry on NFR in the MC section below.
+
+`model.G.M_raw`
+[-]
+3D (xyz) array in coordinate order of the tissue indices as calculated from the geomFunc. This is the array that is plotted in the figure called Geometry Illustration.
+
+#### (Excitation) Monte Carlo properties
+`model.MC.simulationTime`
+[min]
+The actual simulation time of the most recent Monte Carlo simulation run. If you did not define model.MC.nPhotonsRequested, then the simulation is timed and model.MC.simulationTime should be very close to `model.MC.simulationTimeRequested.
+
+`model.MC.nPhotons`
+[-]
+The actual number of photon packets launched in the most recent Monte Carlo simulation run. If you defined model.MC.nPhotonsRequested, then model.MC.nPhotons will be equal to that number.
+
+`model.MC.mediaProperties`
+[-]
+A struct that contains the media properties as evaluated at the specified excitation Monte Carlo wavelength, model.MC.wavelength.
+
+`model.MC.M`
+[-]
+A 3D (xyz) array. If the media properties do not contain dependences on fluence rate (FR), temperature (T) or fractional damage (FD), then this array will simply be equal to model.G.M_raw. Otherwise, model.MC.M will be the "split" version of model.G.M_raw, in which those media that have dependences have been split into the specified number of sub-media with different optical/thermal properties for the purposes of the simulations.
+
+`model.MC.interfaceNormals`
+[-]
+A 2D array of dimension (2 x (nx*ny*nz)) where local interface normal vector angles are stored. Each column contains the theta, phi angles for one voxel's interface normal vector. Used for calculated of refraction and reflection on oblique and curved interfaces between media with different refractive index.
+
+`model.MC.examplePaths`
+[cm] and [-]
+A 2D array which stores the example paths' coordinates and remaining weight. Each column is a data point where the first three rows are the x, y, z position of the photon packet and the fourth row is the remaining weight (energy) of the photon packet. Different photon trajectories are separated by a column of NaNs.
+
+`model.MC.NFR`
+[W/cm^2/W.incident]
+A 3D (xyz) array of normalized fluence rate values. This is what's plotted in figure 4. If you want to plot a slice out of this distribution, you could for example do it with these three lines of code:
+- `NFRslice = squeeze(model.MC.NFR(51,:,:));` Extracts the slice corresponding to the 51st x value. `squeeze` is to remove the x singleton dimension, giving you a 2D (yz) array of normalized fluence rates.
+- `figure(100);`
+- `imagesc(model.G.y,model.G.z,NFRslice.');` We can use the 1D coordinate arrays from model.G for the y and z coordinate values. The `.'` is there because Mathworks has designed the imagesc function to plot the first coordinate along the vertical axis and the second coordinate along the horizontal axis, which is the opposite of what we want.
+
+`model.MC.NFRdet`
+[W/cm^2/W.incident]
+A 3D (xyz) array of normalized fluence rate values like model.MC.NFR, but only counting those photons that ended up on the light collector.
+
+`model.MC.farField`
+[W/sr/W.incident]
+A 2D (theta,phi) array of normalized radiant intensity values for the light that escaped the simulation cuboid. The axes are the polar and azimuthal angles, described below.
+
+`model.MC.farFieldTheta`
+[rad]
+A 1D array of polar angles corresponding to the first dimension of model.MC.farField.
+
+`model.MC.farFieldPhi`
+[rad]
+A 1D array of azimuthal angles corresponding to the second dimension of model.MC.farField.
+
+`model.MC.NI_xpos`, `model.MC.NI_xneg`, `model.MC.NI_ypos`, `model.MC.NI_yneg`, `model.MC.NI_zpos`, `model.MC.NI_zneg`
+[W/cm^2/W.incident]
+2D (xy, xz or yz) arrays of normalized irradiances of the light hitting the boundaries (either escaping or killed). For example, the property named `model.MC.NI_xpos` designates the light that hits the surface that is orthogonal to the x axis and placed on the positive x side, whereas the `model.MC.NI_xneg` refers to the surface orthogonal to the x axis and placed on the negative x side. model.MC.boundaryType determine which of these arrays are calculated.
+`model.MC.NI_zneg` is of special interest to users interested in calculating the surface reflectance, which can be found as the integral over this array:
+- `R = model.G.dx*model.G.dy*sum(model.MC.NI_zneg(:));`
+
+#### Fluorescence Monte Carlo properties
+All the output properties described above for excitation Monte Carlo are also provided for fluorescence Monte Carlo in the model.FMC object.
+
+#### Heat solver properties
+`model.HS.M`
+[-]
+A 3D (xyz) array. If the media properties do not contain dependences on fluence rate (FR), temperature (T) or fractional damage (FD), then this array will simply be equal to model.G.M_raw. Otherwise, model.HS.M will be the "split" version of model.G.M_raw, in which those media that have dependences have been split into the specified number of sub-media with different optical/thermal properties for the purposes of the simulations.
+
+`model.HS.T`
+[deg C]
+A 3D (xyz) array with the final temperature values of the simulation.
+
+`model.HS.Omega`
+[-]
+A 3D (xyz) array with the final Omega values of the simulation. Omega describes the thermally induced tissue damage calculated according to the Arrhenius damage integral.
+
+`model.HS.maxMediaTemps`
+[deg C]
+A 1D array that contains the maximal temperatures obtained in each tissue type involved in the simulation.
+
+`model.HS.sensorsTimeVector`
+[s]
+A 1D array of time values that should be used for plotting the sensorTemps data (see below).
+
+`model.HS.sensorTemps`
+[deg C]
+A 2D array of temperatures measured at the specified sensor positions. Each row corresponds to one sensor. Use the model.HS.sensorsTimeVector as the time values when plotting this data.
 
 ## Contribution guidelines
 You are very welcome to clone the repository and add features of your own. If you want to report a bug or are missing a feature, shoot me an email, see below.

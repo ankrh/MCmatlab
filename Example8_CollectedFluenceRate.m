@@ -32,7 +32,7 @@ model.G.Ly                = .1; % [cm] y size of simulation cuboid
 model.G.Lz                = .1; % [cm] z size of simulation cuboid
 
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
-model.G.geomFunc          = @geometryDefinition_FluorescingCylinder; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
+model.G.geomFunc          = @geometryDefinition; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
 plot(model,'G');
 
@@ -44,19 +44,19 @@ model.MC.calcNFRdet               = true; % (Default: false) If true, the 3D flu
 model.MC.nExamplePaths            = 200;
 
 model.MC.matchedInterfaces        = true; % Assumes all refractive indices are the same
-model.MC.boundaryType             = 2; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+model.MC.boundaryType             = 2; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
 model.MC.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
-model.MC.beam.beamType            = 4; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
-model.MC.beam.NF.radialDistr      = 1; % Radial near field distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
-model.MC.beam.NF.radialWidth      = .005; % [cm] Radial near field 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
-model.MC.beam.FF.radialDistr      = 1; % Radial far field distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
-model.MC.beam.FF.radialWidth      = 5/180*pi; % [rad] Radial far field 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom. For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength*1e-9/(pi*model.MC.beam.NF.radialWidth*1e-2))
-model.MC.beam.xFocus              = 0.02; % [cm] x position of focus
-model.MC.beam.yFocus              = 0; % [cm] y position of focus
-model.MC.beam.zFocus              = 0; % [cm] z position of focus
-model.MC.beam.theta               = 0; % [rad] Polar angle of beam center axis
-model.MC.beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
+model.MC.lightSource.sourceType   = 4; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr = 1; % Radial focal plane distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
+model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth = .005; % [cm] Radial focal plane 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
+model.MC.lightSource.angularIntensityDistribution.radialDistr = 1; % Radial angular distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
+model.MC.lightSource.angularIntensityDistribution.radialWidth = 5/180*pi; % [rad] Radial angular 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom. For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength*1e-9/(pi*model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth*1e-2))
+model.MC.lightSource.xFocus       = 0.02; % [cm] x position of focus
+model.MC.lightSource.yFocus       = 0; % [cm] y position of focus
+model.MC.lightSource.zFocus       = 0; % [cm] z position of focus
+model.MC.lightSource.theta        = 0; % [rad] Polar angle of beam center axis
+model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of beam center axis
 
 model.MC.useLightCollector        = true;
 model.MC.LC.x                     = -0.02; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
@@ -86,7 +86,7 @@ model.FMC.calcNFRdet              = true; % (Default: false) If true, the 3D flu
 model.FMC.nExamplePaths           = 200;
 
 model.FMC.matchedInterfaces       = true; % Assumes all refractive indices are the same
-model.FMC.boundaryType            = 2; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+model.FMC.boundaryType            = 2; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
 model.FMC.wavelength              = 550; % [nm] Fluorescence wavelength, used for determination of optical properties for fluorescence light
 
 model.FMC.useLightCollector       = true;
@@ -115,7 +115,7 @@ plot(model,'FMC');
 % provided in the definition of Ginput. It returns the media matrix M,
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
-function M = geometryDefinition_FluorescingCylinder(X,Y,Z,parameters)
+function M = geometryDefinition(X,Y,Z,parameters)
     cylinderradius  = 0.0100;
     M = ones(size(X)); % fill background with fluorescence absorber
     M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 2; % fluorescer

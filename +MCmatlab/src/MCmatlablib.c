@@ -393,6 +393,29 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
+void addToPhotonPath(struct photon * const P, struct paths * const Pa, struct geometry const * const G, bool addNaN) {
+  if(Pa->nMasterPhotonsLaunched <= Pa->nExamplePaths) {
+    if(Pa->pathsElems == Pa->pathsSize) {
+      #ifdef __NVCC__ // If compiling for CUDA
+      Pa->pathsElems = -1; // Buffer not large enough, has to be resized by host
+      #else
+      Pa->pathsSize *= 2; // double the record's size
+      Pa->data = (FLOATORDBL *)reallocWrapper(Pa->data,2*Pa->pathsSize*sizeof(FLOATORDBL),4*Pa->pathsSize*sizeof(FLOATORDBL));
+      #endif
+    }
+    if(Pa->pathsElems != -1) {
+      Pa->data[4*Pa->pathsElems  ] = addNaN? NAN: (P->i[0] - G->n[0]/2.0f)*G->d[0]; // Store x
+      Pa->data[4*Pa->pathsElems+1] = addNaN? NAN: (P->i[1] - G->n[1]/2.0f)*G->d[1]; // Store y
+      Pa->data[4*Pa->pathsElems+2] = addNaN? NAN: (P->i[2]               )*G->d[2]; // Store z
+      Pa->data[4*Pa->pathsElems+3] = addNaN? NAN: P->weight;                       // Store photon weight
+      Pa->pathsElems++;
+    }
+  }
+}
+
+#ifdef __NVCC__ // If compiling for CUDA
+__device__
+#endif
 void launchPhoton(struct photon * const P, struct beam const * const B, struct geometry const * const G, struct paths * const Pa, bool * abortingPtr, struct debug * D) {
   FLOATORDBL X,Y,r,phi,tanphiX,tanphiY,costheta,sintheta;
   long   j,idx;
@@ -446,8 +469,8 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         P->time = 0;
         break;
       case 2: // infinite plane wave
-        P->i[0] = ((G->boundaryType==1)? 1: KILLRANGE)*G->n[0]*(RandomNum-0.5f) + G->n[0]/2.0f; // Generates a random ix coordinate within the cuboid
-        P->i[1] = ((G->boundaryType==1)? 1: KILLRANGE)*G->n[1]*(RandomNum-0.5f) + G->n[1]/2.0f; // Generates a random iy coordinate within the cuboid
+        P->i[0] = ((G->boundaryType==1 || G->boundaryType==3)? 1: KILLRANGE)*G->n[0]*(RandomNum-0.5f) + G->n[0]/2.0f; // Generates a random ix coordinate within the cuboid
+        P->i[1] = ((G->boundaryType==1 || G->boundaryType==3)? 1: KILLRANGE)*G->n[1]*(RandomNum-0.5f) + G->n[1]/2.0f; // Generates a random iy coordinate within the cuboid
         P->i[2] = 0;
         for(idx=0;idx<3;idx++) P->u[idx] = B->u[idx];
         getNewj(G,P);
@@ -576,6 +599,11 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
                          P->i[2]/G->n[2] - 1.0f/2  <  KILLRANGE/2.0f &&
                          P->i[2]                   >= 0);
         break;
+      case 3:
+        P->alive = P->i[0] < G->n[0] && P->i[0] >= 0 &&
+                   P->i[1] < G->n[1] && P->i[1] >= 0 &&
+                   P->i[2] < G->n[2] && P->i[2] >= 0;
+        break;
     }
   } while(!P->alive && ++launchAttempts < 1000000); // If photon happened to be initialized outside the volume in which it is allowed to travel, we try again unless it's happened a million times in a row.
 
@@ -597,25 +625,8 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
   #endif
   {
     Pa->nMasterPhotonsLaunched++;
-    if(Pa->nMasterPhotonsLaunched <= Pa->nExamplePaths) {
-      if(Pa->pathsElems + 2 > Pa->pathsSize) {
-        #ifdef __NVCC__ // If compiling for CUDA
-        Pa->pathsElems = -1; // Buffer not large enough, has to be resized by host
-        #else
-        Pa->pathsSize *= 2; // double the record's size
-        Pa->data = (FLOATORDBL *)reallocWrapper(Pa->data,2*Pa->pathsSize*sizeof(FLOATORDBL),4*Pa->pathsSize*sizeof(FLOATORDBL));
-        #endif
-      }
-      if(Pa->pathsElems != -1) {
-        for(long i=0;i<4;i++) Pa->data[4*Pa->pathsElems+i] = NAN;
-        Pa->pathsElems++;
-        Pa->data[4*Pa->pathsElems  ] = (P->i[0] - G->n[0]/2.0f)*G->d[0]; // Store x
-        Pa->data[4*Pa->pathsElems+1] = (P->i[1] - G->n[1]/2.0f)*G->d[1]; // Store y
-        Pa->data[4*Pa->pathsElems+2] = (P->i[2]               )*G->d[2]; // Store z
-        Pa->data[4*Pa->pathsElems+3] = P->weight;                       // Store photon weight
-        Pa->pathsElems++;
-      }
-    }
+    addToPhotonPath(P,Pa,G,true); // Add a photon path entry of NaNs to mark the beginning of a new trajectory
+    addToPhotonPath(P,Pa,G,false); // Add a photon path entry with the current position
   }
 }
 
@@ -691,21 +702,20 @@ void formEdgeFluxes(struct photon const * const P, struct geometry const * const
     else if(P->i[1] >= G->n[1]) atomicAddWrapperDBL(&O->NI_ypos[(long)P->i[0] + G->n[0]*(long)P->i[2]],P->weight);
     else if(P->i[0] < 0)        atomicAddWrapperDBL(&O->NI_xneg[(long)P->i[1] + G->n[1]*(long)P->i[2]],P->weight);
     else if(P->i[0] >= G->n[0]) atomicAddWrapperDBL(&O->NI_xpos[(long)P->i[1] + G->n[1]*(long)P->i[2]],P->weight);
-  } else { // boundaryType == 2
+  } else if(G->boundaryType == 2) {
     if(P->i[2] < 0)             atomicAddWrapperDBL(&O->NI_zneg[(long)(P->i[0] + G->n[0]*(KILLRANGE-1)/2.0f) + (KILLRANGE*G->n[0])*((long)(P->i[1] + G->n[1]*(KILLRANGE-1)/2.0f))],P->weight);
+  } else { // boundaryType == 3
+    if(P->i[2] < 0)             atomicAddWrapperDBL(&O->NI_zneg[(long)P->i[0] + G->n[0]*(long)P->i[1]],P->weight);
+    else if(P->i[2] >= G->n[2]) atomicAddWrapperDBL(&O->NI_zpos[(long)P->i[0] + G->n[0]*(long)P->i[1]],P->weight);
   }
 }
 
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void checkEscape(struct photon * const P, struct geometry const * const G, struct lightCollector const * const LC,
+void checkEscape(struct photon * const P, struct paths *Pa, struct geometry const * const G, struct lightCollector const * const LC,
         struct outputs const *O) {
   bool escaped = false;
-  P->insideVolume = P->i[0] < G->n[0] && P->i[0] >= 0 &&
-                    P->i[1] < G->n[1] && P->i[1] >= 0 &&
-                    P->i[2] < G->n[2] && P->i[2] >= 0;
-  
   switch (G->boundaryType) {
     case 0:
       P->alive = (FABS(P->i[0]/G->n[0] - 1.0f/2) <  KILLRANGE/2.0f &&
@@ -713,8 +723,10 @@ void checkEscape(struct photon * const P, struct geometry const * const G, struc
                   FABS(P->i[2]/G->n[2] - 1.0f/2) <  KILLRANGE/2.0f);
       break;
     case 1:
-      P->alive = P->insideVolume;
-      escaped = !P->insideVolume && P->RI == 1;
+      P->alive = P->i[0] < G->n[0] && P->i[0] >= 0 &&
+                 P->i[1] < G->n[1] && P->i[1] >= 0 &&
+                 P->i[2] < G->n[2] && P->i[2] >= 0;
+      escaped = !P->alive && P->RI == 1;
       break;
     case 2:
       P->alive = (FABS(P->i[0]/G->n[0] - 1.0f/2) <  KILLRANGE/2.0f &&
@@ -723,7 +735,43 @@ void checkEscape(struct photon * const P, struct geometry const * const G, struc
                        P->i[2]                   >= 0);
       escaped = (P->i[2] < 0) && P->RI == 1;
       break;
+    case 3:
+      P->alive = P->i[2] < G->n[2] && P->i[2] >= 0;
+      bool photonTeleported = false;
+      if(P->i[0] >= G->n[0]) {
+        P->i[0] = 0; // Wrap x
+        photonTeleported = true;
+      }
+      if(P->i[0] < 0) {
+        P->i[0] = G->n[0]*(1-FLOATORDBLEPS); // Wrap x
+        photonTeleported = true;
+      }
+      if(P->i[1] >= G->n[1]) {
+        P->i[1] = 0; // Wrap y
+        photonTeleported = true;
+      }
+      if(P->i[1] < 0) {
+        P->i[1] = G->n[1]*(1-FLOATORDBLEPS); // Wrap y
+        photonTeleported = true;
+      }
+
+      #ifdef __NVCC__ // If compiling for CUDA
+      if(!threadIdx.x && !blockIdx.x)
+      #elif defined(_OPENMP)
+      #pragma omp master
+      #endif
+      {
+        if(photonTeleported) {
+          addToPhotonPath(P,Pa,G,true); // Add a photon path entry of NaNs to mark the beginning of a new trajectory
+          addToPhotonPath(P,Pa,G,false); // Add a photon path entry with the current position
+        }
+      }
+      break;
   }
+
+  P->insideVolume = P->i[0] < G->n[0] && P->i[0] >= 0 &&
+                    P->i[1] < G->n[1] && P->i[1] >= 0 &&
+                    P->i[2] < G->n[2] && P->i[2] >= 0;
   
   if(!P->alive && G->boundaryType) formEdgeFluxes(P,G,O);
   if(escaped && O->FF)             formFarField(P,G,O);
@@ -941,23 +989,7 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, s
   #pragma omp master
   #endif
   {
-    if(Pa->nMasterPhotonsLaunched <= Pa->nExamplePaths) {
-      if(Pa->pathsElems == Pa->pathsSize) {
-        #ifdef __NVCC__ // If compiling for CUDA
-        Pa->pathsElems = -1; // Buffer not large enough, has to be resized by host
-        #else
-        Pa->pathsSize *= 2; // double the record's size
-        Pa->data = (FLOATORDBL *)reallocWrapper(Pa->data,2*Pa->pathsSize*sizeof(FLOATORDBL),4*Pa->pathsSize*sizeof(FLOATORDBL));
-        #endif
-      }
-      if(Pa->pathsElems != -1) {
-        Pa->data[4*Pa->pathsElems  ] = (P->i[0] - G->n[0]/2.0f)*G->d[0]; // Store x
-        Pa->data[4*Pa->pathsElems+1] = (P->i[1] - G->n[1]/2.0f)*G->d[1]; // Store y
-        Pa->data[4*Pa->pathsElems+2] = (P->i[2]               )*G->d[2]; // Store z
-        Pa->data[4*Pa->pathsElems+3] = P->weight;                       // Store photon weight
-        Pa->pathsElems++;
-      }
-    }
+    addToPhotonPath(P,Pa,G,false);
   }
 }
 

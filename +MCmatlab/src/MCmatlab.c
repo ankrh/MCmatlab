@@ -60,7 +60,7 @@
  * 1. Use a package manager like apt to install GCC (on Ubuntu, part of the build-essential package)
  * 2. Type "mex -setup" in the MATLAB command window
  ********************************************/
-// printf("Reached line %d...\n",__LINE__);mexEvalString("drawnow; pause(.001);");mexEvalString("drawnow; pause(.001);");mexEvalString("drawnow; pause(.001);"); // For inserting into code for debugging purposes
+// printf("Reached line %d...\n",__LINE__);mexEvalString("drawnow; pause(.005);");mexEvalString("drawnow; pause(.005);");mexEvalString("drawnow; pause(.005);"); // For inserting into code for debugging purposes
 
 #include "mex.h"
 #include <math.h>
@@ -233,7 +233,7 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
       while(P->alive && P->stepLeft>0) { // keep propagating
         propagatePhoton(P,G,O,Pa,D);
         if(!P->sameVoxel) {
-          checkEscape(P,G,LC,O); // photon may die here
+          checkEscape(P,Pa,G,LC,O); // photon may die here
           if(P->alive) getNewVoxelProperties(P,G,D);
         }
       }
@@ -262,7 +262,7 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
           int newPctProgress = max(pctTimeProgress,pctPhotonsProgress);
           if(newPctProgress != pctProgress && !silentMode && !*abortingPtr) {
             mexPrintf("\b\b\b\b\b\b\b\b\b%3.i%% done", newPctProgress<100? newPctProgress: 100);
-            mexEvalString("drawnow; pause(.001);");
+            mexEvalString("drawnow; pause(.005);");
           }
         }
       }
@@ -287,7 +287,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   bool calcNFRdet = mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabMC,0,"calcNFRdet")); // Are we supposed to calculate the NFRdet matrix?
   
   // To know if we are simulating fluorescence, we check if a "sourceDistribution" field exists. If so, we will use it later in the beam definition.
-  mxArray *MatlabBeam = mxGetProperty(MatlabMC,0,"beam");
+  mxArray *MatlabBeam = mxGetProperty(MatlabMC,0,"lightSource");
   double *S_PDF       = simFluorescence? (double *)mxGetData(mxGetProperty(MatlabMC,0,"sourceDistribution")): NULL; // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
   
   // Variables for timekeeping and number of photons
@@ -300,10 +300,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   mxArray *mediaProperties = mxGetPropertyShared(MatlabMC,0,"mediaProperties");
   int     nM = (int)mxGetN(mediaProperties);
   mwSize const *dimPtr = mxGetDimensions(mxGetPropertyShared(MatlabMC,0,"M"));
-  int beamType = S_PDF? -1: (int)*mxGetPr(mxGetPropertyShared(MatlabBeam,0,"beamType"));
+  int beamType = S_PDF? -1: (int)*mxGetPr(mxGetPropertyShared(MatlabBeam,0,"sourceType"));
   FLOATORDBL emitterLength = S_PDF? 0: (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabBeam,0,"emitterLength"));
-  mxArray *MatlabBeamNF = S_PDF? 0: mxGetPropertyShared(MatlabBeam,0,"NF");
-  mxArray *MatlabBeamFF = S_PDF? 0: mxGetPropertyShared(MatlabBeam,0,"FF");
+  mxArray *MatlabBeamNF = S_PDF? 0: mxGetPropertyShared(MatlabBeam,0,"focalPlaneIntensityDistribution");
+  mxArray *MatlabBeamFF = S_PDF? 0: mxGetPropertyShared(MatlabBeam,0,"angularIntensityDistribution");
   long L_NF1 = beamType >= 4? (long)mxGetN(mxGetPropertyShared(MatlabBeamNF,0,beamType == 4? "radialDistr": "XDistr")): 0;
   long L_FF1 = beamType >= 4? (long)mxGetN(mxGetPropertyShared(MatlabBeamFF,0,beamType == 4? "radialDistr": "XDistr")): 0;
   long L_NF2 = beamType == 5? (long)mxGetN(mxGetPropertyShared(MatlabBeamNF,0,"YDistr")): 0;
@@ -491,6 +491,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     mxSetPropertyShared(MCout,0,"NI_zpos", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
     mxSetPropertyShared(MCout,0,"NI_zneg", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
   } else if(G->boundaryType == 2) mxSetPropertyShared(MCout,0,"NI_zneg", mxCreateDoubleMatrix(KILLRANGE*G->n[0],KILLRANGE*G->n[1],mxREAL));
+  else if(G->boundaryType == 3) {
+    mxSetPropertyShared(MCout,0,"NI_zpos", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
+    mxSetPropertyShared(MCout,0,"NI_zneg", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
+  }
   
   struct outputs O_var = {
     0, // nPhotons
@@ -502,7 +506,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     G->boundaryType == 1? mxGetPr(mxGetPropertyShared(MCout,0,"NI_xneg")): NULL,
     G->boundaryType == 1? mxGetPr(mxGetPropertyShared(MCout,0,"NI_ypos")): NULL,
     G->boundaryType == 1? mxGetPr(mxGetPropertyShared(MCout,0,"NI_yneg")): NULL,
-    G->boundaryType == 1? mxGetPr(mxGetPropertyShared(MCout,0,"NI_zpos")): NULL,
+    G->boundaryType == 1 || G->boundaryType == 3?
+                          mxGetPr(mxGetPropertyShared(MCout,0,"NI_zpos")): NULL,
     G->boundaryType != 0? mxGetPr(mxGetPropertyShared(MCout,0,"NI_zneg")): NULL
   };
   struct outputs *O = &O_var;
@@ -546,7 +551,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 
   if(!silentMode) {
     printf("Calculating...   0%% done");
-    mexEvalString("drawnow; pause(.001);");
+    mexEvalString("drawnow; pause(.005);");
   }
   long long simulationTimeStart = getMicroSeconds();
   long long prevtime = simulationTimeStart;
@@ -573,7 +578,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 
     if(!silentMode) {
       printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgress);
-      mexEvalString("drawnow; pause(.001);");
+      mexEvalString("drawnow; pause(.005);");
     }
     prevtime = newtime;
     // Resize Pa->data if necessary
@@ -599,7 +604,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 
   if(!silentMode) {
     printf("Calculating...   0%% done");
-    mexEvalString("drawnow; pause(.001);");
+    mexEvalString("drawnow; pause(.005);");
   }
   long long simulationTimeStart = getMicroSeconds();
   #ifdef _OPENMP
@@ -622,7 +627,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
       if(simulationTimed) printf("\nSimulated %0.2e photons at a rate of %0.2e photons per minute\n",nPhotons, nPhotons/simTime);
       else printf("\nSimulated for %0.2e minutes at a rate of %0.2e photons per minute\n",simTime, nPhotons/simTime);
     }
-    mexEvalString("drawnow; pause(.001);");
+    mexEvalString("drawnow; pause(.005);");
   }
   normalizeDeposition(B,G,LC,O); // Convert data to relative fluence rate
   free(G->M);

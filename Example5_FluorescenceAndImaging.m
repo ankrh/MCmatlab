@@ -36,7 +36,7 @@ model.G.Ly                = .1; % [cm] y size of simulation cuboid
 model.G.Lz                = .1; % [cm] z size of simulation cuboid
 
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
-model.G.geomFunc          = @geometryDefinition_FluorescingCylinder; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
+model.G.geomFunc          = @geometryDefinition; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
 plot(model,'G');
 
@@ -46,12 +46,12 @@ model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
 model.MC.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
 
 model.MC.matchedInterfaces        = true; % Assumes all refractive indices are the same
-model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
 model.MC.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
-model.MC.beam.beamType            = 2; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
-model.MC.beam.theta               = 0; % [rad] Polar angle of beam center axis
-model.MC.beam.phi                 = 0; % [rad] Azimuthal angle of beam center axis
+model.MC.lightSource.sourceType   = 2; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+model.MC.lightSource.theta        = 0; % [rad] Polar angle of beam center axis
+model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of beam center axis
 
 model.MC.useLightCollector        = true;
 
@@ -80,7 +80,7 @@ model.FMC.simulationTimeRequested = .1; % [min] Time duration of the simulation
 model.FMC.nExamplePaths           = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
 
 model.FMC.matchedInterfaces       = true; % Assumes all refractive indices are the same
-model.FMC.boundaryType            = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
+model.FMC.boundaryType            = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
 model.FMC.wavelength              = 900; % [nm] Fluorescence wavelength, used for determination of optical properties for fluorescence light
 
 model.FMC.useLightCollector       = true;
@@ -110,7 +110,7 @@ plot(model,'FMC');
 % provided in the definition of Ginput. It returns the media matrix M,
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
-function M = geometryDefinition_FluorescingCylinder(X,Y,Z,parameters)
+function M = geometryDefinition(X,Y,Z,parameters)
     cylinderradius  = 0.0100;
     M = ones(size(X)); % fill background with fluorescence absorber
     M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 2; % fluorescer
