@@ -213,54 +213,54 @@ if simType == 2
   end
 else
   
-  if isnan(MCorFMC.lightSource.sourceType)
+  if isnan(MCorFMC.LS.sourceType)
     error('Error: No sourceType defined');
   end
-  if (MCorFMC.lightSource.sourceType == 3 || MCorFMC.lightSource.sourceType == 4) && (isnan(MCorFMC.lightSource.focalPlaneIntensityDistribution.radialWidth) || isnan(MCorFMC.lightSource.angularIntensityDistribution.radialWidth))
-    error('Error: lightSource.focalPlaneIntensityDistribution.radialWidth and lightSource.angularIntensityDistribution.radialWidth must both be specified when sourceType is 3 or 4');
+  if (MCorFMC.LS.sourceType == 3 || MCorFMC.LS.sourceType == 4) && (isnan(MCorFMC.LS.FPID.radialWidth) || isnan(MCorFMC.LS.AID.radialWidth))
+    error('Error: LS.FPID.radialWidth and LS.AID.radialWidth must both be specified when sourceType is 3 or 4');
   end
-  if MCorFMC.lightSource.sourceType == 4 && (isnan(MCorFMC.lightSource.focalPlaneIntensityDistribution.radialDistr(1)) || isnan(MCorFMC.lightSource.angularIntensityDistribution.radialDistr(1)))
-    error('Error: lightSource.focalPlaneIntensityDistribution.radialDistr and lightSource.angularIntensityDistribution.radialDistr must both be specified when sourceType is 4');
+  if MCorFMC.LS.sourceType == 4 && (isnan(MCorFMC.LS.FPID.radialDistr(1)) || isnan(MCorFMC.LS.AID.radialDistr(1)))
+    error('Error: LS.FPID.radialDistr and LS.AID.radialDistr must both be specified when sourceType is 4');
   end
-  if MCorFMC.lightSource.sourceType == 5
-    if isnan(MCorFMC.lightSource.focalPlaneIntensityDistribution.XDistr(1))
-      error('Error: lightSource.focalPlaneIntensityDistribution.XDistr must be specified when sourceType is 5');
+  if MCorFMC.LS.sourceType == 5
+    if isnan(MCorFMC.LS.FPID.XDistr(1))
+      error('Error: LS.FPID.XDistr must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.lightSource.focalPlaneIntensityDistribution.XWidth)
-      error('Error: lightSource.focalPlaneIntensityDistribution.Xwidth must be specified when sourceType is 5');
+    if isnan(MCorFMC.LS.FPID.XWidth)
+      error('Error: LS.FPID.Xwidth must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.lightSource.focalPlaneIntensityDistribution.YDistr(1))
-      error('Error: lightSource.focalPlaneIntensityDistribution.YDistr must be specified when sourceType is 5');
+    if isnan(MCorFMC.LS.FPID.YDistr(1))
+      error('Error: LS.FPID.YDistr must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.lightSource.focalPlaneIntensityDistribution.YWidth)
-      error('Error: lightSource.focalPlaneIntensityDistribution.YWidth must be specified when sourceType is 5');
+    if isnan(MCorFMC.LS.FPID.YWidth)
+      error('Error: LS.FPID.YWidth must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.lightSource.angularIntensityDistribution.XDistr(1))
-      error('Error: lightSource.angularIntensityDistribution.XDistr must be specified when sourceType is 5');
+    if isnan(MCorFMC.LS.AID.XDistr(1))
+      error('Error: LS.AID.XDistr must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.lightSource.angularIntensityDistribution.XWidth)
-      error('Error: lightSource.angularIntensityDistribution.Xwidth must be specified when sourceType is 5');
+    if isnan(MCorFMC.LS.AID.XWidth)
+      error('Error: LS.AID.Xwidth must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.lightSource.angularIntensityDistribution.YDistr(1))
-      error('Error: lightSource.angularIntensityDistribution.YDistr must be specified when sourceType is 5');
+    if isnan(MCorFMC.LS.AID.YDistr(1))
+      error('Error: LS.AID.YDistr must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.lightSource.angularIntensityDistribution.YWidth)
-      error('Error: lightSource.angularIntensityDistribution.YWidth must be specified when sourceType is 5');
+    if isnan(MCorFMC.LS.AID.YWidth)
+      error('Error: LS.AID.YWidth must be specified when sourceType is 5');
     end
-    if xor(MCorFMC.lightSource.angularIntensityDistribution.XDistr == 2,MCorFMC.lightSource.angularIntensityDistribution.YDistr == 2)
-      error('Error: lightSource.angularIntensityDistribution.XDistr and lightSource.angularIntensityDistribution.YDistr must either both be set to cosine (Lambertian), or neither');
+    if xor(MCorFMC.LS.AID.XDistr == 2,MCorFMC.LS.AID.YDistr == 2)
+      error('Error: LS.AID.XDistr and LS.AID.YDistr must either both be set to cosine (Lambertian), or neither');
     end
   end
-  if size(MCorFMC.lightSource.focalPlaneIntensityDistribution.radialDistr,1) > 1 || size(MCorFMC.lightSource.focalPlaneIntensityDistribution.XDistr,1) > 1 || size(MCorFMC.lightSource.focalPlaneIntensityDistribution.YDistr,1) > 1 ||...
-     size(MCorFMC.lightSource.angularIntensityDistribution.radialDistr,1) > 1 || size(MCorFMC.lightSource.angularIntensityDistribution.XDistr,1) > 1 || size(MCorFMC.lightSource.angularIntensityDistribution.YDistr,1) > 1
+  if size(MCorFMC.LS.FPID.radialDistr,1) > 1 || size(MCorFMC.LS.FPID.XDistr,1) > 1 || size(MCorFMC.LS.FPID.YDistr,1) > 1 ||...
+     size(MCorFMC.LS.AID.radialDistr,1) > 1 || size(MCorFMC.LS.AID.XDistr,1) > 1 || size(MCorFMC.LS.AID.YDistr,1) > 1
     error('Error: Beam distribution functions must be scalars or row-vectors, not column-vectors');
   end
-  if (numel(MCorFMC.lightSource.focalPlaneIntensityDistribution.radialDistr) > 1 && numel(MCorFMC.lightSource.focalPlaneIntensityDistribution.radialDistr) < 1000) ||...
-     (numel(MCorFMC.lightSource.focalPlaneIntensityDistribution.XDistr)      > 1 && numel(MCorFMC.lightSource.focalPlaneIntensityDistribution.XDistr)      < 1000) ||...
-     (numel(MCorFMC.lightSource.focalPlaneIntensityDistribution.YDistr)      > 1 && numel(MCorFMC.lightSource.focalPlaneIntensityDistribution.YDistr)      < 1000) ||...
-     (numel(MCorFMC.lightSource.angularIntensityDistribution.radialDistr) > 1 && numel(MCorFMC.lightSource.angularIntensityDistribution.radialDistr) < 1000) ||...
-     (numel(MCorFMC.lightSource.angularIntensityDistribution.XDistr)      > 1 && numel(MCorFMC.lightSource.angularIntensityDistribution.XDistr)      < 1000) ||...
-     (numel(MCorFMC.lightSource.angularIntensityDistribution.YDistr)      > 1 && numel(MCorFMC.lightSource.angularIntensityDistribution.YDistr)      < 1000)
+  if (numel(MCorFMC.LS.FPID.radialDistr) > 1 && numel(MCorFMC.LS.FPID.radialDistr) < 1000) ||...
+     (numel(MCorFMC.LS.FPID.XDistr)      > 1 && numel(MCorFMC.LS.FPID.XDistr)      < 1000) ||...
+     (numel(MCorFMC.LS.FPID.YDistr)      > 1 && numel(MCorFMC.LS.FPID.YDistr)      < 1000) ||...
+     (numel(MCorFMC.LS.AID.radialDistr) > 1 && numel(MCorFMC.LS.AID.radialDistr) < 1000) ||...
+     (numel(MCorFMC.LS.AID.XDistr)      > 1 && numel(MCorFMC.LS.AID.XDistr)      < 1000) ||...
+     (numel(MCorFMC.LS.AID.YDistr)      > 1 && numel(MCorFMC.LS.AID.YDistr)      < 1000)
     error('Error: Beam definition distributions must have 1000 elements (or more, if necessary)');
   end
 end

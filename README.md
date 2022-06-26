@@ -221,8 +221,9 @@ When a photon hits a cyclic boundary, it will exit and immediately enter the cub
 [nm]
 The wavelength of the light. This is used only to be passed on as an input to the mediaPropertiesFunc because most (if not all) optical parameters are dependent on the wavelength of the light. The wavelengths does not actually change anything in the MC simulation itself aside from the change in mua, mus and g of the involved media. The only exception is when simulation fluorescence (see below) and specifying a quantum yield fluorescer.
 
-`model.MC.lightSource.sourceType`
+`model.MC.LS.sourceType`
 [-]
+(LS: Light source)
 0: Pencil beam
 A pencil beam is a beam with zero width and zero divergence.
 1: Isotropically emitting line or point source
@@ -236,27 +237,28 @@ A beam in which the focus beam profile can be written as I(x,y) = Ir\(r\), where
 5: X/Y factorizable beam
 A beam in which the focus beam profile can be written as I(x,y) = Ix(x)*Iy(y), and similarly for the angular distribution. Rectangular LED emitters can be written in this way, as well as Gaussian (circular and elliptical) beams.
 
-`model.MC.lightSource.emitterLength`
+`model.MC.LS.emitterLength`
 [cm]
-(Only used for model.MC.lightSource.sourceType = 1. Default: 0)
+(Only used for model.MC.LS.sourceType = 1. Default: 0)
 The length of the line emitter. If zero, the emitter is a point source.
 
-`model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr`
+`model.MC.LS.FPID.radialDistr`
 [-]
+(FPID: Focal plane intensity distribution)
 (Only used for sourceType = 4)
 Radial intensity distribution in the focal plane.
 0: Top-hat
 1: Gaussian
 Array: Custom. Doesn't need to be normalized.
 
-`model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth`
+`model.MC.LS.FPID.radialWidth`
 [cm]
 (Only used for sourceType = 4)
 Radial width of the intensity distribution in the focal plane.
-If focalPlaneIntensityDistribution.radialDistr is set to 0 or 1, this is the 1/e^2 radius
-If focalPlaneIntensityDistribution.radialDistr is set to an array, this is the half-width of the full distribution
+If FPID.radialDistr is set to 0 or 1, this is the 1/e^2 radius
+If FPID.radialDistr is set to an array, this is the half-width of the full distribution
 
-`model.MC.lightSource.focalPlaneIntensityDistribution.XDistr`, `model.MC.lightSource.focalPlaneIntensityDistribution.YDistr`
+`model.MC.LS.FPID.XDistr`, `model.MC.LS.FPID.YDistr`
 [-]
 (Only used for sourceType = 5)
 X and Y distribution of the intensity in the focal plane.
@@ -264,15 +266,16 @@ X and Y distribution of the intensity in the focal plane.
 1: Gaussian
 Array: Custom. Doesn't need to be normalized.
 
-`model.MC.lightSource.focalPlaneIntensityDistribution.XWidth`, `model.MC.lightSource.focalPlaneIntensityDistribution.YWidth`
+`model.MC.LS.FPID.XWidth`, `model.MC.LS.FPID.YWidth`
 [cm]
 (Only used for sourceType = 5)
 X and Y width of the intensity distribution in the focal plane.
-If focalPlaneIntensityDistribution.XDistr/focalPlaneIntensityDistribution.YDistr is set to 0 or 1, this is the 1/e^2 radius
-If focalPlaneIntensityDistribution.XDistr/focalPlaneIntensityDistribution.YDistr is set to an array, this is the half-width of the full distribution
+If FPID.XDistr/FPID.YDistr is set to 0 or 1, this is the 1/e^2 radius
+If FPID.XDistr/FPID.YDistr is set to an array, this is the half-width of the full distribution
 
-`model.MC.lightSource.angularIntensityDistribution.radialDistr`
+`model.MC.LS.AID.radialDistr`
 [-]
+(AID: Angular intensity distribution)
 (Only used for sourceType = 4)
 Radial distribution of the angular intensity.
 0: Top-hat
@@ -280,15 +283,15 @@ Radial distribution of the angular intensity.
 2: Cosine (Lambertian)
 Array: Custom. Doesn't need to be normalized.
 
-`model.MC.lightSource.angularIntensityDistribution.radialWidth`
+`model.MC.LS.AID.radialWidth`
 [rad]
-(Only used for sourceType = 4 and if angularIntensityDistribution.radialDistr is not 2)
+(Only used for sourceType = 4 and if AID.radialDistr is not 2)
 Radial width of the angular intensity distribution.
-If angularIntensityDistribution.radialDistr is set to 0 or 1, this is the 1/e^2 half-angle.
-If angularIntensityDistribution.radialDistr is set to an array, this is the half-angle of the full distribution.
-For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength\*1e-9/(pi\*model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth\*1e-2))
+If AID.radialDistr is set to 0 or 1, this is the 1/e^2 half-angle.
+If AID.radialDistr is set to an array, this is the half-angle of the full distribution.
+For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength\*1e-9/(pi\*model.MC.LS.FPID.radialWidth\*1e-2))
 
-`model.MC.lightSource.angularIntensityDistribution.XDistr`, `model.MC.lightSource.angularIntensityDistribution.YDistr`
+`model.MC.LS.AID.XDistr`, `model.MC.LS.AID.YDistr`
 [-]
 (Only used for sourceType = 5)
 X and Y distribution of the angular intensity.
@@ -297,23 +300,23 @@ X and Y distribution of the angular intensity.
 2: Cosine (Lambertian)
 Array: Custom. Doesn't need to be normalized.
 
-`model.MC.lightSource.angularIntensityDistribution.XWidth`, `model.MC.lightSource.angularIntensityDistribution.YWidth`
+`model.MC.LS.AID.XWidth`, `model.MC.LS.AID.YWidth`
 [rad]
-(Only used for sourceType = 5 and if angularIntensityDistribution.XDistr or angularIntensityDistribution.YDistr is not 2)
+(Only used for sourceType = 5 and if AID.XDistr or AID.YDistr is not 2)
 Radial width of the angular intensity distribution.
-If angularIntensityDistribution.XDistr/angularIntensityDistribution.YDistr is set to 0 or 1, this is the 1/e^2 half-angle.
-If angularIntensityDistribution.XDistr/angularIntensityDistribution.YDistr is set to an array, this is the half-angle of the full distribution.
+If AID.XDistr/AID.YDistr is set to 0 or 1, this is the 1/e^2 half-angle.
+If AID.XDistr/AID.YDistr is set to an array, this is the half-angle of the full distribution.
 
-`model.MC.lightSource.xFocus`, `model.MC.lightSource.yFocus`, `model.MC.lightSource.zFocus`
+`model.MC.LS.xFocus`, `model.MC.LS.yFocus`, `model.MC.LS.zFocus`
 [cm]
 The focus position x,y,z coordinates.
 
-`model.MC.lightSource.psi`
+`model.MC.LS.psi`
 [rad]
 (Only used for sourceType = 5. Default: 0)
 Axial rotation angle of the beam.
 
-`model.MC.lightSource.theta`, `model.MC.lightSource.phi`
+`model.MC.LS.theta`, `model.MC.LS.phi`
 [rad]
 Polar and azimuthal angle of the beam center axis.
 
@@ -343,12 +346,12 @@ A logical (boolean) to specify whether the MC simulation should keep track of wh
 
 `model.MC.LC.f`
 [cm]
+(LC: Light collector)
 If the light collector is supposed to be an objective lens, this is its focal length.
 If the light collector is supposed to be a fiber tip this should be set to Inf (infinity)
 
 `model.MC.LC.x`, `model.MC.LC.y`, `model.MC.LC.z`
 [cm]
-(Only used if model.MC.useLightCollector = true)
 If model.MC.LC.f is finite (light collector is an objective lens), this is the x, y, z position of the center of the focal plane of the objective lens.
 If model.MC.LC.f is infinite (light collector is a fiber tip), this is the x, y, z position of the center of the fiber tip.
 

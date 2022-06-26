@@ -22,7 +22,7 @@ classdef monteCarloSimulation
     FRinitial (:,:,:) double {mustBeFiniteNonnegativeArrayOrNaNScalar} = NaN % [W/cm^2] Initial guess for the intensity distribution, to be used for fluence rate dependent simulations
     FRdepIterations (1,1) double {mustBeInteger, mustBePositive} = 20
 
-    lightSource (1,1) MCmatlab.lightSource
+    LS (1,1) MCmatlab.lightSource
 
     useLightCollector (1,1) logical = false
     LC (1,1) MCmatlab.lightCollector
@@ -64,12 +64,12 @@ classdef monteCarloSimulation
 
   methods
     function x = get.beam(obj)
-      warning('beam has been renamed lightSource. The ability to reference lightSource through beam will be deprecated in a future version.');
-      x = obj.lightSource;
+      warning('beam has been renamed LS (Light Source). The ability to reference LS through beam will be deprecated in a future version.');
+      x = obj.LS;
     end
     function obj = set.beam(obj,x)
-      warning('beam has been renamed lightSource. The ability to reference lightSource through beam will be deprecated in a future version.');
-      obj.lightSource = x; %#ok<MCSUP> 
+      warning('beam has been renamed LS (Light Source). The ability to reference LS through beam will be deprecated in a future version.');
+      obj.LS = x; %#ok<MCSUP> 
     end
   end
 end

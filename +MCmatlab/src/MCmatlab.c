@@ -286,7 +286,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   bool calcNFRdet = mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabMC,0,"calcNFRdet")); // Are we supposed to calculate the NFRdet matrix?
   
   // To know if we are simulating fluorescence, we check if a "sourceDistribution" field exists. If so, we will use it later in the beam definition.
-  mxArray *MatlabBeam = mxGetProperty(MatlabMC,0,"lightSource");
+  mxArray *MatlabBeam = mxGetProperty(MatlabMC,0,"LS");
   double *S_PDF       = simFluorescence? (double *)mxGetData(mxGetProperty(MatlabMC,0,"sourceDistribution")): NULL; // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
   
   // Variables for timekeeping and number of photons
@@ -301,8 +301,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   mwSize const *dimPtr = mxGetDimensions(mxGetPropertyShared(MatlabMC,0,"M"));
   int beamType = S_PDF? -1: (int)*mxGetPr(mxGetPropertyShared(MatlabBeam,0,"sourceType"));
   FLOATORDBL emitterLength = S_PDF? 0: (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabBeam,0,"emitterLength"));
-  mxArray *MatlabBeamNF = S_PDF? 0: mxGetPropertyShared(MatlabBeam,0,"focalPlaneIntensityDistribution");
-  mxArray *MatlabBeamFF = S_PDF? 0: mxGetPropertyShared(MatlabBeam,0,"angularIntensityDistribution");
+  mxArray *MatlabBeamNF = S_PDF? 0: mxGetPropertyShared(MatlabBeam,0,"FPID");
+  mxArray *MatlabBeamFF = S_PDF? 0: mxGetPropertyShared(MatlabBeam,0,"AID");
   long L_NF1 = beamType >= 4? (long)mxGetN(mxGetPropertyShared(MatlabBeamNF,0,beamType == 4? "radialDistr": "XDistr")): 0;
   long L_FF1 = beamType >= 4? (long)mxGetN(mxGetPropertyShared(MatlabBeamFF,0,beamType == 4? "radialDistr": "XDistr")): 0;
   long L_NF2 = beamType == 5? (long)mxGetN(mxGetPropertyShared(MatlabBeamNF,0,"YDistr")): 0;

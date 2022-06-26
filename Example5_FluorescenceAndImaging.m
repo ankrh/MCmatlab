@@ -25,6 +25,13 @@
 % excitation and fluorescence simulations, showing paths of both kinds of
 % photons.
 
+%% Common MCmatlab abbreviations:
+% G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
+% simulation, M: Media array, LS: Light source, LC: Light collector, FPID:
+% Focal plane intensity distribution, AID: Angular intensity distribution,
+% NI: Normalized irradiance, NFR: Normalized fluence rate, FR: Fluence
+% rate, FD: Fractional damage.
+
 %% Geometry definition
 model = MCmatlab.model;
 
@@ -49,9 +56,9 @@ model.MC.matchedInterfaces        = true; % Assumes all refractive indices are t
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
 model.MC.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
-model.MC.lightSource.sourceType   = 2; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
-model.MC.lightSource.theta        = 0; % [rad] Polar angle of beam center axis
-model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of beam center axis
+model.MC.LS.sourceType   = 2; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+model.MC.LS.theta        = 0; % [rad] Polar angle of beam center axis
+model.MC.LS.phi          = 0; % [rad] Azimuthal angle of beam center axis
 
 model.MC.useLightCollector        = true;
 

@@ -16,8 +16,8 @@ classdef lightSource
 
     emitterLength (1,1) double {mustBeNonnegative} = 0                       % [cm] Length of isotropic emitter (line or point)
 
-    focalPlaneIntensityDistribution (1,1) MCmatlab.sourceIntensityDistribution
-    angularIntensityDistribution (1,1) MCmatlab.sourceIntensityDistribution
+    FPID (1,1) MCmatlab.sourceIntensityDistribution
+    AID (1,1) MCmatlab.sourceIntensityDistribution
 
     %% Calculated properties
     sourceDistribution = NaN
@@ -39,20 +39,20 @@ classdef lightSource
       obj.sourceType = x; %#ok<MCSUP> 
     end
     function x = get.NF(obj)
-      warning('NF has been renamed focalPlaneIntensityDistribution. The ability to reference focalPlaneIntensityDistribution through NF will be deprecated in a future version.');
-      x = obj.focalPlaneIntensityDistribution;
+      warning('NF has been renamed FPID (Focal Plane Intensity Distribution). The ability to reference FPID through NF will be deprecated in a future version.');
+      x = obj.FPID;
     end
     function obj = set.NF(obj,x)
-      warning('NF has been renamed focalPlaneIntensityDistribution. The ability to reference focalPlaneIntensityDistribution through NF will be deprecated in a future version.');
-      obj.focalPlaneIntensityDistribution = x; %#ok<MCSUP> 
+      warning('NF has been renamed FPID (Focal Plane Intensity Distribution). The ability to reference FPID through NF will be deprecated in a future version.');
+      obj.FPID = x; %#ok<MCSUP> 
     end
     function x = get.FF(obj)
-      warning('FF has been renamed angularIntensityDistribution. The ability to reference angularIntensityDistribution through FF will be deprecated in a future version.');
-      x = obj.angularIntensityDistribution;
+      warning('FF has been renamed AID (Angular Intensity Distribution). The ability to reference AID through FF will be deprecated in a future version.');
+      x = obj.AID;
     end
     function obj = set.FF(obj,x)
-      warning('FF has been renamed angularIntensityDistribution. The ability to reference angularIntensityDistribution through FF will be deprecated in a future version.');
-      obj.angularIntensityDistribution = x; %#ok<MCSUP> 
+      warning('FF has been renamed AID (Angular Intensity Distribution). The ability to reference AID through FF will be deprecated in a future version.');
+      obj.AID = x; %#ok<MCSUP> 
     end
   end
 end

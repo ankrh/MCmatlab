@@ -39,6 +39,13 @@
 % although the function has been lightly modified by Anders K. Hansen for
 % use in MCmatlab.
 
+%% Common MCmatlab abbreviations:
+% G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
+% simulation, M: Media array, LS: Light source, LC: Light collector, FPID:
+% Focal plane intensity distribution, AID: Angular intensity distribution,
+% NI: Normalized irradiance, NFR: Normalized fluence rate, FR: Fluence
+% rate, FD: Fractional damage.
+
 %% Geometry definition
 model = MCmatlab.model;
 
