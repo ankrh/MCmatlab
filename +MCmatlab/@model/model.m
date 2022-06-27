@@ -17,6 +17,8 @@ classdef model
       %
       %   Create a new, clean instance of MCmatlab.model
 
+      obj.G = MCmatlab.geometry; % We need to initialize the G object because it is a handle object. The other objects (MC, FMC, HS etc.) are value objects and do not need to be initialized in this constructor.
+
       %% The following code is inspired by the version check method of the unrelated but excellent export_fig() function made by Yair Altman
       % Check for newer version (only once a day)
       persistent lastCheckTime
