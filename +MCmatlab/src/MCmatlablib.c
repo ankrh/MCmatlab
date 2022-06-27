@@ -1071,5 +1071,8 @@ void normalizeDeposition(struct beam const * const B, struct geometry const * co
     for(j=0;j<G->n[0]*G->n[1];j++) O->NI_zneg[j] /= G->d[0]*G->d[1]*normfactor;
   } else if(G->boundaryType == 2) {
     for(j=0;j<KILLRANGE*G->n[0]*KILLRANGE*G->n[1];j++) O->NI_zneg[j] /= G->d[0]*G->d[1]*normfactor;
+  } else if(G->boundaryType == 3) {
+    for(j=0;j<G->n[0]*G->n[1];j++) O->NI_zpos[j] /= G->d[0]*G->d[1]*normfactor;
+    for(j=0;j<G->n[0]*G->n[1];j++) O->NI_zneg[j] /= G->d[0]*G->d[1]*normfactor;
   }
 }

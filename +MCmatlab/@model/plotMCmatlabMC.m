@@ -410,8 +410,9 @@ elseif MCorFMC.boundaryType == 3
   h_f.Name = ['Normalized ' fluorescenceOrNothing 'boundary irradiance'];
   clf;
 
+
   subplot(2,1,1);
-  imagesc(size(MCorFMC.NI_zneg,1)/2*[-G.dx G.dx],size(MCorFMC.NI_zneg,2)/2*[-G.dy G.dy],MCorFMC.NI_zneg.');
+  imagesc(G.x,G.y,MCorFMC.NI_zneg.');
   set(gca,'YDir','normal');
   title(['Normalized ' fluorescenceOrNothing 'top surface boundary irradiance [W/cm^2/W.incident]']);
   colormap(inferno);
@@ -423,7 +424,7 @@ elseif MCorFMC.boundaryType == 3
   set(gca,'fontsize',18);
 
   subplot(2,1,2);
-  imagesc(size(MCorFMC.NI_zpos,1)/2*[-G.dx G.dx],size(MCorFMC.NI_zpos,2)/2*[-G.dy G.dy],MCorFMC.NI_zpos.');
+  imagesc(G.x,G.y,MCorFMC.NI_zpos.');
   set(gca,'YDir','normal');
   title(['Normalized ' fluorescenceOrNothing 'bottom surface boundary irradiance [W/cm^2/W.incident]']);
   colormap(inferno);

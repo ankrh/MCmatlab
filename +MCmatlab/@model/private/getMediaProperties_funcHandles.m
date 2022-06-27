@@ -27,6 +27,9 @@ anyFDdependence = false;
 for i=1:length(mP_raw)
   mP_fH(i).name = mP_raw(i).name;
   if simType <= 2
+    if ~isfield(mP_raw,'name') || any(cellfun(@isempty,{mP_raw.name}))
+      error('Error: You must define a name for each medium in the simulation.');
+    end
     if ~isfield(mP_raw,'mua') || isempty(mP_raw(i).mua)
       error('Error: Medium %s has no mua.',mP_raw(i).name);
     elseif ischar(mP_raw(i).mua)
