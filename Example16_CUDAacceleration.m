@@ -4,7 +4,7 @@
 % launch MCmatlab with this acceleration by setting useGPU = true, as seen
 % below. This flag exists both for the Monte Carlo light solver and the
 % heat solver.
-% 
+%
 % The example has the same geometry as example 4, but with more time steps
 % and fewer graphical updates in the heat solver so the CPU/GPU speed
 % difference is more clear. First the MC step is run on CPU and then GPU -
@@ -14,7 +14,7 @@
 % On my Windows test PC with an Intel i5-6600 CPU and an Nvidia GeForce GTX
 % 970 GPU, the speedup is a factor of 18x for the MC part and 7x for the
 % heat part.
-% 
+%
 % Currently, only one GPU will be used even if you have multiple GPUs
 % installed. If you are interested in using multiple GPUs in parallel,
 % contact the MCmatlab developer Anders K. Hansen at ankrh@fotonik.dtu.dk
@@ -22,13 +22,13 @@
 %% MCmatlab abbreviations
 % G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
 % simulation, M: Media array, FR: Fluence rate, FD: Fractional damage.
-% 
+%
 % There are also some optional abbreviations you can use when referencing
 % object/variable names: LS = lightSource, LC = lightCollector, FPID =
 % focalPlaneIntensityDistribution, AID = angularIntensityDistribution, NI =
 % normalizedIrradiance, NFR = normalizedFluenceRate.
-% 
-% For example, "model.MC.LS.FPID.radialDistr" is the same as 
+%
+% For example, "model.MC.LS.FPID.radialDistr" is the same as
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
@@ -110,15 +110,15 @@ plotMCmatlabHeat(model);
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition(X,Y,Z,parameters)
-    % Blood vessel example:
-    zsurf = 0.01;
-    epd_thick = 0.006;
-    vesselradius  = 0.0100;
-    vesseldepth = 0.04;
-    M = ones(size(X)); % fill background with water (gel)
-    M(Z > zsurf) = 2; % epidermis
-    M(Z > zsurf + epd_thick) = 3; % dermis
-    M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 4; % blood
+  % Blood vessel example:
+  zsurf = 0.01;
+  epd_thick = 0.006;
+  vesselradius  = 0.0100;
+  vesseldepth = 0.04;
+  M = ones(size(X)); % fill background with water (gel)
+  M(Z > zsurf) = 2; % epidermis
+  M(Z > zsurf + epd_thick) = 3; % dermis
+  M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 4; % blood
 end
 
 %% Media Properties function
@@ -130,73 +130,67 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-    load spectralLIB.mat
-    MU(:,1) = interp1(nmLIB,muaoxy,wavelength);
-    MU(:,2) = interp1(nmLIB,muadeoxy,wavelength);
-    MU(:,3) = interp1(nmLIB,muawater,wavelength);
-    MU(:,4) = interp1(nmLIB,muamel,wavelength);
-    
-    j=1;
-    mediaProperties(j).name  = 'water';
-    mediaProperties(j).mua   = 0.00036; % [cm^-1]
-    mediaProperties(j).mus   = 10; % [cm^-1]
-    mediaProperties(j).g     = 1.0;
-    mediaProperties(j).VHC   = 4.19; % [J cm^-3 K^-1]
-    mediaProperties(j).TC    = 5.8e-3; % [W cm^-1 K^-1]
-    
-    j=2;
-    mediaProperties(j).name  = 'epidermis';
-    B = 0;
-    S = 0.75;
-    W = 0.75;
-    Me = 0.03;
-    musp500 = 40;
-    fray    = 0.0;
-    bmie    = 1.0;
-    gg      = 0.90;
-    musp = musp500*(fray*(wavelength/500).^-4 + (1-fray)*(wavelength/500).^-bmie);
-    X = [B*S B*(1-S) W Me]';
-    mediaProperties(j).mua = MU*X; % [cm^-1]
-    mediaProperties(j).mus = musp/(1-gg); % [cm^-1]
-    mediaProperties(j).g   = gg;
-    mediaProperties(j).VHC = 3391*1.109e-3; % [J cm^-3 K^-1]
-    mediaProperties(j).TC  = 0.37e-2; % [W cm^-1 K^-1]
-    
-    j=3;
-    mediaProperties(j).name = 'dermis';
-    B = 0.002;
-    S = 0.67;
-    W = 0.65;
-    Me = 0;
-    musp500 = 42.4;
-    fray    = 0.62;
-    bmie    = 1.0;
-    gg      = 0.90;
-    musp = musp500*(fray*(wavelength/500).^-4 + (1-fray)*(wavelength/500).^-bmie);
-    X = [B*S B*(1-S) W Me]';
-    mediaProperties(j).mua = MU*X; % [cm^-1]
-    mediaProperties(j).mus = musp/(1-gg); % [cm^-1]
-    mediaProperties(j).g   = gg;
-    mediaProperties(j).VHC = 3391*1.109e-3; % [J cm^-3 K^-1]
-    mediaProperties(j).TC  = 0.37e-2; % [W cm^-1 K^-1]
-    
-    j=4;
-    mediaProperties(j).name  = 'blood';
-    B       = 1.00;
-    S       = 0.75;
-    W       = 0.95;
-    Me      = 0;
-    musp500 = 10;
-    fray    = 0.0;
-    bmie    = 1.0;
-    gg      = 0.90;
-    musp = musp500*(fray*(wavelength/500).^-4 + (1-fray)*(wavelength/500).^-bmie);
-    X = [B*S B*(1-S) W Me]';
-    mediaProperties(j).mua = MU*X; % [cm^-1]
-    mediaProperties(j).mus = musp/(1-gg); % [cm^-1]
-    mediaProperties(j).g   = gg;
-    mediaProperties(j).VHC = 3617*1.050e-3; % [J cm^-3 K^-1]
-    mediaProperties(j).TC  = 0.52e-2; % [W cm^-1 K^-1]
-    mediaProperties(j).E   = 422.5e3; % J/mol    PLACEHOLDER DATA ONLY
-    mediaProperties(j).A   = 7.6e66; % 1/s        PLACEHOLDER DATA ONLY
+  j=1;
+  mediaProperties(j).name  = 'water';
+  mediaProperties(j).mua   = 0.00036; % [cm^-1]
+  mediaProperties(j).mus   = 10; % [cm^-1]
+  mediaProperties(j).g     = 1.0;
+  mediaProperties(j).VHC   = 4.19; % [J cm^-3 K^-1]
+  mediaProperties(j).TC    = 5.8e-3; % [W cm^-1 K^-1]
+
+  j=2;
+  mediaProperties(j).name  = 'epidermis';
+  B = 0; % Blood content
+  S = 0.75; % Blood oxygen saturation
+  W = 0.75; % Water content
+  M = 0.03; % Melanin content
+  F = 0; % Fat content
+  mediaProperties(j).mua = calc_mua(wavelength,S,B,W,F,M); % Jacques "Optical properties of biological tissues: a review" eq. 12
+
+  aPrime = 40; % musPrime at 500 nm
+  fRay = 0; % Fraction of scattering due to Rayleigh scattering
+  bMie = 1; % Scattering power for Mie scattering
+  g = 0.9; % Scattering anisotropy
+  mediaProperties(j).mus = calc_mus(wavelength,aPrime,fRay,bMie,g); % Jacques "Optical properties of biological tissues: a review" eq. 2
+  mediaProperties(j).g   = g;
+  mediaProperties(j).VHC = 3391*1.109e-3; % [J cm^-3 K^-1]
+  mediaProperties(j).TC  = 0.37e-2; % [W cm^-1 K^-1]
+
+  j=3;
+  mediaProperties(j).name = 'dermis';
+  B = 0.002; % Blood content
+  S = 0.67; % Blood oxygen saturation
+  W = 0.65; % Water content
+  M = 0; % Melanin content
+  F = 0; % Fat content
+  mediaProperties(j).mua = calc_mua(wavelength,S,B,W,F,M); % Jacques "Optical properties of biological tissues: a review" eq. 12
+
+  aPrime = 42.4; % musPrime at 500 nm
+  fRay = 0.62; % Fraction of scattering due to Rayleigh scattering
+  bMie = 1; % Scattering power for Mie scattering
+  g = 0.9; % Scattering anisotropy
+  mediaProperties(j).mus = calc_mus(wavelength,aPrime,fRay,bMie,g); % Jacques "Optical properties of biological tissues: a review" eq. 2
+  mediaProperties(j).g   = g;
+  mediaProperties(j).VHC = 3391*1.109e-3; % [J cm^-3 K^-1]
+  mediaProperties(j).TC  = 0.37e-2; % [W cm^-1 K^-1]
+
+  j=4;
+  mediaProperties(j).name  = 'blood';
+  B = 1; % Blood content
+  S = 0.75; % Blood oxygen saturation
+  W = 0.95; % Water content
+  M = 0; % Melanin content
+  F = 0; % Fat content
+  mediaProperties(j).mua = calc_mua(wavelength,S,B,W,F,M); % Jacques "Optical properties of biological tissues: a review" eq. 12
+
+  aPrime = 10; % musPrime at 500 nm
+  fRay = 0; % Fraction of scattering due to Rayleigh scattering
+  bMie = 1; % Scattering power for Mie scattering
+  g = 0.9; % Scattering anisotropy
+  mediaProperties(j).mus = calc_mus(wavelength,aPrime,fRay,bMie,g); % Jacques "Optical properties of biological tissues: a review" eq. 2
+  mediaProperties(j).g   = g;
+  mediaProperties(j).VHC = 3617*1.050e-3; % [J cm^-3 K^-1]
+  mediaProperties(j).TC  = 0.52e-2; % [W cm^-1 K^-1]
+  mediaProperties(j).E   = 422.5e3; % J/mol    PLACEHOLDER DATA ONLY
+  mediaProperties(j).A   = 7.6e66; % 1/s        PLACEHOLDER DATA ONLY
 end

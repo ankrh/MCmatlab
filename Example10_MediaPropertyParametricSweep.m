@@ -11,10 +11,10 @@
 % event at 45°. There is a secondary hump around -0.7, which fits with
 % photons experiencing two scattering events at a scattering angle of
 % 157.5°.
-% 
+%
 % As in example 9, calcNFR is again set to false to speed up the simulation
 % slightly.
-% 
+%
 % The results of the last run will be plotted and MCmatlab will give a
 % warning because in that last one, no photons were collected in the
 % detector. This is not a problem in our case since we were expecting this.
@@ -22,13 +22,13 @@
 %% MCmatlab abbreviations
 % G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
 % simulation, M: Media array, FR: Fluence rate, FD: Fractional damage.
-% 
+%
 % There are also some optional abbreviations you can use when referencing
 % object/variable names: LS = lightSource, LC = lightCollector, FPID =
 % focalPlaneIntensityDistribution, AID = angularIntensityDistribution, NI =
 % normalizedIrradiance, NFR = normalizedFluenceRate.
-% 
-% For example, "model.MC.LS.FPID.radialDistr" is the same as 
+%
+% For example, "model.MC.LS.FPID.radialDistr" is the same as
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
@@ -83,16 +83,16 @@ g_vec = linspace(-1,1,21); % g values to simulate
 power_vec = zeros(1,length(g_vec));
 fprintf('%2d/%2d\n',0,length(g_vec));
 for i=1:length(g_vec)
-    fprintf('\b\b\b\b\b\b%2d/%2d\n',i,length(g_vec)); % Simple progress indicator
-    
-    % Adjust media properties
-    model.G.mediaPropParams   = {g_vec(i)}; % Cell array containing any additional parameters to be passed to the mediaPropertiesFunc function
-    
-    % Run MC
-    model = runMonteCarlo(model);
-    
-    % Post-processing
-    power_vec(i) = model.MC.lightCollector.image; % "image" is in this case just a scalar, the normalized power collected by the fiber.
+  fprintf('\b\b\b\b\b\b%2d/%2d\n',i,length(g_vec)); % Simple progress indicator
+
+  % Adjust media properties
+  model.G.mediaPropParams   = {g_vec(i)}; % Cell array containing any additional parameters to be passed to the mediaPropertiesFunc function
+
+  % Run MC
+  model = runMonteCarlo(model);
+
+  % Post-processing
+  power_vec(i) = model.MC.lightCollector.image; % "image" is in this case just a scalar, the normalized power collected by the fiber.
 end
 plot(model,'G');
 plot(model,'MC');
@@ -112,7 +112,7 @@ set(gca,'FontSize',18);grid on; grid minor;
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition(X,Y,Z,parameters)
-    M = ones(size(X)); % Variable g medium
+  M = ones(size(X)); % Variable g medium
 end
 
 %% Media Properties function
@@ -124,9 +124,9 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-    j=1;
-    mediaProperties(j).name  = 'variable g medium';
-    mediaProperties(j).mua   = 10; % [cm^-1]
-    mediaProperties(j).mus   = 100; % [cm^-1]
-    mediaProperties(j).g = parameters{1};
+  j=1;
+  mediaProperties(j).name  = 'variable g medium';
+  mediaProperties(j).mua   = 10; % [cm^-1]
+  mediaProperties(j).mus   = 100; % [cm^-1]
+  mediaProperties(j).g = parameters{1};
 end

@@ -20,13 +20,13 @@
 %% MCmatlab abbreviations
 % G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
 % simulation, M: Media array, FR: Fluence rate, FD: Fractional damage.
-% 
+%
 % There are also some optional abbreviations you can use when referencing
 % object/variable names: LS = lightSource, LC = lightCollector, FPID =
 % focalPlaneIntensityDistribution, AID = angularIntensityDistribution, NI =
 % normalizedIrradiance, NFR = normalizedFluenceRate.
-% 
-% For example, "model.MC.LS.FPID.radialDistr" is the same as 
+%
+% For example, "model.MC.LS.FPID.radialDistr" is the same as
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
@@ -80,9 +80,8 @@ plot(model,'MC');
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition(X,Y,Z,parameters)
-    M = ones(size(X)); % Air background
-    M(X.^2 + Y.^2 + (Z - Z(end)).^2 < 0.04^2) = 2; % Water
-    % M(Z>0.09) = 3; % Reflector
+  M = ones(size(X)); % Air background
+  M(X.^2 + Y.^2 + (Z - Z(end)).^2 < 0.04^2) = 2; % Water
 end
 
 %% Media Properties function
@@ -94,17 +93,17 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-    j=1;
-    mediaProperties(j).name  = 'air';
-    mediaProperties(j).mua   = 1e-8; % [cm^-1]
-    mediaProperties(j).mus   = 1e-8; % [cm^-1]
-    mediaProperties(j).g     = 1;
-    mediaProperties(j).n     = 1;
-    
-    j=2;
-    mediaProperties(j).name  = 'water';
-    mediaProperties(j).mua   = 0.00036; % [cm^-1]
-    mediaProperties(j).mus   = 10; % [cm^-1]
-    mediaProperties(j).g     = 1.0;
-    mediaProperties(j).n     = 1.3;
+  j=1;
+  mediaProperties(j).name  = 'air';
+  mediaProperties(j).mua   = 1e-8; % [cm^-1]
+  mediaProperties(j).mus   = 1e-8; % [cm^-1]
+  mediaProperties(j).g     = 1;
+  mediaProperties(j).n     = 1;
+
+  j=2;
+  mediaProperties(j).name  = 'water';
+  mediaProperties(j).mua   = 0.00036; % [cm^-1]
+  mediaProperties(j).mus   = 10; % [cm^-1]
+  mediaProperties(j).g     = 1.0;
+  mediaProperties(j).n     = 1.3;
 end

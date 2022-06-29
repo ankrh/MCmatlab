@@ -6,20 +6,20 @@
 % want of the far field distribution. The geometry is almost the same
 % fluorescing cylinder as example 5, but now illuminated by a tilted
 % Gaussian beam and now with only one type of fluorescer.
-% 
+%
 % In the far field of the excitation light, you can see that they primarily
 % escape in downward-pointing directions (in transmission), while the far
 % field distribution of fluorescence light indicates that fluorescence
 % mostly escapes on the ends of the cylinder, with a small amount of light
 % coming out of the cylinder in the minus z direction (upwards).
-% 
+%
 % Note that MCmatlab distinguishes between "escaped" photons and "killed"
 % photons. An "escaping" photon is one that hits the top cuboid boundary
 % (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1)
 % where the medium has refractive index 1. A "killed" photon is one that
 % strays too far from the main cuboid (5 times further than the cuboid
 % dimensions).
-% 
+%
 % If boundaryType == 1, there are no "killed" photons since no photons can
 % travel outside the cuboid, and the fraction of light absorbed in the
 % cuboid plus the fraction of light escaping equals 1.
@@ -27,13 +27,13 @@
 %% MCmatlab abbreviations
 % G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
 % simulation, M: Media array, FR: Fluence rate, FD: Fractional damage.
-% 
+%
 % There are also some optional abbreviations you can use when referencing
 % object/variable names: LS = lightSource, LC = lightCollector, FPID =
 % focalPlaneIntensityDistribution, AID = angularIntensityDistribution, NI =
 % normalizedIrradiance, NFR = normalizedFluenceRate.
-% 
-% For example, "model.MC.LS.FPID.radialDistr" is the same as 
+%
+% For example, "model.MC.LS.FPID.radialDistr" is the same as
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
@@ -95,9 +95,9 @@ plot(model,'FMC');
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition(X,Y,Z,parameters)
-    cylinderradius  = 0.0100;
-    M = 1*ones(size(X)); % fill background with fluorescence absorber
-    M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 2; % fluorescer
+  cylinderradius  = 0.0100;
+  M = 1*ones(size(X)); % fill background with fluorescence absorber
+  M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 2; % fluorescer
 end
 
 %% Media Properties function
@@ -109,31 +109,31 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-    j=1;
-    mediaProperties(j).name  = 'fluorescence absorber';
-    if(wavelength<500)
-        mediaProperties(j).mua = 1; % [cm^-1]
-        mediaProperties(j).mus = 100; % [cm^-1]
-        mediaProperties(j).g   = 0.9;
-    else
-        mediaProperties(j).mua = 100; % [cm^-1]
-        mediaProperties(j).mus = 100; % [cm^-1]
-        mediaProperties(j).g   = 0.9;
-    end
-    
-    j=2;
-    mediaProperties(j).name  = 'fluorescer';
-    if(wavelength<500)
-        mediaProperties(j).mua = 100; % [cm^-1]
-        mediaProperties(j).mus = 100; % [cm^-1]
-        mediaProperties(j).g   = 0.9;
-    else
-        mediaProperties(j).mua = 1; % [cm^-1]
-        mediaProperties(j).mus = 100; % [cm^-1]
-        mediaProperties(j).g   = 0.9;
-    end
-    
-    % Only one of PY and QY may be defined:
-    mediaProperties(j).PY   = 0.5; % Fluorescence power yield (ratio of power emitted to power absorbed)
-    % mediaProperties(j).QY   = 0.6; % Fluorescence quantum yield (ratio of photons emitted to photons absorbed)
+  j=1;
+  mediaProperties(j).name  = 'fluorescence absorber';
+  if(wavelength<500)
+    mediaProperties(j).mua = 1; % [cm^-1]
+    mediaProperties(j).mus = 100; % [cm^-1]
+    mediaProperties(j).g   = 0.9;
+  else
+    mediaProperties(j).mua = 100; % [cm^-1]
+    mediaProperties(j).mus = 100; % [cm^-1]
+    mediaProperties(j).g   = 0.9;
+  end
+
+  j=2;
+  mediaProperties(j).name  = 'fluorescer';
+  if(wavelength<500)
+    mediaProperties(j).mua = 100; % [cm^-1]
+    mediaProperties(j).mus = 100; % [cm^-1]
+    mediaProperties(j).g   = 0.9;
+  else
+    mediaProperties(j).mua = 1; % [cm^-1]
+    mediaProperties(j).mus = 100; % [cm^-1]
+    mediaProperties(j).g   = 0.9;
+  end
+
+  % Only one of PY and QY may be defined:
+  mediaProperties(j).PY   = 0.5; % Fluorescence power yield (ratio of power emitted to power absorbed)
+  % mediaProperties(j).QY   = 0.6; % Fluorescence quantum yield (ratio of photons emitted to photons absorbed)
 end

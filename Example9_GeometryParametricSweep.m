@@ -22,7 +22,7 @@
 % The silentMode flags are used here, which suppress the outputs to the
 % command line, which is especially useful to avoid excessive text if
 % simulating in a for- or while-loop like this.
-% 
+%
 % Also, the optional calcNFR flag in the MCinput is here set to false, which
 % means the MC simulation does not calculate the 3D fluence rate array.
 % This is useful because we're here only interested in the "image" data,
@@ -31,13 +31,13 @@
 %% MCmatlab abbreviations
 % G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
 % simulation, M: Media array, FR: Fluence rate, FD: Fractional damage.
-% 
+%
 % There are also some optional abbreviations you can use when referencing
 % object/variable names: LS = lightSource, LC = lightCollector, FPID =
 % focalPlaneIntensityDistribution, AID = angularIntensityDistribution, NI =
 % normalizedIrradiance, NFR = normalizedFluenceRate.
-% 
-% For example, "model.MC.LS.FPID.radialDistr" is the same as 
+%
+% For example, "model.MC.LS.FPID.radialDistr" is the same as
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
@@ -92,17 +92,17 @@ t_vec = linspace(0,0.1,21); % Thicknesses to simulate
 power_vec = zeros(1,length(t_vec));
 fprintf('%2d/%2d\n',0,length(t_vec));
 for i=1:length(t_vec)
-    fprintf('\b\b\b\b\b\b%2d/%2d\n',i,length(t_vec)); % Simple progress indicator
-    
-    % Adjust geometry
-    model.G.geomFuncParams      = {t_vec(i)}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
-    plot(model,'G');
-    
-    % Run MC
-    model = runMonteCarlo(model);
-    
-    % Post-processing
-    power_vec(i) = model.MC.lightCollector.image; % "image" is in this case just a scalar, the normalized power collected by the fiber.
+  fprintf('\b\b\b\b\b\b%2d/%2d\n',i,length(t_vec)); % Simple progress indicator
+
+  % Adjust geometry
+  model.G.geomFuncParams      = {t_vec(i)}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
+  plot(model,'G');
+
+  % Run MC
+  model = runMonteCarlo(model);
+
+  % Post-processing
+  power_vec(i) = model.MC.lightCollector.image; % "image" is in this case just a scalar, the normalized power collected by the fiber.
 end
 plot(model,'MC');
 
@@ -121,8 +121,8 @@ set(gca,'FontSize',18);grid on; grid minor;
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition(X,Y,Z,parameters)
-    M = ones(size(X)); % Air
-    M(Z > 0.1 - parameters{1} & Z < 0.1) = 2; % "Standard" tissue
+  M = ones(size(X)); % Air
+  M(Z > 0.1 - parameters{1} & Z < 0.1) = 2; % "Standard" tissue
 end
 
 %% Media Properties function
@@ -134,15 +134,15 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-    j=1;
-    mediaProperties(j).name  = 'air';
-    mediaProperties(j).mua   = 1e-8; % [cm^-1]
-    mediaProperties(j).mus   = 1e-8; % [cm^-1]
-    mediaProperties(j).g     = 1;
-    
-    j=2;
-    mediaProperties(j).name  = 'standard tissue';
-    mediaProperties(j).mua   = 1; % [cm^-1]
-    mediaProperties(j).mus   = 100; % [cm^-1]
-    mediaProperties(j).g     = 0.9;
+  j=1;
+  mediaProperties(j).name  = 'air';
+  mediaProperties(j).mua   = 1e-8; % [cm^-1]
+  mediaProperties(j).mus   = 1e-8; % [cm^-1]
+  mediaProperties(j).g     = 1;
+
+  j=2;
+  mediaProperties(j).name  = 'standard tissue';
+  mediaProperties(j).mua   = 1; % [cm^-1]
+  mediaProperties(j).mus   = 100; % [cm^-1]
+  mediaProperties(j).g     = 0.9;
 end

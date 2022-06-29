@@ -2,10 +2,10 @@
 % Here we demonstrate how to define beams using sourceType = 1, 4 or 5. The
 % geometry is only air, which has negligible scattering and absorption. The
 % farFieldRes input will be further illustrated in example 7.
-% 
+%
 % This example will execute five different simulations. Press any key with
 % the command window in focus to start the next simulation.
-% 
+%
 % First we demonstrate an isotropically emitting line source with sourceType
 % = 1 with length specified using lightSource.emitterLength and focus in the
 % middle of the cuboid. If emitterLength is set to 0, the source would be a
@@ -16,20 +16,20 @@
 % straight down. Then we define various simple and complicated beams using
 % sourceType 4 and 5. See other examples for more beams with focus placed
 % inside the cuboid and for tilted input beams.
-% 
+%
 % In principle, Gaussian beams can be simulated using either sourceType 4 or
 % 5 (because exp(-R^2) = exp(-X^2)*exp(-Y^2)).
 
 %% MCmatlab abbreviations
 % G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
 % simulation, M: Media array, FR: Fluence rate, FD: Fractional damage.
-% 
+%
 % There are also some optional abbreviations you can use when referencing
 % object/variable names: LS = lightSource, LC = lightCollector, FPID =
 % focalPlaneIntensityDistribution, AID = angularIntensityDistribution, NI =
 % normalizedIrradiance, NFR = normalizedFluenceRate.
-% 
-% For example, "model.MC.LS.FPID.radialDistr" is the same as 
+%
+% For example, "model.MC.LS.FPID.radialDistr" is the same as
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
@@ -165,7 +165,7 @@ plot(model,'MC');
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition(X,Y,Z,parameters)
-    M = ones(size(X)); % Air
+  M = ones(size(X)); % Air
 end
 
 %% Media Properties function
@@ -177,9 +177,9 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-    j=1;
-    mediaProperties(j).name  = 'air';
-    mediaProperties(j).mua   = 1e-8; % [cm^-1]
-    mediaProperties(j).mus   = 1e-8; % [cm^-1]
-    mediaProperties(j).g     = 1;
+  j=1;
+  mediaProperties(j).name  = 'air';
+  mediaProperties(j).mua   = 1e-8; % [cm^-1]
+  mediaProperties(j).mus   = 1e-8; % [cm^-1]
+  mediaProperties(j).g     = 1;
 end

@@ -4,14 +4,14 @@
 % capacity (VHC) that increases drastically when the temperature is around
 % 40° C. Such a medium is not particularly realistic, but serves to
 % showcase the feature.
-% 
+%
 % As the medium heats up, the regions that approach 40° C will not heat
 % much further due to the very high VHC, despite still absorbing the same
 % power as before. In the plot, the yellow color (40° C) can be seen to
 % extend further and further down into the medium as time goes, but even
 % the top layer has not become white (45° C) by the end of the
 % simulation.
-% 
+%
 % In models where optical or thermal properties depend on temperature or
 % fractional damage, it is very important for the user to test whether
 % mediaProperties(j).nBins and model.HS.nUpdates are set high enough and
@@ -21,13 +21,13 @@
 %% MCmatlab abbreviations
 % G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
 % simulation, M: Media array, FR: Fluence rate, FD: Fractional damage.
-% 
+%
 % There are also some optional abbreviations you can use when referencing
 % object/variable names: LS = lightSource, LC = lightCollector, FPID =
 % focalPlaneIntensityDistribution, AID = angularIntensityDistribution, NI =
 % normalizedIrradiance, NFR = normalizedFluenceRate.
-% 
-% For example, "model.MC.LS.FPID.radialDistr" is the same as 
+%
+% For example, "model.MC.LS.FPID.radialDistr" is the same as
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
@@ -84,9 +84,9 @@ model.HS.nUpdates            = 100; % Number of times data is extracted for plot
 model.HS.mediaPropRecalcPeriod = 1; % Every N updates, the media properties will be recalculated (including, if needed, re-running MC and FMC steps)
 model.HS.slicePositions      = [.5 0.6 1]; % Relative slice positions [x y z] for the 3D plots on a scale from 0 to 1
 model.HS.tempSensorPositions = [0 0 0.005
-                                0 0 0.015
-                                0 0 0.035
-                                0 0 0.065]; % Each row is a temperature sensor's absolute [x y z] coordinates. Leave the matrix empty ([]) to disable temperature sensors.
+  0 0 0.015
+  0 0 0.035
+  0 0 0.065]; % Each row is a temperature sensor's absolute [x y z] coordinates. Leave the matrix empty ([]) to disable temperature sensors.
 
 % Execution, do not modify the next line:
 model = simulateHeatDistribution(model);
@@ -100,8 +100,8 @@ plot(model,'HS');
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition(X,Y,Z,parameters)
-    M = ones(size(X)); % fill background with water
-    M(Z > 0.01) = 2; % Temperature dependent VHC material
+  M = ones(size(X)); % fill background with water
+  M(Z > 0.01) = 2; % Temperature dependent VHC material
 end
 
 %% Media Properties function
@@ -113,20 +113,20 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-    j=1;
-    mediaProperties(j).name  = 'water';
-    mediaProperties(j).mua   = 0.00036; % [cm^-1]
-    mediaProperties(j).mus   = 10; % [cm^-1]
-    mediaProperties(j).g     = 1.0;
-    mediaProperties(j).VHC   = 4.19; % [J cm^-3 K^-1]
-    mediaProperties(j).TC    = 5.8e-3; % [W cm^-1 K^-1]
-    
-    j=2;
-    mediaProperties(j).name  = 'temp. dep. VHC material';
-    mediaProperties(j).mua = 30; % [cm^-1]
-    mediaProperties(j).mus = 50; % [cm^-1]
-    mediaProperties(j).g   = 0.8;
-    mediaProperties(j).VHC = '3.5 + 500./(1+exp(40-T))'; % [J cm^-3 K^-1]
-    mediaProperties(j).TC  = 0.52e-2; % [W cm^-1 K^-1]
-    mediaProperties(j).nBins = 30;
+  j=1;
+  mediaProperties(j).name  = 'water';
+  mediaProperties(j).mua   = 0.00036; % [cm^-1]
+  mediaProperties(j).mus   = 10; % [cm^-1]
+  mediaProperties(j).g     = 1.0;
+  mediaProperties(j).VHC   = 4.19; % [J cm^-3 K^-1]
+  mediaProperties(j).TC    = 5.8e-3; % [W cm^-1 K^-1]
+
+  j=2;
+  mediaProperties(j).name  = 'temp. dep. VHC material';
+  mediaProperties(j).mua = 30; % [cm^-1]
+  mediaProperties(j).mus = 50; % [cm^-1]
+  mediaProperties(j).g   = 0.8;
+  mediaProperties(j).VHC = '3.5 + 500./(1+exp(40-T))'; % [J cm^-3 K^-1]
+  mediaProperties(j).TC  = 0.52e-2; % [W cm^-1 K^-1]
+  mediaProperties(j).nBins = 30;
 end
