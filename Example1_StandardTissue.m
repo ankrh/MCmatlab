@@ -8,12 +8,17 @@
 % the log10 plot checkbox in the visualizations to better see the fluence
 % rate and absorption distribution in the MC result.
 
-%% Common MCmatlab abbreviations:
+%% MCmatlab abbreviations
 % G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
-% simulation, M: Media array, LS: Light source, LC: Light collector, FPID:
-% Focal plane intensity distribution, AID: Angular intensity distribution,
-% NI: Normalized irradiance, NFR: Normalized fluence rate, FR: Fluence
-% rate, FD: Fractional damage.
+% simulation, M: Media array, FR: Fluence rate, FD: Fractional damage.
+% 
+% There are also some optional abbreviations you can use when referencing
+% object/variable names: LS = lightSource, LC = lightCollector, FPID =
+% focalPlaneIntensityDistribution, AID = angularIntensityDistribution, NI =
+% normalizedIrradiance, NFR = normalizedFluenceRate.
+% 
+% For example, "model.MC.LS.FPID.radialDistr" is the same as 
+% "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
 model = MCmatlab.model;
@@ -36,14 +41,16 @@ model.MC.matchedInterfaces        = true; % Assumes all refractive indices are t
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
 model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
-model.MC.LS.sourceType   = 0; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+model.MC.lightSource.sourceType   = 0; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+
 % For a pencil beam, the "focus" is just a point that the beam goes
 % through, here set to be the center of the cuboid:
-model.MC.LS.xFocus       = 0; % [cm] x position of focus
-model.MC.LS.yFocus       = 0; % [cm] y position of focus
-model.MC.LS.zFocus       = model.G.Lz/2; % [cm] z position of focus
-model.MC.LS.theta        = 0; % [rad] Polar angle of beam center axis
-model.MC.LS.phi          = 0; % [rad] Azimuthal angle of beam center axis
+model.MC.lightSource.xFocus       = 0; % [cm] x position of focus
+model.MC.lightSource.yFocus       = 0; % [cm] y position of focus
+model.MC.lightSource.zFocus       = model.G.Lz/2; % [cm] z position of focus
+
+model.MC.lightSource.theta        = 0; % [rad] Polar angle of beam center axis
+model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of beam center axis
 
 
 % Execution, do not modify the next line:
@@ -58,9 +65,9 @@ plot(model,'MC');
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition(X,Y,Z,parameters)
-    tissuedepth = 0.03;
+    zSurface = 0.03;
     M = ones(size(X)); % Air
-    M(Z > tissuedepth) = 2; % "Standard" tissue
+    M(Z > zSurface) = 2; % "Standard" tissue
 end
 
 %% Media Properties function
@@ -77,12 +84,10 @@ function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
     mediaProperties(j).mua   = 1e-8; % [cm^-1]
     mediaProperties(j).mus   = 1e-8; % [cm^-1]
     mediaProperties(j).g     = 1;
-    mediaProperties(j).n     = 1;
     
     j=2;
     mediaProperties(j).name  = 'standard tissue';
     mediaProperties(j).mua   = 1; % [cm^-1]
     mediaProperties(j).mus   = 100; % [cm^-1]
     mediaProperties(j).g     = 0.9;
-    mediaProperties(j).n     = 1.3;
 end

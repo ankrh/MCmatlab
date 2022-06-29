@@ -12,12 +12,17 @@
 % therefore blurred out in the image. Scattering from voxels at larger z
 % depths are seen to arrive at later times.
 
-%% Common MCmatlab abbreviations:
+%% MCmatlab abbreviations
 % G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
-% simulation, M: Media array, LS: Light source, LC: Light collector, FPID:
-% Focal plane intensity distribution, AID: Angular intensity distribution,
-% NI: Normalized irradiance, NFR: Normalized fluence rate, FR: Fluence
-% rate, FD: Fractional damage.
+% simulation, M: Media array, FR: Fluence rate, FD: Fractional damage.
+% 
+% There are also some optional abbreviations you can use when referencing
+% object/variable names: LS = lightSource, LC = lightCollector, FPID =
+% focalPlaneIntensityDistribution, AID = angularIntensityDistribution, NI =
+% normalizedIrradiance, NFR = normalizedFluenceRate.
+% 
+% For example, "model.MC.LS.FPID.radialDistr" is the same as 
+% "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
 model = MCmatlab.model;
@@ -42,31 +47,31 @@ model.MC.matchedInterfaces        = true; % Assumes all refractive indices are t
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
 model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
-model.MC.LS.sourceType   = 2; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
-model.MC.LS.xFocus       = 0; % [cm] x position of focus
-model.MC.LS.yFocus       = 0; % [cm] y position of focus
-model.MC.LS.zFocus       = model.G.Lz/2; % [cm] z position of focus
-model.MC.LS.theta        = 0; % [rad] Polar angle of beam center axis
-model.MC.LS.phi          = 0; % [rad] Azimuthal angle of beam center axis
+model.MC.lightSource.sourceType   = 2; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+model.MC.lightSource.xFocus       = 0; % [cm] x position of focus
+model.MC.lightSource.yFocus       = 0; % [cm] y position of focus
+model.MC.lightSource.zFocus       = model.G.Lz/2; % [cm] z position of focus
+model.MC.lightSource.theta        = 0; % [rad] Polar angle of beam center axis
+model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of beam center axis
 
 model.MC.useLightCollector = true;
-model.MC.LC.x         = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
-model.MC.LC.y         = 0; % [cm] y position
-model.MC.LC.z         = model.G.Lz/2; % [cm] z position
+model.MC.lightCollector.x         = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
+model.MC.lightCollector.y         = 0; % [cm] y position
+model.MC.lightCollector.z         = model.G.Lz/2; % [cm] z position
 
-model.MC.LC.theta     = atan(1/sqrt(2)); % [rad] Polar angle of direction the light collector is facing
-model.MC.LC.phi       = -3*pi/4; % [rad] Azimuthal angle of direction the light collector is facing
+model.MC.lightCollector.theta     = atan(1/sqrt(2)); % [rad] Polar angle of direction the light collector is facing
+model.MC.lightCollector.phi       = -3*pi/4; % [rad] Azimuthal angle of direction the light collector is facing
 
-model.MC.LC.f         = .2; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
-model.MC.LC.diam      = .2; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(NA)).
-model.MC.LC.fieldSize = .2; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
-model.MC.LC.NA        = 0.22; % [-] Fiber NA. Only used for infinite f.
+model.MC.lightCollector.f         = .2; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
+model.MC.lightCollector.diam      = .2; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(NA)).
+model.MC.lightCollector.fieldSize = .2; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
+model.MC.lightCollector.NA        = 0.22; % [-] Fiber NA. Only used for infinite f.
 
-model.MC.LC.res       = 100; % X and Y resolution of light collector in pixels, only used for finite f
+model.MC.lightCollector.res       = 100; % X and Y resolution of light collector in pixels, only used for finite f
 
-model.MC.LC.tStart    = -1.5e-13; % [s] Start of the detection time-of-flight interval
-model.MC.LC.tEnd      = 5.5e-12; % [s] End of the detection time-of-flight interval
-model.MC.LC.nTimeBins = 100; % Number of bins between tStart and tEnd. If zero, the measurement is not time-resolved.
+model.MC.lightCollector.tStart    = -1.5e-13; % [s] Start of the detection time-of-flight interval
+model.MC.lightCollector.tEnd      = 5.5e-12; % [s] End of the detection time-of-flight interval
+model.MC.lightCollector.nTimeBins = 100; % Number of bins between tStart and tEnd. If zero, the measurement is not time-resolved.
 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);

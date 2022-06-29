@@ -25,12 +25,17 @@
 % model.HS.mediaPropRecalcPeriod low enough for a suitably converged
 % result.
 
-%% Common MCmatlab abbreviations:
+%% MCmatlab abbreviations
 % G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
-% simulation, M: Media array, LS: Light source, LC: Light collector, FPID:
-% Focal plane intensity distribution, AID: Angular intensity distribution,
-% NI: Normalized irradiance, NFR: Normalized fluence rate, FR: Fluence
-% rate, FD: Fractional damage.
+% simulation, M: Media array, FR: Fluence rate, FD: Fractional damage.
+% 
+% There are also some optional abbreviations you can use when referencing
+% object/variable names: LS = lightSource, LC = lightCollector, FPID =
+% focalPlaneIntensityDistribution, AID = angularIntensityDistribution, NI =
+% normalizedIrradiance, NFR = normalizedFluenceRate.
+% 
+% For example, "model.MC.LS.FPID.radialDistr" is the same as 
+% "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
 model = MCmatlab.model;
@@ -54,16 +59,16 @@ model.MC.matchedInterfaces        = true; % Assumes all refractive indices are t
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
 model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
-model.MC.LS.sourceType   = 4; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
-model.MC.LS.FPID.radialDistr = 1; % Radial focal plane intensity distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
-model.MC.LS.FPID.radialWidth = .005; % [cm] Radial focal plane 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
-model.MC.LS.AID.radialDistr = 1; % Radial angular intensity distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
-model.MC.LS.AID.radialWidth = 10/180*pi; % [rad] Radial angular 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom. For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength*1e-9/(pi*model.MC.LS.FPID.radialWidth*1e-2))
-model.MC.LS.xFocus       = 0; % [cm] x position of focus
-model.MC.LS.yFocus       = -0.017; % [cm] y position of focus
-model.MC.LS.zFocus       = 0.078; % [cm] z position of focus
-model.MC.LS.theta        = pi/6; % [rad] Polar angle of beam center axis
-model.MC.LS.phi          = -pi/2; % [rad] Azimuthal angle of beam center axis
+model.MC.lightSource.sourceType   = 4; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr = 1; % Radial focal plane intensity distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
+model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth = .005; % [cm] Radial focal plane 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
+model.MC.lightSource.angularIntensityDistribution.radialDistr = 1; % Radial angular intensity distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
+model.MC.lightSource.angularIntensityDistribution.radialWidth = 10/180*pi; % [rad] Radial angular 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom. For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength*1e-9/(pi*model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth*1e-2))
+model.MC.lightSource.xFocus       = 0; % [cm] x position of focus
+model.MC.lightSource.yFocus       = -0.017; % [cm] y position of focus
+model.MC.lightSource.zFocus       = 0.078; % [cm] z position of focus
+model.MC.lightSource.theta        = pi/6; % [rad] Polar angle of beam center axis
+model.MC.lightSource.phi          = -pi/2; % [rad] Azimuthal angle of beam center axis
 
 model.HS.Tinitial                 = 20; % [deg C] Initial temperature
 

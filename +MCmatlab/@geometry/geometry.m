@@ -1,4 +1,4 @@
-classdef geometry < handle
+classdef geometry
   %GEOMETRY This class contains all properties related to the geometry of
   %an MCmatlab.model.
   %   This class defines the properties of a geometry to be used in a
@@ -13,15 +13,16 @@ classdef geometry < handle
     Lx (1,1) double {mustBeFinite, mustBePositive} = 1 % [cm] x size of simulation cuboid
     Ly (1,1) double {mustBeFinite, mustBePositive} = 1 % [cm] y size of simulation cuboid
     Lz (1,1) double {mustBeFinite, mustBePositive} = 1 % [cm] z size of simulation cuboid
-    mediaPropertiesFunc (1,1) function_handle {mustHave2Input1OutputArgs} = @emptyMediaPropertiesFunc % Media properties defined as a function at the end of the model file
+    mediaPropertiesFunc (1,1) function_handle {mustHave2Input1OutputArgs} = @defaultMediaPropertiesFunc % Media properties defined as a function at the end of the model file
     mediaPropParams cell = {} % Cell array containing any additional parameters to be passed to the getMediaProperties function
-    geomFunc (1,1) function_handle {mustHave4Input1OutputArgs} = @emptyGeomFunc % Function to use for defining the distribution of media in the cuboid. Defined at the end of the model file.
+    geomFunc (1,1) function_handle {mustHave4Input1OutputArgs} = @defaultGeomFunc % Function to use for defining the distribution of media in the cuboid. Defined at the end of the model file.
     geomFuncParams cell = {} % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
   end
 
-  properties (Access = private)
-    M_raw_cache cell = {NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN}
+  properties(SetAccess = private)
+    M_raw uint8 = ones(100,100,100)
   end
+
   properties (Dependent)
     dx
     dy
@@ -29,7 +30,29 @@ classdef geometry < handle
     x
     y
     z
-    M_raw uint8
+  end
+
+  methods(Access = private)
+    function obj = update_M_raw(obj)
+      [X,Y,Z] = ndgrid(single(obj.x),single(obj.y),single(obj.z)); % The single data type is used to conserve memory
+      M_rawtemp = obj.geomFunc(X,Y,Z,obj.geomFuncParams);
+      if ~isequal(size(M_rawtemp),[obj.nx, obj.ny, obj.nz])
+        error('Error: The M returned by the geometry function must be nx by ny by nz in size. It''s a good idea to use, e.g., M = ones(size(X)); in your geometry definition to set the size correctly.');
+      end
+      if ~isreal(M_rawtemp)
+        error('Error: The M returned by the geometry function must not contain complex numbers.');
+      end
+      if any(M_rawtemp(:) <= 0)
+        error('Error: The M returned by the geometry function must only contain positive numbers.');
+      end
+      if any(rem(M_rawtemp(:),1))
+        error('Error: The M returned by the geometry function must only contain integers.');
+      end
+      if any(M_rawtemp(:)>255)
+        error('Error: The M returned by the geometry function must not contain numbers over 255.');
+      end
+      obj.M_raw = M_rawtemp;
+    end
   end
 
   methods
@@ -53,30 +76,37 @@ classdef geometry < handle
       value = ((0:obj.nz-1)+1/2)*obj.dz; % [cm] z position of centers of voxels
     end
 
-    function value = get.M_raw(obj)
-      if obj.nx ~= obj.M_raw_cache{1} || obj.ny ~= obj.M_raw_cache{2} || obj.nz ~= obj.M_raw_cache{3} || ...
-          obj.Lx ~= obj.M_raw_cache{4} || obj.Ly ~= obj.M_raw_cache{5} || obj.Lz ~= obj.M_raw_cache{6} || ...
-          ~isequal(obj.geomFunc, obj.M_raw_cache{7}) || ~isequal(obj.geomFuncParams, obj.M_raw_cache{8})
-        [X,Y,Z] = ndgrid(single(obj.x),single(obj.y),single(obj.z)); % The single data type is used to conserve memory
-        M_rawtemp = obj.geomFunc(X,Y,Z,obj.geomFuncParams);
-        if ~isequal(size(M_rawtemp),[obj.nx, obj.ny, obj.nz])
-          error('Error: The M returned by the geometry function must be nx by ny by nz in size. It''s a good idea to use, e.g., M = ones(size(X)); in your geometry definition to set the size correctly.');
-        end
-        if ~isreal(M_rawtemp)
-          error('Error: The M returned by the geometry function must not contain complex numbers.');
-        end
-        if any(M_rawtemp(:) <= 0)
-          error('Error: The M returned by the geometry function must only contain positive numbers.');
-        end
-        if any(rem(M_rawtemp(:),1))
-          error('Error: The M returned by the geometry function must only contain integers.');
-        end
-        if any(M_rawtemp(:)>255)
-          error('Error: The M returned by the geometry function must not contain numbers over 255.');
-        end
-        obj.M_raw_cache = {obj.nx, obj.ny, obj.nz, obj.Lx, obj.Ly, obj.Lz, obj.geomFunc, obj.geomFuncParams, uint8(M_rawtemp)}; % We want to cache the value of M_raw to avoid costly recalculation every time M_raw is referenced
-      end
-      value = obj.M_raw_cache{9};
+    function obj = set.nx(obj,x)
+      obj.nx = x;
+      obj = update_M_raw(obj);
+    end
+    function obj = set.ny(obj,x)
+      obj.ny = x;
+      obj = update_M_raw(obj);
+    end
+    function obj = set.nz(obj,x)
+      obj.nz = x;
+      obj = update_M_raw(obj);
+    end
+    function obj = set.Lx(obj,x)
+      obj.Lx = x;
+      obj = update_M_raw(obj);
+    end
+    function obj = set.Ly(obj,x)
+      obj.Ly = x;
+      obj = update_M_raw(obj);
+    end
+    function obj = set.Lz(obj,x)
+      obj.Lz = x;
+      obj = update_M_raw(obj);
+    end
+    function obj = set.geomFunc(obj,x)
+      obj.geomFunc = x;
+      obj = update_M_raw(obj);
+    end
+    function obj = set.geomFuncParams(obj,x)
+      obj.geomFuncParams = x;
+      obj = update_M_raw(obj);
     end
   end
 end
@@ -99,10 +129,10 @@ if nargout(f) ~= 1
 end
 end
 
-function M = emptyGeomFunc(~,~,~,~)
-M = [];
+function M = defaultGeomFunc(X,~,~,~)
+M = ones(size(X));
 end
 
-function mediaProperties = emptyMediaPropertiesFunc(~,~)
+function mediaProperties = defaultMediaPropertiesFunc(~,~)
 mediaProperties = struct();
 end

@@ -39,12 +39,17 @@
 % although the function has been lightly modified by Anders K. Hansen for
 % use in MCmatlab.
 
-%% Common MCmatlab abbreviations:
+%% MCmatlab abbreviations
 % G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
-% simulation, M: Media array, LS: Light source, LC: Light collector, FPID:
-% Focal plane intensity distribution, AID: Angular intensity distribution,
-% NI: Normalized irradiance, NFR: Normalized fluence rate, FR: Fluence
-% rate, FD: Fractional damage.
+% simulation, M: Media array, FR: Fluence rate, FD: Fractional damage.
+% 
+% There are also some optional abbreviations you can use when referencing
+% object/variable names: LS = lightSource, LC = lightCollector, FPID =
+% focalPlaneIntensityDistribution, AID = angularIntensityDistribution, NI =
+% normalizedIrradiance, NFR = normalizedFluenceRate.
+% 
+% For example, "model.MC.LS.FPID.radialDistr" is the same as 
+% "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
 model = MCmatlab.model;
@@ -177,16 +182,10 @@ function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
     mediaProperties(j).mua   = 1e-8; % [cm^-1]
     mediaProperties(j).mus   = 1e-8; % [cm^-1]
     mediaProperties(j).g     = 1;
-    mediaProperties(j).n     = 1;
-    mediaProperties(j).VHC   = 1.2e-3;
-    mediaProperties(j).TC    = 0; % Real value is 2.6e-4, but we set it to zero to neglect the heat transport to air
     
     j=2;
     mediaProperties(j).name  = 'standard tissue';
     mediaProperties(j).mua   = 1; % [cm^-1]
     mediaProperties(j).mus   = 100; % [cm^-1]
     mediaProperties(j).g     = 0.9;
-    mediaProperties(j).n     = 1.3;
-    mediaProperties(j).VHC   = 3391*1.109e-3;
-    mediaProperties(j).TC    = 0.37e-2;
 end

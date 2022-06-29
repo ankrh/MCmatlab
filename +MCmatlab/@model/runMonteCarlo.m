@@ -197,11 +197,8 @@ end
 if isnan(MCorFMC.wavelength)
   error('Error: No wavelength defined');
 end
-if ~MCorFMC.calcNFR && ~MCorFMC.useLightCollector
-  error('Error: calcNFR is false, but no light collector is defined');
-end
 if MCorFMC.calcNFRdet && ~MCorFMC.useLightCollector
-  error('Error: calcNFRdet is true, but no light collector is defined');
+  error('Error: calcNormalizedFluenceRatedet is true, but no light collector is defined');
 end
 if MCorFMC.farFieldRes && MCorFMC.boundaryType == 0
   error('Error: If boundaryType == 0, no photons can escape to be registered in the far field. Set farFieldRes to zero or change boundaryType.');
@@ -209,7 +206,7 @@ end
 
 if simType == 2
   if isnan(model.MC.NFR(1))
-    error('Error: NFR matrix not calculated for excitation light');
+    error('Error: normalizedFluenceRate matrix not calculated for excitation light');
   end
 else
   
@@ -217,38 +214,38 @@ else
     error('Error: No sourceType defined');
   end
   if (MCorFMC.LS.sourceType == 3 || MCorFMC.LS.sourceType == 4) && (isnan(MCorFMC.LS.FPID.radialWidth) || isnan(MCorFMC.LS.AID.radialWidth))
-    error('Error: LS.FPID.radialWidth and LS.AID.radialWidth must both be specified when sourceType is 3 or 4');
+    error('Error: lightSource.focalPlaneIntensityDistribution.radialWidth and lightSource.angularIntensityDistribution.radialWidth must both be specified when sourceType is 3 or 4');
   end
   if MCorFMC.LS.sourceType == 4 && (isnan(MCorFMC.LS.FPID.radialDistr(1)) || isnan(MCorFMC.LS.AID.radialDistr(1)))
-    error('Error: LS.FPID.radialDistr and LS.AID.radialDistr must both be specified when sourceType is 4');
+    error('Error: lightSource.focalPlaneIntensityDistribution.radialDistr and lightSource.angularIntensityDistribution.radialDistr must both be specified when sourceType is 4');
   end
   if MCorFMC.LS.sourceType == 5
     if isnan(MCorFMC.LS.FPID.XDistr(1))
-      error('Error: LS.FPID.XDistr must be specified when sourceType is 5');
+      error('Error: lightSource.focalPlaneIntensityDistribution.XDistr must be specified when sourceType is 5');
     end
     if isnan(MCorFMC.LS.FPID.XWidth)
-      error('Error: LS.FPID.Xwidth must be specified when sourceType is 5');
+      error('Error: lightSource.focalPlaneIntensityDistribution.Xwidth must be specified when sourceType is 5');
     end
     if isnan(MCorFMC.LS.FPID.YDistr(1))
-      error('Error: LS.FPID.YDistr must be specified when sourceType is 5');
+      error('Error: lightSource.focalPlaneIntensityDistribution.YDistr must be specified when sourceType is 5');
     end
     if isnan(MCorFMC.LS.FPID.YWidth)
-      error('Error: LS.FPID.YWidth must be specified when sourceType is 5');
+      error('Error: lightSource.focalPlaneIntensityDistribution.YWidth must be specified when sourceType is 5');
     end
     if isnan(MCorFMC.LS.AID.XDistr(1))
-      error('Error: LS.AID.XDistr must be specified when sourceType is 5');
+      error('Error: lightSource.angularIntensityDistribution.XDistr must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.LS.AID.XWidth)
-      error('Error: LS.AID.Xwidth must be specified when sourceType is 5');
+    if MCorFMC.LS.AID.XDistr(1) ~= 2 && isnan(MCorFMC.LS.AID.XWidth)
+      error('Error: lightSource.angularIntensityDistribution.Xwidth must be specified when sourceType is 5 and the distribution is non-Lambertian');
     end
     if isnan(MCorFMC.LS.AID.YDistr(1))
-      error('Error: LS.AID.YDistr must be specified when sourceType is 5');
+      error('Error: lightSource.angularIntensityDistribution.YDistr must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.LS.AID.YWidth)
-      error('Error: LS.AID.YWidth must be specified when sourceType is 5');
+    if MCorFMC.LS.AID.YDistr(1) ~= 2 && isnan(MCorFMC.LS.AID.YWidth)
+      error('Error: lightSource.angularIntensityDistribution.YWidth must be specified when sourceType is 5 and the distribution is non-Lambertian');
     end
     if xor(MCorFMC.LS.AID.XDistr == 2,MCorFMC.LS.AID.YDistr == 2)
-      error('Error: LS.AID.XDistr and LS.AID.YDistr must either both be set to cosine (Lambertian), or neither');
+      error('Error: lightSource.angularIntensityDistribution.XDistr and lightSource.angularIntensityDistribution.YDistr must either both be set to cosine (Lambertian), or neither');
     end
   end
   if size(MCorFMC.LS.FPID.radialDistr,1) > 1 || size(MCorFMC.LS.FPID.XDistr,1) > 1 || size(MCorFMC.LS.FPID.YDistr,1) > 1 ||...
@@ -279,7 +276,7 @@ if MCorFMC.useLightCollector
     yLCC = MCorFMC.LC.y;
     zLCC = MCorFMC.LC.z;
     if MCorFMC.LC.res ~= 1
-      error('Error: LC.res must be 1 when LC.f is Inf');
+      error('Error: lightCollector.res must be 1 when lightCollector.f is Inf');
     end
   end
 
