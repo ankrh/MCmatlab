@@ -63,24 +63,32 @@ end
 
 %% Loop through different media and split if it has a dependence on FR or T
 M = zeros(size(M_raw),'uint8');
+uniqueCDFs = [];
 j = 1; % Position in mediaProperties
 for i=1:length(mP_fH)
   if any(M_raw(:) == i)
-    paramVals = NaN(3,sum(M_raw(:) == i),'single'); % Number of columns is number of voxels with this medium, and rows are (mua, mus, g)
-    if isa(mP_fH(i).mua,'function_handle')
-      paramVals(1,:) = mP_fH(i).mua(FR(M_raw(:) == i),T(M_raw(:) == i),FD(M_raw(:) == i));
+    if isa(mP_fH(i).customPhaseFunc,'function_handle')
+      nThetas = 200;
+      thetas = pi/nThetas*((1:nThetas) - 0.5);
+      PDF = sin(thetas).*mP_fH(i).customPhaseFunc(thetas); % The probability density function is the phase function multiplied by the differential solid angle, sin(thetas)
+      if ~isreal(PDF) || any(~isfinite(PDF)) || any(PDF < 0)
+        error('Error: The custom phase function of %s did not return real, finite, non-negative numbers.',mP_fH(i).name);
+      end
+      CDF = [0 cumsum(PDF)/sum(PDF)].'; % Cumulative distribution function
+      matchFound = false;
+      for iCDF=1:size(uniqueCDFs,2)
+        if isequal(CDF,uniqueCDFs(:,iCDF))
+          mP(j).CDFidx = iCDF - 1; % 0-based indexing for later use in mex function
+          matchFound = true;
+          break;
+        end
+      end
+      if ~matchFound
+        uniqueCDFs = [uniqueCDFs CDF];
+        mP(j).CDFidx = size(uniqueCDFs,2) - 1; % 0-based indexing for later use in mex function
+      end
     else
-      paramVals(1,:) = mP_fH(i).mua;
-    end
-    if isa(mP_fH(i).mus,'function_handle')
-      paramVals(2,:) = mP_fH(i).mus(FR(M_raw(:) == i),T(M_raw(:) == i),FD(M_raw(:) == i));
-    else
-      paramVals(2,:) = mP_fH(i).mus;
-    end
-    if isa(mP_fH(i).g,'function_handle')
-      paramVals(3,:) = mP_fH(i).g(FR(M_raw(:) == i),T(M_raw(:) == i),FD(M_raw(:) == i));
-    else
-      paramVals(3,:) = mP_fH(i).g;
+      mP(j).CDFidx = NaN;
     end
 
     if ~isa(mP_fH(i).mua,'function_handle') && ...
@@ -98,6 +106,23 @@ for i=1:length(mP_fH)
         error('Error: nBins not specified for medium %s',mP_fH(i).name);
       end
       N = mP_fH(i).nBins; % Number of sub-media to split the i'th medium into
+
+      paramVals = NaN(3,sum(M_raw(:) == i),'single'); % Number of columns is number of voxels with this medium, and rows are (mua, mus, g)
+      if isa(mP_fH(i).mua,'function_handle')
+        paramVals(1,:) = mP_fH(i).mua(FR(M_raw(:) == i),T(M_raw(:) == i),FD(M_raw(:) == i));
+      else
+        paramVals(1,:) = mP_fH(i).mua;
+      end
+      if isa(mP_fH(i).mus,'function_handle')
+        paramVals(2,:) = mP_fH(i).mus(FR(M_raw(:) == i),T(M_raw(:) == i),FD(M_raw(:) == i));
+      else
+        paramVals(2,:) = mP_fH(i).mus;
+      end
+      if isa(mP_fH(i).g,'function_handle')
+        paramVals(3,:) = mP_fH(i).g(FR(M_raw(:) == i),T(M_raw(:) == i),FD(M_raw(:) == i));
+      else
+        paramVals(3,:) = mP_fH(i).g;
+      end
       [downsampledParamVals,binidx] = getDownsampledParamVals(paramVals,N); % paramVals and downsampledParamVals are single precision and binidx is uint8
 
       [~,sortidx] = sortrows(downsampledParamVals.');
@@ -134,7 +159,7 @@ for j=1:length(mP)
     error('Error: Medium %s has invalid mua (%f)',mP(j).name,mP(j).mua);
   elseif ~isfinite(mP(j).mus) || mP(j).mus <= 0
     error('Error: Medium %s has invalid mus (%f)',mP(j).name,mP(j).mus);
-  elseif ~isfinite(mP(j).g) || abs(mP(j).g) > 1
+  elseif ~isnan(mP(j).g) && (~isfinite(mP(j).g) || abs(mP(j).g) > 1)
     error('Error: Medium %s has invalid g (%f)',mP(j).name,mP(j).g);
   elseif mP(j).n < 1
     error('Error: Medium %s has invalid n (%f)',mP(j).name,mP(j).n);
@@ -175,9 +200,11 @@ if simType == 1
   model.MC.mediaProperties = mP;
   model.MC.interfaceNormals = interfaceNormals;
   model.MC.M = M;
+  model.MC.CDFs = uniqueCDFs;
 else
   model.FMC.mediaProperties = mP;
   model.FMC.interfaceNormals = interfaceNormals;
   model.FMC.M = M;
+  model.FMC.CDFs = uniqueCDFs;
 end
 end

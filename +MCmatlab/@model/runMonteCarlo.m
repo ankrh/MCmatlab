@@ -32,7 +32,7 @@ else
 end
 
 checkMCinputFields(model,simType);
-model = getMediaProperties_funcHandles(model,simType); % Calls the mediaPropertiesFunc and converts those fields that are specified as char array formulas into function handles taking intensity and temperature as input
+model = getMediaProperties_funcHandles(model,simType); % Calls the mediaPropertiesFunc and converts those fields that are specified as char array formulas into function handles taking fluence rate, temperature and fractional damage as input
 
 %% Check for GPU compatibility if needed
 if (simType == 1 && model.MC.useGPU) || (simType == 2 && model.FMC.useGPU)

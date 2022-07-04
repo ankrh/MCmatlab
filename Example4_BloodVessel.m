@@ -12,6 +12,11 @@
 % distribution of coagulated blood. Temperature sensors outputs and movie
 % generation is also demonstrated.
 
+% In the media properties function, we use the formulas described in
+% Jacques "Optical properties of biological tissues: a review" to calculate
+% mua and mus. The functions calc_mua() and calc_mus() are provided for
+% this purpose.
+
 %% MCmatlab abbreviations
 % G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
 % simulation, M: Media array, FR: Fluence rate, FD: Fractional damage.

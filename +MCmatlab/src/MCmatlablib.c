@@ -4,12 +4,25 @@ struct debug {
   unsigned long long ulls[3];
 };
 
+struct depositionCriteria { // Struct type for the deposition criteria, that determine whether a photon's weight loss should be deposited in any output arrays
+  unsigned long  minS;
+  unsigned long  maxS;
+  unsigned long  minRefr;
+  unsigned long  maxRefr;
+  unsigned long  minRefl;
+  unsigned long  maxRefl;
+  unsigned long  minI;
+  unsigned long  maxI;
+};
+
 struct geometry { // Struct type for the constant geometry definitions, including the wavelength-dependent optical properties and the boundary type
   FLOATORDBL     d[3];
   long           n[3];
   long           farFieldRes;
   int            boundaryType;
   FLOATORDBL     *muav,*musv,*gv,*RIv;
+  unsigned char  *CDFidxv;
+  FLOATORDBL     *CDFs;
   unsigned char  *M;
   float          *interfaceNormals;
 };
@@ -52,7 +65,8 @@ struct lightCollector { // Struct type for the constant light collector definiti
 struct photon { // Struct type for parameters describing the thread-specific current state of a photon
   FLOATORDBL     i[3],u[3],D[3]; // Fractional position indices i, ray trajectory unit vector u and distances D to next voxel boundary (yz, xz or yz) along current trajectory
   long           j; // Linear index of current voxel (or closest defined voxel if photon outside cuboid)
-  FLOATORDBL     mua,mus,g,RI; // Absorption, scattering, anisotropy and refractive index values at current photon position
+  FLOATORDBL     mua,mus,g,RI; // Absorption, scattering, anisotropy, refractive index values and a pointer to the phase function CDF array at current photon position
+  unsigned char  CDFidx;
   FLOATORDBL     stepLeft,weight,time;
   bool           insideVolume,alive,sameVoxel;
   PRNG_t         PRNGstate; // "State" of the Mersenne Twister pseudo-random number generator
@@ -60,13 +74,17 @@ struct photon { // Struct type for parameters describing the thread-specific cur
   long           recordElems; // Current number of elements used of the record. Starts at 0 every photon launch, used only if calcNFRdet is true
   long           *j_record; // List of the indices of the voxels in which the current photon has deposited power, used only if calcNFRdet is true
   FLOATORDBL     *weight_record; // List of the weights that have been deposited into the voxels, used only if calcNFRdet is true
+  long           scatterings;
+  long           refractions;
+  long           reflections;
+  long           interfaceTransitions;
 };
 
 struct paths { // Struct type for storing the paths taken by the nExamplePaths first photons simulated by the master thread
   long           pathsElems; // Current number of elements used
   long           threadNum;
   long           nExamplePaths; // Number of photons to store the path of
-  long           nMasterPhotonsLaunched; // Number of photons the master thread has launched
+  long           nExamplePhotonPathsStarted; // Number of example photon paths the master thread has started
   long           pathsSize; // Current size of the list
   FLOATORDBL     *data; // Array containing x, y, z and weight data for the photons, in which the paths of different photons are separated by four NaNs
 };
@@ -84,6 +102,25 @@ struct outputs {
   double * NI_zpos;
   double * NI_zneg;
 };
+
+#ifdef __NVCC__ // If compiling for CUDA
+__device__
+#endif
+bool depositionCriteriaMet(struct photon *P,struct depositionCriteria *DC) {
+  return P->scatterings          >= DC->minS &&
+         P->scatterings          <= DC->maxS &&
+         P->refractions          >= DC->minRefr &&
+         P->refractions          <= DC->maxRefr &&
+         P->reflections          >= DC->minRefl &&
+         P->reflections          <= DC->maxRefl &&
+         P->interfaceTransitions >= DC->minI &&
+         P->interfaceTransitions <= DC->maxI;
+}
+
+#ifdef __NVCC__ // If compiling for CUDA
+__device__
+#endif
+unsigned long infCast(double x) {return isinf(x)? ULONG_MAX: x;}
 
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
@@ -394,7 +431,7 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
 __device__
 #endif
 void addToPhotonPath(struct photon * const P, struct paths * const Pa, struct geometry const * const G, bool addNaN) {
-  if(Pa->nMasterPhotonsLaunched <= Pa->nExamplePaths) {
+  if(Pa->nExamplePhotonPathsStarted <= Pa->nExamplePaths) {
     if(Pa->pathsElems == Pa->pathsSize) {
       #ifdef __NVCC__ // If compiling for CUDA
       Pa->pathsElems = -1; // Buffer not large enough, has to be resized by host
@@ -416,7 +453,7 @@ void addToPhotonPath(struct photon * const P, struct paths * const Pa, struct ge
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void launchPhoton(struct photon * const P, struct beam const * const B, struct geometry const * const G, struct paths * const Pa, bool * abortingPtr, struct debug * D) {
+void launchPhoton(struct photon * const P, struct beam const * const B, struct geometry const * const G, struct paths * const Pa, struct depositionCriteria *DC, bool * abortingPtr, struct debug * D) {
   FLOATORDBL X,Y,r,phi,tanphiX,tanphiY,costheta,sintheta;
   long   j,idx;
   FLOATORDBL target[3]={0},w0[3];
@@ -618,15 +655,19 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
 
   P->stepLeft  = -LOG(RandomNum);
   
+  P->scatterings = P->refractions = P->reflections = P->interfaceTransitions = 0;
+
   #ifdef __NVCC__ // If compiling for CUDA
   if(!threadIdx.x && !blockIdx.x)
   #elif defined(_OPENMP)
   #pragma omp master
   #endif
   {
-    Pa->nMasterPhotonsLaunched++;
-    addToPhotonPath(P,Pa,G,true); // Add a photon path entry of NaNs to mark the beginning of a new trajectory
-    addToPhotonPath(P,Pa,G,false); // Add a photon path entry with the current position
+    if(depositionCriteriaMet(P,DC)) {
+      Pa->nExamplePhotonPathsStarted++;
+      addToPhotonPath(P,Pa,G,true); // Add a photon path entry of NaNs to mark the beginning of a new trajectory
+      addToPhotonPath(P,Pa,G,false); // Add a photon path entry with the current position
+    }
   }
 }
 
@@ -714,7 +755,7 @@ void formEdgeFluxes(struct photon const * const P, struct geometry const * const
 __device__
 #endif
 void checkEscape(struct photon * const P, struct paths *Pa, struct geometry const * const G, struct lightCollector const * const LC,
-        struct outputs const *O) {
+        struct outputs const *O, struct depositionCriteria *DC) {
   bool escaped = false;
   switch (G->boundaryType) {
     case 0:
@@ -761,7 +802,7 @@ void checkEscape(struct photon * const P, struct paths *Pa, struct geometry cons
       #pragma omp master
       #endif
       {
-        if(photonTeleported) {
+        if(photonTeleported && depositionCriteriaMet(P,DC)) {
           addToPhotonPath(P,Pa,G,true); // Add a photon path entry of NaNs to mark the beginning of a new trajectory
           addToPhotonPath(P,Pa,G,false); // Add a photon path entry with the current position
         }
@@ -773,9 +814,9 @@ void checkEscape(struct photon * const P, struct paths *Pa, struct geometry cons
                     P->i[1] < G->n[1] && P->i[1] >= 0 &&
                     P->i[2] < G->n[2] && P->i[2] >= 0;
   
-  if(!P->alive && G->boundaryType) formEdgeFluxes(P,G,O);
-  if(escaped && O->FF)             formFarField(P,G,O);
-  if(escaped && O->image)          formImage(P,G,LC,O); // If image is not NULL then that's because useLightCollector was set to true (non-zero)
+  if(!P->alive && G->boundaryType && depositionCriteriaMet(P,DC)) formEdgeFluxes(P,G,O);
+  if(escaped && O->FF && depositionCriteriaMet(P,DC))             formFarField(P,G,O);
+  if(escaped && O->image && depositionCriteriaMet(P,DC))          formImage(P,G,LC,O); // If image is not NULL then that's because useLightCollector was set to true (non-zero)
 }
 
 #ifdef __NVCC__ // If compiling for CUDA
@@ -786,9 +827,10 @@ void getNewVoxelProperties(struct photon * const P, struct geometry const * cons
    * If photon is outside cuboid, properties are those of
    * the closest defined voxel. */
   getNewj(G,P);
-  P->mua = G->muav[G->M[P->j]];
-  P->mus = G->musv[G->M[P->j]];
-  P->g   = G->gv  [G->M[P->j]];
+  P->mua    = G->muav   [G->M[P->j]];
+  P->mus    = G->musv   [G->M[P->j]];
+  P->g      = G->gv     [G->M[P->j]];
+  P->CDFidx = G->CDFidxv[G->M[P->j]];
   // Refractive index is not retrieved here, but only when we refract in through a surface
 }
 
@@ -901,9 +943,10 @@ void getInterpolatedNormal(struct geometry const * const G, struct photon *P, FL
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void propagatePhoton(struct photon * const P, struct geometry const * const G, struct outputs const *O, struct paths * const Pa, struct debug *D) {
+void propagatePhoton(struct photon * const P, struct geometry const * const G, struct outputs const *O, struct depositionCriteria *DC, struct paths * const Pa, struct debug *D) {
   long idx;
-  
+  bool criteriaPreviouslyMet = depositionCriteriaMet(P,DC);
+
   P->sameVoxel = true;
   
   FLOATORDBL s = min(P->stepLeft/P->mus,min(P->D[0],min(P->D[1],P->D[2])));
@@ -951,6 +994,7 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, s
           P->D[1] = P->u[1]? (FLOOR(P->i[1]) + (P->u[1]>0) - P->i[1])*G->d[1]/P->u[1]: INFINITY; // Recalculate voxel boundary distance for y
           P->D[2] = P->u[2]? (FLOOR(P->i[2]) + (P->u[2]>0) - P->i[2])*G->d[2]/P->u[2]: INFINITY; // Recalculate voxel boundary distance for z
           // We deliberately do not get the refractive index of the new voxel here, since a reflection means the photon is effectively still in the same medium, despite perhaps temporarily traveling in the new medium's voxel
+          P->reflections++;
         } else { // u_refr = sqrt(1 - mu^2*(1 - (u dot n)^2))*n + mu*(u - (u dot n)*n) = sqrt(1 - mu^2*(1 - cos(theta_in)^2))*n + mu*(u - cos(theta_in)*n) = (sqrt(1 - mu^2*(1 - cos(theta_in)^2)) - mu*cos(theta_in))*n + mu*u
           FLOATORDBL ncoeff = SQRT(cos_out_sqr) - mu*cos_in;
           P->u[0] = ncoeff*nx + mu*P->u[0];
@@ -960,8 +1004,12 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, s
           P->D[1] = P->u[1]? (FLOOR(P->i[1]) + (P->u[1]>0) - P->i[1])*G->d[1]/P->u[1]: INFINITY; // Recalculate voxel boundary distance for y
           P->D[2] = P->u[2]? (FLOOR(P->i[2]) + (P->u[2]>0) - P->i[2])*G->d[2]/P->u[2]: INFINITY; // Recalculate voxel boundary distance for z
           P->RI = G->RIv[G->M[j_new]]; // Since we have refracted into the new medium, we retrieve the new refractive index
+          P->refractions++;
+          P->interfaceTransitions++;
         }
       }
+    } else if(G->M[j_new] != G->M[P->j] && G->RIv[G->M[P->j]] == P->RI) { // No refraction or reflection, but we are in a new medium. The G->RIv[G->M[P->j]] == P->RI check is to ensure that we are not just coming out from a reflection event, because in that case the RI of the old voxel will not correspond to the P->RI value.
+      P->interfaceTransitions++;
     }
   }
   
@@ -969,10 +1017,10 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, s
   P->weight -= absorb;             // decrement WEIGHT by amount absorbed
 
   if(P->insideVolume) {  // only save data if the photon is inside simulation cuboid
-    if(O->NFR) {
+    if(O->NFR && depositionCriteriaMet(P,DC)) {
       atomicAddWrapperDBL(&O->NFR[P->j],absorb);
     }
-    if(P->recordSize) { // store indices and weights in pseudosparse array, to later add to NFRdet if photon ends up on the light collector
+    if(P->recordSize && depositionCriteriaMet(P,DC)) { // store indices and weights in pseudosparse array, to later add to NFRdet if photon ends up on the light collector
       if(P->recordElems == P->recordSize) {
         P->recordSize *= 2; // double the record's size
         P->j_record = (long *)reallocWrapper(P->j_record,P->recordSize/2*sizeof(long),P->recordSize*sizeof(long));
@@ -989,7 +1037,11 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, s
   #pragma omp master
   #endif
   {
-    addToPhotonPath(P,Pa,G,false);
+    if(!criteriaPreviouslyMet && depositionCriteriaMet(P,DC)) {
+      Pa->nExamplePhotonPathsStarted++;
+      addToPhotonPath(P,Pa,G,true); // Add a photon path entry of NaNs to mark the beginning of a new trajectory
+    }
+    if(depositionCriteriaMet(P,DC)) addToPhotonPath(P,Pa,G,false); // Add a photon path entry with the current position
   }
 }
 
@@ -1010,16 +1062,23 @@ void checkRoulette(struct photon * const P) {
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void scatterPhoton(struct photon * const P, struct geometry const * const G, struct debug *D) {
-  // Sample for costheta using Henyey-Greenstein scattering
-  FLOATORDBL costheta = FABS(P->g) == 1.0? P->g:
-                        FABS(P->g) <= SQRT(FLOATORDBLEPS)? 2*RandomNum - 1:
-                        (1 + P->g*P->g - SQR((1 - P->g*P->g)/(1 - P->g + 2*P->g*RandomNum)))/(2*P->g);
+void scatterPhoton(struct photon * const P, struct geometry const * const G, struct paths *Pa, struct depositionCriteria *DC, struct debug *D) {
+  bool criteriaPreviouslyMet = depositionCriteriaMet(P,DC);
+  FLOATORDBL costheta;
+  if(isnan(P->g)) {
+    // Sample for theta using the cumulative distribution function (CDF)
+    long jTheta = binaryTreeSearch(RandomNum,CDFSIZE,G->CDFs + P->CDFidx*CDFSIZE);
+    costheta = COS((jTheta + RandomNum)*PI/(CDFSIZE-1));
+  } else {
+    // Sample for costheta using Henyey-Greenstein scattering
+    costheta = FABS(P->g) == 1.0? P->g:
+                          FABS(P->g) <= SQRT(FLOATORDBLEPS)? 2*RandomNum - 1:
+                          (1 + P->g*P->g - SQR((1 - P->g*P->g)/(1 - P->g + 2*P->g*RandomNum)))/(2*P->g);
+  }
   FLOATORDBL sintheta = SQRT(1 - costheta*costheta);
   FLOATORDBL phi = 2*PI*RandomNum;
   FLOATORDBL cosphi = COS(phi);
   FLOATORDBL sinphi = SIN(phi);
-  long idx;
   
   if(FABS(P->u[2]) < 1) {
     FLOATORDBL ux_temp =  sintheta*(P->u[0]*P->u[2]*cosphi - P->u[1]*sinphi)/SQRT(P->u[0]*P->u[0] + P->u[1]*P->u[1]) + P->u[0]*costheta;
@@ -1034,9 +1093,24 @@ void scatterPhoton(struct photon * const P, struct geometry const * const G, str
   }
 
   // Calculate distances to next voxel boundary planes
-  for(idx=0;idx<3;idx++) P->D[idx] = P->u[idx]? (FLOOR(P->i[idx]) + (P->u[idx]>0) - P->i[idx])*G->d[idx]/P->u[idx] : INFINITY;
+  for(long idx=0;idx<3;idx++) P->D[idx] = P->u[idx]? (FLOOR(P->i[idx]) + (P->u[idx]>0) - P->i[idx])*G->d[idx]/P->u[idx] : INFINITY;
   
   P->stepLeft  = -LOG(RandomNum);
+
+  P->scatterings++;
+
+  #ifdef __NVCC__ // If compiling for CUDA
+  if(!threadIdx.x && !blockIdx.x)
+  #elif defined(_OPENMP)
+  #pragma omp master
+  #endif
+  {
+    if(!criteriaPreviouslyMet && depositionCriteriaMet(P,DC)) {
+      Pa->nExamplePhotonPathsStarted++;
+      addToPhotonPath(P,Pa,G,true); // Add a photon path entry of NaNs to mark the beginning of a new trajectory
+      addToPhotonPath(P,Pa,G,false); // Add a photon path entry with the current position
+    }
+  }
 }
 
 void normalizeDeposition(struct beam const * const B, struct geometry const * const G, struct lightCollector const * const LC,

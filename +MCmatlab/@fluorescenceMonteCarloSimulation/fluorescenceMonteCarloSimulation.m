@@ -22,6 +22,8 @@ classdef fluorescenceMonteCarloSimulation
     useLightCollector (1,1) logical = false
     lightCollector (1,1) MCmatlab.lightCollector
 
+    depositionCriteria (1,1) MCmatlab.depositionCriteria
+
     %% Calculated properties
     simulationTime = NaN;
     nPhotons = NaN;
@@ -29,6 +31,7 @@ classdef fluorescenceMonteCarloSimulation
 
     mediaProperties_funcHandles = NaN; % Wavelength-dependent
     mediaProperties = NaN; % Wavelength- and splitting-dependent
+    CDFs = NaN % Cumulative distribution functions for custom phase functions (not Henyey Greenstein)
     FRdependent logical = false;
     FDdependent logical = false;
     Tdependent logical = false;

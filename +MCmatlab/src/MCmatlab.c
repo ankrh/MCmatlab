@@ -158,6 +158,7 @@
      * of returning to the region of interest is judged as too low). When
      * launching an infinite plane wave without boundaries, photons will be
      * launched in this whole extended region. */
+#define CDFSIZE     201 // Each custom phase function CDF contains this many elements (has to be one plus the value set in getOpticalMediaProperties.m)
 
 #include "MCmatlablib.c"
 
@@ -165,7 +166,7 @@
 __global__
 #endif
 void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
-          struct lightCollector *LC_global, struct paths *Pa, struct outputs *O_global, long nM,
+          struct lightCollector *LC_global, struct paths *Pa, struct outputs *O_global, struct depositionCriteria *DC_global, long nM,
           long long simulationTimeStart, long long microSecondsOrGPUCycles, unsigned long long nPhotonsRequested,
           bool *abortingPtr, bool silentMode, struct debug *D) {
   struct photon P_var;
@@ -185,6 +186,8 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
   struct lightCollector *LC = &LC_var;
   __shared__ struct outputs O_var;
   struct outputs *O = &O_var;
+  __shared__ struct depositionCriteria DC_var;
+  struct depositionCriteria *DC = &DC_var;
   extern __shared__ FLOATORDBL smallArrays[]; // Dynamically allocated shared memory with size implicitly specified by the third cuda kernel launch parameter
   if(!threadIdx.x) { // Only let one thread per block do the copying
     // Copy contents of structs and smallArrays (not deep copies, pointers still point to global device memory)
@@ -192,13 +195,17 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
     G_var = *G_global;
     LC_var = *LC_global;
     O_var = *O_global;
+    DC_var = *DC_global;
     memcpy(smallArrays,G->muav,(nM*4 + B->L_NF1 + B->L_FF1 + B->L_NF2 + B->L_FF2)*sizeof(FLOATORDBL));
     // Set all array pointers to the correct new locations in the shared memory version of smallArrays
+    long CDFarraySize = (FLOATORDBL *)G->CDFidxv - G->CDFs;
     G->muav = smallArrays;
     G->musv = G->muav + nM;
     G->gv = G->musv + nM;
     G->RIv = G->gv + nM;
-    B->NFdist1 = G->RIv + nM;
+    G->CDFs = G->RIv + nM;
+    G->CDFidxv = (unsigned char *)(G->CDFs + CDFarraySize);
+    B->NFdist1 = (FLOATORDBL *)(G->CDFidxv + nM);
     B->FFdist1 = B->NFdist1 + B->L_NF1;
     B->NFdist2 = B->FFdist1 + B->L_FF1;
     B->FFdist2 = B->NFdist2 + B->L_NF2;
@@ -216,6 +223,7 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
   struct geometry *G = G_global;
   struct lightCollector *LC= LC_global;
   struct outputs *O = O_global;
+  struct depositionCriteria *DC = DC_global;
   // Check for failed memory allocations and initialize the PRNG
   if(P->recordSize && !P->j_record) mexErrMsgIdAndTxt("MCmatlab:OutOfMemory","Error: Out of memory");
   if(P->recordSize && !P->weight_record) mexErrMsgIdAndTxt("MCmatlab:OutOfMemory","Error: Out of memory");
@@ -224,20 +232,20 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
   // Launch major loop
   while(pctProgress < 100 && O->nPhotons + THREADNUM < nPhotonsRequested && !*abortingPtr) { // "+ THREADNUM" ensures that we avoid race conditions that might launch more than nPhotonsRequested photons
   #endif
-    launchPhoton(P,B,G,Pa,abortingPtr,D);
+    launchPhoton(P,B,G,Pa,DC,abortingPtr,D);
     if(P->alive) getNewVoxelProperties(P,G,D);
     if(P->alive) atomicAddWrapperULL(&O_global->nPhotons,1); // We have to store the photon number in the global memory so it's visible to all blocks
 
     while(P->alive) { // keep doing scattering events
       while(P->alive && P->stepLeft>0) { // keep propagating
-        propagatePhoton(P,G,O,Pa,D);
+        propagatePhoton(P,G,O,DC,Pa,D);
         if(!P->sameVoxel) {
-          checkEscape(P,Pa,G,LC,O); // photon may die here
+          checkEscape(P,Pa,G,LC,O,DC); // photon may die here
           if(P->alive) getNewVoxelProperties(P,G,D);
         }
       }
       if(P->alive) checkRoulette(P);
-      if(P->alive) scatterPhoton(P,G,D);
+      if(P->alive) scatterPhoton(P,G,Pa,DC,D);
     }
 
     #ifndef __NVCC__
@@ -307,8 +315,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   long L_FF1 = beamType >= 4? (long)mxGetN(mxGetPropertyShared(MatlabBeamFF,0,beamType == 4? "radialDistr": "XDistr")): 0;
   long L_NF2 = beamType == 5? (long)mxGetN(mxGetPropertyShared(MatlabBeamNF,0,"YDistr")): 0;
   long L_FF2 = beamType == 5? (long)mxGetN(mxGetPropertyShared(MatlabBeamFF,0,"YDistr")): 0;
-  size_t size_smallArrays = (nM*4 + L_NF1 + L_FF1 + L_NF2 + L_FF2)*sizeof(FLOATORDBL);
-  FLOATORDBL *smallArrays = (FLOATORDBL *)malloc(size_smallArrays);
+  long CDFarraySize = (long)mxGetNumberOfElements(mxGetPropertyShared(MatlabMC,0,"CDFs"));
+  size_t size_smallArrays = (nM*4 + CDFarraySize + L_NF1 + L_FF1 + L_NF2 + L_FF2)*sizeof(FLOATORDBL) + nM*sizeof(unsigned char);
+  char *smallArrays = (char *)malloc(size_smallArrays); // Because smallArrays contain different data types, we just use pointer to char (1 byte) here, and make it the correct types in the derived pointers
 
   // Geometry struct definition
   long L = (long)(dimPtr[0]*dimPtr[1]*dimPtr[2]); // Total number of voxels in cuboid
@@ -322,13 +331,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   G->n[1] = (long)dimPtr[1];
   G->n[2] = (long)dimPtr[2];
   G->farFieldRes = (long)*mxGetPr(mxGetPropertyShared(MatlabMC,0,"farFieldRes"));
-  G->boundaryType = (int)*mxGetPr(mxGetPropertyShared(MatlabMC,0,"boundaryType")); // boundaryType
-  G->muav = smallArrays;
+  G->boundaryType = (int)*mxGetPr(mxGetPropertyShared(MatlabMC,0,"boundaryType"));
+  G->muav = (FLOATORDBL *)smallArrays;
   G->musv = G->muav + nM;
   G->gv   = G->musv + nM;
   G->RIv  = G->gv + nM;
-  G->M = (unsigned char *)malloc(L*sizeof(unsigned char)); // M
-  G->interfaceNormals = (float *)mxGetData(mxGetPropertyShared(MatlabMC,0,"interfaceNormals"));
+  G->CDFs = G->RIv + nM;
+  G->CDFidxv = (unsigned char *)(G->CDFs + CDFarraySize); // Array that describes which CDF array is the one that applies to a particular medium
 
   // Fill the geometry arrays
   for(idx=0;idx<nM;idx++) {
@@ -336,7 +345,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     G->musv[idx] = (FLOATORDBL)*mxGetPr(mxGetField(mediaProperties,idx,"mus"));
     G->gv[idx]   = (FLOATORDBL)*mxGetPr(mxGetField(mediaProperties,idx,"g"));
     G->RIv[idx]  = (FLOATORDBL)*mxGetPr(mxGetField(mediaProperties,idx,"n"));
+    G->CDFidxv[idx] = (unsigned char)*mxGetPr(mxGetField(mediaProperties,idx,"CDFidx"));
   }
+  for(idx=0;idx<CDFarraySize;idx++) G->CDFs[idx] = (FLOATORDBL)mxGetPr(mxGetPropertyShared(MatlabMC,0,"CDFs"))[idx];
+
+  G->M = (unsigned char *)malloc(L*sizeof(unsigned char)); // M
+  G->interfaceNormals = (float *)mxGetData(mxGetPropertyShared(MatlabMC,0,"interfaceNormals"));
   unsigned char *M_matlab = (unsigned char *)mxGetData(mxGetPropertyShared(MatlabMC,0,"M"));
   for(idx=0;idx<L;idx++) G->M[idx] = M_matlab[idx] - 1; // Convert from MATLAB 1-based indexing to C 0-based indexing
   
@@ -355,7 +369,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   FLOATORDBL *NFdist1 = NULL, *NFdist2 = NULL, *FFdist1 = NULL, *FFdist2 = NULL;
   if(beamType >= 4) {
     double *MatlabNFdist1 = mxGetPr(mxGetPropertyShared(MatlabBeamNF,0,beamType == 4? "radialDistr": "XDistr"));
-    NFdist1 = G->RIv + nM;
+    NFdist1 = (FLOATORDBL *)(G->CDFidxv + nM);
     if(L_NF1 == 1) {
       *NFdist1 = -1 - (FLOATORDBL)MatlabNFdist1[0];
     } else {
@@ -435,6 +449,20 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   };
   struct beam *B = &B_var;
 
+  // Fill depositionCriteria struct
+  mxArray *MatlabDC = mxGetProperty(MatlabMC,0,"depositionCriteria");
+  struct depositionCriteria DC_var = {
+    infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"minScatterings"))),
+    infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"maxScatterings"))),
+    infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"minRefractions"))),
+    infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"maxRefractions"))),
+    infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"minReflections"))),
+    infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"maxReflections"))),
+    infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"minInterfaceTransitions"))),
+    infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"maxInterfaceTransitions")))
+  };
+  struct depositionCriteria *DC = &DC_var;
+
   // Light Collector struct definition
   mxArray *MatlabLC      = mxGetPropertyShared(MatlabMC,0,"LC");
   bool useLightCollector = mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabMC,0,"useLightCollector"));
@@ -463,7 +491,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   struct paths Pa_var;
   struct paths *Pa = &Pa_var;
   Pa->nExamplePaths = (long)*mxGetPr(mxGetPropertyShared(MatlabMC,0,"nExamplePaths")); // How many photon path examples are we supposed to store?
-  Pa->nMasterPhotonsLaunched = 0;
+  Pa->nExamplePhotonPathsStarted = 0;
   Pa->pathsSize = INITIALPATHSSIZE*Pa->nExamplePaths; // Will be dynamically increased later if needed
   Pa->pathsElems = 0;
   Pa->data = Pa->nExamplePaths? (FLOATORDBL *)malloc(4*Pa->pathsSize*sizeof(FLOATORDBL)): NULL;
@@ -614,7 +642,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   double nThreads = 1;
   #endif
   {
-    threadInitAndLoop(B,G,LC,Pa,O,nM,simulationTimeStart,(long long)(simulationTimeRequested*60000000),nPhotonsRequested,&aborting,silentMode,D);
+    threadInitAndLoop(B,G,LC,Pa,O,DC,nM,simulationTimeStart,(long long)(simulationTimeRequested*60000000),nPhotonsRequested,&aborting,silentMode,D);
   }
   #endif
 
