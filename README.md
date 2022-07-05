@@ -408,7 +408,7 @@ Number of bins between tStart and tEnd. If zero, the measurement is not time-res
 
 #### Fluorescence Monte Carlo parameters
 The following properties exist for fluorescence Monte Carlo simulations, and they work the same as for regular MC simulations:
-`FMC.useGPU`, `FMC.simulationTimeRequested`, `FMC.nPhotonsRequested`, `FMC.silentMode`, `FMC.useAllCPUs`, `FMC.calcNFR`, `FMC.calcNFRdet`, `FMC.nExamplePaths`, `FMC.farFieldRes`, `FMC.matchedInterfaces`, `FMC.smoothingLengthScale`, `FMC.boundaryType`, `FMC.wavelength`, `FMC.useLightCollector`, `FMC.lightCollector.x`, `FMC.lightCollector.y`, `FMC.lightCollector.z`, `FMC.lightCollector.theta`, `FMC.lightCollector.phi`, `FMC.lightCollector.f`, `FMC.lightCollector.diam`, `FMC.lightCollector.fieldSize`, `FMC.lightCollector.NA`, `FMC.lightCollector.res`
+`FMC.useGPU`, `FMC.simulationTimeRequested`, `FMC.nPhotonsRequested`, `FMC.silentMode`, `FMC.useAllCPUs`, `FMC.calcNormalizedFluenceRate`, `FMC.calcNormalizedFluenceRate_detected`, `FMC.nExamplePaths`, `FMC.farFieldRes`, `FMC.matchedInterfaces`, `FMC.smoothingLengthScale`, `FMC.boundaryType`, `FMC.wavelength`, `FMC.useLightCollector`, `FMC.lightCollector.x`, `FMC.lightCollector.y`, `FMC.lightCollector.z`, `FMC.lightCollector.theta`, `FMC.lightCollector.phi`, `FMC.lightCollector.f`, `FMC.lightCollector.diam`, `FMC.lightCollector.fieldSize`, `FMC.lightCollector.NA`, `FMC.lightCollector.res`
 
 #### Heat solver parameters
 `model.HS.useGPU`
@@ -565,6 +565,11 @@ A 1D array of azimuthal angles corresponding to the second dimension of model.MC
 2D (xy, xz or yz) arrays of normalized irradiances of the light hitting the boundaries (either escaping or killed). For example, the property named `model.MC.NI_xpos` designates the light that hits the surface that is orthogonal to the x axis and placed on the positive x side, whereas the `model.MC.NI_xneg` refers to the surface orthogonal to the x axis and placed on the negative x side. model.MC.boundaryType determine which of these arrays are calculated.
 `model.MC.NI_zneg` is of special interest to users interested in calculating the reflectance, which can be found as the integral over the array:
 - `R = model.G.dx*model.G.dy*sum(model.MC.NI_zneg(:));`
+
+`model.MC.lightCollector.image`
+[W/cm^2/W.incident]
+If `model.MC.lightCollector.res == 1`, this is a scalar with the normalized power registered on the light collector.
+If `model.MC.lightCollector.res > 1`, this is a 2D (XY) array of normalized irradiances registered on the light collector. This array describes the light distribution you would get on a camera looking at the cuboid through an objective lens.
 
 #### Fluorescence Monte Carlo properties
 All the output properties described above for excitation Monte Carlo are also provided for fluorescence Monte Carlo in the model.FMC object.

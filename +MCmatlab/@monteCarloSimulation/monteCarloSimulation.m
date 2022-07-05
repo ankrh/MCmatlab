@@ -22,7 +22,7 @@ classdef monteCarloSimulation
     FRinitial (:,:,:) double {mustBeFiniteNonnegativeArrayOrNaNScalar} = NaN % [W/cm^2] Initial guess for the intensity distribution, to be used for fluence rate dependent simulations
     FRdepIterations (1,1) double {mustBeInteger, mustBePositive} = 20
 
-    lightSource (1,1) MCmatlab.lightSource
+    lightSource (1,:) MCmatlab.lightSource {mustBeScalarOrEmpty}
 
     useLightCollector (1,1) logical = false
     lightCollector (1,1) MCmatlab.lightCollector
