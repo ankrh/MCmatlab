@@ -27,6 +27,8 @@ classdef lightSource
     beamType
     NF
     FF
+    FPID
+    AID
   end
 
   methods
@@ -39,20 +41,30 @@ classdef lightSource
       obj.sourceType = x; %#ok<MCSUP> 
     end
     function x = get.NF(obj)
-      warning('NF has been renamed focalPlaneIntensityDistribution. The ability to reference focalPlaneIntensityDistribution through NF will be deprecated in a future version.');
+      warning('NF has been renamed focalPlaneIntensityDistribution (FPID). The ability to reference focalPlaneIntensityDistribution through NF will be deprecated in a future version.');
       x = obj.focalPlaneIntensityDistribution;
     end
     function obj = set.NF(obj,x)
-      warning('NF has been renamed focalPlaneIntensityDistribution. The ability to reference focalPlaneIntensityDistribution through NF will be deprecated in a future version.');
+      warning('NF has been renamed focalPlaneIntensityDistribution (FPID). The ability to reference focalPlaneIntensityDistribution through NF will be deprecated in a future version.');
       obj.focalPlaneIntensityDistribution = x; %#ok<MCSUP> 
     end
     function x = get.FF(obj)
-      warning('FF has been renamed angularIntensityDistribution. The ability to reference angularIntensityDistribution through FF will be deprecated in a future version.');
+      warning('FF has been renamed angularIntensityDistribution (AID). The ability to reference angularIntensityDistribution through FF will be deprecated in a future version.');
       x = obj.angularIntensityDistribution;
     end
     function obj = set.FF(obj,x)
-      warning('FF has been renamed angularIntensityDistribution. The ability to reference angularIntensityDistribution through FF will be deprecated in a future version.');
+      warning('FF has been renamed angularIntensityDistribution (AID). The ability to reference angularIntensityDistribution through FF will be deprecated in a future version.');
       obj.angularIntensityDistribution = x; %#ok<MCSUP> 
     end
+    function x   = get.FPID(obj  ); x = obj.focalPlaneIntensityDistribution; end
+    function obj = set.FPID(obj,x);     obj.focalPlaneIntensityDistribution = x; end %#ok<MCSUP> 
+    function x   = get.AID(obj  );  x = obj.angularIntensityDistribution; end
+    function obj = set.AID(obj,x);      obj.angularIntensityDistribution = x; end %#ok<MCSUP> 
   end
+end
+
+function mustBeInRange(x,a,b)
+if any(x(:) < a) || any(x(:) > b)
+  error('Error: Values must be in range %f to %f.',a,b);
+end
 end

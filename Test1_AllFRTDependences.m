@@ -26,22 +26,22 @@ model.MC.matchedInterfaces        = true; % Assumes all refractive indices are t
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
 model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
-model.MC.lightSource.sourceType   = 5; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
-model.MC.lightSource.focalPlaneIntensityDistribution.XDistr = 0; % X near field distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
-model.MC.lightSource.focalPlaneIntensityDistribution.XWidth = .02; % [cm] X near field 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
-model.MC.lightSource.focalPlaneIntensityDistribution.YDistr = 0; % Y near field distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
-model.MC.lightSource.focalPlaneIntensityDistribution.YWidth = .01; % [cm] Y near field 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
-model.MC.lightSource.angularIntensityDistribution.XDistr = 2; % X angular distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
-model.MC.lightSource.angularIntensityDistribution.XWidth = pi/8; % [rad] X angular 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom
-model.MC.lightSource.angularIntensityDistribution.YDistr = 2; % Y angular distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
-model.MC.lightSource.angularIntensityDistribution.YWidth = pi/8; % [rad] Y angular 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom
-model.MC.lightSource.psi          = pi/4; % [rad] (Default: 0) Axial rotation angle of beam, relevant only for XY distributed beams
+model.MC.LS.sourceType   = 5; % 0: Pencil beam, 1: Isotropically emitting point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
+model.MC.LS.FPID.XDistr = 0; % X near field distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
+model.MC.LS.FPID.XWidth = .02; % [cm] X near field 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
+model.MC.LS.FPID.YDistr = 0; % Y near field distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
+model.MC.LS.FPID.YWidth = .01; % [cm] Y near field 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
+model.MC.LS.AID.XDistr = 2; % X angular intensity distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
+model.MC.LS.AID.XWidth = pi/8; % [rad] X angular 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom
+model.MC.LS.AID.YDistr = 2; % Y angular intensity distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
+model.MC.LS.AID.YWidth = pi/8; % [rad] Y angular 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom
+model.MC.LS.psi          = pi/4; % [rad] (Default: 0) Axial rotation angle of beam, relevant only for XY distributed beams
 
-model.MC.lightSource.xFocus       = 0; % [cm] x position of focus
-model.MC.lightSource.yFocus       = 0; % [cm] y position of focus
-model.MC.lightSource.zFocus       = 0; % [cm] z position of focus
-model.MC.lightSource.theta        = 0; % [rad] Polar angle of light source center axis
-model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of light source center axis
+model.MC.LS.xFocus       = 0; % [cm] x position of focus
+model.MC.LS.yFocus       = 0; % [cm] y position of focus
+model.MC.LS.zFocus       = 0; % [cm] z position of focus
+model.MC.LS.theta        = 0; % [rad] Polar angle of light source center axis
+model.MC.LS.phi          = 0; % [rad] Azimuthal angle of light source center axis
 
 model.MC.P                   = 2; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
 

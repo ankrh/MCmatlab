@@ -56,6 +56,7 @@ function plotMCmatlabMC(model,varargin)
 % 31: STL shape
 
 com.mathworks.mde.desk.MLDesktop.getInstance.setDocumentBarPosition('Figures',7); % Set Figures window tabs to be on left side
+model.G = model.G.update_M_raw;
 
 G = model.G;
 
@@ -379,7 +380,7 @@ if MCorFMC.boundaryType == 1
     setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera');
   end
 elseif MCorFMC.boundaryType == 2
-  if simFluorescence || isnan(MCorFMC.lightSource.sourceType) || MCorFMC.lightSource.sourceType ~= 2
+  if simFluorescence || isnan(MCorFMC.LS.sourceType) || MCorFMC.LS.sourceType ~= 2
     fprintf(['%.3g%% of ' fluorescenceOrIncident 'light hits the top cuboid boundary.\n'],100*(sum(sum(MCorFMC.NI_zneg*G.dx*G.dy)))/P_in);
   end
   
@@ -400,7 +401,7 @@ elseif MCorFMC.boundaryType == 2
   ylabel('y [cm]');
   set(gca,'fontsize',18)
 elseif MCorFMC.boundaryType == 3
-  if simFluorescence || isnan(MCorFMC.lightSource.sourceType) || MCorFMC.lightSource.sourceType ~= 2
+  if simFluorescence || isnan(MCorFMC.LS.sourceType) || MCorFMC.LS.sourceType ~= 2
     fprintf(['%.3g%% of ' fluorescenceOrIncident 'light hits the top or bottom cuboid boundaries.\n'],100*(sum(sum((MCorFMC.NI_zneg + MCorFMC.NI_zpos)*G.dx*G.dy)))/P_in);
   end
 
@@ -410,8 +411,9 @@ elseif MCorFMC.boundaryType == 3
   h_f.Name = ['Normalized ' fluorescenceOrNothing 'boundary irradiance'];
   clf;
 
+
   subplot(2,1,1);
-  imagesc(size(MCorFMC.NI_zneg,1)/2*[-G.dx G.dx],size(MCorFMC.NI_zneg,2)/2*[-G.dy G.dy],MCorFMC.NI_zneg.');
+  imagesc(G.x,G.y,MCorFMC.NI_zneg.');
   set(gca,'YDir','normal');
   title(['Normalized ' fluorescenceOrNothing 'top surface boundary irradiance [W/cm^2/W.incident]']);
   colormap(inferno);
@@ -423,7 +425,7 @@ elseif MCorFMC.boundaryType == 3
   set(gca,'fontsize',18);
 
   subplot(2,1,2);
-  imagesc(size(MCorFMC.NI_zpos,1)/2*[-G.dx G.dx],size(MCorFMC.NI_zpos,2)/2*[-G.dy G.dy],MCorFMC.NI_zpos.');
+  imagesc(G.x,G.y,MCorFMC.NI_zpos.');
   set(gca,'YDir','normal');
   title(['Normalized ' fluorescenceOrNothing 'bottom surface boundary irradiance [W/cm^2/W.incident]']);
   colormap(inferno);

@@ -27,6 +27,9 @@ anyFDdependence = false;
 for i=1:length(mP_raw)
   mP_fH(i).name = mP_raw(i).name;
   if simType <= 2
+    if ~isfield(mP_raw,'name') || any(cellfun(@isempty,{mP_raw.name}))
+      error('Error: You must define a name for each medium in the simulation.');
+    end
     if ~isfield(mP_raw,'mua') || isempty(mP_raw(i).mua)
       error('Error: Medium %s has no mua.',mP_raw(i).name);
     elseif ischar(mP_raw(i).mua)
@@ -59,21 +62,33 @@ for i=1:length(mP_raw)
     else
       mP_fH(i).mus = mP_raw(i).mus;
     end
-    if ~isfield(mP_raw,'g') || isempty(mP_raw(i).g)
-      error('Error: Medium %s has no g.',mP_raw(i).name);
-    elseif ischar(mP_raw(i).g)
-      FRdependence = contains(mP_raw(i).g,'FR');
-      anyFRdependence = anyFRdependence || FRdependence;
-      Tdependence = contains(mP_raw(i).g,'T');
-      anyTdependence = anyTdependence || Tdependence;
-      FDdependence = contains(mP_raw(i).g,'FD');
-      anyFDdependence = anyFDdependence || FDdependence;
-      if ~FRdependence && ~Tdependence && ~FDdependence
-        error('Error: g of %s is a char array but depends on neither FR (Fluence Rate), T (Temperature) nor FD (Fractional Damage)',mP_raw(i).name);
+    if isfield(mP_raw,'customPhaseFunc') && ~isempty(mP_raw(i).customPhaseFunc) % Custom phase function
+      if ~ischar(mP_raw(i).customPhaseFunc) || ~contains(mP_raw(i).customPhaseFunc,'theta')
+        error('Error: customPhaseFunc of %s must be a char array that describes a function of theta.',mP_raw(i).name)
       end
-      mP_fH(i).g = str2func(['@(FR,T,FD)(' formulaToElementwiseFormula(mP_raw(i).g) ')']);
-    else
-      mP_fH(i).g = mP_raw(i).g;
+      if contains(mP_raw(i).customPhaseFunc,{'FR','T','FD'})
+        error('Error: customPhaseFunc of %s must not contain FR, T or FD.',mP_raw(i).name);
+      end
+      mP_fH(i).customPhaseFunc = str2func(['@(theta)(' formulaToElementwiseFormula(mP_raw(i).customPhaseFunc) ')']);
+      mP_fH(i).g = NaN;
+    else % Henyey Greenstein (or neither g nor customPhaseFunc specified)
+      if ~isfield(mP_raw,'g') || isempty(mP_raw(i).g)
+        error('Error: Medium %s has no g.',mP_raw(i).name);
+      elseif ischar(mP_raw(i).g)
+        FRdependence = contains(mP_raw(i).g,'FR');
+        anyFRdependence = anyFRdependence || FRdependence;
+        Tdependence = contains(mP_raw(i).g,'T');
+        anyTdependence = anyTdependence || Tdependence;
+        FDdependence = contains(mP_raw(i).g,'FD');
+        anyFDdependence = anyFDdependence || FDdependence;
+        if ~FRdependence && ~Tdependence && ~FDdependence
+          error('Error: g of %s is a char array but depends on neither FR (Fluence Rate), T (Temperature) nor FD (Fractional Damage)',mP_raw(i).name);
+        end
+        mP_fH(i).g = str2func(['@(FR,T,FD)(' formulaToElementwiseFormula(mP_raw(i).g) ')']);
+      else
+        mP_fH(i).g = mP_raw(i).g;
+      end
+      mP_fH(i).customPhaseFunc = NaN;
     end
 
     PYdefined = isfield(mP_raw,'PY') && ~isempty(mP_raw(i).PY);

@@ -3,19 +3,6 @@ function model = simulateHeatDistribution(model)
 %   diffusion of heat through the cuboid based on output of runMonteCarlo.m.
 %   Also calculates Arrhenius-based thermal damage.
 %
-%   Output
-%       [name]_heatSimOutput.mkv
-%           movie file showing the temperature evolution. The geometry cuboid
-%           is shown in the beginning of the video.
-%
-%   Requires
-%       calcdtmax.m
-%       convertTempSensorPos.m
-%       plotVolumetric.m
-%       updateVolumetric.m
-%       finiteElementHeatPropagator.mex (architecture specific)
-%
-%   See also runMonteCarlo, plotMCmatlabHeat
 
 %%%%%
 %   Copyright 2017, 2018 by Dominik Marti and Anders K. Hansen, DTU Fotonik
@@ -39,14 +26,15 @@ function model = simulateHeatDistribution(model)
 
 % checking on macOS whether the mex-file is quarantined and clearing it
 if ismac
-    [~,cmdout] = system('xattr -l ./+MCmatlab/@model/private/finiteElementHeatPropagator.mexmaci64')
-    if contains(cmdout,'com.apple.quarantine'); system('xattr -d com.apple.quarantine ./+MCmatlab/@model/private/finiteElementHeatPropagator.mexmaci64'); end
+  [~,cmdout] = system('xattr -l ./+MCmatlab/@model/private/finiteElementHeatPropagator.mexmaci64');
+  if contains(cmdout,'com.apple.quarantine'); system('xattr -d com.apple.quarantine ./+MCmatlab/@model/private/finiteElementHeatPropagator.mexmaci64'); end
 end
 
 if isnan(model.MC.NFR(1))
   error('Error: MC.NFR was not calculated');
 end
 
+model.G = model.G.update_M_raw;
 G = model.G;
 
 if isnan(model.HS.T(1))

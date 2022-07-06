@@ -8,7 +8,7 @@
 % The formulas have been written in as char arrays in the media properties
 % at the bottom of the file, using standard MATLAB syntax. In the formulas,
 % FR is simply the normalized fluence rate times the power, FR =
-% model.MC.NFR*model.MC.P.
+% model.MC.normalizedFluenceRate*model.MC.P.
 %
 % When simulating fluence rate or temperature dependent optical or thermal
 % properties, the algorithm "bins" voxels of similar optical or thermal
@@ -22,23 +22,35 @@
 % number of bins used for saturable absorber 2 is intentionally set low (9)
 % so that the binning becomes visible as discontinuities in the absorption
 % plot.
-% 
+%
 % The Monte Carlo simulation is run iteratively, using the previous run's
 % fluence rate to determine the optical properties for the next run. The
 % number of iterations is specified in model.MC.FRdepIterations, which is
 % 20 by default. The specified simulation time or number of photons applies
 % to the final iteration, while all the previous iterations will have
 % shorter durations (scaling by a factor of 2 each time).
-% 
+%
 % It is the user's responsibility to check that mediaProperties(j).nBins
 % and model.MC.FRdepIterations are high enough for a suitably converged
 % result.
-% 
+%
 % In the result, you see that the collimated Gaussian beam narrows as it
 % passes deeper in both of the saturable absorber media, which is because
 % it is preferentially absorbed in the wings of the beam profile. The Media
 % Properties figure show both the minimum and maximum achieved values of
 % the optical properties for each of the saturable absorbers.
+
+%% MCmatlab abbreviations
+% G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
+% simulation, M: Media array, FR: Fluence rate, FD: Fractional damage.
+%
+% There are also some optional abbreviations you can use when referencing
+% object/variable names: LS = lightSource, LC = lightCollector, FPID =
+% focalPlaneIntensityDistribution, AID = angularIntensityDistribution, NI =
+% normalizedIrradiance, NFR = normalizedFluenceRate.
+%
+% For example, "model.MC.LS.FPID.radialDistr" is the same as
+% "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
 model = MCmatlab.model;
@@ -63,9 +75,9 @@ model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboi
 model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
 model.MC.lightSource.sourceType   = 4; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
-model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr = 1; % Radial focal plane distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
+model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr = 1; % Radial focal plane intensity distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
 model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth = .02; % [cm] Radial focal plane 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
-model.MC.lightSource.angularIntensityDistribution.radialDistr = 1; % Radial angular distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
+model.MC.lightSource.angularIntensityDistribution.radialDistr = 1; % Radial angular intensity distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
 model.MC.lightSource.angularIntensityDistribution.radialWidth = 0; % [rad] Radial angular 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom. For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength*1e-9/(pi*model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth*1e-2))
 model.MC.lightSource.xFocus       = 0; % [cm] x position of focus
 model.MC.lightSource.yFocus       = 0; % [cm] y position of focus
@@ -89,10 +101,10 @@ plot(model,'MC');
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition(X,Y,Z,parameters)
-    absorberdepth = 0.03;
-    M = ones(size(X)); % Air
-    M(Z > absorberdepth) = 2; % Saturable absorber 1
-    M(Z > absorberdepth & Y > 0) = 3; % Saturable absorber 2
+  absorberdepth = 0.03;
+  M = ones(size(X)); % Air
+  M(Z > absorberdepth) = 2; % Saturable absorber 1
+  M(Z > absorberdepth & Y > 0) = 3; % Saturable absorber 2
 end
 
 %% Media Properties function
@@ -104,23 +116,23 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-    j=1;
-    mediaProperties(j).name    = 'air';
-    mediaProperties(j).mua     = 1e-8; % [cm^-1]
-    mediaProperties(j).mus     = 1e-8; % [cm^-1]
-    mediaProperties(j).g       = 0;
-    
-    j=2;
-    mediaProperties(j).name    = 'saturable absorber 1';
-    mediaProperties(j).mua     = '50./(1+FR/2000)'; % [cm^-1]
-    mediaProperties(j).mus     = 10; % [cm^-1]
-    mediaProperties(j).g       = 0.9;
-    mediaProperties(j).nBins = 50; % Number of bins to use for the fluence rate- or temperature dependent (FRTDep) simulations. Higher is better and slower
-    
-    j=3;
-    mediaProperties(j).name    = 'saturable absorber 2';
-    mediaProperties(j).mua     = '50./(1+FR/1000)'; % [cm^-1]
-    mediaProperties(j).mus     = '10./(1+FR/500)'; % [cm^-1]
-    mediaProperties(j).g       = '1-0.1./(1+FR/300)';
-    mediaProperties(j).nBins = 9; % Number of bins to use for the fluence rate- or temperature dependent (FRTDep) simulations. Higher is better and slower
+  j=1;
+  mediaProperties(j).name    = 'air';
+  mediaProperties(j).mua     = 1e-8; % [cm^-1]
+  mediaProperties(j).mus     = 1e-8; % [cm^-1]
+  mediaProperties(j).g       = 0;
+
+  j=2;
+  mediaProperties(j).name    = 'saturable absorber 1';
+  mediaProperties(j).mua     = '50./(1+FR/2000)'; % [cm^-1]
+  mediaProperties(j).mus     = 10; % [cm^-1]
+  mediaProperties(j).g       = 0.9;
+  mediaProperties(j).nBins   = 50; % Number of bins to use for the fluence rate- or temperature dependent (FRTDep) simulations. Higher is better and slower
+
+  j=3;
+  mediaProperties(j).name    = 'saturable absorber 2';
+  mediaProperties(j).mua     = '50./(1+FR/1000)'; % [cm^-1]
+  mediaProperties(j).mus     = '10./(1+FR/500)'; % [cm^-1]
+  mediaProperties(j).g       = '1-0.1./(1+FR/300)';
+  mediaProperties(j).nBins   = 9; % Number of bins to use for the fluence rate- or temperature dependent (FRTDep) simulations. Higher is better and slower
 end

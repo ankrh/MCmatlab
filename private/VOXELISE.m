@@ -123,12 +123,11 @@ for iFacet = 1:size(meshXYZ,1)
   end
 end
 
-x = squeeze(meshXYZ(:,1,:)).'; x = x(:);
-y = squeeze(meshXYZ(:,2,:)).'; y = y(:);
-z = squeeze(meshXYZ(:,3,:)).'; z = z(:);
-
 h_f = figure(31);clf reset;
-patch(x,y,z,[0 0 0],'FaceColor','none');
+patch(squeeze(meshXYZ(:,1,:)).',...
+      squeeze(meshXYZ(:,2,:)).',...
+      squeeze(meshXYZ(:,3,:)).',...
+      [0 0 0],'FaceColor','none');
 axis equal tight;
 grid on; grid minor;
 view(3);

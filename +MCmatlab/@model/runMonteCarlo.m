@@ -25,12 +25,13 @@ function model = runMonteCarlo(model,varargin)
 
 % checking on macOS whether the mex-file is quarantined and clearing it
 if ismac
-    [~,cmdout] = system('xattr -l ./+MCmatlab/@model/private/MCmatlab.mexmaci64');
-    if contains(cmdout,'com.apple.quarantine'); system('xattr -d com.apple.quarantine ./+MCmatlab/@model/private/MCmatlab.mexmaci64'); end
-    [~,cmdout] = system('xattr -l ./+MCmatlab/@model/private/getDownsampledParamVals.mexmaci64');
-    if contains(cmdout,'com.apple.quarantine'); system('xattr -d com.apple.quarantine ./+MCmatlab/@model/private/getDownsampledParamVals.mexmaci64'); end
+  [~,cmdout] = system('xattr -l ./+MCmatlab/@model/private/MCmatlab.mexmaci64');
+  if contains(cmdout,'com.apple.quarantine'); system('xattr -d com.apple.quarantine ./+MCmatlab/@model/private/MCmatlab.mexmaci64'); end
+  [~,cmdout] = system('xattr -l ./+MCmatlab/@model/private/getDownsampledParamVals.mexmaci64');
+  if contains(cmdout,'com.apple.quarantine'); system('xattr -d com.apple.quarantine ./+MCmatlab/@model/private/getDownsampledParamVals.mexmaci64'); end
 end
 
+model.G = model.G.update_M_raw;
 G = model.G;
 
 if any(strcmp(varargin,'fluorescence'))
@@ -40,7 +41,7 @@ else
 end
 
 checkMCinputFields(model,simType);
-model = getMediaProperties_funcHandles(model,simType); % Calls the mediaPropertiesFunc and converts those fields that are specified as char array formulas into function handles taking intensity and temperature as input
+model = getMediaProperties_funcHandles(model,simType); % Calls the mediaPropertiesFunc and converts those fields that are specified as char array formulas into function handles taking fluence rate, temperature and fractional damage as input
 
 %% Check for GPU compatibility if needed
 if (simType == 1 && model.MC.useGPU) || (simType == 2 && model.FMC.useGPU)
@@ -205,11 +206,8 @@ end
 if isnan(MCorFMC.wavelength)
   error('Error: No wavelength defined');
 end
-if ~MCorFMC.calcNFR && ~MCorFMC.useLightCollector
-  error('Error: calcNFR is false, but no light collector is defined');
-end
 if MCorFMC.calcNFRdet && ~MCorFMC.useLightCollector
-  error('Error: calcNFRdet is true, but no light collector is defined');
+  error('Error: calcNormalizedFluenceRatedet is true, but no light collector is defined');
 end
 if MCorFMC.farFieldRes && MCorFMC.boundaryType == 0
   error('Error: If boundaryType == 0, no photons can escape to be registered in the far field. Set farFieldRes to zero or change boundaryType.');
@@ -217,58 +215,58 @@ end
 
 if simType == 2
   if isnan(model.MC.NFR(1))
-    error('Error: NFR matrix not calculated for excitation light');
+    error('Error: normalizedFluenceRate matrix not calculated for excitation light');
   end
 else
   
-  if isnan(MCorFMC.lightSource.sourceType)
+  if isnan(MCorFMC.LS.sourceType)
     error('Error: No sourceType defined');
   end
-  if (MCorFMC.lightSource.sourceType == 3 || MCorFMC.lightSource.sourceType == 4) && (isnan(MCorFMC.lightSource.focalPlaneIntensityDistribution.radialWidth) || isnan(MCorFMC.lightSource.angularIntensityDistribution.radialWidth))
+  if (MCorFMC.LS.sourceType == 3 || MCorFMC.LS.sourceType == 4) && (isnan(MCorFMC.LS.FPID.radialWidth) || isnan(MCorFMC.LS.AID.radialWidth))
     error('Error: lightSource.focalPlaneIntensityDistribution.radialWidth and lightSource.angularIntensityDistribution.radialWidth must both be specified when sourceType is 3 or 4');
   end
-  if MCorFMC.lightSource.sourceType == 4 && (isnan(MCorFMC.lightSource.focalPlaneIntensityDistribution.radialDistr(1)) || isnan(MCorFMC.lightSource.angularIntensityDistribution.radialDistr(1)))
+  if MCorFMC.LS.sourceType == 4 && (isnan(MCorFMC.LS.FPID.radialDistr(1)) || isnan(MCorFMC.LS.AID.radialDistr(1)))
     error('Error: lightSource.focalPlaneIntensityDistribution.radialDistr and lightSource.angularIntensityDistribution.radialDistr must both be specified when sourceType is 4');
   end
-  if MCorFMC.lightSource.sourceType == 5
-    if isnan(MCorFMC.lightSource.focalPlaneIntensityDistribution.XDistr(1))
+  if MCorFMC.LS.sourceType == 5
+    if isnan(MCorFMC.LS.FPID.XDistr(1))
       error('Error: lightSource.focalPlaneIntensityDistribution.XDistr must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.lightSource.focalPlaneIntensityDistribution.XWidth)
+    if isnan(MCorFMC.LS.FPID.XWidth)
       error('Error: lightSource.focalPlaneIntensityDistribution.Xwidth must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.lightSource.focalPlaneIntensityDistribution.YDistr(1))
+    if isnan(MCorFMC.LS.FPID.YDistr(1))
       error('Error: lightSource.focalPlaneIntensityDistribution.YDistr must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.lightSource.focalPlaneIntensityDistribution.YWidth)
+    if isnan(MCorFMC.LS.FPID.YWidth)
       error('Error: lightSource.focalPlaneIntensityDistribution.YWidth must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.lightSource.angularIntensityDistribution.XDistr(1))
+    if isnan(MCorFMC.LS.AID.XDistr(1))
       error('Error: lightSource.angularIntensityDistribution.XDistr must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.lightSource.angularIntensityDistribution.XWidth)
-      error('Error: lightSource.angularIntensityDistribution.Xwidth must be specified when sourceType is 5');
+    if MCorFMC.LS.AID.XDistr(1) ~= 2 && isnan(MCorFMC.LS.AID.XWidth)
+      error('Error: lightSource.angularIntensityDistribution.Xwidth must be specified when sourceType is 5 and the distribution is non-Lambertian');
     end
-    if isnan(MCorFMC.lightSource.angularIntensityDistribution.YDistr(1))
+    if isnan(MCorFMC.LS.AID.YDistr(1))
       error('Error: lightSource.angularIntensityDistribution.YDistr must be specified when sourceType is 5');
     end
-    if isnan(MCorFMC.lightSource.angularIntensityDistribution.YWidth)
-      error('Error: lightSource.angularIntensityDistribution.YWidth must be specified when sourceType is 5');
+    if MCorFMC.LS.AID.YDistr(1) ~= 2 && isnan(MCorFMC.LS.AID.YWidth)
+      error('Error: lightSource.angularIntensityDistribution.YWidth must be specified when sourceType is 5 and the distribution is non-Lambertian');
     end
-    if xor(MCorFMC.lightSource.angularIntensityDistribution.XDistr == 2,MCorFMC.lightSource.angularIntensityDistribution.YDistr == 2)
+    if xor(MCorFMC.LS.AID.XDistr == 2,MCorFMC.LS.AID.YDistr == 2)
       error('Error: lightSource.angularIntensityDistribution.XDistr and lightSource.angularIntensityDistribution.YDistr must either both be set to cosine (Lambertian), or neither');
     end
   end
-  if size(MCorFMC.lightSource.focalPlaneIntensityDistribution.radialDistr,1) > 1 || size(MCorFMC.lightSource.focalPlaneIntensityDistribution.XDistr,1) > 1 || size(MCorFMC.lightSource.focalPlaneIntensityDistribution.YDistr,1) > 1 ||...
-     size(MCorFMC.lightSource.angularIntensityDistribution.radialDistr,1) > 1 || size(MCorFMC.lightSource.angularIntensityDistribution.XDistr,1) > 1 || size(MCorFMC.lightSource.angularIntensityDistribution.YDistr,1) > 1
+  if size(MCorFMC.LS.FPID.radialDistr,1) > 1 || size(MCorFMC.LS.FPID.XDistr,1) > 1 || size(MCorFMC.LS.FPID.YDistr,1) > 1 ||...
+     size(MCorFMC.LS.AID.radialDistr,1) > 1 || size(MCorFMC.LS.AID.XDistr,1) > 1 || size(MCorFMC.LS.AID.YDistr,1) > 1
     error('Error: Beam distribution functions must be scalars or row-vectors, not column-vectors');
   end
-  if (numel(MCorFMC.lightSource.focalPlaneIntensityDistribution.radialDistr) > 1 && numel(MCorFMC.lightSource.focalPlaneIntensityDistribution.radialDistr) < 1000) ||...
-     (numel(MCorFMC.lightSource.focalPlaneIntensityDistribution.XDistr)      > 1 && numel(MCorFMC.lightSource.focalPlaneIntensityDistribution.XDistr)      < 1000) ||...
-     (numel(MCorFMC.lightSource.focalPlaneIntensityDistribution.YDistr)      > 1 && numel(MCorFMC.lightSource.focalPlaneIntensityDistribution.YDistr)      < 1000) ||...
-     (numel(MCorFMC.lightSource.angularIntensityDistribution.radialDistr) > 1 && numel(MCorFMC.lightSource.angularIntensityDistribution.radialDistr) < 1000) ||...
-     (numel(MCorFMC.lightSource.angularIntensityDistribution.XDistr)      > 1 && numel(MCorFMC.lightSource.angularIntensityDistribution.XDistr)      < 1000) ||...
-     (numel(MCorFMC.lightSource.angularIntensityDistribution.YDistr)      > 1 && numel(MCorFMC.lightSource.angularIntensityDistribution.YDistr)      < 1000)
+  if (numel(MCorFMC.LS.FPID.radialDistr) > 1 && numel(MCorFMC.LS.FPID.radialDistr) < 1000) ||...
+     (numel(MCorFMC.LS.FPID.XDistr)      > 1 && numel(MCorFMC.LS.FPID.XDistr)      < 1000) ||...
+     (numel(MCorFMC.LS.FPID.YDistr)      > 1 && numel(MCorFMC.LS.FPID.YDistr)      < 1000) ||...
+     (numel(MCorFMC.LS.AID.radialDistr) > 1 && numel(MCorFMC.LS.AID.radialDistr) < 1000) ||...
+     (numel(MCorFMC.LS.AID.XDistr)      > 1 && numel(MCorFMC.LS.AID.XDistr)      < 1000) ||...
+     (numel(MCorFMC.LS.AID.YDistr)      > 1 && numel(MCorFMC.LS.AID.YDistr)      < 1000)
     error('Error: Beam definition distributions must have 1000 elements (or more, if necessary)');
   end
 end
@@ -287,7 +285,7 @@ if MCorFMC.useLightCollector
     yLCC = MCorFMC.LC.y;
     zLCC = MCorFMC.LC.z;
     if MCorFMC.LC.res ~= 1
-      error('Error: LC.res must be 1 when LC.f is Inf');
+      error('Error: lightCollector.res must be 1 when lightCollector.f is Inf');
     end
   end
 

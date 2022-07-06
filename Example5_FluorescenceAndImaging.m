@@ -25,6 +25,18 @@
 % excitation and fluorescence simulations, showing paths of both kinds of
 % photons.
 
+%% MCmatlab abbreviations
+% G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
+% simulation, M: Media array, FR: Fluence rate, FD: Fractional damage.
+%
+% There are also some optional abbreviations you can use when referencing
+% object/variable names: LS = lightSource, LC = lightCollector, FPID =
+% focalPlaneIntensityDistribution, AID = angularIntensityDistribution, NI =
+% normalizedIrradiance, NFR = normalizedFluenceRate.
+%
+% For example, "model.MC.LS.FPID.radialDistr" is the same as
+% "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
+
 %% Geometry definition
 model = MCmatlab.model;
 
@@ -55,19 +67,19 @@ model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of beam center ax
 
 model.MC.useLightCollector        = true;
 
-model.MC.LC.x                     = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
-model.MC.LC.y                     = 0; % [cm] y position
-model.MC.LC.z                     = 0.03; % [cm] z position
+model.MC.lightCollector.x         = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
+model.MC.lightCollector.y         = 0; % [cm] y position
+model.MC.lightCollector.z         = 0.03; % [cm] z position
 
-model.MC.LC.theta                 = 0; % [rad] Polar angle of direction the light collector is facing
-model.MC.LC.phi                   = pi/2; % [rad] Azimuthal angle of direction the light collector is facing
+model.MC.lightCollector.theta     = 0; % [rad] Polar angle of direction the light collector is facing
+model.MC.lightCollector.phi       = pi/2; % [rad] Azimuthal angle of direction the light collector is facing
 
-model.MC.LC.f                     = .2; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
-model.MC.LC.diam                  = .1; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(NA)).
-model.MC.LC.fieldSize             = .1; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
-model.MC.LC.NA                    = 0.22; % [-] Fiber NA. Only used for infinite f.
+model.MC.lightCollector.f         = .2; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
+model.MC.lightCollector.diam      = .1; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(NA)).
+model.MC.lightCollector.fieldSize = .1; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
+model.MC.lightCollector.NA        = 0.22; % [-] Fiber NA. Only used for infinite f.
 
-model.MC.LC.res                   = 50; % X and Y resolution of light collector in pixels, only used for finite f
+model.MC.lightCollector.res       = 50; % X and Y resolution of light collector in pixels, only used for finite f
 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
@@ -85,19 +97,19 @@ model.FMC.wavelength              = 900; % [nm] Fluorescence wavelength, used fo
 
 model.FMC.useLightCollector       = true;
 
-model.FMC.LC.x                    = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
-model.FMC.LC.y                    = 0; % [cm] y position
-model.FMC.LC.z                    = 0.03; % [cm] z position
+model.FMC.lightCollector.x        = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
+model.FMC.lightCollector.y        = 0; % [cm] y position
+model.FMC.lightCollector.z        = 0.03; % [cm] z position
 
-model.FMC.LC.theta                = 0; % [rad] Polar angle of direction the light collector is facing
-model.FMC.LC.phi                  = pi/2; % [rad] Azimuthal angle of direction the light collector is facing
+model.FMC.lightCollector.theta    = 0; % [rad] Polar angle of direction the light collector is facing
+model.FMC.lightCollector.phi      = pi/2; % [rad] Azimuthal angle of direction the light collector is facing
 
-model.FMC.LC.f                    = .2; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
-model.FMC.LC.diam                 = .1; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(NA)).
-model.FMC.LC.fieldSize            = .1; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
-model.FMC.LC.NA                   = 0.22; % [-] Fiber NA. Only used for infinite f.
+model.FMC.lightCollector.f        = .2; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
+model.FMC.lightCollector.diam     = .1; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(NA)).
+model.FMC.lightCollector.fieldSize = .1; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
+model.FMC.lightCollector.NA       = 0.22; % [-] Fiber NA. Only used for infinite f.
 
-model.FMC.LC.res                  = 50; % X and Y resolution of light collector in pixels, only used for finite f
+model.FMC.lightCollector.res      = 50; % X and Y resolution of light collector in pixels, only used for finite f
 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model,'fluorescence');
@@ -111,10 +123,10 @@ plot(model,'FMC');
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition(X,Y,Z,parameters)
-    cylinderradius  = 0.0100;
-    M = ones(size(X)); % fill background with fluorescence absorber
-    M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 2; % fluorescer
-    M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2 & X > 0) = 3; % fluorescer
+  cylinderradius  = 0.0100;
+  M = ones(size(X)); % fill background with fluorescence absorber
+  M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 2; % fluorescer
+  M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2 & X > 0) = 3; % fluorescer
 end
 
 %% Media Properties function
@@ -126,47 +138,47 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-    j=1;
-    mediaProperties(j).name  = 'fluorescence absorber';
-    if(wavelength<500)
-        mediaProperties(j).mua = 1; % [cm^-1]
-        mediaProperties(j).mus = 100; % [cm^-1]
-        mediaProperties(j).g   = 0.9;
-    else
-        mediaProperties(j).mua = 100; % [cm^-1]
-        mediaProperties(j).mus = 100; % [cm^-1]
-        mediaProperties(j).g   = 0.9;
-    end
-    
-    j=2;
-    mediaProperties(j).name  = 'power yield fluorescer';
-    if(wavelength<500)
-        mediaProperties(j).mua = 100; % [cm^-1]
-        mediaProperties(j).mus = 100; % [cm^-1]
-        mediaProperties(j).g   = 0.9;
-    else
-        mediaProperties(j).mua = 1; % [cm^-1]
-        mediaProperties(j).mus = 100; % [cm^-1]
-        mediaProperties(j).g   = 0.9;
-    end
-    
-    % Only one of PY and QY may be defined:
-    mediaProperties(j).PY   = 0.4; % Fluorescence power yield (ratio of power emitted to power absorbed)
-    % mediaProperties(j).QY   = 0.4; % Fluorescence quantum yield (ratio of photons emitted to photons absorbed)
-    
-    j=3;
-    mediaProperties(j).name  = 'quantum yield fluorescer';
-    if(wavelength<500)
-        mediaProperties(j).mua = 100;
-        mediaProperties(j).mus = 100;
-        mediaProperties(j).g   = 0.9;
-    else
-        mediaProperties(j).mua = 1;
-        mediaProperties(j).mus = 100;
-        mediaProperties(j).g   = 0.9;
-    end
-    
-    % Only one of PY and QY may be defined:
-    % mediaProperties(j).PY   = 0.4; % Fluorescence power yield (ratio of power emitted to power absorbed)
-    mediaProperties(j).QY   = 0.4; % Fluorescence quantum yield (ratio of photons emitted to photons absorbed)
+  j=1;
+  mediaProperties(j).name  = 'fluorescence absorber';
+  if(wavelength<500)
+    mediaProperties(j).mua = 1; % [cm^-1]
+    mediaProperties(j).mus = 100; % [cm^-1]
+    mediaProperties(j).g   = 0.9;
+  else
+    mediaProperties(j).mua = 100; % [cm^-1]
+    mediaProperties(j).mus = 100; % [cm^-1]
+    mediaProperties(j).g   = 0.9;
+  end
+
+  j=2;
+  mediaProperties(j).name  = 'power yield fluorescer';
+  if(wavelength<500)
+    mediaProperties(j).mua = 100; % [cm^-1]
+    mediaProperties(j).mus = 100; % [cm^-1]
+    mediaProperties(j).g   = 0.9;
+  else
+    mediaProperties(j).mua = 1; % [cm^-1]
+    mediaProperties(j).mus = 100; % [cm^-1]
+    mediaProperties(j).g   = 0.9;
+  end
+
+  % Only one of PY and QY may be defined:
+  mediaProperties(j).PY   = 0.4; % Fluorescence power yield (ratio of power emitted to power absorbed)
+  % mediaProperties(j).QY   = 0.4; % Fluorescence quantum yield (ratio of photons emitted to photons absorbed)
+
+  j=3;
+  mediaProperties(j).name  = 'quantum yield fluorescer';
+  if(wavelength<500)
+    mediaProperties(j).mua = 100;
+    mediaProperties(j).mus = 100;
+    mediaProperties(j).g   = 0.9;
+  else
+    mediaProperties(j).mua = 1;
+    mediaProperties(j).mus = 100;
+    mediaProperties(j).g   = 0.9;
+  end
+
+  % Only one of PY and QY may be defined:
+  % mediaProperties(j).PY   = 0.4; % Fluorescence power yield (ratio of power emitted to power absorbed)
+  mediaProperties(j).QY   = 0.4; % Fluorescence quantum yield (ratio of photons emitted to photons absorbed)
 end

@@ -31,6 +31,7 @@ h_f = get(vars.h_checkbox1,'Parent');
 switch src
   case vars.h_checkbox1
     if plotLog
+      colormap(plotVolumetric.makec2f);
       set(vars.h_surfxback ,'CData',squeeze(log10(h_f.UserData(xbi,:,:))));
       set(vars.h_surfyback ,'CData',squeeze(log10(h_f.UserData(:,end,:))));
       set(vars.h_surfzback ,'CData',squeeze(log10(h_f.UserData(:,:,zbi))));
@@ -46,6 +47,7 @@ switch src
         end
       end
     else
+      colormap(vars.linearColormap);
       set(vars.h_surfxback ,'CData',squeeze(h_f.UserData(xbi,:,:)));
       set(vars.h_surfyback ,'CData',squeeze(h_f.UserData(:,end,:)));
       set(vars.h_surfzback ,'CData',squeeze(h_f.UserData(:,:,zbi)));

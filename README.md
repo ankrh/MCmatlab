@@ -42,7 +42,8 @@ Each medium can be specified with up to 10 properties (fields in the struct):
 - `name` - A char array containing the name of the medium, used for the visualization.
 - `mua` - The absorption coefficient in units of 1/cm.
 - `mus` - The scattering coefficient in units of 1/cm.
-- `g` - The scattering anisotropy (the mean cosine to the scattering angle). It has no units.
+- `g` - The scattering anisotropy (the mean cosine to the scattering angle), to be used in the Henyey-Greenstein phase function. It has no units.
+- `customPhaseFunc` - An alternative to specifying `g`. This is a char array that is a MATLAB-evaluateable expression that specifies the scattering phase function as a function of theta. This function does not need to be normalized.
 - `PY` - The power yield of fluorescence, that is, watts of fluorescence emitted relative to watts of excitation light absorbed. This field is mutually exclusive with `QY`. It has no units.
 - `QY` - The quantum yield of fluorescence, that is, photons of fluorescence emitted relative to excitation photons absorbed. This is related to the power yield through a factor of model.MC.lambda/model.FMC.lambda. This field is mutually exclusive with `PY`. It has no units.
 - `VHC` - The volumetric heat capacity of the medium in units of J/(cm^3 K).
@@ -111,7 +112,7 @@ You build each model in a separate m-file. Each model requires the first two and
 - If you have an Nvidia graphics card with compute capability at least 3.0, you can set useGPU = true to enable running on the GPU, greatly speeding up both the Monte Carlo and heat simulations.
 
 ### List and explanation of input parameters
-In the following we assume that the model object variable has been named “model”. In principle, it could be given any name you want.
+In the following we assume that the model object variable has been named "model". In principle, it could be given any name you want.
 #### Geometry parameters
 `model.G.silentMode`
 [-]
@@ -148,6 +149,11 @@ A user-defined cell array that you can use to contain all sorts of inputs you wo
 [-]
 (Default: False)
 If true, will run the MC simulation on GPU. If false, will use CPU.
+
+`model.MC.GPUdevice`
+[-]
+(Default: 0)
+The GPU device to use for GPU accelerated computations. 0 corresponds to the first device. For systems with multiple GPUs, you can launch simulations to different GPUs by varying this property and with the use of, e.g., a MATLAB parallel-for (parfor) loop.
 
 `model.MC.simulationTimeRequested`
 [minutes]
@@ -223,6 +229,7 @@ The wavelength of the light. This is used only to be passed on as an input to th
 
 `model.MC.lightSource.sourceType`
 [-]
+(Note that lightSource can be abbreviated LS in your code)
 0: Pencil beam
 A pencil beam is a beam with zero width and zero divergence.
 1: Isotropically emitting line or point source
@@ -243,6 +250,7 @@ The length of the line emitter. If zero, the emitter is a point source.
 
 `model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr`
 [-]
+(Note that focalPlaneIntensityDistribution can be abbreviated FPID in your code)
 (Only used for sourceType = 4)
 Radial intensity distribution in the focal plane.
 0: Top-hat
@@ -251,13 +259,15 @@ Array: Custom. Doesn't need to be normalized.
 
 `model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth`
 [cm]
+(Note that focalPlaneIntensityDistribution can be abbreviated FPID in your code)
 (Only used for sourceType = 4)
 Radial width of the intensity distribution in the focal plane.
-If focalPlaneIntensityDistribution.radialDistr is set to 0 or 1, this is the 1/e^2 radius
-If focalPlaneIntensityDistribution.radialDistr is set to an array, this is the half-width of the full distribution
+If FPID.radialDistr is set to 0 or 1, this is the 1/e^2 radius
+If FPID.radialDistr is set to an array, this is the half-width of the full distribution
 
 `model.MC.lightSource.focalPlaneIntensityDistribution.XDistr`, `model.MC.lightSource.focalPlaneIntensityDistribution.YDistr`
 [-]
+(Note that focalPlaneIntensityDistribution can be abbreviated FPID in your code)
 (Only used for sourceType = 5)
 X and Y distribution of the intensity in the focal plane.
 0: Top-hat
@@ -266,13 +276,15 @@ Array: Custom. Doesn't need to be normalized.
 
 `model.MC.lightSource.focalPlaneIntensityDistribution.XWidth`, `model.MC.lightSource.focalPlaneIntensityDistribution.YWidth`
 [cm]
+(Note that focalPlaneIntensityDistribution can be abbreviated FPID in your code)
 (Only used for sourceType = 5)
 X and Y width of the intensity distribution in the focal plane.
-If focalPlaneIntensityDistribution.XDistr/focalPlaneIntensityDistribution.YDistr is set to 0 or 1, this is the 1/e^2 radius
-If focalPlaneIntensityDistribution.XDistr/focalPlaneIntensityDistribution.YDistr is set to an array, this is the half-width of the full distribution
+If FPID.XDistr/FPID.YDistr is set to 0 or 1, this is the 1/e^2 radius
+If FPID.XDistr/FPID.YDistr is set to an array, this is the half-width of the full distribution
 
 `model.MC.lightSource.angularIntensityDistribution.radialDistr`
 [-]
+(Note that angularIntensityDistribution can be abbreviated AID in your code)
 (Only used for sourceType = 4)
 Radial distribution of the angular intensity.
 0: Top-hat
@@ -282,14 +294,16 @@ Array: Custom. Doesn't need to be normalized.
 
 `model.MC.lightSource.angularIntensityDistribution.radialWidth`
 [rad]
-(Only used for sourceType = 4 and if angularIntensityDistribution.radialDistr is not 2)
+(Note that angularIntensityDistribution can be abbreviated AID in your code)
+(Only used for sourceType = 4 and if AID.radialDistr is not 2)
 Radial width of the angular intensity distribution.
-If angularIntensityDistribution.radialDistr is set to 0 or 1, this is the 1/e^2 half-angle.
-If angularIntensityDistribution.radialDistr is set to an array, this is the half-angle of the full distribution.
+If AID.radialDistr is set to 0 or 1, this is the 1/e^2 half-angle.
+If AID.radialDistr is set to an array, this is the half-angle of the full distribution.
 For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength\*1e-9/(pi\*model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth\*1e-2))
 
 `model.MC.lightSource.angularIntensityDistribution.XDistr`, `model.MC.lightSource.angularIntensityDistribution.YDistr`
 [-]
+(Note that angularIntensityDistribution can be abbreviated AID in your code)
 (Only used for sourceType = 5)
 X and Y distribution of the angular intensity.
 0: Top-hat
@@ -299,10 +313,11 @@ Array: Custom. Doesn't need to be normalized.
 
 `model.MC.lightSource.angularIntensityDistribution.XWidth`, `model.MC.lightSource.angularIntensityDistribution.YWidth`
 [rad]
-(Only used for sourceType = 5 and if angularIntensityDistribution.XDistr or angularIntensityDistribution.YDistr is not 2)
+(Note that angularIntensityDistribution can be abbreviated AID in your code)
+(Only used for sourceType = 5 and if AID.XDistr or AID.YDistr is not 2)
 Radial width of the angular intensity distribution.
-If angularIntensityDistribution.XDistr/angularIntensityDistribution.YDistr is set to 0 or 1, this is the 1/e^2 half-angle.
-If angularIntensityDistribution.XDistr/angularIntensityDistribution.YDistr is set to an array, this is the half-angle of the full distribution.
+If AID.XDistr/AID.YDistr is set to 0 or 1, this is the 1/e^2 half-angle.
+If AID.XDistr/AID.YDistr is set to an array, this is the half-angle of the full distribution.
 
 `model.MC.lightSource.xFocus`, `model.MC.lightSource.yFocus`, `model.MC.lightSource.zFocus`
 [cm]
@@ -316,6 +331,10 @@ Axial rotation angle of the beam.
 `model.MC.lightSource.theta`, `model.MC.lightSource.phi`
 [rad]
 Polar and azimuthal angle of the beam center axis.
+
+`model.MC.depositionCriteria.minScatterings`, `model.MC.depositionCriteria.maxScatterings`, `model.MC.depositionCriteria.minRefractions`, `model.MC.depositionCriteria.maxRefractions`, `model.MC.depositionCriteria.minReflections`, `model.MC.depositionCriteria.maxReflections`, `model.MC.depositionCriteria.minInterfaceTransitions`, `model.MC.depositionCriteria.maxInterfaceTransitions`
+[-]
+The minimum and maximum number of scattering, refraction, reflection and interface transition events the photon packet must have undergone in order to deposit weight into the output arrays (normalized fluence rate, normalized boundary irradiances, image and far field). There is an implied AND between all the criteria. Note that the underlying absorption and propagation of all photon packets are independent of the specified deposition criteria.
 
 `model.MC.P`
 [W]
@@ -341,52 +360,60 @@ A logical (boolean) to specify whether the MC simulation should keep track of wh
 
 (The following LC properties are only used if useLightCollector = true)
 
-`model.MC.LC.f`
+`model.MC.lightCollector.f`
 [cm]
+(Note that lightCollector can be abbreviated LC in your code)
 If the light collector is supposed to be an objective lens, this is its focal length.
 If the light collector is supposed to be a fiber tip this should be set to Inf (infinity)
 
-`model.MC.LC.x`, `model.MC.LC.y`, `model.MC.LC.z`
+`model.MC.lightCollector.x`, `model.MC.lightCollector.y`, `model.MC.lightCollector.z`
 [cm]
-(Only used if model.MC.useLightCollector = true)
-If model.MC.LC.f is finite (light collector is an objective lens), this is the x, y, z position of the center of the focal plane of the objective lens.
-If model.MC.LC.f is infinite (light collector is a fiber tip), this is the x, y, z position of the center of the fiber tip.
+(Note that lightCollector can be abbreviated LC in your code)
+If model.MC.lightCollector.f is finite (light collector is an objective lens), this is the x, y, z position of the center of the focal plane of the objective lens.
+If model.MC.lightCollector.f is infinite (light collector is a fiber tip), this is the x, y, z position of the center of the fiber tip.
 
-`model.MC.LC.theta`, `model.MC.LC.phi`
+`model.MC.lightCollector.theta`, `model.MC.lightCollector.phi`
 [rad]
+(Note that lightCollector can be abbreviated LC in your code)
 Polar and azimuthal angle of direction that the light collector is facing
 
-`model.MC.LC.NA`
+`model.MC.lightCollector.NA`
 [-]
+(Note that lightCollector can be abbreviated LC in your code)
 (Only used for infinite f)
 Fiber numerical aperture.
 
-`model.MC.LC.diam`
+`model.MC.lightCollector.diam`
 [cm]
+(Note that lightCollector can be abbreviated LC in your code)
 Diameter of the light collector aperture. For an ideal thin lens with numerical aperture NA, this is 2f\*tan(asin(NA)).
 
-`model.MC.LC.fieldSize`
+`model.MC.lightCollector.fieldSize`
 [cm]
+(Note that lightCollector can be abbreviated LC in your code)
 (Only used for finite f)
 Field size of the imaging system, that is, the diameter of area in object plane that gets imaged.
 
-`model.MC.LC.res`
+`model.MC.lightCollector.res`
 [pixels]
+(Note that lightCollector can be abbreviated LC in your code)
 (Only used for finite f)
 X and Y resolution of light collector, only used for finite f
 
-`model.MC.LC.tStart`, `model.MC.LC.tEnd`
+`model.MC.lightCollector.tStart`, `model.MC.lightCollector.tEnd`
 [s]
+(Note that lightCollector can be abbreviated LC in your code)
 Start and end time of the detection time-of-flight interval. Note that photons arriving before tStart will still be registered but all binned together in a single bin containing all "too-early" photons. Likewise, all photons arriving after tEnd are binned into a "too-late" bin.
 
-`model.MC.LC.nTimeBins`
+`model.MC.lightCollector.nTimeBins`
 [-]
+(Note that lightCollector can be abbreviated LC in your code)
 (Default: 0)
 Number of bins between tStart and tEnd. If zero, the measurement is not time-resolved.
 
 #### Fluorescence Monte Carlo parameters
 The following properties exist for fluorescence Monte Carlo simulations, and they work the same as for regular MC simulations:
-`FMC.useGPU`, `FMC.simulationTimeRequested`, `FMC.nPhotonsRequested`, `FMC.silentMode`, `FMC.useAllCPUs`, `FMC.calcNFR`, `FMC.calcNFRdet`, `FMC.nExamplePaths`, `FMC.farFieldRes`, `FMC.matchedInterfaces`, `FMC.smoothingLengthScale`, `FMC.boundaryType`, `FMC.wavelength`, `FMC.useLightCollector`, `FMC.LC.x`, `FMC.LC.y`, `FMC.LC.z`, `FMC.LC.theta`, `FMC.LC.phi`, `FMC.LC.f`, `FMC.LC.diam`, `FMC.LC.fieldSize`, `FMC.LC.NA`, `FMC.LC.res`
+`FMC.useGPU`, `FMC.GPUdevice`, `FMC.simulationTimeRequested`, `FMC.nPhotonsRequested`, `FMC.silentMode`, `FMC.useAllCPUs`, `FMC.calcNormalizedFluenceRate`, `FMC.calcNormalizedFluenceRate_detected`, `FMC.nExamplePaths`, `FMC.farFieldRes`, `FMC.matchedInterfaces`, `FMC.smoothingLengthScale`, `FMC.boundaryType`, `FMC.wavelength`, `FMC.useLightCollector`, `FMC.lightCollector.x`, `FMC.lightCollector.y`, `FMC.lightCollector.z`, `FMC.lightCollector.theta`, `FMC.lightCollector.phi`, `FMC.lightCollector.f`, `FMC.lightCollector.diam`, `FMC.lightCollector.fieldSize`, `FMC.lightCollector.NA`, `FMC.lightCollector.res`
 
 #### Heat solver parameters
 `model.HS.useGPU`
@@ -471,7 +498,7 @@ Each row describes the x, y, z coordinates of a temperature sensor placed within
 Leave the matrix empty ([]) to disable temperature sensors.
 
 ### List and explanation of output properties
-As in the previous section, we assume that the model object variable has been named “model”. In principle, it could be given any name you want.
+As in the previous section, we assume that the model object variable has been named "model". In principle, it could be given any name you want.
 
 #### Geometry properties
 `model.G.dx`, `model.G.dy`, `model.G.dz`
@@ -512,15 +539,17 @@ A 2D array of dimension (2 x (nx*ny*nz)) where local interface normal vector ang
 [cm] and [-]
 A 2D array which stores the example paths' coordinates and remaining weight. Each column is a data point where the first three rows are the x, y, z position of the photon packet and the fourth row is the remaining weight (energy) of the photon packet. Different photon trajectories are separated by a column of NaNs.
 
-`model.MC.NFR`
+`model.MC.normalizedFluenceRate`
 [W/cm^2/W.incident]
+(Note that normalizedFluenceRate can be abbreviated NFR in your code)
 A 3D (xyz) array of normalized fluence rate values. This is what's plotted in figure 4. If you want to plot a slice out of this distribution, you could for example do it with these three lines of code:
 - `NFRslice = squeeze(model.MC.NFR(51,:,:));` Extracts the slice corresponding to the 51st x value. `squeeze` is to remove the x singleton dimension, giving you a 2D (yz) array of normalized fluence rates.
 - `figure(100);`
 - `imagesc(model.G.y,model.G.z,NFRslice.');` We can use the 1D coordinate arrays from model.G for the y and z coordinate values. The `.'` is there because Mathworks has designed the imagesc function to plot the first coordinate along the vertical axis and the second coordinate along the horizontal axis, which is the opposite of what we want.
 
-`model.MC.NFRdet`
+`model.MC.normalizedFluenceRate_detected`
 [W/cm^2/W.incident]
+(Note that normalizedFluenceRate can be abbreviated NFR in your code)
 A 3D (xyz) array of normalized fluence rate values like model.MC.NFR, but only counting those photons that ended up on the light collector.
 
 `model.MC.farField`
@@ -535,11 +564,17 @@ A 1D array of polar angles corresponding to the first dimension of model.MC.farF
 [rad]
 A 1D array of azimuthal angles corresponding to the second dimension of model.MC.farField.
 
-`model.MC.NI_xpos`, `model.MC.NI_xneg`, `model.MC.NI_ypos`, `model.MC.NI_yneg`, `model.MC.NI_zpos`, `model.MC.NI_zneg`
+`model.MC.normalizedIrradiance_xpos`, `model.MC.normalizedIrradiance_xneg`, `model.MC.normalizedIrradiance_ypos`, `model.MC.normalizedIrradiance_yneg`, `model.MC.normalizedIrradiance_zpos`, `model.MC.normalizedIrradiance_zneg`
 [W/cm^2/W.incident]
+(Note that normalizedIrradiance can be abbreviated NI in your code)
 2D (xy, xz or yz) arrays of normalized irradiances of the light hitting the boundaries (either escaping or killed). For example, the property named `model.MC.NI_xpos` designates the light that hits the surface that is orthogonal to the x axis and placed on the positive x side, whereas the `model.MC.NI_xneg` refers to the surface orthogonal to the x axis and placed on the negative x side. model.MC.boundaryType determine which of these arrays are calculated.
-`model.MC.NI_zneg` is of special interest to users interested in calculating the surface reflectance, which can be found as the integral over this array:
+`model.MC.NI_zneg` is of special interest to users interested in calculating the reflectance, which can be found as the integral over the array:
 - `R = model.G.dx*model.G.dy*sum(model.MC.NI_zneg(:));`
+
+`model.MC.lightCollector.image`
+[W/cm^2/W.incident]
+If `model.MC.lightCollector.res == 1`, this is a scalar with the normalized power registered on the light collector.
+If `model.MC.lightCollector.res > 1`, this is a 2D (XY) array of normalized irradiances registered on the light collector. This array describes the light distribution you would get on a camera looking at the cuboid through an objective lens.
 
 #### Fluorescence Monte Carlo properties
 All the output properties described above for excitation Monte Carlo are also provided for fluorescence Monte Carlo in the model.FMC object.

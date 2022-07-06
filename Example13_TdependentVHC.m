@@ -4,19 +4,31 @@
 % capacity (VHC) that increases drastically when the temperature is around
 % 40° C. Such a medium is not particularly realistic, but serves to
 % showcase the feature.
-% 
+%
 % As the medium heats up, the regions that approach 40° C will not heat
 % much further due to the very high VHC, despite still absorbing the same
 % power as before. In the plot, the yellow color (40° C) can be seen to
 % extend further and further down into the medium as time goes, but even
 % the top layer has not become white (45° C) by the end of the
 % simulation.
-% 
+%
 % In models where optical or thermal properties depend on temperature or
 % fractional damage, it is very important for the user to test whether
 % mediaProperties(j).nBins and model.HS.nUpdates are set high enough and
 % model.HS.mediaPropRecalcPeriod low enough for a suitably converged
 % result.
+
+%% MCmatlab abbreviations
+% G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
+% simulation, M: Media array, FR: Fluence rate, FD: Fractional damage.
+%
+% There are also some optional abbreviations you can use when referencing
+% object/variable names: LS = lightSource, LC = lightCollector, FPID =
+% focalPlaneIntensityDistribution, AID = angularIntensityDistribution, NI =
+% normalizedIrradiance, NFR = normalizedFluenceRate.
+%
+% For example, "model.MC.LS.FPID.radialDistr" is the same as
+% "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
 model = MCmatlab.model;
@@ -41,9 +53,9 @@ model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboi
 model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
 model.MC.lightSource.sourceType   = 4; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
-model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr = 0; % Radial focal plane distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
+model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr = 0; % Radial focal plane intensity distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
 model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth = .03; % [cm] Radial focal plane 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
-model.MC.lightSource.angularIntensityDistribution.radialDistr = 0; % Radial angular distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
+model.MC.lightSource.angularIntensityDistribution.radialDistr = 0; % Radial angular intensity distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
 model.MC.lightSource.angularIntensityDistribution.radialWidth = 0; % [rad] Radial angular 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom. For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength*1e-9/(pi*model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth*1e-2))
 model.MC.lightSource.xFocus       = 0; % [cm] x position of focus
 model.MC.lightSource.yFocus       = 0; % [cm] y position of focus
@@ -72,9 +84,9 @@ model.HS.nUpdates            = 100; % Number of times data is extracted for plot
 model.HS.mediaPropRecalcPeriod = 1; % Every N updates, the media properties will be recalculated (including, if needed, re-running MC and FMC steps)
 model.HS.slicePositions      = [.5 0.6 1]; % Relative slice positions [x y z] for the 3D plots on a scale from 0 to 1
 model.HS.tempSensorPositions = [0 0 0.005
-                                0 0 0.015
-                                0 0 0.035
-                                0 0 0.065]; % Each row is a temperature sensor's absolute [x y z] coordinates. Leave the matrix empty ([]) to disable temperature sensors.
+  0 0 0.015
+  0 0 0.035
+  0 0 0.065]; % Each row is a temperature sensor's absolute [x y z] coordinates. Leave the matrix empty ([]) to disable temperature sensors.
 
 % Execution, do not modify the next line:
 model = simulateHeatDistribution(model);
@@ -88,8 +100,8 @@ plot(model,'HS');
 % containing numerical values indicating the media type (as defined in
 % mediaPropertiesFunc) at each voxel location.
 function M = geometryDefinition(X,Y,Z,parameters)
-    M = ones(size(X)); % fill background with water
-    M(Z > 0.01) = 2; % Temperature dependent VHC material
+  M = ones(size(X)); % fill background with water
+  M(Z > 0.01) = 2; % Temperature dependent VHC material
 end
 
 %% Media Properties function
@@ -101,20 +113,20 @@ end
 % in a for loop. Dependence on excitation fluence rate FR, temperature T or
 % fractional heat damage FD can be specified as in examples 12-15.
 function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
-    j=1;
-    mediaProperties(j).name  = 'water';
-    mediaProperties(j).mua   = 0.00036; % [cm^-1]
-    mediaProperties(j).mus   = 10; % [cm^-1]
-    mediaProperties(j).g     = 1.0;
-    mediaProperties(j).VHC   = 4.19; % [J cm^-3 K^-1]
-    mediaProperties(j).TC    = 5.8e-3; % [W cm^-1 K^-1]
-    
-    j=2;
-    mediaProperties(j).name  = 'temp. dep. VHC material';
-    mediaProperties(j).mua = 30; % [cm^-1]
-    mediaProperties(j).mus = 50; % [cm^-1]
-    mediaProperties(j).g   = 0.8;
-    mediaProperties(j).VHC = '3.5 + 500./(1+exp(40-T))'; % [J cm^-3 K^-1]
-    mediaProperties(j).TC  = 0.52e-2; % [W cm^-1 K^-1]
-    mediaProperties(j).nBins = 30;
+  j=1;
+  mediaProperties(j).name  = 'water';
+  mediaProperties(j).mua   = 0.00036; % [cm^-1]
+  mediaProperties(j).mus   = 10; % [cm^-1]
+  mediaProperties(j).g     = 1.0;
+  mediaProperties(j).VHC   = 4.19; % [J cm^-3 K^-1]
+  mediaProperties(j).TC    = 5.8e-3; % [W cm^-1 K^-1]
+
+  j=2;
+  mediaProperties(j).name  = 'temp. dep. VHC material';
+  mediaProperties(j).mua = 30; % [cm^-1]
+  mediaProperties(j).mus = 50; % [cm^-1]
+  mediaProperties(j).g   = 0.8;
+  mediaProperties(j).VHC = '3.5 + 500./(1+exp(40-T))'; % [J cm^-3 K^-1]
+  mediaProperties(j).TC  = 0.52e-2; % [W cm^-1 K^-1]
+  mediaProperties(j).nBins = 30;
 end

@@ -24,6 +24,7 @@ function plotMCmatlabHeat(model)
 %%%%%
 
 com.mathworks.mde.desk.MLDesktop.getInstance.setDocumentBarPosition('Figures',7); % Set Figures window tabs to be on left side
+model.G = model.G.update_M_raw;
 
 G = model.G;
 mP_fH = model.HS.mediaProperties_funcHandles;

@@ -29,12 +29,16 @@ function plotMCmatlabGeom(model)
 %%%%%
 
 com.mathworks.mde.desk.MLDesktop.getInstance.setDocumentBarPosition('Figures',7); % Set Figures window tabs to be on left side
+model.G = model.G.update_M_raw;
 
 %% Make geometry plot
 mediaProperties = model.G.mediaPropertiesFunc(NaN,model.G.mediaPropParams); % We don't know what wavelength the user wants yet, so we just input NaN
 [uniqueMedia,~,M_trimmed] = unique(model.G.M_raw);
 M_trimmed = reshape(M_trimmed,model.G.nx,model.G.ny,model.G.nz);
 mediaProperties_trimmed = mediaProperties(uniqueMedia);
+if ~isfield(mediaProperties_trimmed,'name') || any(cellfun(@isempty,{mediaProperties_trimmed.name}))
+  error('Error: You must define a name for each medium in the simulation.');
+end
 h_f = plotVolumetric.plotVolumetric(1,model.G.x,model.G.y,model.G.z,M_trimmed,'MCmatlab_GeometryIllustration',mediaProperties_trimmed);
 set(h_f,'WindowStyle','Docked');
 h_f.Name = 'Geometry illustration';
