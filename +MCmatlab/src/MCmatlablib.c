@@ -117,7 +117,7 @@ bool depositionCriteriaMet(struct photon *P,struct depositionCriteria *DC) {
          P->interfaceTransitions <= DC->maxI;
 }
 
-unsigned long infCast(double x) {return isinf(x)? ULONG_MAX: (unsigned long)x;}
+unsigned long infCast(double x) {return mxIsInf(x)? ULONG_MAX: (unsigned long)x;}
 
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
@@ -713,7 +713,7 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
     FLOATORDBL distLCP = SQRT(RLCP[0]*RLCP[0] + RLCP[1]*RLCP[1]); // Distance between light collector center and the point where the photon crosses the light collector plane
     
     if(distLCP < LC->diam/2) { // If the distance is less than the radius of the light collector
-      if(isfinite(LC->f)) { // If the light collector is an objective lens
+      if(mxIsFinite(LC->f)) { // If the light collector is an objective lens
         FLOATORDBL RImP[2]; // Back-propagated position that the photon would have had in the object plane if propagating freely. This corresponds to where the photon will end up in the image plane for magnification 1x.
         RImP[0] = RLCP[0] + LC->f*U[0]/U[2];
         RImP[1] = RLCP[1] + LC->f*U[1]/U[2];
@@ -1085,7 +1085,7 @@ __device__
 void scatterPhoton(struct photon * const P, struct geometry const * const G, struct paths *Pa, struct depositionCriteria *DC, struct debug *D) {
   bool criteriaPreviouslyMet = depositionCriteriaMet(P,DC);
   FLOATORDBL costheta;
-  if(isnan(P->g)) {
+  if(mxIsNaN(P->g)) {
     // Sample for theta using the cumulative distribution function (CDF)
     long jTheta = binaryTreeSearch(RandomNum,CDFSIZE,G->CDFs + P->CDFidx*CDFSIZE);
     costheta = COS((jTheta + RandomNum)*PI/(CDFSIZE-1));

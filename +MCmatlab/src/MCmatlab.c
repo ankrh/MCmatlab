@@ -472,14 +472,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   long   nTimeBins = S? 0: (long)*mxGetPr(mxGetPropertyShared(MatlabLC,0,"nTimeBins"));
 
   struct lightCollector LC_var = {
-    {(FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabLC,0,"x")) - (isfinite(f)? f*SIN(theta)*COS(phi):0), // r field, xyz coordinates of center of light collector
-     (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabLC,0,"y")) - (isfinite(f)? f*SIN(theta)*SIN(phi):0),
-     (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabLC,0,"z")) - (isfinite(f)? f*COS(theta)         :0)},
+    {(FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabLC,0,"x")) - (mxIsFinite(f)? f*SIN(theta)*COS(phi):0), // r field, xyz coordinates of center of light collector
+     (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabLC,0,"y")) - (mxIsFinite(f)? f*SIN(theta)*SIN(phi):0),
+     (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabLC,0,"z")) - (mxIsFinite(f)? f*COS(theta)         :0)},
     theta,
     phi,
     f,
     (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabLC,0,"diam")),
-    (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabLC,0,isfinite(f)?"fieldSize":"NA")),
+    (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabLC,0,mxIsFinite(f)?"fieldSize":"NA")),
     {(long)*mxGetPr(mxGetPropertyShared(MatlabLC,0,"res")), nTimeBins? nTimeBins+2: 1},
     (FLOATORDBL)(S? 0: *mxGetPr(mxGetPropertyShared(MatlabLC,0,"tStart"))),
     (FLOATORDBL)(S? 0: *mxGetPr(mxGetPropertyShared(MatlabLC,0,"tEnd")))

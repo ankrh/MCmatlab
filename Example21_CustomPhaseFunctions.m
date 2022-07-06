@@ -6,7 +6,7 @@
 % scattered light, so we set model.MC.farFieldRes = 21. Our light source
 % will be a pencil beam, going straight down the center column of voxels.
 
-% To show the scattering distrubution, we use a special geometry in which
+% To show the scattering distribution, we use a special geometry in which
 % we first fill the cuboid with air, then fill the center column with a
 % medium with custom scattering phase function. We choose small values for
 % Lx and Ly to ensure that the scattering column is very narrow, so as to
