@@ -7,6 +7,7 @@ classdef fluorescenceMonteCarloSimulation
     silentMode (1,1) logical = false % Disables command window text and progress indication
     useAllCPUs (1,1) logical = false % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
     useGPU (1,1) logical = false % Use CUDA acceleration for NVIDIA GPUs
+    GPUdevice (1,1) int32 = 0 % GPU device index to run on (default: 0, the first one)
     simulationTimeRequested (1,1) double {mustBePositive} = 0.1 % [min] Time duration of the simulation
     nPhotonsRequested (1,1) double {mustBePositiveIntegerOrNaN} = NaN % # of photons to launch
     calcNormalizedFluenceRate (1,1) logical = true % If true, the 3D normalized fluence rate output array will be calculated. Set to false if you have a light collector and you're only interested in the image output.
@@ -109,4 +110,16 @@ function mustBePositiveOrNaN(x)
   if ~any(isnan(x)) && (~any(isfinite(x)) || any(x <= 0))
     error('Value must be positive or NaN.');
   end
+end
+
+function mustBeInRange(x,a,b)
+if any(x(:) < a) || any(x(:) > b)
+  error('Error: Values must be in range %f to %f.',a,b);
+end
+end
+
+function mustBeScalarOrEmpty(x)
+if numel(x) > 1
+  error('Error: Value must be scalar or empty.');
+end
 end

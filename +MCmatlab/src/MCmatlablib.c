@@ -74,10 +74,10 @@ struct photon { // Struct type for parameters describing the thread-specific cur
   long           recordElems; // Current number of elements used of the record. Starts at 0 every photon launch, used only if calcNFRdet is true
   long           *j_record; // List of the indices of the voxels in which the current photon has deposited power, used only if calcNFRdet is true
   FLOATORDBL     *weight_record; // List of the weights that have been deposited into the voxels, used only if calcNFRdet is true
-  long           scatterings;
-  long           refractions;
-  long           reflections;
-  long           interfaceTransitions;
+  unsigned long  scatterings;
+  unsigned long  refractions;
+  unsigned long  reflections;
+  unsigned long  interfaceTransitions;
 };
 
 struct paths { // Struct type for storing the paths taken by the nExamplePaths first photons simulated by the master thread
@@ -117,10 +117,7 @@ bool depositionCriteriaMet(struct photon *P,struct depositionCriteria *DC) {
          P->interfaceTransitions <= DC->maxI;
 }
 
-#ifdef __NVCC__ // If compiling for CUDA
-__device__
-#endif
-unsigned long infCast(double x) {return isinf(x)? ULONG_MAX: x;}
+unsigned long infCast(double x) {return isinf(x)? ULONG_MAX: (unsigned long)x;}
 
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
@@ -275,14 +272,15 @@ void createDeviceStructs(struct geometry const *G, struct geometry **G_devptr,
                          struct lightCollector const *LC, struct lightCollector **LC_devptr,
                          struct paths *Pa, struct paths **Pa_devptr,
                          struct outputs *O, struct outputs **O_devptr,
+                         struct depositionCriteria *DC, struct depositionCriteria **DC_devptr,
                          int nM, long L,
+                         size_t size_smallArrays,
                          struct debug *D, struct debug **D_devptr) {
   bool matchedInterfaces = true;
   for(long iM=1;iM<nM;iM++) matchedInterfaces &= G->RIv[iM] == G->RIv[iM-1];
 
   // Allocate and copy geometry struct, including smallArrays
   struct geometry G_tempvar = *G;
-  long size_smallArrays = (nM*4 + B->L_NF1 + B->L_FF1 + B->L_NF2 + B->L_FF2)*sizeof(FLOATORDBL);
   gpuErrchk(cudaMalloc(&G_tempvar.muav,size_smallArrays)); // This is to allocate all of smallArrays
   gpuErrchk(cudaMemcpy( G_tempvar.muav,G->muav,size_smallArrays,cudaMemcpyHostToDevice)); // And for copying all of it to global device memory
   gpuErrchk(cudaMalloc(&G_tempvar.M, L*sizeof(unsigned char)));
@@ -301,6 +299,10 @@ void createDeviceStructs(struct geometry const *G, struct geometry **G_devptr,
   }
   gpuErrchk(cudaMalloc(B_devptr, sizeof(struct beam)));
   gpuErrchk(cudaMemcpy(*B_devptr,&B_tempvar,sizeof(struct beam),cudaMemcpyHostToDevice));
+
+  // Allocate and copy deposition criteria struct
+  gpuErrchk(cudaMalloc(DC_devptr, sizeof(struct depositionCriteria)));
+  gpuErrchk(cudaMemcpy(*DC_devptr,DC,sizeof(struct depositionCriteria),cudaMemcpyHostToDevice));
 
   // Allocate and copy lightCollector struct
   gpuErrchk(cudaMalloc(LC_devptr, sizeof(struct lightCollector)));
@@ -334,12 +336,20 @@ void createDeviceStructs(struct geometry const *G, struct geometry **G_devptr,
   if(O->NI_xpos) {
     gpuErrchk(cudaMalloc(&O_tempvar.NI_xpos, G->n[1]*G->n[2]*sizeof(double)));
     gpuErrchk(cudaMemset(O_tempvar.NI_xpos,0,G->n[1]*G->n[2]*sizeof(double)));
+  }
+  if(O->NI_xneg) {
     gpuErrchk(cudaMalloc(&O_tempvar.NI_xneg, G->n[1]*G->n[2]*sizeof(double)));
     gpuErrchk(cudaMemset(O_tempvar.NI_xneg,0,G->n[1]*G->n[2]*sizeof(double)));
+  }
+  if(O->NI_ypos) {
     gpuErrchk(cudaMalloc(&O_tempvar.NI_ypos, G->n[0]*G->n[2]*sizeof(double)));
     gpuErrchk(cudaMemset(O_tempvar.NI_ypos,0,G->n[0]*G->n[2]*sizeof(double)));
+  }
+  if(O->NI_yneg) {
     gpuErrchk(cudaMalloc(&O_tempvar.NI_yneg, G->n[0]*G->n[2]*sizeof(double)));
     gpuErrchk(cudaMemset(O_tempvar.NI_yneg,0,G->n[0]*G->n[2]*sizeof(double)));
+  }
+  if(O->NI_zpos) {
     gpuErrchk(cudaMalloc(&O_tempvar.NI_zpos, G->n[0]*G->n[1]*sizeof(double)));
     gpuErrchk(cudaMemset(O_tempvar.NI_zpos,0,G->n[0]*G->n[1]*sizeof(double)));
   }
@@ -363,6 +373,7 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
                                   struct lightCollector const *LC, struct lightCollector *LC_dev,
                                   struct paths *Pa, struct paths *Pa_dev,
                                   struct outputs *O, struct outputs *O_dev,
+                                  struct depositionCriteria *DC_dev,
                                   long L,
                                   struct debug *D, struct debug *D_dev) {
   struct geometry G_temp; gpuErrchk(cudaMemcpy(&G_temp, G_dev, sizeof(struct geometry),cudaMemcpyDeviceToHost));
@@ -375,6 +386,8 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
   gpuErrchk(cudaFree(B_temp.S));
   gpuErrchk(cudaFree(B_dev));
   
+  gpuErrchk(cudaFree(DC_dev));
+
   gpuErrchk(cudaFree(LC_dev));
   
   struct paths Pa_temp = *Pa;
@@ -407,12 +420,20 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
   if(O->NI_xpos) {
     gpuErrchk(cudaMemcpy(O->NI_xpos, O_temp.NI_xpos, G->n[1]*G->n[2]*sizeof(double),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.NI_xpos));
+  }
+  if(O->NI_xneg) {
     gpuErrchk(cudaMemcpy(O->NI_xneg, O_temp.NI_xneg, G->n[1]*G->n[2]*sizeof(double),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.NI_xneg));
+  }
+  if(O->NI_ypos) {
     gpuErrchk(cudaMemcpy(O->NI_ypos, O_temp.NI_ypos, G->n[0]*G->n[2]*sizeof(double),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.NI_ypos));
+  }
+  if(O->NI_yneg) {
     gpuErrchk(cudaMemcpy(O->NI_yneg, O_temp.NI_yneg, G->n[0]*G->n[2]*sizeof(double),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.NI_yneg));
+  }
+  if(O->NI_zpos) {
     gpuErrchk(cudaMemcpy(O->NI_zpos, O_temp.NI_zpos, G->n[0]*G->n[1]*sizeof(double),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.NI_zpos));
   }
@@ -535,7 +556,6 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
       case 4: // Radial
         // Near Field
         axisrotate(B->v,B->u,RandomNum*2*PI,w0); // w0 unit vector now points in the direction from focus center point to ray target point
-        
         if(*B->NFdist1 == -1) { // Top-hat radial distribution
           r = B->NFwidth1*SQRT(RandomNum); // for target calculation
         } else if(*B->NFdist1 == -2) { // Gaussian radial distribution

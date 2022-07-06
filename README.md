@@ -112,7 +112,7 @@ You build each model in a separate m-file. Each model requires the first two and
 - If you have an Nvidia graphics card with compute capability at least 3.0, you can set useGPU = true to enable running on the GPU, greatly speeding up both the Monte Carlo and heat simulations.
 
 ### List and explanation of input parameters
-In the following we assume that the model object variable has been named “model”. In principle, it could be given any name you want.
+In the following we assume that the model object variable has been named "model". In principle, it could be given any name you want.
 #### Geometry parameters
 `model.G.silentMode`
 [-]
@@ -149,6 +149,11 @@ A user-defined cell array that you can use to contain all sorts of inputs you wo
 [-]
 (Default: False)
 If true, will run the MC simulation on GPU. If false, will use CPU.
+
+`model.MC.GPUdevice`
+[-]
+(Default: 0)
+The GPU device to use for GPU accelerated computations. 0 corresponds to the first device. For systems with multiple GPUs, you can launch simulations to different GPUs by varying this property and with the use of, e.g., a MATLAB parallel-for (parfor) loop.
 
 `model.MC.simulationTimeRequested`
 [minutes]
@@ -408,7 +413,7 @@ Number of bins between tStart and tEnd. If zero, the measurement is not time-res
 
 #### Fluorescence Monte Carlo parameters
 The following properties exist for fluorescence Monte Carlo simulations, and they work the same as for regular MC simulations:
-`FMC.useGPU`, `FMC.simulationTimeRequested`, `FMC.nPhotonsRequested`, `FMC.silentMode`, `FMC.useAllCPUs`, `FMC.calcNormalizedFluenceRate`, `FMC.calcNormalizedFluenceRate_detected`, `FMC.nExamplePaths`, `FMC.farFieldRes`, `FMC.matchedInterfaces`, `FMC.smoothingLengthScale`, `FMC.boundaryType`, `FMC.wavelength`, `FMC.useLightCollector`, `FMC.lightCollector.x`, `FMC.lightCollector.y`, `FMC.lightCollector.z`, `FMC.lightCollector.theta`, `FMC.lightCollector.phi`, `FMC.lightCollector.f`, `FMC.lightCollector.diam`, `FMC.lightCollector.fieldSize`, `FMC.lightCollector.NA`, `FMC.lightCollector.res`
+`FMC.useGPU`, `FMC.GPUdevice`, `FMC.simulationTimeRequested`, `FMC.nPhotonsRequested`, `FMC.silentMode`, `FMC.useAllCPUs`, `FMC.calcNormalizedFluenceRate`, `FMC.calcNormalizedFluenceRate_detected`, `FMC.nExamplePaths`, `FMC.farFieldRes`, `FMC.matchedInterfaces`, `FMC.smoothingLengthScale`, `FMC.boundaryType`, `FMC.wavelength`, `FMC.useLightCollector`, `FMC.lightCollector.x`, `FMC.lightCollector.y`, `FMC.lightCollector.z`, `FMC.lightCollector.theta`, `FMC.lightCollector.phi`, `FMC.lightCollector.f`, `FMC.lightCollector.diam`, `FMC.lightCollector.fieldSize`, `FMC.lightCollector.NA`, `FMC.lightCollector.res`
 
 #### Heat solver parameters
 `model.HS.useGPU`
@@ -493,7 +498,7 @@ Each row describes the x, y, z coordinates of a temperature sensor placed within
 Leave the matrix empty ([]) to disable temperature sensors.
 
 ### List and explanation of output properties
-As in the previous section, we assume that the model object variable has been named “model”. In principle, it could be given any name you want.
+As in the previous section, we assume that the model object variable has been named "model". In principle, it could be given any name you want.
 
 #### Geometry properties
 `model.G.dx`, `model.G.dy`, `model.G.dz`

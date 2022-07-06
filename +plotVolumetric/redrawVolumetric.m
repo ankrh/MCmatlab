@@ -47,7 +47,7 @@ switch src
         end
       end
     else
-      colormap(plotVolumetric.inferno);
+      colormap(vars.linearColormap);
       set(vars.h_surfxback ,'CData',squeeze(h_f.UserData(xbi,:,:)));
       set(vars.h_surfyback ,'CData',squeeze(h_f.UserData(:,end,:)));
       set(vars.h_surfzback ,'CData',squeeze(h_f.UserData(:,:,zbi)));

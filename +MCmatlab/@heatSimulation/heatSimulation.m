@@ -75,3 +75,9 @@ else
   end
 end
 end
+
+function mustBeInRange(x,a,b)
+if any(x(:) < a) || any(x(:) > b)
+  error('Error: Values must be in range %f to %f.',a,b);
+end
+end

@@ -124,7 +124,6 @@
   #else
     #define RandomNum   curand_uniform_double(&P->PRNGstate) // Calls for a random double in (0,1]
   #endif
-  #define DEVICE 0
   #define GPUHEAPMEMORYLIMIT 500000000 // Bytes to allow the GPU to allocate, mostly for tracking photons prior to storage in NFRdet. Must be less than the available memory.
   #define KERNELTIME 50000 // Microseconds to spend in each kernel call (watchdog timer is said to termine kernel function that take more than a few seconds)
   #include <curand_kernel.h>
@@ -166,7 +165,7 @@
 __global__
 #endif
 void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
-          struct lightCollector *LC_global, struct paths *Pa, struct outputs *O_global, struct depositionCriteria *DC_global, long nM,
+          struct lightCollector *LC_global, struct paths *Pa, struct outputs *O_global, struct depositionCriteria *DC_global, long nM, size_t size_smallArrays,
           long long simulationTimeStart, long long microSecondsOrGPUCycles, unsigned long long nPhotonsRequested,
           bool *abortingPtr, bool silentMode, struct debug *D) {
   struct photon P_var;
@@ -196,7 +195,7 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
     LC_var = *LC_global;
     O_var = *O_global;
     DC_var = *DC_global;
-    memcpy(smallArrays,G->muav,(nM*4 + B->L_NF1 + B->L_FF1 + B->L_NF2 + B->L_FF2)*sizeof(FLOATORDBL));
+    memcpy(smallArrays,G->muav,size_smallArrays);
     // Set all array pointers to the correct new locations in the shared memory version of smallArrays
     long CDFarraySize = (FLOATORDBL *)G->CDFidxv - G->CDFs;
     G->muav = smallArrays;
@@ -550,12 +549,15 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 
   // ============================ MAJOR CYCLE ========================
   #ifdef __NVCC__ // If compiling for CUDA
+  long GPUdevice = *(long *)mxGetPr(mxGetPropertyShared(MatlabMC,0,"GPUdevice"));
+  gpuErrchk(cudaSetDevice(GPUdevice));
+
   int threadsPerBlock, blocks; gpuErrchk(cudaOccupancyMaxPotentialBlockSize(&blocks,&threadsPerBlock,&threadInitAndLoop,size_smallArrays,0));
   double nThreads = threadsPerBlock*blocks;
 
-  struct cudaDeviceProp CDP; gpuErrchk(cudaGetDeviceProperties(&CDP,DEVICE));
+  struct cudaDeviceProp CDP; gpuErrchk(cudaGetDeviceProperties(&CDP,GPUdevice));
 //   if(!silentMode) printf("Using %s with CUDA compute capability %d.%d,\n    launching %d blocks, each with %d threads,\n    using %d/%d bytes of shared memory per block\n",CDP.name,CDP.major,CDP.minor,blocks,threadsPerBlock,384+size_smallArrays,CDP.sharedMemPerBlock);
-  if(!silentMode) printf("Using %s with CUDA compute capability %d.%d\n",CDP.name,CDP.major,CDP.minor);
+  if(!silentMode) printf("Using device %d: %s with CUDA compute capability %d.%d\n",GPUdevice,CDP.name,CDP.major,CDP.minor);
 
   size_t heapSizeLimit; gpuErrchk(cudaDeviceGetLimit(&heapSizeLimit,cudaLimitMallocHeapSize));
   if(calcNFRdet && heapSizeLimit < GPUHEAPMEMORYLIMIT) {
@@ -563,15 +565,16 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     gpuErrchk(cudaDeviceSetLimit(cudaLimitMallocHeapSize,GPUHEAPMEMORYLIMIT));
   }
 
-  int clock; gpuErrchk(cudaDeviceGetAttribute(&clock,cudaDevAttrClockRate,DEVICE));
+  int clock; gpuErrchk(cudaDeviceGetAttribute(&clock,cudaDevAttrClockRate,GPUdevice));
 
   struct geometry *G_dev;
   struct beam *B_dev;
   struct lightCollector *LC_dev;
   struct paths *Pa_dev;
   struct outputs *O_dev;
+  struct depositionCriteria *DC_dev;
   struct debug *D_dev;
-  createDeviceStructs(G,&G_dev,B,&B_dev,LC,&LC_dev,Pa,&Pa_dev,O,&O_dev,nM,L,D,&D_dev);
+  createDeviceStructs(G,&G_dev,B,&B_dev,LC,&LC_dev,Pa,&Pa_dev,O,&O_dev,DC,&DC_dev,nM,L,size_smallArrays,D,&D_dev);
 
   int pctProgress = 0;
   long long timeLeft = simulationTimed? (long long)(simulationTimeRequested*60000000): LLONG_MAX; // microseconds
@@ -584,7 +587,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   long long prevtime = simulationTimeStart;
   do {
     // Run kernel
-    threadInitAndLoop<<<blocks, threadsPerBlock, size_smallArrays>>>(B_dev,G_dev,LC_dev,Pa_dev,O_dev,nM,prevtime,clock/1000*min((long long)KERNELTIME,timeLeft),nPhotonsRequested,NULL,false,D_dev);
+    threadInitAndLoop<<<blocks, threadsPerBlock, size_smallArrays>>>(B_dev,G_dev,LC_dev,Pa_dev,O_dev,DC_dev,nM,size_smallArrays,prevtime,clock/1000*min((long long)KERNELTIME,timeLeft),nPhotonsRequested,NULL,false,D_dev);
     gpuErrchk(cudaPeekAtLastError());
     gpuErrchk(cudaDeviceSynchronize());
     // Progress indicator
@@ -625,7 +628,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   } while(timeLeft > 0 && O->nPhotons < nPhotonsRequested && !aborting && O->nPhotons); // The O->nPhotons is there to stop looping if launches failed
   if(!silentMode && O->nPhotons) printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgress);
 
-  retrieveAndFreeDeviceStructs(G,G_dev,B,B_dev,LC,LC_dev,Pa,Pa_dev,O,O_dev,L,D,D_dev);
+  retrieveAndFreeDeviceStructs(G,G_dev,B,B_dev,LC,LC_dev,Pa,Pa_dev,O,O_dev,DC_dev,L,D,D_dev);
 
   #else
 
@@ -642,7 +645,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   double nThreads = 1;
   #endif
   {
-    threadInitAndLoop(B,G,LC,Pa,O,DC,nM,simulationTimeStart,(long long)(simulationTimeRequested*60000000),nPhotonsRequested,&aborting,silentMode,D);
+    threadInitAndLoop(B,G,LC,Pa,O,DC,nM,0,simulationTimeStart,(long long)(simulationTimeRequested*60000000),nPhotonsRequested,&aborting,silentMode,D);
   }
   #endif
 

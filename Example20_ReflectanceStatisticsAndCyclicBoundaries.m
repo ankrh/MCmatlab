@@ -57,7 +57,7 @@ model.G.geomFunc          = @geometryDefinition; % Function to use for defining 
 plot(model,'G');
 
 %% Monte Carlo simulation
-model.MC.nPhotonsRequested        = 1e6; % Number of photons requested
+model.MC.nPhotonsRequested        = 1e5; % Number of photons requested
 model.MC.boundaryType             = 3; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping
 model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
