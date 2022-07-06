@@ -78,17 +78,17 @@ for i=1:length(mP_fH)
       matchFound = false;
       for iCDF=1:size(uniqueCDFs,2)
         if isequal(CDF,uniqueCDFs(:,iCDF))
-          mP(j).CDFidx = iCDF - 1; % 0-based indexing for later use in mex function
+          CDFidx = iCDF - 1; % 0-based indexing for later use in mex function
           matchFound = true;
           break;
         end
       end
       if ~matchFound
         uniqueCDFs = [uniqueCDFs CDF];
-        mP(j).CDFidx = size(uniqueCDFs,2) - 1; % 0-based indexing for later use in mex function
+        CDFidx = size(uniqueCDFs,2) - 1; % 0-based indexing for later use in mex function
       end
     else
-      mP(j).CDFidx = NaN;
+      CDFidx = NaN;
     end
 
     if ~isa(mP_fH(i).mua,'function_handle') && ...
@@ -100,6 +100,7 @@ for i=1:length(mP_fH)
       mP(j).mus = mP_fH(i).mus;
       mP(j).g = mP_fH(i).g;
       mP(j).n = mP_fH(i).n;
+      mP(j).CDFidx = CDFidx;
       j = j + 1;
     else
       if isnan(mP_fH(i).nBins)
@@ -138,6 +139,7 @@ for i=1:length(mP_fH)
         mP(j+k).mus = double(downsampledParamVals(2,k+1));
         mP(j+k).g   = double(downsampledParamVals(3,k+1));
         mP(j+k).n = mP_fH(i).n;
+        mP(j+k).CDFidx = CDFidx;
       end
       j = j + N;
     end

@@ -37,6 +37,8 @@ function model = simulateHeatDistribution(model)
 %   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
 %%%%%
 
+model.G = model.G.update_M_raw;
+
 if isnan(model.MC.NFR(1))
   error('Error: MC.NFR was not calculated');
 end

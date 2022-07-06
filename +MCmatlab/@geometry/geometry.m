@@ -17,10 +17,7 @@ classdef geometry
     mediaPropParams cell = {} % Cell array containing any additional parameters to be passed to the getMediaProperties function
     geomFunc (1,1) function_handle {mustHave4Input1OutputArgs} = @defaultGeomFunc % Function to use for defining the distribution of media in the cuboid. Defined at the end of the model file.
     geomFuncParams cell = {} % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
-  end
-
-  properties(SetAccess = private)
-    M_raw uint8 = ones(100,100,100)
+    M_raw uint8
   end
 
   properties (Dependent)
@@ -32,7 +29,7 @@ classdef geometry
     z
   end
 
-  methods(Access = private)
+  methods
     function obj = update_M_raw(obj)
       [X,Y,Z] = ndgrid(single(obj.x),single(obj.y),single(obj.z)); % The single data type is used to conserve memory
       M_rawtemp = obj.geomFunc(X,Y,Z,obj.geomFuncParams);
@@ -53,9 +50,7 @@ classdef geometry
       end
       obj.M_raw = M_rawtemp;
     end
-  end
-
-  methods
+    
     function value = get.dx(obj)
       value = obj.Lx/obj.nx; % [cm] size of x bins
     end
@@ -65,7 +60,6 @@ classdef geometry
     function value = get.dz(obj)
       value = obj.Lz/obj.nz; % [cm] size of z bins
     end
-
     function value = get.x(obj)
       value = ((0:obj.nx-1)-(obj.nx-1)/2)*obj.dx; % [cm] x position of centers of voxels
     end
@@ -74,39 +68,6 @@ classdef geometry
     end
     function value = get.z(obj)
       value = ((0:obj.nz-1)+1/2)*obj.dz; % [cm] z position of centers of voxels
-    end
-
-    function obj = set.nx(obj,x)
-      obj.nx = x;
-      obj = update_M_raw(obj);
-    end
-    function obj = set.ny(obj,x)
-      obj.ny = x;
-      obj = update_M_raw(obj);
-    end
-    function obj = set.nz(obj,x)
-      obj.nz = x;
-      obj = update_M_raw(obj);
-    end
-    function obj = set.Lx(obj,x)
-      obj.Lx = x;
-      obj = update_M_raw(obj);
-    end
-    function obj = set.Ly(obj,x)
-      obj.Ly = x;
-      obj = update_M_raw(obj);
-    end
-    function obj = set.Lz(obj,x)
-      obj.Lz = x;
-      obj = update_M_raw(obj);
-    end
-    function obj = set.geomFunc(obj,x)
-      obj.geomFunc = x;
-      obj = update_M_raw(obj);
-    end
-    function obj = set.geomFuncParams(obj,x)
-      obj.geomFuncParams = x;
-      obj = update_M_raw(obj);
     end
   end
 end

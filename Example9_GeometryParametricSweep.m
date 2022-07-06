@@ -61,7 +61,7 @@ model.MC.useAllCPUs               = true; % If false, MCmatlab will leave one pr
 model.MC.simulationTimeRequested  = 2/60; % [min] Time duration of the simulation
 model.MC.calcNormalizedFluenceRate = false; % (Default: true) If true, the 3D fluence rate output array NFR will be calculated. Set to false if you have a light collector and you're only interested in the image output.
 
-model.MC.matchedInterfaces        = false; % Assumes all refractive indices are the same
+model.MC.matchedInterfaces        = true; % Assumes all refractive indices are the same
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
 model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 

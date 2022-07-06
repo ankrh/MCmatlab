@@ -23,6 +23,7 @@ function model = runMonteCarlo(model,varargin)
 %   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
 %%%%%
 
+model.G = model.G.update_M_raw;
 G = model.G;
 
 if any(strcmp(varargin,'fluorescence'))

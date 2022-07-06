@@ -29,6 +29,7 @@ function plotMCmatlabGeom(model)
 %%%%%
 
 com.mathworks.mde.desk.MLDesktop.getInstance.setDocumentBarPosition('Figures',7); % Set Figures window tabs to be on left side
+model.G = model.G.update_M_raw;
 
 %% Make geometry plot
 mediaProperties = model.G.mediaPropertiesFunc(NaN,model.G.mediaPropParams); % We don't know what wavelength the user wants yet, so we just input NaN

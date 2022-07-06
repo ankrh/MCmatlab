@@ -56,6 +56,7 @@ function plotMCmatlabMC(model,varargin)
 % 31: STL shape
 
 com.mathworks.mde.desk.MLDesktop.getInstance.setDocumentBarPosition('Figures',7); % Set Figures window tabs to be on left side
+model.G = model.G.update_M_raw;
 
 G = model.G;
 
