@@ -20,14 +20,20 @@ classdef model
         try
           currentVersion = str2double(strsplit(fileread('version'),'.'));
           url = 'https://raw.githubusercontent.com/ankrh/MCmatlab/Release/version';
-          latestVersion = str2int32(strsplit(webread(url),'.'));
-          if latestVersion(1) >  currentVersion(1) || ...
-              (latestVersion(1) == currentVersion(1) && latestVersion(2) > currentVersion(2))
-            msg = sprintf(['You are using version %d.%d of MCmatlab. ' ...
-              'A newer version (%d.%d) is available for download from GitHub.'], ...
-              currentVersion(1), currentVersion(2), latestVersion(1), latestVersion(2));
-            msg = hyperlink('https://github.com/ankrh/MCmatlab', 'GitHub', msg);
-            warning('MCmatlab:version',msg);
+          latestVersion = str2double(strsplit(webread(url),'.'));
+          newerVersion = false;
+          for iNumber = 1:numel(currentVersion)
+            if latestVersion(iNumber) > currentVersion(iNumber)
+              newerVersion = true;
+              break;
+            elseif latestVersion(iNumber) < currentVersion(iNumber) % Something's wrong with the version number
+              break;
+            end
+          end
+          if newerVersion
+            warning(['You are using version ' strrep(num2str(currentVersion),'  ','.') ' of MCmatlab. ' ...
+              'A newer version (' strrep(num2str(latestVersion),'  ','.') ') is available for download from ' ...
+              '<a href="matlab:web(''-browser'',''https://github.com/ankrh/MCmatlab'');">GitHub</a>.']);
           end
         catch
           % ignore
