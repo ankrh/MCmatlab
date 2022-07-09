@@ -2,7 +2,7 @@
 % This example illustrates that deposition criteria can be specified to determine when
 % photon packets should contribute to output data, for example one could
 % specify the number of scattering events must be at least 1 and at most 3.
-
+%
 % The list of criteria are:
 % Minimum and maximum # of scattering events
 % Minimum and maximum # of refraction events (for non-matched interfaces)
@@ -10,30 +10,30 @@
 % Minimum and maximum # of interface transition events
 % 
 % There is an implied AND between all these critera.
-
+%
 % When a photon packet fulfills the criteria, its "weight loss"
 % (absorption) will be counted in the normalized fluence rate 3D array, in
 % the image 2D array, in the 2D boundary irradiance arrays and in the
 % angular-resolved far field data. Also it will be registered as a
 % potential example photon path.
-
+%
 % The default criteria are zeros for the minima and infinities for the
 % maxima. That means that by default, all photon packets deposit weight
 % into the output arrays regardless of the number of scatterings,
 % refractions etc.
-
+%
 % Changing deposition criteria does not change the underlying propagation
 % and absorption of photons packets in the simulation. It only means that
 % data will only be registered (deposited) into the output arrays when the
 % photon packets fulfill the criteria.
-
+%
 % In this example, we use the same geometry and settings as example 1,
 % except that we add some photon paths and we choose only to plot data for
 % photons that have been scattered exactly once by setting
 % model.MC.depositionCriteria.minScatterings = 1 and
 % model.MC.depositionCriteria.maxScatterings = 1. Notice how you can see the linear
 % paths of photons scattered away from the center column.
-
+%
 % See the readme.md file for all the properties of the depositionCriteria
 % object.
 

@@ -11,7 +11,7 @@
 % E and A parameters for blood coagulation are used to calculate the
 % distribution of coagulated blood. Temperature sensors outputs and movie
 % generation is also demonstrated.
-
+%
 % In the media properties function, we use the formulas described in
 % Jacques "Optical properties of biological tissues: a review" to calculate
 % mua and mus. The functions calc_mua() and calc_mus() are provided for

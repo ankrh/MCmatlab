@@ -2,14 +2,14 @@
 % In this example, we show two things: The use of cyclic boundary
 % conditions and how to calculate the reflectance of a sample, including
 % how to provide an estimate of the statistical error of the value.
-
+%
 % The geometry is similar to that of example 1, although we will run it
 % both with and without matched interfaces here. We place a thin layer of
 % air, 1 voxel thick, at the top of the cuboid and fill the rest with
 % "standard tissue". The thin layer of air is necessary to enforce specular
 % reflectance of the incident beam and to include the reflection and
 % refraction effects at the surface.
-
+%
 % We want to calculate the total and diffuse reflectance of the tissue, so
 % we don't want photons to escape at the side walls and disappear from the
 % simulation. One possibility for how to avoid this is to use a cuboid with
@@ -19,7 +19,7 @@
 % cuboid again on the opposite wall. Because our geometry is supposed to
 % represent a slab of tissue with infinite horizontal extent, this is a
 % valid way for us to avoid losing photons to side wall effects.
-
+%
 % We will calculate the reflectance by integrating the
 % model.MC.normalizedIrradiance_zneg 2D array, which contains all the power
 % that has hit the top cuboid boundary from the inside. In principle, the x
@@ -27,7 +27,7 @@
 % get the same result (try it). For visualization purposes, however, we
 % keep nx and ny at reasonable values of 101 in this example. Also Lx and
 % Ly could be set arbitrarily low due to the use of the cyclic boundaryType.
-
+%
 % The reflectance that we calculate is the total refletance, including the
 % specular reflection that we get when simulating without matched
 % interfaces. We can obtain the diffuse reflectance by subtracting the
@@ -35,7 +35,7 @@
 % reflectance. Another way of avoiding the specular reflectance would
 % have been to set depositionCriteria.minInterfaceTransitions = 1, but we
 % do not use that method here.
-
+%
 % To get some statistics, we launch 1e6 photons 5 times and collect the
 % diffuse reflectance value for each run. Then we finally write out the
 % mean and the standard error of the mean for both the calculation with

@@ -5,19 +5,19 @@
 % beams. It can also be useful for heavy simulations that require a lot of
 % statistics, so you might have run the same simulation on multiple
 % different PCs and would like to combine the results.
-
+%
 % This example is almost the same as example 1, except that we start by
 % naming the model "model1" instead of the usual "model". It has a shifted
 % y position of the input pencil beam and a power (model1.MC.P) of 1
 % watt.
-
+%
 % Then we copy this model into a new model called "model2", and we give
 % model2 a new beam y position and a different power, 0.1 watts.
-
+%
 % We run the Monte Carlo simulation on both of these models individually,
 % and then use the combineModels() function to combine the results into one
 % model called "combinedModel".
-
+%
 % This combined model object now contains properties where the input objects'...
 % - nPhotons and simulationTime have been added
 % - examplePaths have been concatenated
@@ -30,7 +30,7 @@
 % assume that we are combining simulations with different light sources, as
 % is the case in this example, and the weights used are the powers,
 % model.MC.P.
-
+%
 % When plotting the combined model output, you see the two pencil beams in
 % the cuboid, with one having five times the power of the other.
 

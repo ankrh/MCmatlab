@@ -1,11 +1,11 @@
 %% Description
 % In this example, we showcase the use of custom phase functions (i.e.,
 % other phase functions than Henyey-Greenstein).
-
+%
 % We will use the farField output array to see the angular distribution of
 % scattered light, so we set model.MC.farFieldRes = 21. Our light source
 % will be a pencil beam, going straight down the center column of voxels.
-
+%
 % To show the scattering distribution, we use a special geometry in which
 % we first fill the cuboid with air, then fill the center column with a
 % medium with custom scattering phase function. We choose small values for
@@ -14,7 +14,7 @@
 % non-scattered photons do not get registered in the farField array we set
 % depositionCriteria.minScatterings = 1. See example 19 for how deposition
 % criteria work.
-
+%
 % For the custom phase function for the scatterer, instead of setting the
 % "g" field in the media properties struct we set instead the
 % customPhaseFunc field, which has be be a char array that writes out a
@@ -22,7 +22,7 @@
 % expression does not need to be normalized. MCmatlab will evaluate the
 % expression and use an efficient lookup table algorithm to find the
 % scattering angle at every scattering event.
-
+%
 % In this example, we set the custom phase function to that of Rayleigh
 % scattering of unpolarized light. This distribution has equal scattering
 % per solid angle in the forward and backward directions, and half of that
