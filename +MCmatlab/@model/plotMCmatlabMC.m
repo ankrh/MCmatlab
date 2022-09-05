@@ -380,9 +380,8 @@ if MCorFMC.boundaryType == 1
     setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera');
   end
 elseif MCorFMC.boundaryType == 2
-  if simFluorescence || isnan(MCorFMC.LS.sourceType) || MCorFMC.LS.sourceType ~= 2
-    fprintf(['%.3g%% of ' fluorescenceOrIncident 'light hits the top cuboid boundary.\n'],100*(sum(sum(MCorFMC.NI_zneg*G.dx*G.dy)))/P_in);
-  end
+  infwavecorrectionfactor = (size(MCorFMC.NI_zneg,1)/G.nx)^2;
+  fprintf(['%.3g%% of ' fluorescenceOrIncident 'light hits the top cuboid boundary.\n'],100*(sum(sum(MCorFMC.NI_zneg*G.dx*G.dy)))/P_in/infwavecorrectionfactor);
   
   h_f = figure(10 + figNumOffset);
   set(h_f,'WindowStyle','Docked');
@@ -401,9 +400,7 @@ elseif MCorFMC.boundaryType == 2
   ylabel('y [cm]');
   set(gca,'fontsize',18)
 elseif MCorFMC.boundaryType == 3
-  if simFluorescence || isnan(MCorFMC.LS.sourceType) || MCorFMC.LS.sourceType ~= 2
-    fprintf(['%.3g%% of ' fluorescenceOrIncident 'light hits the top or bottom cuboid boundaries.\n'],100*(sum(sum((MCorFMC.NI_zneg + MCorFMC.NI_zpos)*G.dx*G.dy)))/P_in);
-  end
+  fprintf(['%.3g%% of ' fluorescenceOrIncident 'light hits the top or bottom cuboid boundaries.\n'],100*(sum(sum((MCorFMC.NI_zneg + MCorFMC.NI_zpos)*G.dx*G.dy)))/P_in);
 
   h_f = figure(10 + figNumOffset);
   set(h_f,'WindowStyle','Docked');

@@ -713,7 +713,7 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
     FLOATORDBL distLCP = SQRT(RLCP[0]*RLCP[0] + RLCP[1]*RLCP[1]); // Distance between light collector center and the point where the photon crosses the light collector plane
     
     if(distLCP < LC->diam/2) { // If the distance is less than the radius of the light collector
-      if(mxIsFinite(LC->f)) { // If the light collector is an objective lens
+      if(ISFINITE(LC->f)) { // If the light collector is an objective lens
         FLOATORDBL RImP[2]; // Back-propagated position that the photon would have had in the object plane if propagating freely. This corresponds to where the photon will end up in the image plane for magnification 1x.
         RImP[0] = RLCP[0] + LC->f*U[0]/U[2];
         RImP[1] = RLCP[1] + LC->f*U[1]/U[2];
@@ -798,6 +798,7 @@ void checkEscape(struct photon * const P, struct paths *Pa, struct geometry cons
       break;
     case 3:
       P->alive = P->i[2] < G->n[2] && P->i[2] >= 0;
+      escaped = !P->alive && P->RI == 1;
       bool photonTeleported = false;
       if(P->i[0] >= G->n[0]) {
         P->i[0] = 0; // Wrap x
@@ -869,15 +870,19 @@ void getNormal(struct geometry const * const G, FLOATORDBL *nxPtr, FLOATORDBL *n
 __device__
 #endif
 void getInterpolatedNormal(struct geometry const * const G, struct photon *P, FLOATORDBL *nxPtr, FLOATORDBL *nyPtr, FLOATORDBL *nzPtr, long j) {
+  long ix_coerced = ((P->i[0] < 0)? 0: ((P->i[0] >= G->n[0])? G->n[0]-1: P->i[0]));
+  long iy_coerced = ((P->i[1] < 0)? 0: ((P->i[1] >= G->n[1])? G->n[1]-1: P->i[1]));
+  long iz_coerced = ((P->i[2] < 0)? 0: ((P->i[2] >= G->n[2])? G->n[2]-1: P->i[2]));
+
   // Determine which set of 8 voxels to interpolate between. Let the corner with lowest indices have indices ix,iy,iz and the corner with highest indices have indices ix+1,iy+1,iz+1.
-  long ix = (long)FLOOR(P->i[0] - 0.5); // May be as low as -1
-  long iy = (long)FLOOR(P->i[1] - 0.5); // May be as low as -1
-  long iz = (long)FLOOR(P->i[2] - 0.5); // May be as low as -1
+  long ix = (long)FLOOR(ix_coerced - 0.5);
+  long iy = (long)FLOOR(iy_coerced - 0.5);
+  long iz = (long)FLOOR(iz_coerced - 0.5);
   
   // Calculate weights based on where in the 8-voxel space the photon is
-  FLOATORDBL wx = (FLOATORDBL)(P->i[0] - 0.5 - ix);
-  FLOATORDBL wy = (FLOATORDBL)(P->i[1] - 0.5 - iy);
-  FLOATORDBL wz = (FLOATORDBL)(P->i[2] - 0.5 - iz);
+  FLOATORDBL wx = (FLOATORDBL)(ix_coerced - 0.5 - ix);
+  FLOATORDBL wy = (FLOATORDBL)(iy_coerced - 0.5 - iy);
+  FLOATORDBL wz = (FLOATORDBL)(iz_coerced - 0.5 - iz);
   
   // Add up contributions from those of the 8 voxels that are of the same refractive index
   *nxPtr = *nyPtr = *nzPtr = 0;
@@ -1085,7 +1090,7 @@ __device__
 void scatterPhoton(struct photon * const P, struct geometry const * const G, struct paths *Pa, struct depositionCriteria *DC, struct debug *D) {
   bool criteriaPreviouslyMet = depositionCriteriaMet(P,DC);
   FLOATORDBL costheta;
-  if(mxIsNaN(P->g)) {
+  if(ISNAN(P->g)) {
     // Sample for theta using the cumulative distribution function (CDF)
     long jTheta = binaryTreeSearch(RandomNum,CDFSIZE,G->CDFs + P->CDFidx*CDFSIZE);
     costheta = COS((jTheta + RandomNum)*PI/(CDFSIZE-1));
@@ -1145,7 +1150,7 @@ void normalizeDeposition(struct beam const * const B, struct geometry const * co
   double normfactor = (double)O->nPhotons;
   if(B->S) { // For a 3D source distribution (e.g., fluorescence)
     normfactor /= B->power;
-  } else if(B->beamType == 2 && G->boundaryType != 1) { // For infinite plane wave launched into volume without absorbing walls
+  } else if(B->beamType == 2 && (G->boundaryType == 0 || G->boundaryType == 2)) { // For infinite plane wave launched into volume without absorbing walls
     normfactor /= KILLRANGE*KILLRANGE;
   }
   

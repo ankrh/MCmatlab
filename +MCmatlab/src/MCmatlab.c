@@ -132,6 +132,8 @@
 //   typedef curandStateMRG32k3a_t PRNG_t;
 //   typedef curandStatePhilox4_32_10_t PRNG_t;
   #define THREADNUM (threadIdx.x + blockDim.x*blockIdx.x)
+  #define ISFINITE(x) (isfinite(x))
+  #define ISNAN(x) (isnan(x))
 #else
   #define DSFMT_MEXP 19937 // Mersenne exponent for dSFMT
   #include "dSFMT-src-2.2.3/dSFMT.c" // Double precision SIMD oriented Fast Mersenne Twister(dSFMT)
@@ -143,6 +145,8 @@
   #else
     #define THREADNUM 0
   #endif
+  #define ISFINITE(x) (mxIsFinite(x))
+  #define ISNAN(x) (mxIsNaN(x))
 #endif
 
 #define PI          ACOS(-1.0f)
