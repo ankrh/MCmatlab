@@ -65,7 +65,7 @@ model.G.Lz                  = .2; % [cm] z size of simulation cuboid
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 model.G.geomFunc            = @geometryDefinition; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
-plot(model,'G');
+model = plot(model,'G');
 
 %% Monte Carlo simulation
 model.MC.simulationTimeRequested  = .2; % [min] Time duration of the simulation
@@ -92,7 +92,7 @@ model.MC.FRdepIterations = 15;
 % Execution, do not modify the next line:
 model = runMonteCarlo(model); % Iteratively run Monte Carlo the default number of times (20) with simulation time (or nPhotons) increasing by a factor of 2 each time. Last run has simulation time equal to MC.simulationTime (or nPhotons equal to MC.nPhotonsRequested).
 
-plot(model,'MC');
+model = plot(model,'MC');
 
 %% Geometry function(s)
 % A geometry function takes as input X,Y,Z matrices as returned by the

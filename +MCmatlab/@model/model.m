@@ -81,7 +81,7 @@ classdef model
 
     obj = runMonteCarlo(obj, varargin)
 
-    function plot(obj, type)
+    function obj = plot(obj, type)
       % PLOT(obj, type) Plot all calculated values
       %
       %   'obj' is an object of class MCmatlab.model.
@@ -93,22 +93,27 @@ classdef model
 
       if nargin == 1
         % plot everything that is calculated
-        if ~isnan(obj.G.nx); plotMCmatlabGeom(obj); end
-        if ~isnan(obj.MC.nPhotons); plotMCmatlabMC(obj); end
-        if ~isnan(obj.FMC.nPhotons); plotMCmatlabMC(obj, "fluorescence"); end
-        if ~isnan(obj.HS.T); plotMCmatlabHeat(obj); end
+        if ~isnan(obj.G.nx); obj = plotMCmatlabGeom(obj); end
+        if ~isnan(obj.MC.nPhotons); obj = plotMCmatlabMC(obj); end
+        if ~isnan(obj.FMC.nPhotons); obj = plotMCmatlabMC(obj, "fluorescence"); end
+        if ~isnan(obj.HS.T); obj = plotMCmatlabHeat(obj); end
         return
+      end
+
+      if nargout == 0
+        error(['Error: The syntax for calling plot has changed. The model object is now both an input and an output.' ...
+          ' Use, e.g., "model = plot(model,''', type ,''')"']);
       end
 
       switch type
         case "FMC"
-          plotMCmatlabMC(obj, "fluorescence")
+          obj = plotMCmatlabMC(obj, "fluorescence");
         case "G"
-          plotMCmatlabGeom(obj)
+          obj = plotMCmatlabGeom(obj);
         case "HS"
-          plotMCmatlabHeat(obj)
+          obj = plotMCmatlabHeat(obj);
         case "MC"
-          plotMCmatlabMC(obj)
+          obj = plotMCmatlabMC(obj);
         otherwise
           error("No valid plot type specified (G, MC, FMC, HS)");
       end
@@ -138,9 +143,9 @@ classdef model
 
     obj = simulateHeatDistribution(obj)
 
-    plotMCmatlabMC(obj, varargin)
-    plotMCmatlabGeom(obj)
-    plotMCmatlabHeat(obj)
+    obj = plotMCmatlabMC(obj, varargin)
+    obj = plotMCmatlabGeom(obj)
+    obj = plotMCmatlabHeat(obj)
 
   end
 

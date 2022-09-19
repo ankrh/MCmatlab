@@ -96,7 +96,7 @@ for i=1:length(t_vec)
 
   % Adjust geometry
   model.G.geomFuncParams      = {t_vec(i)}; % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
-  plot(model,'G');
+  model = plot(model,'G');
 
   % Run MC
   model = runMonteCarlo(model);
@@ -104,7 +104,7 @@ for i=1:length(t_vec)
   % Post-processing
   power_vec(i) = model.MC.lightCollector.image; % "image" is in this case just a scalar, the normalized power collected by the fiber.
 end
-plot(model,'MC');
+model = plot(model,'MC');
 
 %% Plotting the collected power vs. tissue thickness
 figure;clf;

@@ -1,4 +1,4 @@
-function plotMCmatlabHeat(model)
+function model = plotMCmatlabHeat(model)
 %   Requires
 %       plotVolumetric.m
 %

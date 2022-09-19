@@ -498,14 +498,12 @@ dTdtperdeltaT  = cat(3,TC_eff./(diag(VHC)*ones(nSM))/model.G.dx^2,...
 
 %% Calculate temperature change due to absorbed heat per time step
 % dTdt_abs [deg C/s] is the time derivative of voxel temperature due to absorption
-mua_exc_vec = [model.MC.mediaProperties.mua];
 if ~isnan(model.FMC.NFR(1))
-  mua_flu_vec = [model.FMC.mediaProperties.mua];
-  dTdt_abs = (mua_exc_vec(model.MC.M).*model.MC.NFR ... % Include absorption of excitation light...
+  dTdt_abs = (model.MC.NA ... % Include absorption of excitation light...
             - model.FMC.sourceDistribution ... % but don't count the energy locally re-emitted as fluorescence...
-            + mua_flu_vec(model.FMC.M).*model.FMC.NFR)*model.MC.P./VHC(model.HS.M); % but do include the final absorption of fluorescence light
+            + model.FMC.NA)*model.MC.P./VHC(model.HS.M); % but do include the final absorption of fluorescence light
 else
-  dTdt_abs = mua_exc_vec(model.MC.M).*model.MC.NFR*model.MC.P./VHC(model.HS.M);
+  dTdt_abs = model.MC.NA*model.MC.P./VHC(model.HS.M);
 end
 end
 

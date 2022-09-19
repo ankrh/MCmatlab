@@ -552,6 +552,16 @@ A 3D (xyz) array of normalized fluence rate values. This is what's plotted in fi
 (Note that normalizedFluenceRate can be abbreviated NFR in your code)
 A 3D (xyz) array of normalized fluence rate values like model.MC.NFR, but only counting those photons that ended up on the light collector.
 
+`model.MC.normalizedAbsorption`
+[W/cm^3/W.incident]
+(Note that normalizedAbsorption can be abbreviated NA in your code)
+A 3D (xyz) array of normalized absorption values. This is what's plotted in figure 3.
+
+`model.MC.normalizedAbsorption_detected`
+[W/cm^3/W.incident]
+(Note that normalizedAbsorption can be abbreviated NA in your code)
+A 3D (xyz) array of normalized absorption values like model.MC.NA, but only counting those photons that ended up on the light collector.
+
 `model.MC.farField`
 [W/sr/W.incident]
 A 2D (theta,phi) array of normalized radiant intensity values for the light that escaped the simulation cuboid. The axes are the polar and azimuthal angles, described below.

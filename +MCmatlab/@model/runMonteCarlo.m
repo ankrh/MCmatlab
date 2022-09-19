@@ -132,7 +132,6 @@ else
   model = getOpticalMediaProperties(model,simType); % Also performs splitting of mediaProperties and M_raw, if necessary
   if simType == 2 % Since we're not iterating, we might be simulating fluorescence
     %% Calculate 3D fluorescence source distribution
-    mua_vec = [model.MC.mediaProperties.mua];
     PY_3d = NaN(size(G.M_raw)); % 3D distribution of power yields
     for i=1:length(model.MC.mediaProperties_funcHandles)
       if isa(model.MC.mediaProperties_funcHandles(i).PY,'function_handle')
@@ -157,7 +156,7 @@ else
     if any(isinf(PY_3d(:)) | PY_3d(:) < 0)
       error('Error: Invalid fluorescence power or quantum yields');
     end
-    model.FMC.sourceDistribution = PY_3d.*mua_vec(model.MC.M).*model.MC.NFR; % [W/cm^3/W.incident]
+    model.FMC.sourceDistribution = PY_3d.*model.MC.NA; % [W/cm^3/W.incident]
     clear PY_3d
     if max(model.FMC.sourceDistribution(:)) == 0; error('Error: No fluorescence emitters'); end
   end
@@ -168,8 +167,18 @@ else
   end
 end
 
-% Add positions of the centers of the pixels in the light collector image
 if simType == 2
+  % Calculate 3D absorption distribution, which may be FR or T dependent
+  if model.FMC.calcNFR
+    mua_vec = [model.FMC.mediaProperties.mua];
+    model.FMC.NA = mua_vec(model.FMC.M).*model.FMC.NFR;
+  end
+  if model.FMC.calcNFRdet
+    mua_vec = [model.FMC.mediaProperties.mua];
+    model.FMC.NAdet = mua_vec(model.FMC.M).*model.FMC.NFRdet;
+  end
+  
+  % Add positions of the centers of the pixels in the light collector image
   if model.FMC.useLightCollector && model.FMC.LC.res > 1
     model.FMC.LC.X = linspace(model.FMC.LC.fieldSize*(1/model.FMC.LC.res-1),model.FMC.LC.fieldSize*(1-1/model.FMC.LC.res),model.FMC.LC.res)/2;
     model.FMC.LC.Y = model.FMC.LC.X;
@@ -181,6 +190,17 @@ if simType == 2
     model.FMC.farFieldPhi   = linspace(-pi+(2*pi)/model.FMC.farFieldRes/2,pi-(2*pi)/model.FMC.farFieldRes/2,model.FMC.farFieldRes);
   end
 else
+  % Calculate 3D absorption distribution, which may be FR or T dependent
+  if model.MC.calcNFR
+    mua_vec = [model.MC.mediaProperties.mua];
+    model.MC.NA = mua_vec(model.MC.M).*model.MC.NFR;
+  end
+  if model.MC.calcNFRdet
+    mua_vec = [model.MC.mediaProperties.mua];
+    model.MC.NAdet = mua_vec(model.MC.M).*model.MC.NFRdet;
+  end
+
+  % Add positions of the centers of the pixels in the light collector image
   if model.MC.useLightCollector && model.MC.LC.res > 1
     model.MC.LC.X = linspace(model.MC.LC.fieldSize*(1/model.MC.LC.res-1),model.MC.LC.fieldSize*(1-1/model.MC.LC.res),model.MC.LC.res)/2;
     model.MC.LC.Y = model.MC.LC.X;

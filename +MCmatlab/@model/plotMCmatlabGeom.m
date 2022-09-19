@@ -1,4 +1,4 @@
-function plotMCmatlabGeom(model)
+function model = plotMCmatlabGeom(model)
 %   Displays
 %       Geometry cuboid
 %       Media optical, thermal and fluorescence properties

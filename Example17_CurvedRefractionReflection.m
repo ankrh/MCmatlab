@@ -42,7 +42,7 @@ model.G.Lz                = .05; % [cm] z size of simulation cuboid
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 model.G.geomFunc          = @geometryDefinition; % The distribution of media in the cuboid, also defined as a function at the end of this file.
 
-plot(model,'G');
+model = plot(model,'G');
 
 %% Monte Carlo simulation
 model.MC.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
@@ -71,7 +71,7 @@ model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of beam center ax
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
 
-plot(model,'MC');
+model = plot(model,'MC');
 
 %% Geometry function(s)
 % A geometry function takes as input X,Y,Z matrices as returned by the

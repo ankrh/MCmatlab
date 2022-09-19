@@ -59,7 +59,7 @@ model1.G.Lz                = .15; % [cm] z size of simulation cuboid
 model1.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 model1.G.geomFunc          = @geometryDefinition; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
-plot(model1,'G');
+model1 = plot(model1,'G');
 
 %% Monte Carlo simulation
 model1.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
@@ -95,7 +95,7 @@ model2 = runMonteCarlo(model2);
 combinedModel = combineModels([model1, model2],'MC'); % First argument is an array of model objects. Second argument is either 'MC' or 'FMC'.
 
 
-plot(combinedModel,'MC');
+combinedModel = plot(combinedModel,'MC');
 
 %% Geometry function(s)
 % A geometry function takes as input X,Y,Z matrices as returned by the

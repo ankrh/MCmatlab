@@ -94,8 +94,8 @@ for i=1:length(g_vec)
   % Post-processing
   power_vec(i) = model.MC.lightCollector.image; % "image" is in this case just a scalar, the normalized power collected by the fiber.
 end
-plot(model,'G');
-plot(model,'MC');
+model = plot(model,'G');
+model = plot(model,'MC');
 
 %% Plotting the collected power vs. scattering anisotropy g
 figure;clf;

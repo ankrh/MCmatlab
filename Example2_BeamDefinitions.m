@@ -68,7 +68,7 @@ model.MC.lightSource.phi          = pi/2; % [rad] Azimuthal angle of light sourc
 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
-plot(model,'MC');
+model = plot(model,'MC');
 fprintf('Press enter to continue...\n');pause;
 
 %% Top-hat focal plane, Gaussian angular intensity distribution
@@ -88,7 +88,7 @@ model.MC.lightSource.theta        = 0; % [rad] Polar angle of beam center axis
 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
-plot(model,'MC');
+model = plot(model,'MC');
 fprintf('Press enter to continue...\n');pause;
 
 %% LED-like emitter: Rectangular focal plane, Lambertian angular intensity distribution
@@ -108,7 +108,7 @@ model.MC.lightSource.psi          = pi/4; % [rad] (Default: 0) Axial rotation an
 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
-plot(model,'MC');
+model = plot(model,'MC');
 fprintf('Press enter to continue...\n');pause;
 
 %% Custom radial focal plane and angular intensity distribution
@@ -128,7 +128,7 @@ model.MC.lightSource.angularIntensityDistribution.radialWidth = pi/4; % [rad] Ra
 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
-plot(model,'MC');
+model = plot(model,'MC');
 fprintf('Press enter to continue...\n');pause;
 
 %% Custom XY focal plane, top-hat X angular intensity distribution and Gaussian Y angular intensity distribution
@@ -156,7 +156,7 @@ model.MC.lightSource.psi             = -pi/4; % [rad] (Default: 0) Axial rotatio
 
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
-plot(model,'MC');
+model = plot(model,'MC');
 
 %% Geometry function(s)
 % A geometry function takes as input X,Y,Z matrices as returned by the

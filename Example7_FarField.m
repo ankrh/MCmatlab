@@ -49,7 +49,7 @@ model.G.Lz                = .1; % [cm] z size of simulation cuboid
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 model.G.geomFunc          = @geometryDefinition; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
-plot(model,'G');
+model = plot(model,'G');
 
 %% Monte Carlo simulation
 model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
@@ -73,7 +73,7 @@ model.MC.lightSource.phi          = -pi/2; % [rad] Azimuthal angle of beam cente
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
 
-plot(model,'MC');
+model = plot(model,'MC');
 
 %% Fluorescence Monte Carlo
 model.FMC.simulationTimeRequested  = 0.1; % [min] Time duration of the simulation
@@ -86,7 +86,7 @@ model.FMC.wavelength               = 550; % [nm] Fluorescence wavelength, used f
 % Execution, do not modify the next line:
 model = runMonteCarlo(model,'fluorescence');
 
-plot(model,'FMC');
+model = plot(model,'FMC');
 
 %% Geometry function(s)
 % A geometry function takes as input X,Y,Z matrices as returned by the

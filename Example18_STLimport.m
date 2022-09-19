@@ -66,23 +66,23 @@ model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined a
 % No rotation or mirroring, only scaling to convert from mm to cm and a
 % translation along +z:
 model.G.geomFunc          = @geometryDefinition_1;
-plot(model,'G');
+model = plot(model,'G');
 fprintf('Press enter to continue...\n');pause;
 
 % Mirror along the z direction, scale and translate:
 model.G.geomFunc          = @geometryDefinition_2;
-plot(model,'G');
+model = plot(model,'G');
 fprintf('Press enter to continue...\n');pause;
 
 % Rotate by pi/2 (90 degrees) around the x axis, then scale and translate:
 model.G.geomFunc          = @geometryDefinition_3;
-plot(model,'G');
+model = plot(model,'G');
 fprintf('Press enter to continue...\n');pause;
 
 % Rotate by pi/2 (90 degrees) around the x axis, then -pi/2 (-90 degrees)
 % around the z axis, then scale and translate:
 model.G.geomFunc          = @geometryDefinition_4;
-plot(model,'G');
+model = plot(model,'G');
 
 %% Geometry function(s)
 % A geometry function takes as input X,Y,Z matrices as returned by the

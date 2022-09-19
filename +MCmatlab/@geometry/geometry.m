@@ -20,6 +20,10 @@ classdef geometry
     M_raw uint8
   end
 
+  properties (Hidden)
+    needsRecalculation (1,1) logical = true
+  end
+
   properties (Dependent)
     dx
     dy
@@ -31,26 +35,40 @@ classdef geometry
 
   methods
     function obj = update_M_raw(obj)
-      [X,Y,Z] = ndgrid(single(obj.x),single(obj.y),single(obj.z)); % The single data type is used to conserve memory
-      M_rawtemp = obj.geomFunc(X,Y,Z,obj.geomFuncParams);
-      if ~isequal(size(M_rawtemp),[obj.nx, obj.ny, obj.nz])
-        error('Error: The M returned by the geometry function must be nx by ny by nz in size. It''s a good idea to use, e.g., M = ones(size(X)); in your geometry definition to set the size correctly.');
+      if obj.needsRecalculation
+        [X,Y,Z] = ndgrid(single(obj.x),single(obj.y),single(obj.z)); % The single data type is used to conserve memory
+        M_rawtemp = obj.geomFunc(X,Y,Z,obj.geomFuncParams);
+        if ~isequal(size(M_rawtemp),[obj.nx, obj.ny, obj.nz])
+          error('Error: The M returned by the geometry function must be nx by ny by nz in size. It''s a good idea to use, e.g., M = ones(size(X)); in your geometry definition to set the size correctly.');
+        end
+        if ~isreal(M_rawtemp)
+          error('Error: The M returned by the geometry function must not contain complex numbers.');
+        end
+        if any(M_rawtemp(:) <= 0)
+          error('Error: The M returned by the geometry function must only contain positive numbers.');
+        end
+        if any(rem(M_rawtemp(:),1))
+          error('Error: The M returned by the geometry function must only contain integers.');
+        end
+        if any(M_rawtemp(:)>255)
+          error('Error: The M returned by the geometry function must not contain numbers over 255.');
+        end
+        obj.M_raw = M_rawtemp;
+        obj.needsRecalculation = false;
       end
-      if ~isreal(M_rawtemp)
-        error('Error: The M returned by the geometry function must not contain complex numbers.');
-      end
-      if any(M_rawtemp(:) <= 0)
-        error('Error: The M returned by the geometry function must only contain positive numbers.');
-      end
-      if any(rem(M_rawtemp(:),1))
-        error('Error: The M returned by the geometry function must only contain integers.');
-      end
-      if any(M_rawtemp(:)>255)
-        error('Error: The M returned by the geometry function must not contain numbers over 255.');
-      end
-      obj.M_raw = M_rawtemp;
     end
     
+    function obj = set.nx(obj,val); obj.nx = val; obj.needsRecalculation = true; end %#ok<*MCSUP> 
+    function obj = set.ny(obj,val); obj.ny = val; obj.needsRecalculation = true; end
+    function obj = set.nz(obj,val); obj.nz = val; obj.needsRecalculation = true; end
+    function obj = set.Lx(obj,val); obj.Lx = val; obj.needsRecalculation = true; end
+    function obj = set.Ly(obj,val); obj.Ly = val; obj.needsRecalculation = true; end
+    function obj = set.Lz(obj,val); obj.Lz = val; obj.needsRecalculation = true; end
+    function obj = set.mediaPropertiesFunc(obj,val); obj.mediaPropertiesFunc = val; obj.needsRecalculation = true; end
+    function obj = set.mediaPropParams(obj,val); obj.mediaPropParams = val; obj.needsRecalculation = true; end
+    function obj = set.geomFunc(obj,val); obj.geomFunc = val; obj.needsRecalculation = true; end
+    function obj = set.geomFuncParams(obj,val); obj.geomFuncParams = val; obj.needsRecalculation = true; end
+
     function value = get.dx(obj)
       value = obj.Lx/obj.nx; % [cm] size of x bins
     end

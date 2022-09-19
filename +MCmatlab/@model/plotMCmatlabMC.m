@@ -1,4 +1,4 @@
-function plotMCmatlabMC(model,varargin)
+function model = plotMCmatlabMC(model,varargin)
 %   Displays (if calculated)
 %       Absorbed power
 %       Fluence rate of all photons
@@ -126,9 +126,7 @@ end
 
 if ~isnan(MCorFMC.NFR(1))
   %% Make power absorption plot
-  % Calculate 3D absorption distribution, which may be FR or T dependent
-  mua_vec = [MCorFMC.mediaProperties.mua];
-  h_f = plotVolumetric.plotVolumetric(3 + figNumOffset,G.x,G.y,G.z,mua_vec(MCorFMC.M).*MCorFMC.NFR,'MCmatlab_fromZero');
+  h_f = plotVolumetric.plotVolumetric(3 + figNumOffset,G.x,G.y,G.z,MCorFMC.NA,'MCmatlab_fromZero');
   set(h_f,'WindowStyle','Docked');
   h_f.Name = ['Normalized ' fluorescenceOrNothing 'absorption'];
   title(['Normalized ' fluorescenceOrNothing 'absorbed power per unit volume [W/cm^3/W.incident]'])
@@ -139,7 +137,7 @@ if ~isnan(MCorFMC.NFR(1))
   h_f.Name = ['Normalized ' fluorescenceOrNothing 'fluence rate'];
   title(['Normalized ' fluorescenceOrNothing 'fluence rate [W/cm^2/W.incident]'])
   
-  fprintf(['%.3g%% of ' fluorescenceOrIncident 'light was absorbed within the cuboid.\n'],100*G.dx*G.dy*G.dz*sum(sum(sum(mua_vec(MCorFMC.M).*MCorFMC.NFR)))/P_in);
+  fprintf(['%.3g%% of ' fluorescenceOrIncident 'light was absorbed within the cuboid.\n'],100*G.dx*G.dy*G.dz*sum(sum(sum(MCorFMC.NA)))/P_in);
 end
 
 %% Plot example paths

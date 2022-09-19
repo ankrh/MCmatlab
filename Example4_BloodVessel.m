@@ -42,7 +42,7 @@ model.G.Lz                = .1; % [cm] z size of simulation cuboid
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 model.G.geomFunc          = @geometryDefinition; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
-plot(model,'G');
+model = plot(model,'G');
 
 %% Monte Carlo simulation
 model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
@@ -65,7 +65,7 @@ model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of beam center ax
 % Execution, do not modify the next line:
 model = runMonteCarlo(model);
 
-plot(model,'MC');
+model = plot(model,'MC');
 
 %% Heat simulation
 model.MC.P                   = 3; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
@@ -93,7 +93,7 @@ model.HS.tempSensorPositions = [0 0 0.038
 % Execution, do not modify the next line:
 model = simulateHeatDistribution(model);
 
-plot(model,'HS');
+model = plot(model,'HS');
 
 %% Geometry function(s)
 % A geometry function takes as input X,Y,Z matrices as returned by the

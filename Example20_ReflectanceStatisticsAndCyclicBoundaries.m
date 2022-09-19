@@ -54,7 +54,7 @@ model.G.Lz                = 2; % [cm] z size of simulation cuboid
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 model.G.geomFunc          = @geometryDefinition; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
-plot(model,'G');
+model = plot(model,'G');
 
 %% Monte Carlo simulation
 model.MC.nPhotonsRequested        = 1e5; % Number of photons requested
@@ -92,7 +92,7 @@ for iRun = 1:n
 end
 t_Mismatched = toc;
 
-plot(model,'MC');
+model = plot(model,'MC');
 
 %% Print outputs:
 fprintf('\nRd matched    = %.6f +- %.6f (n = %d, total time elapsed = %d s)\n'   ,mean(Rd_matched   ),std(Rd_matched   )/sqrt(n),n,round(t_Matched   ));

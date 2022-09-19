@@ -48,6 +48,8 @@ classdef monteCarloSimulation
 
     normalizedFluenceRate = NaN
     normalizedFluenceRate_detected = NaN
+    normalizedAbsorption = NaN
+    normalizedAbsorption_detected = NaN
     FR = NaN
 
     farField = NaN
@@ -70,6 +72,8 @@ classdef monteCarloSimulation
     LC
     NFR
     NFRdet
+    NA
+    NAdet
     NI_xpos
     NI_xneg
     NI_ypos
@@ -99,6 +103,10 @@ classdef monteCarloSimulation
     function obj = set.NFR(obj,x);     obj.normalizedFluenceRate = x; end %#ok<MCSUP> 
     function x   = get.NFRdet(obj  ); x = obj.normalizedFluenceRate_detected; end
     function obj = set.NFRdet(obj,x);     obj.normalizedFluenceRate_detected = x; end %#ok<MCSUP> 
+    function x   = get.NA(obj  ); x = obj.normalizedAbsorption; end
+    function obj = set.NA(obj,x);     obj.normalizedAbsorption = x; end %#ok<MCSUP> 
+    function x   = get.NAdet(obj  ); x = obj.normalizedAbsorption_detected; end
+    function obj = set.NAdet(obj,x);     obj.normalizedAbsorption_detected = x; end %#ok<MCSUP> 
     function x   = get.NI_xpos(obj  ); x = obj.normalizedIrradiance_xpos; end
     function obj = set.NI_xpos(obj,x);     obj.normalizedIrradiance_xpos = x; end %#ok<MCSUP> 
     function x   = get.NI_xneg(obj  ); x = obj.normalizedIrradiance_xneg; end
