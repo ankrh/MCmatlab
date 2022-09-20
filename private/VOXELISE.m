@@ -123,7 +123,15 @@ for iFacet = 1:size(meshXYZ,1)
   end
 end
 
-h_f = figure(31);clf reset;
+h_f = figure(31);
+if any(strcmp(h_f.UserData,STLin))
+  clf reset;
+end
+if iscell(h_f.UserData)
+  h_f.UserData = [h_f.UserData, STLin];
+else
+  h_f.UserData = {STLin};
+end
 patch(squeeze(meshXYZ(:,1,:)).',...
       squeeze(meshXYZ(:,2,:)).',...
       squeeze(meshXYZ(:,3,:)).',...
@@ -136,8 +144,8 @@ xlabel('x [cm]');
 ylabel('y [cm]');
 zlabel('z [cm]');
 set(h_f,'WindowStyle','Docked');
-h_f.Name = 'STL shape';
-title('STL import illustration');
+h_f.Name = 'STL wireframes';
+title('STL wireframes');
 if ~verLessThan('matlab','9.0')
   setAxes3DPanAndZoomStyle(zoom(gca),gca,'camera');
 end
