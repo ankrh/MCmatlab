@@ -5,9 +5,9 @@
 % coefficient that reduces with fluence rate, while for material 2 both the
 % absorption and scattering coefficients drop with fluence rate, and the
 % scattering anisotropy increases with fluence rate, asymptotially up to 1.
-% The formulas have been written in as char arrays in the media properties
-% at the bottom of the file, using standard MATLAB syntax. In the formulas,
-% FR is simply the normalized fluence rate times the power, FR =
+% The dependence are written as MATLAB function handles in the media
+% properties at the bottom of the file. In the formulas, FR is simply the
+% normalized fluence rate times the power, FR =
 % model.MC.normalizedFluenceRate*model.MC.P.
 %
 % When simulating fluence rate or temperature dependent optical or thermal
@@ -89,17 +89,11 @@ model.MC.FRinitial = zeros(model.G.nx,model.G.ny,model.G.nz); % [W/cm^2] Initial
 model.MC.P = 5; % [W] Power incident on top area of cuboid, used for calculations with fluence rate-dependent properties or for heat simulations
 model.MC.FRdepIterations = 15;
 
-% Execution, do not modify the next line:
-model = runMonteCarlo(model); % Iteratively run Monte Carlo the default number of times (20) with simulation time (or nPhotons) increasing by a factor of 2 each time. Last run has simulation time equal to MC.simulationTime (or nPhotons equal to MC.nPhotonsRequested).
 
+model = runMonteCarlo(model); % Iteratively run Monte Carlo the default number of times (20) with simulation time (or nPhotons) increasing by a factor of 2 each time. Last run has simulation time equal to MC.simulationTime (or nPhotons equal to MC.nPhotonsRequested).
 model = plot(model,'MC');
 
-%% Geometry function(s)
-% A geometry function takes as input X,Y,Z matrices as returned by the
-% "ndgrid" MATLAB function as well as any parameters the user may have
-% provided in the definition of Ginput. It returns the media matrix M,
-% containing numerical values indicating the media type (as defined in
-% mediaPropertiesFunc) at each voxel location.
+%% Geometry function(s) (see readme for details)
 function M = geometryDefinition(X,Y,Z,parameters)
   absorberdepth = 0.03;
   M = ones(size(X)); % Air
@@ -107,15 +101,10 @@ function M = geometryDefinition(X,Y,Z,parameters)
   M(Z > absorberdepth & Y > 0) = 3; % Saturable absorber 2
 end
 
-%% Media Properties function
-% The media properties function defines all the optical and thermal
-% properties of the media involved by constructing and returning a
-% "mediaProperties" struct with various fields. As its input, the function
-% takes the wavelength as well as any other parameters you might specify
-% above in the model file, for example parameters that you might loop over
-% in a for loop. Dependence on excitation fluence rate FR, temperature T or
-% fractional heat damage FD can be specified as in examples 12-15.
-function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
+%% Media Properties function (see readme for details)
+function mediaProperties = mediaPropertiesFunc(parameters)
+  mediaProperties = MCmatlab.mediumProperties;
+
   j=1;
   mediaProperties(j).name    = 'air';
   mediaProperties(j).mua     = 1e-8; % [cm^-1]
@@ -124,15 +113,27 @@ function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 
   j=2;
   mediaProperties(j).name    = 'saturable absorber 1';
-  mediaProperties(j).mua     = '50./(1+FR/2000)'; % [cm^-1]
+  mediaProperties(j).mua     = @func1; % [cm^-1]
+  function mua = func1(lambda,FR,T,FD)
+    mua = 50./(1+FR/2000);
+  end
   mediaProperties(j).mus     = 10; % [cm^-1]
   mediaProperties(j).g       = 0.9;
   mediaProperties(j).nBins   = 50; % Number of bins to use for the fluence rate- or temperature dependent (FRTDep) simulations. Higher is better and slower
 
   j=3;
   mediaProperties(j).name    = 'saturable absorber 2';
-  mediaProperties(j).mua     = '50./(1+FR/1000)'; % [cm^-1]
-  mediaProperties(j).mus     = '10./(1+FR/500)'; % [cm^-1]
-  mediaProperties(j).g       = '1-0.1./(1+FR/300)';
+  mediaProperties(j).mua     = @func2; % [cm^-1]
+  function mua = func2(lambda,FR,T,FD)
+    mua = 50./(1+FR/1000);
+  end
+  mediaProperties(j).mus     = @func3; % [cm^-1]
+  function mus = func3(lambda,FR,T,FD)
+    mus = 10./(1+FR/500);
+  end
+  mediaProperties(j).g       = @func4;
+  function g = func4(lambda,FR,T,FD)
+    g = 1 - 0.1./(1+FR/300);
+  end
   mediaProperties(j).nBins   = 9; % Number of bins to use for the fluence rate- or temperature dependent (FRTDep) simulations. Higher is better and slower
 end

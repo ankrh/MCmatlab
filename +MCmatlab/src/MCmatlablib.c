@@ -27,7 +27,7 @@ struct geometry { // Struct type for the constant geometry definitions, includin
   float          *interfaceNormals;
 };
 
-struct beam { // Struct type for the constant beam definitions
+struct source { // Struct type for the constant beam definitions
   int            beamType;
   FLOATORDBL     emitterLength;
   FLOATORDBL     *NFdist1; // Radial or X
@@ -87,6 +87,19 @@ struct paths { // Struct type for storing the paths taken by the nExamplePaths f
   long           nExamplePhotonPathsStarted; // Number of example photon paths the master thread has started
   long           pathsSize; // Current size of the list
   FLOATORDBL     *data; // Array containing x, y, z and weight data for the photons, in which the paths of different photons are separated by four NaNs
+};
+
+struct MATLABoutputs {
+  float * NFR;
+  float * NFRdet;
+  float * image;
+  float * FF;
+  float * NI_xpos;
+  float * NI_xneg;
+  float * NI_ypos;
+  float * NI_yneg;
+  float * NI_zpos;
+  float * NI_zneg;
 };
 
 struct outputs {
@@ -268,7 +281,7 @@ void getNewj(struct geometry const *G, struct photon *P) {
 
 #ifdef __NVCC__ // If compiling for CUDA
 void createDeviceStructs(struct geometry const *G, struct geometry **G_devptr,
-                         struct beam const *B, struct beam **B_devptr,
+                         struct source const *B, struct source **B_devptr,
                          struct lightCollector const *LC, struct lightCollector **LC_devptr,
                          struct paths *Pa, struct paths **Pa_devptr,
                          struct outputs *O, struct outputs **O_devptr,
@@ -292,13 +305,13 @@ void createDeviceStructs(struct geometry const *G, struct geometry **G_devptr,
   gpuErrchk(cudaMemcpy(*G_devptr,&G_tempvar,sizeof(struct geometry),cudaMemcpyHostToDevice));
 
   // Allocate and copy beam struct
-  struct beam B_tempvar = *B;
+  struct source B_tempvar = *B;
   if(B->S) {
     gpuErrchk(cudaMalloc(&B_tempvar.S, (L+1)*sizeof(FLOATORDBL)));
     gpuErrchk(cudaMemcpy(B_tempvar.S, B->S, (L+1)*sizeof(FLOATORDBL),cudaMemcpyHostToDevice));
   }
-  gpuErrchk(cudaMalloc(B_devptr, sizeof(struct beam)));
-  gpuErrchk(cudaMemcpy(*B_devptr,&B_tempvar,sizeof(struct beam),cudaMemcpyHostToDevice));
+  gpuErrchk(cudaMalloc(B_devptr, sizeof(struct source)));
+  gpuErrchk(cudaMemcpy(*B_devptr,&B_tempvar,sizeof(struct source),cudaMemcpyHostToDevice));
 
   // Allocate and copy deposition criteria struct
   gpuErrchk(cudaMalloc(DC_devptr, sizeof(struct depositionCriteria)));
@@ -369,7 +382,7 @@ void createDeviceStructs(struct geometry const *G, struct geometry **G_devptr,
 
 #ifdef __NVCC__ // If compiling for CUDA
 void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_dev,
-                                  struct beam const *B, struct beam *B_dev,
+                                  struct source const *B, struct source *B_dev,
                                   struct lightCollector const *LC, struct lightCollector *LC_dev,
                                   struct paths *Pa, struct paths *Pa_dev,
                                   struct outputs *O, struct outputs *O_dev,
@@ -382,7 +395,7 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
   gpuErrchk(cudaFree(G_temp.interfaceNormals));
   gpuErrchk(cudaFree(G_dev));
 
-  struct beam B_temp; gpuErrchk(cudaMemcpy(&B_temp, B_dev, sizeof(struct beam),cudaMemcpyDeviceToHost));
+  struct source B_temp; gpuErrchk(cudaMemcpy(&B_temp, B_dev, sizeof(struct source),cudaMemcpyDeviceToHost));
   gpuErrchk(cudaFree(B_temp.S));
   gpuErrchk(cudaFree(B_dev));
   
@@ -474,7 +487,7 @@ void addToPhotonPath(struct photon * const P, struct paths * const Pa, struct ge
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void launchPhoton(struct photon * const P, struct beam const * const B, struct geometry const * const G, struct paths * const Pa, struct depositionCriteria *DC, bool * abortingPtr, struct debug * D) {
+void launchPhoton(struct photon * const P, struct source const * const B, struct geometry const * const G, struct paths * const Pa, struct depositionCriteria *DC, bool * abortingPtr, struct debug * D) {
   FLOATORDBL X,Y,r,phi,tanphiX,tanphiY,costheta,sintheta;
   long   j,idx;
   FLOATORDBL target[3]={0},w0[3];
@@ -796,9 +809,10 @@ void checkEscape(struct photon * const P, struct paths *Pa, struct geometry cons
                        P->i[2]                   >= 0);
       escaped = (P->i[2] < 0) && P->RI == 1;
       break;
-    case 3:
-      P->alive = P->i[2] < G->n[2] && P->i[2] >= 0;
-      escaped = !P->alive && P->RI == 1;
+    case 3:; // A semicolon is necessary here because C is a wonderful language :-)
+      bool tooOld = P->time > 1000/C*SQRT(SQR(G->d[0]*G->n[0]) + SQR(G->d[1]*G->n[1]));  // Photon is "too old" if it has traveled more than 1000 times the diagonal xy box distance (may be in an infinite or near-infinite loop of cycling)
+      P->alive = P->i[2] < G->n[2] && P->i[2] >= 0 && !tooOld;
+      escaped = !P->alive && P->RI == 1 && !tooOld;
       bool photonTeleported = false;
       if(P->i[0] >= G->n[0]) {
         P->i[0] = 0; // Wrap x
@@ -1138,40 +1152,71 @@ void scatterPhoton(struct photon * const P, struct geometry const * const G, str
   }
 }
 
-void normalizeDeposition(struct beam const * const B, struct geometry const * const G, struct lightCollector const * const LC,
-        struct outputs const *O) {
+void normalizeDepositionAndResetO(struct source const * const B, struct geometry const * const G, struct lightCollector const * const LC,
+        struct outputs *O, struct MATLABoutputs *O_MATLAB, int iWavelength, double Pfraction) {
   long j;
   double V = G->d[0]*G->d[1]*G->d[2]; // Voxel volume
   long L = G->n[0]*G->n[1]*G->n[2]; // Total number of voxels in cuboid
   long L_LC = LC->res[0]*LC->res[0]; // Total number of spatial pixels in light collector planes
   long L_FF = G->farFieldRes*G->farFieldRes; // Total number of pixels in the far field array
-  // Normalize deposition to yield normalizes fluence rate (NFR). For fluorescence, the result is relative to
+  // Normalize deposition to yield normalized fluence rate (NFR). For fluorescence, the result is relative to
   // the incident excitation power (not emitted fluorescence power).
-  double normfactor = (double)O->nPhotons;
+  double normfactor = (double)O->nPhotons/Pfraction;
   if(B->S) { // For a 3D source distribution (e.g., fluorescence)
     normfactor /= B->power;
   } else if(B->beamType == 2 && (G->boundaryType == 0 || G->boundaryType == 2)) { // For infinite plane wave launched into volume without absorbing walls
     normfactor /= KILLRANGE*KILLRANGE;
   }
   
-  if(O->NFR)        for(j=0;j<L   ;j++) O->NFR[j]    /= V*normfactor*G->muav[G->M[j]];
-  if(O->NFRdet)     for(j=0;j<L   ;j++) O->NFRdet[j] /= V*normfactor;
-  if(O->FF)         for(j=0;j<L_FF;j++) O->FF[j]     /=   normfactor;
+  O->nPhotons = 0;
+  if(O->NFR) for(j=0;j<L   ;j++) {
+    O_MATLAB->NFR[j + iWavelength*G->n[0]*G->n[1]*G->n[2]] = O->NFR[j]/(V*normfactor*G->muav[G->M[j]]);
+    O->NFR[j] = 0;
+  }
+  if(O->NFRdet) for(j=0;j<L   ;j++) {
+    O_MATLAB->NFRdet[j + iWavelength*G->n[0]*G->n[1]*G->n[2]] = O->NFRdet[j]/(V*normfactor);
+    O->NFRdet[j] = 0;
+  }
+  if(O->FF) for(j=0;j<L_FF;j++) {
+    O_MATLAB->FF[j + iWavelength*G->farFieldRes*G->farFieldRes] = O->FF[j]/normfactor;
+    O->FF[j] = 0;
+  }
   if(O->image) {
-    if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) O->image[j] /= LC->FSorNA*LC->FSorNA/L_LC*normfactor;
-    else         for(j=0;j<     LC->res[1];j++) O->image[j] /= normfactor;
+    if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) {
+      O_MATLAB->image[j + iWavelength*LC->res[0]*LC->res[0]*LC->res[1]] = O->image[j]/(LC->FSorNA*LC->FSorNA/L_LC*normfactor);
+      O->image[j] = 0;
+    }
+    else         for(j=0;j<     LC->res[1];j++) {
+      O_MATLAB->image[j + iWavelength*LC->res[0]*LC->res[0]*LC->res[1]] = O->image[j]/normfactor;
+      O->image[j] = 0;
+    }
   }
   if(G->boundaryType == 1) {
-    for(j=0;j<G->n[1]*G->n[2];j++) O->NI_xpos[j] /= G->d[1]*G->d[2]*normfactor;
-    for(j=0;j<G->n[1]*G->n[2];j++) O->NI_xneg[j] /= G->d[1]*G->d[2]*normfactor;
-    for(j=0;j<G->n[0]*G->n[2];j++) O->NI_ypos[j] /= G->d[0]*G->d[2]*normfactor;
-    for(j=0;j<G->n[0]*G->n[2];j++) O->NI_yneg[j] /= G->d[0]*G->d[2]*normfactor;
-    for(j=0;j<G->n[0]*G->n[1];j++) O->NI_zpos[j] /= G->d[0]*G->d[1]*normfactor;
-    for(j=0;j<G->n[0]*G->n[1];j++) O->NI_zneg[j] /= G->d[0]*G->d[1]*normfactor;
-  } else if(G->boundaryType == 2) {
-    for(j=0;j<KILLRANGE*G->n[0]*KILLRANGE*G->n[1];j++) O->NI_zneg[j] /= G->d[0]*G->d[1]*normfactor;
-  } else if(G->boundaryType == 3) {
-    for(j=0;j<G->n[0]*G->n[1];j++) O->NI_zpos[j] /= G->d[0]*G->d[1]*normfactor;
-    for(j=0;j<G->n[0]*G->n[1];j++) O->NI_zneg[j] /= G->d[0]*G->d[1]*normfactor;
+    for(j=0;j<G->n[1]*G->n[2];j++) {
+      O_MATLAB->NI_xpos[j + iWavelength*G->n[1]*G->n[2]] = O->NI_xpos[j]/(G->d[1]*G->d[2]*normfactor);
+      O->NI_xpos[j] = 0;
+      O_MATLAB->NI_xneg[j + iWavelength*G->n[1]*G->n[2]] = O->NI_xneg[j]/(G->d[1]*G->d[2]*normfactor);
+      O->NI_xneg[j] = 0;
+    }
+    for(j=0;j<G->n[0]*G->n[2];j++) {
+      O_MATLAB->NI_ypos[j + iWavelength*G->n[0]*G->n[2]] = O->NI_ypos[j]/(G->d[0]*G->d[2]*normfactor);
+      O->NI_ypos[j] = 0;
+      O_MATLAB->NI_yneg[j + iWavelength*G->n[0]*G->n[2]] = O->NI_yneg[j]/(G->d[0]*G->d[2]*normfactor);
+      O->NI_yneg[j] = 0;
+    }
+    for(j=0;j<G->n[0]*G->n[1];j++) {
+      O_MATLAB->NI_zpos[j + iWavelength*G->n[0]*G->n[1]] = O->NI_zpos[j]/(G->d[0]*G->d[1]*normfactor);
+      O->NI_zpos[j] = 0;
+      O_MATLAB->NI_zneg[j + iWavelength*G->n[0]*G->n[1]] = O->NI_zneg[j]/(G->d[0]*G->d[1]*normfactor);
+      O->NI_zneg[j] = 0;
+    }
+  } else if(G->boundaryType == 2) for(j=0;j<KILLRANGE*G->n[0]*KILLRANGE*G->n[1];j++) {
+    O_MATLAB->NI_zneg[j + iWavelength*G->n[0]*G->n[1]*(G->boundaryType == 2? KILLRANGE*KILLRANGE: 1)] = O->NI_zneg[j]/(G->d[0]*G->d[1]*normfactor);
+    O->NI_zneg[j] = 0;
+  } else if(G->boundaryType == 3) for(j=0;j<G->n[0]*G->n[1];j++) {
+    O_MATLAB->NI_zpos[j + iWavelength*G->n[0]*G->n[1]] = O->NI_zpos[j]/(G->d[0]*G->d[1]*normfactor);
+    O->NI_zpos[j] = 0;
+    O_MATLAB->NI_zneg[j + iWavelength*G->n[0]*G->n[1]] = O->NI_zneg[j]/(G->d[0]*G->d[1]*normfactor);
+    O->NI_zneg[j] = 0;
   }
 }

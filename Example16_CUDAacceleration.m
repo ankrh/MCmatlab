@@ -64,7 +64,7 @@ model.MC.lightSource.zFocus       = 0; % [cm] z position of focus
 model.MC.lightSource.theta        = 0; % [rad] Polar angle of beam center axis
 model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of beam center axis
 
-% Execution, do not modify the next few lines:
+
 model.MC.useGPU                   = false; % (Default: false) Use CUDA acceleration for NVIDIA GPUs
 model = runMonteCarlo(model);
 model.MC.useGPU                   = true; % (Default: false) Use CUDA acceleration for NVIDIA GPUs
@@ -104,12 +104,7 @@ model = simulateHeatDistribution(model);
 
 model = plot(model,'HS');
 
-%% Geometry function(s)
-% A geometry function takes as input X,Y,Z matrices as returned by the
-% "ndgrid" MATLAB function as well as any parameters the user may have
-% provided in the definition of Ginput. It returns the media matrix M,
-% containing numerical values indicating the media type (as defined in
-% mediaPropertiesFunc) at each voxel location.
+%% Geometry function(s) (see readme for details)
 function M = geometryDefinition(X,Y,Z,parameters)
   % Blood vessel example:
   zsurf = 0.01;
@@ -122,15 +117,10 @@ function M = geometryDefinition(X,Y,Z,parameters)
   M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 4; % blood
 end
 
-%% Media Properties function
-% The media properties function defines all the optical and thermal
-% properties of the media involved by constructing and returning a
-% "mediaProperties" struct with various fields. As its input, the function
-% takes the wavelength as well as any other parameters you might specify
-% above in the model file, for example parameters that you might loop over
-% in a for loop. Dependence on excitation fluence rate FR, temperature T or
-% fractional heat damage FD can be specified as in examples 12-15.
-function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
+%% Media Properties function (see readme for details)
+function mediaProperties = mediaPropertiesFunc(parameters)
+  mediaProperties = MCmatlab.mediumProperties;
+
   j=1;
   mediaProperties(j).name  = 'water';
   mediaProperties(j).mua   = 0.00036; % [cm^-1]
@@ -141,55 +131,73 @@ function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 
   j=2;
   mediaProperties(j).name  = 'epidermis';
-  B = 0; % Blood content
-  S = 0.75; % Blood oxygen saturation
-  W = 0.75; % Water content
-  M = 0.03; % Melanin content
-  F = 0; % Fat content
-  mediaProperties(j).mua = calc_mua(wavelength,S,B,W,F,M); % Jacques "Optical properties of biological tissues: a review" eq. 12
+  mediaProperties(j).mua = @func_mua2;
+  function mua = func_mua2(wavelength)
+    B = 0; % Blood content
+    S = 0.75; % Blood oxygen saturation
+    W = 0.75; % Water content
+    M = 0.03; % Melanin content
+    F = 0; % Fat content
+    mua = calc_mua(wavelength,S,B,W,F,M); % Jacques "Optical properties of biological tissues: a review" eq. 12
+  end
 
-  aPrime = 40; % musPrime at 500 nm
-  fRay = 0; % Fraction of scattering due to Rayleigh scattering
-  bMie = 1; % Scattering power for Mie scattering
-  g = 0.9; % Scattering anisotropy
-  mediaProperties(j).mus = calc_mus(wavelength,aPrime,fRay,bMie,g); % Jacques "Optical properties of biological tissues: a review" eq. 2
-  mediaProperties(j).g   = g;
+  mediaProperties(j).mus = @func_mus2;
+  function mus = func_mus2(wavelength)
+    aPrime = 40; % musPrime at 500 nm
+    fRay = 0; % Fraction of scattering due to Rayleigh scattering
+    bMie = 1; % Scattering power for Mie scattering
+    g = 0.9; % Scattering anisotropy
+    mus = calc_mus(wavelength,aPrime,fRay,bMie,g); % Jacques "Optical properties of biological tissues: a review" eq. 2
+  end
+  mediaProperties(j).g   = 0.9;
   mediaProperties(j).VHC = 3391*1.109e-3; % [J cm^-3 K^-1]
   mediaProperties(j).TC  = 0.37e-2; % [W cm^-1 K^-1]
 
   j=3;
   mediaProperties(j).name = 'dermis';
-  B = 0.002; % Blood content
-  S = 0.67; % Blood oxygen saturation
-  W = 0.65; % Water content
-  M = 0; % Melanin content
-  F = 0; % Fat content
-  mediaProperties(j).mua = calc_mua(wavelength,S,B,W,F,M); % Jacques "Optical properties of biological tissues: a review" eq. 12
+  mediaProperties(j).mua = @func_mua3;
+  function mua = func_mua3(wavelength)
+    B = 0.002; % Blood content
+    S = 0.67; % Blood oxygen saturation
+    W = 0.65; % Water content
+    M = 0; % Melanin content
+    F = 0; % Fat content
+    mua = calc_mua(wavelength,S,B,W,F,M); % Jacques "Optical properties of biological tissues: a review" eq. 12
+  end
 
-  aPrime = 42.4; % musPrime at 500 nm
-  fRay = 0.62; % Fraction of scattering due to Rayleigh scattering
-  bMie = 1; % Scattering power for Mie scattering
-  g = 0.9; % Scattering anisotropy
-  mediaProperties(j).mus = calc_mus(wavelength,aPrime,fRay,bMie,g); % Jacques "Optical properties of biological tissues: a review" eq. 2
-  mediaProperties(j).g   = g;
+  mediaProperties(j).mus = @func_mus3;
+  function mus = func_mus3(wavelength)
+    aPrime = 42.4; % musPrime at 500 nm
+    fRay = 0.62; % Fraction of scattering due to Rayleigh scattering
+    bMie = 1; % Scattering power for Mie scattering
+    g = 0.9; % Scattering anisotropy
+    mus = calc_mus(wavelength,aPrime,fRay,bMie,g); % Jacques "Optical properties of biological tissues: a review" eq. 2
+  end
+  mediaProperties(j).g   = 0.9;
   mediaProperties(j).VHC = 3391*1.109e-3; % [J cm^-3 K^-1]
   mediaProperties(j).TC  = 0.37e-2; % [W cm^-1 K^-1]
 
   j=4;
   mediaProperties(j).name  = 'blood';
-  B = 1; % Blood content
-  S = 0.75; % Blood oxygen saturation
-  W = 0.95; % Water content
-  M = 0; % Melanin content
-  F = 0; % Fat content
-  mediaProperties(j).mua = calc_mua(wavelength,S,B,W,F,M); % Jacques "Optical properties of biological tissues: a review" eq. 12
-
-  aPrime = 10; % musPrime at 500 nm
-  fRay = 0; % Fraction of scattering due to Rayleigh scattering
-  bMie = 1; % Scattering power for Mie scattering
-  g = 0.9; % Scattering anisotropy
-  mediaProperties(j).mus = calc_mus(wavelength,aPrime,fRay,bMie,g); % Jacques "Optical properties of biological tissues: a review" eq. 2
-  mediaProperties(j).g   = g;
+  mediaProperties(j).mua = @func_mua4;
+  function mua = func_mua4(wavelength)
+    B = 1; % Blood content
+    S = 0.75; % Blood oxygen saturation
+    W = 0.95; % Water content
+    M = 0; % Melanin content
+    F = 0; % Fat content
+    mua = calc_mua(wavelength,S,B,W,F,M); % Jacques "Optical properties of biological tissues: a review" eq. 12
+  end
+  
+  mediaProperties(j).mus = @func_mus4;
+  function mus = func_mus4(wavelength)
+    aPrime = 10; % musPrime at 500 nm
+    fRay = 0; % Fraction of scattering due to Rayleigh scattering
+    bMie = 1; % Scattering power for Mie scattering
+    g = 0.9; % Scattering anisotropy
+    mus = calc_mus(wavelength,aPrime,fRay,bMie,g); % Jacques "Optical properties of biological tissues: a review" eq. 2
+  end
+  mediaProperties(j).g   = 0.9;
   mediaProperties(j).VHC = 3617*1.050e-3; % [J cm^-3 K^-1]
   mediaProperties(j).TC  = 0.52e-2; % [W cm^-1 K^-1]
   mediaProperties(j).E   = 422.5e3; % J/mol    PLACEHOLDER DATA ONLY

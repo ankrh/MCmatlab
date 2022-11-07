@@ -24,29 +24,36 @@ function model = plotMCmatlabHeat(model)
 %%%%%
 
 com.mathworks.mde.desk.MLDesktop.getInstance.setDocumentBarPosition('Figures',7); % Set Figures window tabs to be on left side
-model.G = model.G.update_M_raw;
+model.G = model.G.updateGeometry;
 
 G = model.G;
-mP_fH = model.HS.mediaProperties_funcHandles;
-nM = length(mP_fH); % Number of different media in simulation
+mP_fH = model.G.mediaPropertiesFunc(G.mediaPropParams); % Unsplit media
+[unqMediaIdxs,~,M_trim] = unique(G.M_raw);
+M_trim = reshape(M_trim,[G.nx G.ny G.nz]);
+mP_fHtrim = mP_fH(unqMediaIdxs);
+nM = numel(mP_fHtrim);
+names = {mP_fHtrim.name};
 numTemperatureSensors = size(model.HS.tempSensorPositions,1);
-
-%% Show thermal media properties
-h_f = plotMediaProperties(22,model,3);
-set(h_f,'WindowStyle','Docked');
-h_f.Name = 'Thermal media properties';
 
 %% Write out the highest temperatures in each medium
 fprintf('--------------------plotMCmatlabHeat---------------------\n');
-for idx=1:nM
-  if isfinite(model.HS.maxMediaTemps(idx))
-    fprintf('Highest temperature obtained in %s is %.2f°C\n',mP_fH(idx).name,model.HS.maxMediaTemps(idx));
+for iM=1:nM
+  if isfinite(model.HS.maxMediaTemps(iM))
+    fprintf('Highest temperature obtained in %s is %.2f°C\n',names{iM},model.HS.maxMediaTemps(iM));
   end
 end
 
 %% Plot the geometry showing the temperature sensor locations and the sensor data
 if numTemperatureSensors
-  h_f = plotVolumetric.plotVolumetric(23,G.x,G.y,G.z,G.M_raw,'MCmatlab_GeometryIllustration',mP_fH,'slicePositions',model.HS.slicePositions);
+  h_f = MCmatlab.NdimSliderPlot(G.M_raw,...
+    'nFig',23,...
+    'axisValues',{G.x,G.y,G.z},...
+    'axisLabels',{'x [cm]','y [cm]','z [cm]','Geometry illustration'},...
+    'indexLabels',names,...
+    'linColormap',lines(256),...
+    'axisEqual',true,...
+    'reversedAxes',3,...
+    'slicePositions',model.HS.slicePositions);
   set(h_f,'WindowStyle','Docked');
   h_f.Name = 'Temperature sensor illustration';
   title('Temperature sensor illustration');
@@ -56,7 +63,7 @@ if numTemperatureSensors
     indices = min([G.nx G.ny G.nz],max([1 1 1],indices)); % Coerce to the cuboid
     linindex = sub2ind(size(G.M_raw),indices(1),indices(2),indices(3));
     sensorNumbers{i,1} = num2str(i);
-    sensorLabels{i,1} = [num2str(i) ', ' mP_fH(G.M_raw(linindex)).name];
+    sensorLabels{i,1} = [num2str(i) ', ' mP_fHtrim(G.M_raw(linindex)).name];
   end
   text(model.HS.tempSensorPositions(:,1),model.HS.tempSensorPositions(:,2),model.HS.tempSensorPositions(:,3),sensorNumbers,'HorizontalAlignment','center','VerticalAlignment','middle','FontSize',18);
 
@@ -82,16 +89,30 @@ end
 % So the fractional portion of damaged molecules/cells is:
 % (c(0)-c(t))/c(0) = (c0-c0*exp(-Omega))/c0 = 1 - exp(-Omega)
 if ~isnan(model.HS.Omega(1))
-  M_damage = G.M_raw;
+  M_damage = M_trim;
   M_damage(model.HS.Omega > 1) = nM + 1;
-  mP_fH(nM + 1).name = 'damage';
-  h_f = plotVolumetric.plotVolumetric(25,G.x,G.y,G.z,M_damage,'MCmatlab_GeometryIllustration',mP_fH,'slicePositions',model.HS.slicePositions);
+  namesWithDamage = [names 'damage'];
+  h_f = MCmatlab.NdimSliderPlot(M_damage,...
+    'nFig',25,...
+    'axisValues',{G.x,G.y,G.z},...
+    'axisLabels',{'x [cm]','y [cm]','z [cm]','Thermal damage illustration'},...
+    'indexLabels',namesWithDamage,...
+    'linColormap',lines(256),...
+    'axisEqual',true,...
+    'reversedAxes',3,...
+    'slicePositions',model.HS.slicePositions);
   set(h_f,'WindowStyle','Docked');
   h_f.Name = 'Thermal damage illustration';
   title('Thermal damage illustration');
-  fprintf('%.2e cm^3 was thermally damaged.\n',G.dx*G.dy*G.dz*sum(sum(sum(model.HS.Omega > 1))));
+  fprintf('%.2e cm^3 was thermally damaged.\n',G.dx*G.dy*G.dz*sum(model.HS.Omega(:) > 1));
   
-  h_f = plotVolumetric.plotVolumetric(26,G.x,G.y,G.z,1-exp(-model.HS.Omega),'MCmatlab_fromZero','slicePositions',model.HS.slicePositions);
+  h_f = MCmatlab.NdimSliderPlot(1-exp(-model.HS.Omega),...
+    'nFig',26,...
+    'axisValues',{G.x,G.y,G.z},...
+    'axisLabels',{'x [cm]','y [cm]','z [cm]','Fractional damage'},...
+    'axisEqual',true,...
+    'reversedAxes',3,...
+    'slicePositions',model.HS.slicePositions);
   set(h_f,'WindowStyle','Docked');
   h_f.Name = 'Fractional damage';
   title('Fractional damage (1 - e^{-\Omega})');

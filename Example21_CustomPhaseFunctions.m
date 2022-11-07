@@ -75,31 +75,20 @@ model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of beam center ax
 
 model.MC.depositionCriteria.minScatterings = 1;
 
-% Execution, do not modify the next line:
-model = runMonteCarlo(model);
 
+model = runMonteCarlo(model);
 model = plot(model,'MC');
 
-%% Geometry function(s)
-% A geometry function takes as input X,Y,Z matrices as returned by the
-% "ndgrid" MATLAB function as well as any parameters the user may have
-% provided in the definition of Ginput. It returns the media matrix M,
-% containing numerical values indicating the media type (as defined in
-% mediaPropertiesFunc) at each voxel location.
+%% Geometry function(s) (see readme for details)
 function M = geometryDefinition(X,Y,Z,parameters)
   M = ones(size(X)); % Air
   M(51,51,:) = 2; % Scatterer
 end
 
-%% Media Properties function
-% The media properties function defines all the optical and thermal
-% properties of the media involved by constructing and returning a
-% "mediaProperties" struct with various fields. As its input, the function
-% takes the wavelength as well as any other parameters you might specify
-% above in the model file, for example parameters that you might loop over
-% in a for loop. Dependence on excitation fluence rate FR, temperature T or
-% fractional heat damage FD can be specified as in examples 12-15.
-function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
+%% Media Properties function (see readme for details)
+function mediaProperties = mediaPropertiesFunc(parameters)
+  mediaProperties = MCmatlab.mediumProperties;
+
   j=1;
   mediaProperties(j).name  = 'Air';
   mediaProperties(j).mua   = 1e-8; % [cm^-1]
@@ -110,5 +99,8 @@ function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
   mediaProperties(j).name  = 'Rayleigh scatterer';
   mediaProperties(j).mua   = 1e-8; % [cm^-1]
   mediaProperties(j).mus   = 10; % [cm^-1]
-  mediaProperties(j).customPhaseFunc = '1 + cos(theta)^2';
+  mediaProperties(j).customPhaseFunc = @func1;
+  function phasefunc = func1(lambda,theta)
+    phasefunc = 1 + cos(theta)^2;
+  end
 end

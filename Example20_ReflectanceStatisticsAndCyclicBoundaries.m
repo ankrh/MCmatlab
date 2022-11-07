@@ -98,26 +98,16 @@ model = plot(model,'MC');
 fprintf('\nRd matched    = %.6f +- %.6f (n = %d, total time elapsed = %d s)\n'   ,mean(Rd_matched   ),std(Rd_matched   )/sqrt(n),n,round(t_Matched   ));
 fprintf('Rd mismatched = %.6f +- %.6f (n = %d, total time elapsed = %d s)\n\n',mean(Rd_mismatched),std(Rd_mismatched)/sqrt(n),n,round(t_Mismatched));
 
-%% Geometry function(s)
-% A geometry function takes as input X,Y,Z matrices as returned by the
-% "ndgrid" MATLAB function as well as any parameters the user may have
-% provided in the definition of Ginput. It returns the media matrix M,
-% containing numerical values indicating the media type (as defined in
-% mediaPropertiesFunc) at each voxel location.
+%% Geometry function(s) (see readme for details)
 function M = geometryDefinition(X,Y,Z,parameters)
   M = 2*ones(size(X)); % "Standard" tissue
   M(:,:,1) = 1; % air
 end
 
-%% Media Properties function
-% The media properties function defines all the optical and thermal
-% properties of the media involved by constructing and returning a
-% "mediaProperties" struct with various fields. As its input, the function
-% takes the wavelength as well as any other parameters you might specify
-% above in the model file, for example parameters that you might loop over
-% in a for loop. Dependence on excitation fluence rate FR, temperature T or
-% fractional heat damage FD can be specified as in examples 12-15.
-function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
+%% Media Properties function (see readme for details)
+function mediaProperties = mediaPropertiesFunc(parameters)
+  mediaProperties = MCmatlab.mediumProperties;
+
   j=1;
   mediaProperties(j).name  = 'air';
   mediaProperties(j).mua   = 1e-8; % [cm^-1]

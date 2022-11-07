@@ -1,16 +1,38 @@
 %% Decription
-% This example is very similar to example 4, the geometry and light
-% propagation part being the same. It illustrates the ability to sequence
-% together multiple pulse trains in the form of separate heat simulations,
-% carrying over the temperature and thermal damage from one simulation to
-% the next. A movie is generated that shows all the heat simulations.
+% This example showcases the ability to launch broadband simulations, in
+% which multiple wavelengths of excitation and fluorescence light are
+% simulated. The geometry is based on that of example 4 (blood vessel), but
+% with two artificial fluorescing spheres inserted into the dermis. The use
+% of the wavelength-dependent calc_mua() and calc_mus() functions in the
+% media properties allows us to easily take into account the tissues'
+% absorption and scattering variations with wavelength.
+% 
+% Note the lambda slider that is now present in the output volumetric plots.
+% 
+% Each excitation wavelength has a power determined by the user-defined
+% function handle stored in the model.MC.spectrumFunc property. This
+% function can be defined along with the geometry function and the media
+% properties function in the model file itself as shown below and must take
+% one input argument (the wavelength) and return one output argument (the
+% spectral power). If no function handle is assigned to spectrumFunc, it
+% will be assumed that all wavelengths share the power equally.
+% 
+% The spectrumFunc values do not need to be normalized, as MCmatlab
+% normalizes the powers at all the wavelengths such that the total power is
+% model.MC.P (which has a default value of 1 W). 
 %
-% The first heat simulation has a single light pulse of 2 ms on-time
-% followed by 3 ms off-time. The second heat simulation adds nine more
-% pulses onto that with 0.5 ms on-time and 4.5 ms off-time.
-%
-% In these heat simulations, largeTimeSteps is set to true and nUpdates set
-% to 10 rather than 100, which speeds up the simulations considerably.
+% When simulating broadband sources, you must specify model.MC.wavelength
+% (and/or model.FMC.wavelength) as a 1D array of wavelengths. The specified
+% simulationTimeRequested or nPhotonsRequested will be split between all
+% the wavelengths.
+% 
+% For fluorescence light, the individual media's output spectra are
+% determined by the ES (emission spectrum) specified in the mediaProperties
+% function, although you must still choose which wavelengths to simulate in
+% the model.FMC.wavelength array. For fluorescence emission, the total
+% power of emission for each fluorescing voxel is determined by its
+% medium's quantum yield. The emission spectrum only determines how that
+% output power is distributed among the wavelengths.
 
 %% MCmatlab abbreviations
 % G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
@@ -40,11 +62,12 @@ model.G.geomFunc          = @geometryDefinition; % Function to use for defining 
 model = plot(model,'G');
 
 %% Monte Carlo simulation
-model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
+model.MC.simulationTimeRequested  = .5; % [min] Time duration of the simulation
 
 model.MC.matchedInterfaces        = true; % Assumes all refractive indices are the same
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
-model.MC.wavelength               = 532; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
+model.MC.wavelength               = linspace(300,500,11); % [nm] Excitation wavelength, used for determination of optical properties for excitation light
+model.MC.spectrumFunc             = @Sfunc; % Defined just above the geometry function, later in this file
 
 model.MC.lightSource.sourceType   = 4; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
 model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr = 0; % Radial focal plane intensity distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
@@ -61,46 +84,22 @@ model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of beam center ax
 model = runMonteCarlo(model);
 model = plot(model,'MC');
 
-%% First pulse heat simulation
-model.MC.P                   = 4; % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
+%% Fluorescence Monte Carlo simulation
+model.FMC.simulationTimeRequested  = .5; % [min] Time duration of the simulation
 
-model.HS.useAllCPUs          = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
-model.HS.makeMovie           = true; % Requires silentMode = false.
-model.HS.deferMovieWrite     = true; % (Default: false) If true, will not write the movie to file upon completion, but will store the raw frames in HSoutput for future writing
-model.HS.largeTimeSteps      = true; % (Default: false) If true, calculations will be faster, but some voxel temperatures may be slightly less precise. Test for yourself whether this precision is acceptable for your application.
-
-model.HS.heatBoundaryType    = 0; % 0: Insulating boundaries, 1: Constant-temperature boundaries (heat-sinked)
-model.HS.durationOn          = 0.002; % [s] Pulse on-duration
-model.HS.durationOff         = 0.003; % [s] Pulse off-duration
-model.HS.durationEnd         = 0.000; % [s] Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train
-model.HS.T                   = 37; % [deg C] Initial temperature
-
-model.HS.nPulses             = 1; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use nPulses = 1.
-
-model.HS.plotTempLimits      = [37 100]; % [deg C] Expected range of temperatures, used only for setting the color scale in the plot
-model.HS.nUpdates            = 10; % Number of times data is extracted for plots during each pulse. A minimum of 1 update is performed in each phase (2 for each pulse consisting of an illumination phase and a diffusion phase)
-model.HS.slicePositions      = [.5 0.6 1]; % Relative slice positions [x y z] for the 3D plots on a scale from 0 to 1
-model.HS.tempSensorPositions = [0 0 0.038
-                                0 0 0.04
-                                0 0 0.042
-                                0 0 0.044]; % Each row is a temperature sensor's absolute [x y z] coordinates. Leave the matrix empty ([]) to disable temperature sensors.
+model.FMC.matchedInterfaces        = true; % Assumes all refractive indices are the same
+model.FMC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
+model.FMC.wavelength               = linspace(500,650,11); % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
 
-model = simulateHeatDistribution(model);
+model = runMonteCarlo(model,'fluorescence');
+model = plot(model,'FMC');
 
-%% Remaining pulse train heat simulation
-% The model.HS struct is modified slightly but keeps its data from the
-% previous pulse (HS.T, HS.sensorTemps, HS.Omega, etc.)
-model.HS.deferMovieWrite     = false; % (Default: false) If true, will not write the movie to file upon completion, but will store the raw frames in HSoutput for future writing
-model.HS.durationOn          = 0.0005; % [s] Pulse on-duration
-model.HS.durationOff         = 0.0045; % [s] Pulse off-duration
-model.HS.durationEnd         = 0.01; % [s] Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train
-
-model.HS.nPulses             = 9; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use nPulses = 1.
-
-
-model = simulateHeatDistribution(model);
-model = plot(model,'HS');
+%% Spectrum function
+% The spectral power for the excitation light:
+function spectralpower = Sfunc(wavelength)
+  spectralpower = exp(-(wavelength-400).^2/(50).^2); % A simple Gaussian
+end
 
 %% Geometry function(s) (see readme for details)
 function M = geometryDefinition(X,Y,Z,parameters)
@@ -113,6 +112,9 @@ function M = geometryDefinition(X,Y,Z,parameters)
   M(Z > zsurf) = 2; % epidermis
   M(Z > zsurf + epd_thick) = 3; % dermis
   M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 4; % blood
+  R_sphere = 0.01;
+  M(X.^2 + (Y - 0.03).^2 + (Z - 0.028).^2 < R_sphere^2) = 5; % green fluorescer
+  M(X.^2 + (Y + 0.03).^2 + (Z - 0.028).^2 < R_sphere^2) = 6; % green fluorescer
 end
 
 %% Media Properties function (see readme for details)
@@ -200,4 +202,34 @@ function mediaProperties = mediaPropertiesFunc(parameters)
   mediaProperties(j).TC  = 0.52e-2; % [W cm^-1 K^-1]
   mediaProperties(j).E   = 422.5e3; % J/mol    PLACEHOLDER DATA ONLY
   mediaProperties(j).A   = 7.6e66; % 1/s        PLACEHOLDER DATA ONLY
+
+  j=5;
+  mediaProperties(j).name  = 'green fluorescer';
+  mediaProperties(j).mua = 100;
+  mediaProperties(j).mus = 100; % [cm^-1]
+  mediaProperties(j).g   = 0.9;
+
+  mediaProperties(j).QY   = @QYfunc5; % Fluorescence quantum yield
+  function QY = QYfunc5(wavelength)
+    QY = 0.6*exp(-(wavelength-400).^2/(50).^2); % A simple Gaussian
+  end
+  mediaProperties(j).ES = @ESfunc5;
+  function ES = ESfunc5(wavelength)
+    ES = exp(-(wavelength-550).^2/(50).^2); % A simple Gaussian
+  end
+
+  j=6;
+  mediaProperties(j).name  = 'red fluorescer';
+  mediaProperties(j).mua = 100; % [cm^-1]
+  mediaProperties(j).mus = 100;
+  mediaProperties(j).g   = 0.9;
+
+  mediaProperties(j).QY   = @QYfunc6; % Fluorescence quantum yield
+  function QY = QYfunc6(wavelength)
+    QY = 0.5*exp(-(wavelength-420).^2/(50).^2); % A simple Gaussian
+  end
+  mediaProperties(j).ES = @ESfunc6;
+  function ES = ESfunc6(wavelength)
+    ES = exp(-(wavelength-600).^2/(50).^2); % A simple Gaussian
+  end
 end

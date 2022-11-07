@@ -70,11 +70,10 @@ model.MC.lightSource.zFocus       = 0.078; % [cm] z position of focus
 model.MC.lightSource.theta        = pi/6; % [rad] Polar angle of beam center axis
 model.MC.lightSource.phi          = -pi/2; % [rad] Azimuthal angle of beam center axis
 
-model.HS.Tinitial                 = 20; % [deg C] Initial temperature
+model.HS.T                        = 20; % [deg C] Initial temperature
 
-% Execution, do not modify the next line:
+
 model = runMonteCarlo(model);
-
 model = plot(model,'MC');
 
 %% Heat simulation
@@ -95,18 +94,12 @@ model.HS.tempSensorPositions = [0 0.009 0.032
   0 -0.007 0.059
   0 -0.017 0.078]; % Each row is a temperature sensor's absolute [x y z] coordinates. Leave the matrix empty ([]) to disable temperature sensors.
 
-% Execution, do not modify the next line:
-model = simulateHeatDistribution(model);
 
+model = simulateHeatDistribution(model);
 model = plot(model,'HS');
 model = plot(model,'MC');
 
-%% Geometry function(s)
-% A geometry function takes as input X,Y,Z matrices as returned by the
-% "ndgrid" MATLAB function as well as any parameters the user may have
-% provided in the definition of Ginput. It returns the media matrix M,
-% containing numerical values indicating the media type (as defined in
-% mediaPropertiesFunc) at each voxel location.
+%% Geometry function(s) (see readme for details)
 function M = geometryDefinition(X,Y,Z,parameters)
   M = ones(size(X)); % fill background with water
   M(0.2*Y + (Z - 0.03) > 0) = 2; % Thermochromic material
@@ -115,15 +108,10 @@ function M = geometryDefinition(X,Y,Z,parameters)
   M(Z > 0.09) = 1;
 end
 
-%% Media Properties function
-% The media properties function defines all the optical and thermal
-% properties of the media involved by constructing and returning a
-% "mediaProperties" struct with various fields. As its input, the function
-% takes the wavelength as well as any other parameters you might specify
-% above in the model file, for example parameters that you might loop over
-% in a for loop. Dependence on excitation fluence rate FR, temperature T or
-% fractional heat damage FD can be specified as in examples 12-15.
-function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
+%% Media Properties function (see readme for details)
+function mediaProperties = mediaPropertiesFunc(parameters)
+  mediaProperties = MCmatlab.mediumProperties;
+
   j=1;
   mediaProperties(j).name  = 'water';
   mediaProperties(j).mua   = 0.00036; % [cm^-1]
@@ -134,7 +122,10 @@ function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
 
   j=2;
   mediaProperties(j).name  = 'thermochromic material';
-  mediaProperties(j).mua = '150*max(1e-8,(40-T)/(40-20))'; % [cm^-1]
+  mediaProperties(j).mua = @muafunc2;
+  function mua = muafunc2(wavelength,FR,T,FD)
+    mua = 150*max(1e-8,(40-T)/(40-20)); % [cm^-1]
+  end
   mediaProperties(j).mus = 30; % [cm^-1]
   mediaProperties(j).g   = 0.8;
   mediaProperties(j).VHC = 2000; % [J cm^-3 K^-1]

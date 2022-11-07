@@ -35,25 +35,30 @@ The folders include all the executables necessary, so you don't need to compile 
 ### Model files:
 In MCmatlab, you set up your model in a single m-file. You can find some examples to get you started in the root folder of MCmatlab. A complete list of parameters that can be set is provided below.
 
+### MATLAB function definitions
+MCmatlab makes extensive use of user-defined functions, passed into the simulation in the form of function handles. For more information, see `https://www.mathworks.com/help/matlab/matlab_prog/creating-a-function-handle.html`. Inside other functions, nested functions can be defined anywhere, but in the main model file script, MATLAB requires that all functions are defined at the end of the m file.
+
 ### Media properties:
-The optical properties of all media are defined in a function at the end of the model file. The examples contain some media you can modify or copy-paste to your own model file, or you define your own media from scratch in your own models. Make sure that each media in a single model file has its distinct "j"-number, as this is the number you will refer to when building your model in the geometry function (see below).
+The optical properties of all media are defined in a function at the end of the model file. The examples contain some media you can modify or copy-paste to your own model file, or you define your own media from scratch in your own models. All media properties functions must start with this line: `mediaProperties = MCmatlab.mediumProperties;` in order to initialize the `mediaProperties` variable as an array of `mediumProperties` objects. Make sure that each media in a single model file has its distinct "j"-number, as this is the number you will refer to when building your model in the geometry function (see below).
 
-Each medium can be specified with up to 10 properties (fields in the struct):
+Each medium can be specified with up to 13 properties. Many of these may be specified either as a scalar or as function handles that can take wavelength, fluence rate (FR), temperature (T) and fractional damage (FD) as input:
 - `name` - A char array containing the name of the medium, used for the visualization.
-- `mua` - The absorption coefficient in units of 1/cm.
-- `mus` - The scattering coefficient in units of 1/cm.
-- `g` - The scattering anisotropy (the mean cosine to the scattering angle), to be used in the Henyey-Greenstein phase function. It has no units.
-- `customPhaseFunc` - An alternative to specifying `g`. This is a char array that is a MATLAB-evaluateable expression that specifies the scattering phase function as a function of theta. This function does not need to be normalized.
-- `PY` - The power yield of fluorescence, that is, watts of fluorescence emitted relative to watts of excitation light absorbed. This field is mutually exclusive with `QY`. It has no units.
-- `QY` - The quantum yield of fluorescence, that is, photons of fluorescence emitted relative to excitation photons absorbed. This is related to the power yield through a factor of model.MC.lambda/model.FMC.lambda. This field is mutually exclusive with `PY`. It has no units.
-- `VHC` - The volumetric heat capacity of the medium in units of J/(cm^3 K).
-- `TC` - The thermal conductivity of the medium in units of W/(cm K).
-- `E` - The Arrhenius activation energy in units of J/mol.
-- `A` - The Arrhenius pre-exponential factor in units of 1/s.
+- `mua` - The absorption coefficient in units of 1/cm. May be (a) scalar, (b) a function handle taking wavelength as input or (c) a function handle taking wavelength, FR, T and FD as inputs.
+- `mus` - The scattering coefficient in units of 1/cm. May be (a) scalar, (b) a function handle taking wavelength as input or (c) a function handle taking wavelength, FR, T and FD as inputs.
+- `g` - The scattering anisotropy (the mean cosine to the scattering angle), to be used in the Henyey-Greenstein phase function. It has no units.  May be (a) scalar, (b) a function handle taking wavelength as input or (c) a function handle taking wavelength, FR, T and FD as inputs.
+- `customPhaseFunc` - An alternative to specifying `g`. If specified, this must be a function handle that takes wavelength and polar scattering angle as inputs and yields the scattering phase function as output. This function does not need to be normalized.
+- `n` - The refractive index. May be (a) scalar or (b) a function handle taking wavelength as input.
+- `QY` - The quantum yield of fluorescence, that is, photons of fluorescence emitted relative to excitation photons absorbed. It has no units. May be (a) scalar, (b) a function handle taking wavelength as input or (c) a function handle taking wavelength, FR, T and FD as inputs.
+- `ES` - The emission spectrum of the fluorescence emission, if any. Doesn't need to be normalized. May be (a) scalar, (b) a function handle taking wavelength as input or (c) a function handle taking wavelength, FR, T and FD as inputs.
+- `VHC` - The volumetric heat capacity of the medium in units of J/(cm^3 K). May be (a) scalar or (b) a function handle taking T and FD as inputs.
+- `TC` - The thermal conductivity of the medium in units of W/(cm K). May be (a) scalar or (b) a function handle taking T and FD as inputs.
+- `E` - The Arrhenius activation energy in units of J/mol. Must be scalar.
+- `A` - The Arrhenius pre-exponential factor in units of 1/s. Must be scalar.
+- `nBins` - The number of bins (sub-media) to split the medium into in case of media that have properties that depend on fluence rate (FR), temperature (T) or fractional damage (FD). Must be scalar.
 
-For Monte Carlo simulations, `name`, `mua`, `mus` and `g` need be specified for all media.
+For Monte Carlo simulations, `name`, `mua`, `mus` and either `g` or `customPhaseFunc` need be specified for all media.
 
-For fluorescence Monte Carlo simulations, the `PY` or `QY` field must additionally be specified for those media that fluoresce.
+For fluorescence Monte Carlo simulations, the `QY` and `ES` properties must additionally be specified for those media that fluoresce.
 
 For heat simulations, `VHC` and `TC` must be specified for all media.
 
@@ -78,7 +83,7 @@ You build each model in a separate m-file. Each model requires the first two and
 
 #### 4. (Optional) Calculate fluorescence light distribution
 - The section "%% Fluorescence Monte Carlo" contains the parameters for a fluorescence simulation, to be run after the distribution of excitation light has been calculated.
-- To be able to run this step, your geometry definitions needs to include the fluorescence wavelength, "model.FMC.wavelength". Additionally, at least one of your media should be defined fluorescent, by defining its fluorescent yield Y in "mediaPropertiesFunc" at the end of your model file.
+- To be able to run this step, your geometry definitions needs to include the fluorescence wavelength, "model.FMC.wavelength". Additionally, at least one of your media should be defined fluorescent, by defining its quantum yield `QY` in "mediaPropertiesFunc" at the end of your model file.
 - After this step, when calling "plot(model,'FMC')", you will be shown the fluorescence emitter distribution, the fluorescent light fluence rate, the absorption within the cuboid, and the fluorescent light fluence rate at the cuboid boundaries.
 
 #### 5. (Optional) Simulate heat distribution
@@ -180,13 +185,13 @@ If false, MCmatlab will still be multithreaded but will leave one CPU logical pr
 `model.MC.calcNFR`
 [-]
 (Default: True)
-If true, will calculate and store the normalized fluence rate (NFR) 3D array. The array takes 8\*nx\*ny\*nz bytes of memory (and disk space, if the resulting model file is saved to disk subsequently)
+If true, will calculate and store the normalized fluence rate (NFR) 3D or 4D array (4D if simulating broadband light). The array takes 8\*nx\*ny\*nz bytes of memory (and disk space, if the resulting model file is saved to disk subsequently)
 For some simulations in which you are only interested, for example, in the detector image/power, you might not need the NFR and could therefore set this to false.
 
 `model.MC.calcNFRdet`
 [-]
 (Default: False)
-If true, will additionally calculate a normalized fluence rate 3D array similar to the ordinary NFR array, but only counting the areas passed through by those photons that end up registered by the detector/light collector.
+If true, will additionally calculate a normalized fluence rate 3D or 4D array similar to the ordinary NFR array, but only counting the areas passed through by those photons that end up registered by the detector/light collector.
 
 `model.MC.nExamplePaths`
 [-]
@@ -225,7 +230,7 @@ When a photon hits a cyclic boundary, it will exit and immediately enter the cub
 
 `model.MC.wavelength`
 [nm]
-The wavelength of the light. This is used only to be passed on as an input to the mediaPropertiesFunc because most (if not all) optical parameters are dependent on the wavelength of the light. The wavelengths does not actually change anything in the MC simulation itself aside from the change in mua, mus and g of the involved media. The only exception is when simulation fluorescence (see below) and specifying a quantum yield fluorescer.
+The wavelength(s) of the light. May be scalar or 1D array. Media properties in the mediaPropertiesFunc may be dependent on the wavelength of the light. The wavelength does not actually change anything in the MC simulation itself aside from the change in the media properties. Wavelength is also used to calculate the fluorescence emission powers based on the quantum yields of the fluorescers. If wavelength is specified as a 1D array, broadband simulations will be performed.
 
 `model.MC.lightSource.sourceType`
 [-]
@@ -321,7 +326,7 @@ If AID.XDistr/AID.YDistr is set to an array, this is the half-angle of the full 
 
 `model.MC.lightSource.xFocus`, `model.MC.lightSource.yFocus`, `model.MC.lightSource.zFocus`
 [cm]
-The focus position x,y,z coordinates.
+The focus (or source) position x,y,z coordinates.
 
 `model.MC.lightSource.psi`
 [rad]
@@ -338,8 +343,15 @@ The minimum and maximum number of scattering, refraction, reflection and interfa
 
 `model.MC.P`
 [W]
+(Default: 1)
 (Only used for the thermal simulations and for any Monte Carlo simulations in which the optical or thermal parameters depend on the fluence rate (FR), fractional damage (FD) or temperature (T))
 Incident pulse peak power. In case of infinite plane waves, this is only the power incident upon the cuboid's top surface.
+
+`model.MC.spectrumFunc`
+[-]
+(Default: 1)
+(Only used for broadband simulations)
+A function handle that takes wavelength as an input and returns the spectral power of the source as an output. This function doesn't need to be normalized, as the total power emitted across all simulated wavelengths will be normalized to `model.MC.P` regardless.
 
 `model.MC.FRinitial`
 [W/cm^2]
@@ -468,9 +480,10 @@ Pulse on-duration and off-duration
 [s]
 Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train.
 
-`model.HS.Tinitial`
+`model.HS.T`
 [deg C]
-Initial temperature, can be scalar or 3D array of dimensions nx, ny, nz.
+(Functions both as an input and an output property)
+Initial and final temperature, can be scalar or 3D array of dimensions nx, ny, nz.
 
 `model.HS.plotTempLimits`
 [deg C]
@@ -542,7 +555,7 @@ A 2D array which stores the example paths' coordinates and remaining weight. Eac
 `model.MC.normalizedFluenceRate`
 [W/cm^2/W.incident]
 (Note that normalizedFluenceRate can be abbreviated NFR in your code)
-A 3D (xyz) array of normalized fluence rate values. This is what's plotted in figure 4. If you want to plot a slice out of this distribution, you could for example do it with these three lines of code:
+A 3D or 4D array (4D if simulating broadband light) (x,y,z,lambda) of normalized fluence rate values. This is what's plotted in figure 4. If you want to plot a slice out of this distribution, you could for example do it with these three lines of code:
 - `NFRslice = squeeze(model.MC.NFR(51,:,:));` Extracts the slice corresponding to the 51st x value. `squeeze` is to remove the x singleton dimension, giving you a 2D (yz) array of normalized fluence rates.
 - `figure(100);`
 - `imagesc(model.G.y,model.G.z,NFRslice.');` We can use the 1D coordinate arrays from model.G for the y and z coordinate values. The `.'` is there because Mathworks has designed the imagesc function to plot the first coordinate along the vertical axis and the second coordinate along the horizontal axis, which is the opposite of what we want.
@@ -550,21 +563,21 @@ A 3D (xyz) array of normalized fluence rate values. This is what's plotted in fi
 `model.MC.normalizedFluenceRate_detected`
 [W/cm^2/W.incident]
 (Note that normalizedFluenceRate can be abbreviated NFR in your code)
-A 3D (xyz) array of normalized fluence rate values like model.MC.NFR, but only counting those photons that ended up on the light collector.
+A 3D or 4D array (4D if simulating broadband light) (x,y,z,lambda) of normalized fluence rate values like model.MC.NFR, but only counting those photons that ended up on the light collector.
 
 `model.MC.normalizedAbsorption`
 [W/cm^3/W.incident]
 (Note that normalizedAbsorption can be abbreviated NA in your code)
-A 3D (xyz) array of normalized absorption values. This is what's plotted in figure 3.
+A 3D or 4D array (4D if simulating broadband light) (x,y,z,lambda) of normalized absorption values. This is what's plotted in figure 3.
 
 `model.MC.normalizedAbsorption_detected`
 [W/cm^3/W.incident]
 (Note that normalizedAbsorption can be abbreviated NA in your code)
-A 3D (xyz) array of normalized absorption values like model.MC.NA, but only counting those photons that ended up on the light collector.
+A 3D or 4D array (4D if simulating broadband light) (x,y,z,lambda) of normalized absorption values like model.MC.NA, but only counting those photons that ended up on the light collector.
 
 `model.MC.farField`
 [W/sr/W.incident]
-A 2D (theta,phi) array of normalized radiant intensity values for the light that escaped the simulation cuboid. The axes are the polar and azimuthal angles, described below.
+A 2D or 3D (theta,phi,lambda) array of normalized radiant intensity values for the light that escaped the simulation cuboid. The axes are the polar and azimuthal angles, described below.
 
 `model.MC.farFieldTheta`
 [rad]
@@ -577,14 +590,14 @@ A 1D array of azimuthal angles corresponding to the second dimension of model.MC
 `model.MC.normalizedIrradiance_xpos`, `model.MC.normalizedIrradiance_xneg`, `model.MC.normalizedIrradiance_ypos`, `model.MC.normalizedIrradiance_yneg`, `model.MC.normalizedIrradiance_zpos`, `model.MC.normalizedIrradiance_zneg`
 [W/cm^2/W.incident]
 (Note that normalizedIrradiance can be abbreviated NI in your code)
-2D (xy, xz or yz) arrays of normalized irradiances of the light hitting the boundaries (either escaping or killed). For example, the property named `model.MC.NI_xpos` designates the light that hits the surface that is orthogonal to the x axis and placed on the positive x side, whereas the `model.MC.NI_xneg` refers to the surface orthogonal to the x axis and placed on the negative x side. model.MC.boundaryType determine which of these arrays are calculated.
+2D or 3D (xy, xz or yz - with lambda as third dimension) arrays of normalized irradiances of the light hitting the boundaries (either escaping or killed). For example, the property named `model.MC.NI_xpos` designates the light that hits the surface that is orthogonal to the x axis and placed on the positive x side, whereas the `model.MC.NI_xneg` refers to the surface orthogonal to the x axis and placed on the negative x side. model.MC.boundaryType determine which of these arrays are calculated.
 `model.MC.NI_zneg` is of special interest to users interested in calculating the reflectance, which can be found as the integral over the array:
 - `R = model.G.dx*model.G.dy*sum(model.MC.NI_zneg(:));`
 
 `model.MC.lightCollector.image`
 [W/cm^2/W.incident]
-If `model.MC.lightCollector.res == 1`, this is a scalar with the normalized power registered on the light collector.
-If `model.MC.lightCollector.res > 1`, this is a 2D (XY) array of normalized irradiances registered on the light collector. This array describes the light distribution you would get on a camera looking at the cuboid through an objective lens.
+If `model.MC.lightCollector.res == 1`, this is a scalar or 1D array with the normalized power registered on the light collector as function of wavelength.
+If `model.MC.lightCollector.res > 1`, this is a 2D or 3D array (X,Y,lambda) of normalized irradiances registered on the light collector. This array describes the light distribution you would get on a camera looking at the cuboid through an objective lens.
 
 #### Fluorescence Monte Carlo properties
 All the output properties described above for excitation Monte Carlo are also provided for fluorescence Monte Carlo in the model.FMC object.
@@ -618,4 +631,4 @@ A 2D array of temperatures measured at the specified sensor positions. Each row 
 You are very welcome to clone the repository and add features of your own. If you want to report a bug or are missing a feature, shoot me an email, see below.
 
 ## Who do I talk to?
-The main person responsible for MCmatlab is Anders Kragh Hansen: ankrh@fotonik.dtu.dk
+The main person responsible for MCmatlab is Anders Kragh Hansen: anderskraghhansen@gmail.com

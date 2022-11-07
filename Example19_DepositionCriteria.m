@@ -83,32 +83,21 @@ model.MC.nExamplePaths = 25;
 model.MC.depositionCriteria.minScatterings = 1; % Don't collect data for non-scattered photons
 model.MC.depositionCriteria.maxScatterings = 1; % Don't collect data for photons with more than 1 scattering
 
-% Execution, do not modify the next line:
-model = runMonteCarlo(model);
 
+model = runMonteCarlo(model);
 model = plot(model,'MC');
 
-%% Geometry function(s)
-% A geometry function takes as input X,Y,Z matrices as returned by the
-% "ndgrid" MATLAB function as well as any parameters the user may have
-% provided in the definition of Ginput. It returns the media matrix M,
-% containing numerical values indicating the media type (as defined in
-% mediaPropertiesFunc) at each voxel location.
+%% Geometry function(s) (see readme for details)
 function M = geometryDefinition(X,Y,Z,parameters)
   zSurface = 0.03;
   M = ones(size(X)); % Air
   M(Z > zSurface) = 2; % "Standard" tissue
 end
 
-%% Media Properties function
-% The media properties function defines all the optical and thermal
-% properties of the media involved by constructing and returning a
-% "mediaProperties" struct with various fields. As its input, the function
-% takes the wavelength as well as any other parameters you might specify
-% above in the model file, for example parameters that you might loop over
-% in a for loop. Dependence on excitation fluence rate FR, temperature T or
-% fractional heat damage FD can be specified as in examples 12-15.
-function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
+%% Media Properties function (see readme for details)
+function mediaProperties = mediaPropertiesFunc(parameters)
+  mediaProperties = MCmatlab.mediumProperties;
+
   j=1;
   mediaProperties(j).name  = 'air';
   mediaProperties(j).mua   = 1e-8; % [cm^-1]

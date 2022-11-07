@@ -3,7 +3,7 @@
  * MCmatlab.c, in the C programming language, written for MATLAB MEX function generation
  * C script for Monte Carlo Simulation of Photon Transport in 3D
  * 
- * Copyright 2017, 2018 by Anders K. Hansen, DTU Fotonik
+ * Copyright 2017, 2018 by Anders K. Hansen
  * inspired by mcxyz.c by Steven Jacques, Ting Li, Scott Prahl at the Oregon Health & Science University
  *
  * This file is part of MCmatlab.
@@ -169,9 +169,10 @@
 #ifdef __NVCC__ // If compiling for CUDA
 __global__
 #endif
-void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
+void threadInitAndLoop(struct source *B_global, struct geometry *G_global,
           struct lightCollector *LC_global, struct paths *Pa, struct outputs *O_global, struct depositionCriteria *DC_global, long nM, size_t size_smallArrays,
           long long simulationTimeStart, long long microSecondsOrGPUCycles, unsigned long long nPhotonsRequested,
+          int iL, int nL,
           bool *abortingPtr, bool silentMode, struct debug *D) {
   struct photon P_var;
   struct photon *P = &P_var;
@@ -182,8 +183,8 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
 
   #ifdef __NVCC__ // If compiling for CUDA
   // Copy structs from global device memory to shared device memory, which is orders of magnitude faster since it is on-chip
-  __shared__ struct beam B_var;
-  struct beam *B = &B_var;
+  __shared__ struct source B_var;
+  struct source *B = &B_var;
   __shared__ struct geometry G_var;
   struct geometry *G = &G_var;
   __shared__ struct lightCollector LC_var;
@@ -209,10 +210,10 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
     G->RIv = G->gv + nM;
     G->CDFs = G->RIv + nM;
     G->CDFidxv = (unsigned char *)(G->CDFs + CDFarraySize);
-    B->NFdist1 = (FLOATORDBL *)(G->CDFidxv + nM);
-    B->FFdist1 = B->NFdist1 + B->L_NF1;
-    B->NFdist2 = B->FFdist1 + B->L_FF1;
-    B->FFdist2 = B->NFdist2 + B->L_NF2;
+    B->FPIDdist1 = (FLOATORDBL *)(G->CDFidxv + nM);
+    B->AIDdist1 = B->FPIDdist1 + B->L_FPID1;
+    B->FPIDdist2 = B->AIDdist1 + B->L_AID1;
+    B->AIDdist2 = B->FPIDdist2 + B->L_FPID2;
   }
   __syncthreads(); // All threads in the block wait for the copy to have finished
   
@@ -223,7 +224,7 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
   // Launch major loop
   while(clock64() < tEnd && O->nPhotons + THREADNUM < nPhotonsRequested) { // "+ THREADNUM" ensures that we avoid race conditions that might launch more than nPhotonsRequested photons
   #else
-  struct beam *B = B_global;
+  struct source *B = B_global;
   struct geometry *G = G_global;
   struct lightCollector *LC= LC_global;
   struct outputs *O = O_global;
@@ -232,9 +233,10 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
   if(P->recordSize && !P->j_record) mexErrMsgIdAndTxt("MCmatlab:OutOfMemory","Error: Out of memory");
   if(P->recordSize && !P->weight_record) mexErrMsgIdAndTxt("MCmatlab:OutOfMemory","Error: Out of memory");
   dsfmt_init_gen_rand(&P->PRNGstate,(unsigned long)simulationTimeStart + THREADNUM); // Seed the photon's random number generator
-  int pctProgress = 0;      // Simulation progress in percent
+  int pctProgressThisWavelength = 0;      // Simulation progress in percent
+  int pctProgress = 0;
   // Launch major loop
-  while(pctProgress < 100 && O->nPhotons + THREADNUM < nPhotonsRequested && !*abortingPtr) { // "+ THREADNUM" ensures that we avoid race conditions that might launch more than nPhotonsRequested photons
+  while(pctProgressThisWavelength < 100 && O->nPhotons + THREADNUM < nPhotonsRequested && !*abortingPtr) { // "+ THREADNUM" ensures that we avoid race conditions that might launch more than nPhotonsRequested photons
   #endif
     launchPhoton(P,B,G,Pa,DC,abortingPtr,D);
     if(P->alive) getNewVoxelProperties(P,G,D);
@@ -254,8 +256,10 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
 
     #ifndef __NVCC__
       // Check progress
-      int pctTimeProgress = (int)(100.0*(getMicroSeconds() - simulationTimeStart)/microSecondsOrGPUCycles);
-      int pctPhotonsProgress = (int)(100.0*O->nPhotons/nPhotonsRequested);
+      int pctTimeProgressThisWavelength = (int)(100.0*(getMicroSeconds() - simulationTimeStart)/microSecondsOrGPUCycles);
+      int pctPhotonsProgressThisWavelength = (int)(100.0*O->nPhotons/nPhotonsRequested);
+      int pctTimeProgress = (int)(100.0*(iL + (double)(getMicroSeconds() - simulationTimeStart)/microSecondsOrGPUCycles)/nL);
+      int pctPhotonsProgress = (int)(100.0*(iL + (double)O->nPhotons/nPhotonsRequested)/nL);
 
       #ifdef _OPENMP
       #pragma omp master
@@ -277,6 +281,7 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
           }
         }
       }
+      pctProgressThisWavelength = max(pctTimeProgressThisWavelength,pctPhotonsProgressThisWavelength);
       pctProgress = max(pctTimeProgress,pctPhotonsProgress);
     #endif
   }
@@ -286,6 +291,7 @@ void threadInitAndLoop(struct beam *B_global, struct geometry *G_global,
 }
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
+  
   struct debug D_var = {{0.0,0.0,0.0},{0,0,0}};
   struct debug *D = &D_var;
   
@@ -296,32 +302,47 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   bool silentMode = mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabMC,0,"silentMode"));
   bool calcNFR    = mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabMC,0,"calcNFR")); // Are we supposed to calculate the NFR matrix?
   bool calcNFRdet = mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabMC,0,"calcNFRdet")); // Are we supposed to calculate the NFRdet matrix?
-  
+
   // To know if we are simulating fluorescence, we check if a "sourceDistribution" field exists. If so, we will use it later in the beam definition.
-  mxArray *MatlabBeam = mxGetProperty(MatlabMC,0,"LS");
+  mxArray *MatlabLS = mxGetProperty(MatlabMC,0,"LS");
   double *S_PDF       = simFluorescence? (double *)mxGetData(mxGetProperty(MatlabMC,0,"sourceDistribution")): NULL; // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
-  
+
   // Variables for timekeeping and number of photons
   bool            simulationTimed = mxIsNaN(*mxGetPr(mxGetPropertyShared(MatlabMC,0,"nPhotonsRequested")));
   bool            aborting = false;
   double          simulationTimeRequested = simulationTimed? *mxGetPr(mxGetPropertyShared(MatlabMC,0,"simulationTimeRequested")): INFINITY;
   unsigned long long nPhotonsRequested = simulationTimed? ULLONG_MAX: (unsigned long long)*mxGetPr(mxGetPropertyShared(MatlabMC,0,"nPhotonsRequested"));
-  
+  double          nThreads = 1; // Will be updated later with the correct number
+
+  if(!silentMode) {
+    // Display progress indicator
+    printf(simFluorescence?"-----------Fluorescence Monte Carlo Simulation-----------\n":
+                           "-----------------Monte Carlo Simulation------------------\n");
+    if(simulationTimed) printf("Simulation duration = %0.3f min\n",simulationTimeRequested);
+    else                printf("Requested # of photons = %0.2e\n",(double)nPhotonsRequested);
+  }
+
   // Find out how much total memory to allocate for the small arrays (the array that for GPUs would be stored in GPU shared memory)
   mxArray *mediaProperties = mxGetPropertyShared(MatlabMC,0,"mediaProperties");
-  int     nM = (int)mxGetN(mediaProperties);
+  double *muaMATLAB    = mxGetPr(mxGetField(mediaProperties,0,"mua"));
+  double *musMATLAB    = mxGetPr(mxGetField(mediaProperties,0,"mus"));
+  double *gMATLAB      = mxGetPr(mxGetField(mediaProperties,0,"g"));
+  double *nMATLAB      = mxGetPr(mxGetField(mediaProperties,0,"n"));
+  double *CDFidxMATLAB = mxGetPr(mxGetField(mediaProperties,0,"CDFidx"));
+  int nL = (int)mxGetN(mxGetField(mediaProperties,0,"mua")); // Number of wavelengths (Lambdas)
+  int nM = (int)mxGetM(mxGetField(mediaProperties,0,"mua")); // Number of media
+
+  double nPhotonsCumulative = 0;
+  double simulationTimeCumulative = 0;
   mwSize const *dimPtr = mxGetDimensions(mxGetPropertyShared(MatlabMC,0,"M"));
-  int beamType = S_PDF? -1: (int)*mxGetPr(mxGetPropertyShared(MatlabBeam,0,"sourceType"));
-  FLOATORDBL emitterLength = S_PDF? 0: (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabBeam,0,"emitterLength"));
-  mxArray *MatlabBeamNF = S_PDF? 0: mxGetPropertyShared(MatlabBeam,0,"FPID");
-  mxArray *MatlabBeamFF = S_PDF? 0: mxGetPropertyShared(MatlabBeam,0,"AID");
-  long L_NF1 = beamType >= 4? (long)mxGetN(mxGetPropertyShared(MatlabBeamNF,0,beamType == 4? "radialDistr": "XDistr")): 0;
-  long L_FF1 = beamType >= 4? (long)mxGetN(mxGetPropertyShared(MatlabBeamFF,0,beamType == 4? "radialDistr": "XDistr")): 0;
-  long L_NF2 = beamType == 5? (long)mxGetN(mxGetPropertyShared(MatlabBeamNF,0,"YDistr")): 0;
-  long L_FF2 = beamType == 5? (long)mxGetN(mxGetPropertyShared(MatlabBeamFF,0,"YDistr")): 0;
-  long CDFarraySize = (long)mxGetNumberOfElements(mxGetPropertyShared(MatlabMC,0,"CDFs"));
-  size_t size_smallArrays = (nM*4 + CDFarraySize + L_NF1 + L_FF1 + L_NF2 + L_FF2)*sizeof(FLOATORDBL) + nM*sizeof(unsigned char);
-  char *smallArrays = (char *)malloc(size_smallArrays); // Because smallArrays contain different data types, we just use pointer to char (1 byte) here, and make it the correct types in the derived pointers
+  int sourceType = S_PDF? -1: (int)*mxGetPr(mxGetPropertyShared(MatlabLS,0,"sourceType"));
+  FLOATORDBL emitterLength = S_PDF? 0: (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabLS,0,"emitterLength"));
+  mxArray *MatlabSourceFPID = S_PDF? 0: mxGetPropertyShared(MatlabLS,0,"FPID");
+  mxArray *MatlabSourceAID = S_PDF? 0: mxGetPropertyShared(MatlabLS,0,"AID");
+  long L_FPID1 = sourceType >= 4? (long)mxGetN(mxGetPropertyShared(MatlabSourceFPID,0,sourceType == 4? "radialDistr": "XDistr")): 0;
+  long L_AID1 = sourceType >= 4? (long)mxGetN(mxGetPropertyShared(MatlabSourceAID,0,sourceType == 4? "radialDistr": "XDistr")): 0;
+  long L_FPID2 = sourceType == 5? (long)mxGetN(mxGetPropertyShared(MatlabSourceFPID,0,"YDistr")): 0;
+  long L_AID2 = sourceType == 5? (long)mxGetN(mxGetPropertyShared(MatlabSourceAID,0,"YDistr")): 0;
 
   // Geometry struct definition
   long L = (long)(dimPtr[0]*dimPtr[1]*dimPtr[2]); // Total number of voxels in cuboid
@@ -336,123 +357,24 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   G->n[2] = (long)dimPtr[2];
   G->farFieldRes = (long)*mxGetPr(mxGetPropertyShared(MatlabMC,0,"farFieldRes"));
   G->boundaryType = (int)*mxGetPr(mxGetPropertyShared(MatlabMC,0,"boundaryType"));
+  G->M = (unsigned char *)malloc(L*sizeof(unsigned char)); // M
+  G->interfaceNormals = (float *)mxGetData(mxGetPropertyShared(MatlabMC,0,"interfaceNormals"));
+  unsigned char *M_matlab = (unsigned char *)mxGetData(mxGetPropertyShared(MatlabMC,0,"M"));
+  for(idx=0;idx<L;idx++) G->M[idx] = M_matlab[idx] - 1; // Convert from MATLAB 1-based indexing to C 0-based indexing
+
+  mxArray *MatlabCDFs = mxGetPropertyShared(MatlabMC,0,"CDFs");
+  long CDFarraySize = (long)mxGetNumberOfElements(MatlabCDFs);
+  size_t size_smallArrays = (nM*4 + CDFarraySize + L_FPID1 + L_AID1 + L_FPID2 + L_AID2)*sizeof(FLOATORDBL) + nM*sizeof(unsigned char);
+  char *smallArrays = (char *)malloc(size_smallArrays); // Because smallArrays contain different data types, we just use pointer to char (1 byte) here, and make it the correct types in the derived pointers
+
   G->muav = (FLOATORDBL *)smallArrays;
   G->musv = G->muav + nM;
   G->gv   = G->musv + nM;
   G->RIv  = G->gv + nM;
   G->CDFs = G->RIv + nM;
   G->CDFidxv = (unsigned char *)(G->CDFs + CDFarraySize); // Array that describes which CDF array is the one that applies to a particular medium
-
-  // Fill the geometry arrays
-  for(idx=0;idx<nM;idx++) {
-    G->muav[idx] = (FLOATORDBL)*mxGetPr(mxGetField(mediaProperties,idx,"mua"));
-    G->musv[idx] = (FLOATORDBL)*mxGetPr(mxGetField(mediaProperties,idx,"mus"));
-    G->gv[idx]   = (FLOATORDBL)*mxGetPr(mxGetField(mediaProperties,idx,"g"));
-    G->RIv[idx]  = (FLOATORDBL)*mxGetPr(mxGetField(mediaProperties,idx,"n"));
-    G->CDFidxv[idx] = (unsigned char)*mxGetPr(mxGetField(mediaProperties,idx,"CDFidx"));
-  }
-  for(idx=0;idx<CDFarraySize;idx++) G->CDFs[idx] = (FLOATORDBL)mxGetPr(mxGetPropertyShared(MatlabMC,0,"CDFs"))[idx];
-
-  G->M = (unsigned char *)malloc(L*sizeof(unsigned char)); // M
-  G->interfaceNormals = (float *)mxGetData(mxGetPropertyShared(MatlabMC,0,"interfaceNormals"));
-  unsigned char *M_matlab = (unsigned char *)mxGetData(mxGetPropertyShared(MatlabMC,0,"M"));
-  for(idx=0;idx<L;idx++) G->M[idx] = M_matlab[idx] - 1; // Convert from MATLAB 1-based indexing to C 0-based indexing
+  for(idx=0;idx<CDFarraySize;idx++) G->CDFs[idx] = (FLOATORDBL)mxGetPr(MatlabCDFs)[idx];
   
-  // Beam struct definition
-  FLOATORDBL power        = 0;
-  FLOATORDBL *S           = NULL; // Cumulative distribution function
-  if(S_PDF) {
-    S = (FLOATORDBL *)malloc((L+1)*sizeof(FLOATORDBL));
-    if(!S) mexErrMsgIdAndTxt("MCmatlab:OutOfMemory","Error: Out of memory");
-    S[0] = 0;
-    for(idx=1;idx<(L+1);idx++) S[idx] = S[idx-1] + (FLOATORDBL)S_PDF[idx-1];
-    power = S[L]*G->d[0]*G->d[1]*G->d[2];
-    for(idx=1;idx<(L+1);idx++) S[idx] /= S[L];
-  }
-
-  FLOATORDBL *NFdist1 = NULL, *NFdist2 = NULL, *FFdist1 = NULL, *FFdist2 = NULL;
-  if(beamType >= 4) {
-    double *MatlabNFdist1 = mxGetPr(mxGetPropertyShared(MatlabBeamNF,0,beamType == 4? "radialDistr": "XDistr"));
-    NFdist1 = (FLOATORDBL *)(G->CDFidxv + nM);
-    if(L_NF1 == 1) {
-      *NFdist1 = -1 - (FLOATORDBL)MatlabNFdist1[0];
-    } else {
-      NFdist1[0] = 0;
-      for(idx=1;idx<L_NF1;idx++) NFdist1[idx] = NFdist1[idx-1] + (beamType == 4? idx-1: 1)*(FLOATORDBL)MatlabNFdist1[idx-1] + (beamType == 4? idx: 1)*(FLOATORDBL)MatlabNFdist1[idx];
-      for(idx=1;idx<L_NF1;idx++) NFdist1[idx] /= NFdist1[L_NF1-1];
-    }
-    
-    FFdist1 = NFdist1 + L_NF1;
-    double *MatlabFFdist1 = mxGetPr(mxGetPropertyShared(MatlabBeamFF,0,beamType == 4? "radialDistr": "XDistr"));
-    if(L_FF1 == 1) {
-      *FFdist1 = -1 - (FLOATORDBL)MatlabFFdist1[0];
-    } else {
-      FFdist1[0] = 0;
-      for(idx=1;idx<L_FF1;idx++) FFdist1[idx] = FFdist1[idx-1] + (beamType == 4? idx-1: 1)*(FLOATORDBL)MatlabFFdist1[idx-1] + (beamType == 4? idx: 1)*(FLOATORDBL)MatlabFFdist1[idx];
-      for(idx=1;idx<L_FF1;idx++) FFdist1[idx] /= FFdist1[L_FF1-1];
-    }
-    
-    if(beamType == 5) {
-      NFdist2 = FFdist1 + L_FF1;
-      double *MatlabNFdist2 = mxGetPr(mxGetPropertyShared(MatlabBeamNF,0,"YDistr"));
-      if(L_NF2 == 1) {
-        *NFdist2 = -1 - (FLOATORDBL)MatlabNFdist2[0];
-      } else {
-        NFdist2[0] = 0;
-        for(idx=1;idx<L_NF2;idx++) NFdist2[idx] = NFdist2[idx-1] + (FLOATORDBL)MatlabNFdist2[idx-1] + (FLOATORDBL)MatlabNFdist2[idx];
-        for(idx=1;idx<L_NF2;idx++) NFdist2[idx] /= NFdist2[L_NF2-1];
-      }
-    
-      FFdist2 = NFdist2 + L_NF2;
-      double *MatlabFFdist2 = mxGetPr(mxGetPropertyShared(MatlabBeamFF,0,"YDistr"));
-      if(L_FF2 == 1) {
-        *FFdist2 = -1 - (FLOATORDBL)MatlabFFdist2[0];
-      } else {
-        FFdist2[0] = 0;
-        for(idx=1;idx<L_FF2;idx++) FFdist2[idx] = FFdist2[idx-1] + (FLOATORDBL)MatlabFFdist2[idx-1] + (FLOATORDBL)MatlabFFdist2[idx];
-        for(idx=1;idx<L_FF2;idx++) FFdist2[idx] /= FFdist2[L_FF2-1];
-      }
-    }
-  }
-
-  FLOATORDBL tb = (FLOATORDBL)(S? 0: *mxGetPr(mxGetPropertyShared(MatlabBeam,0,"theta")));
-  FLOATORDBL pb = (FLOATORDBL)(S? 0: *mxGetPr(mxGetPropertyShared(MatlabBeam,0,"phi")));
-  FLOATORDBL psib = (FLOATORDBL)(S? 0: *mxGetPr(mxGetPropertyShared(MatlabBeam,0,"psi")));
-
-  FLOATORDBL u[3] = {SIN(tb)*COS(pb),SIN(tb)*SIN(pb),COS(tb)}; // Temporary array
-  
-  FLOATORDBL w[3] = {1,0,0};
-  FLOATORDBL v[3] = {0,0,1};
-  if(u[2]!=1) unitcrossprod(u,v,w);
-  axisrotate(w,u,psib,v);
-  unitcrossprod(u,v,w);
-  
-  struct beam B_var = {
-    S? 0: beamType,
-    S? 0: emitterLength,
-    S? 0: NFdist1,
-    S? 0: L_NF1,
-    S? 0: (FLOATORDBL)(beamType == 5? *mxGetPr(mxGetPropertyShared(MatlabBeamNF,0,"XWidth")): *mxGetPr(mxGetPropertyShared(MatlabBeamNF,0,"radialWidth"))),
-    S? 0: NFdist2,
-    S? 0: L_NF2,
-    S? 0: (FLOATORDBL)(beamType == 5? *mxGetPr(mxGetPropertyShared(MatlabBeamNF,0,"YWidth")): 0),
-    S? 0: FFdist1,
-    S? 0: L_FF1,
-    S? 0: (FLOATORDBL)(beamType == 5? *mxGetPr(mxGetPropertyShared(MatlabBeamFF,0,"XWidth")): *mxGetPr(mxGetPropertyShared(MatlabBeamFF,0,"radialWidth"))),
-    S? 0: FFdist2,
-    S? 0: L_FF2,
-    S? 0: (FLOATORDBL)(beamType == 5? *mxGetPr(mxGetPropertyShared(MatlabBeamFF,0,"YWidth")): 0),
-    S,
-    power,
-    {(FLOATORDBL)(S? 0: *mxGetPr(mxGetPropertyShared(MatlabBeam,0,"xFocus"))),
-     (FLOATORDBL)(S? 0: *mxGetPr(mxGetPropertyShared(MatlabBeam,0,"yFocus"))),
-     (FLOATORDBL)(S? 0: *mxGetPr(mxGetPropertyShared(MatlabBeam,0,"zFocus")))},
-    {u[0],u[1],u[2]},
-    {v[0],v[1],v[2]}, // normal vector to beam center axis
-    {w[0],w[1],w[2]}
-  };
-  struct beam *B = &B_var;
-
   // Fill depositionCriteria struct
   mxArray *MatlabDC = mxGetProperty(MatlabMC,0,"depositionCriteria");
   struct depositionCriteria DC_var = {
@@ -474,7 +396,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   FLOATORDBL theta     = (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabLC,0,"theta"));
   FLOATORDBL phi       = (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabLC,0,"phi"));
   FLOATORDBL f         = (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabLC,0,"f"));
-  long   nTimeBins = S? 0: (long)*mxGetPr(mxGetPropertyShared(MatlabLC,0,"nTimeBins"));
+  long   nTimeBins = S_PDF? 0: (long)*mxGetPr(mxGetPropertyShared(MatlabLC,0,"nTimeBins"));
 
   struct lightCollector LC_var = {
     {(FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabLC,0,"x")) - (mxIsFinite(f)? f*SIN(theta)*COS(phi):0), // r field, xyz coordinates of center of light collector
@@ -486,8 +408,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabLC,0,"diam")),
     (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabLC,0,mxIsFinite(f)?"fieldSize":"NA")),
     {(long)*mxGetPr(mxGetPropertyShared(MatlabLC,0,"res")), nTimeBins? nTimeBins+2: 1},
-    (FLOATORDBL)(S? 0: *mxGetPr(mxGetPropertyShared(MatlabLC,0,"tStart"))),
-    (FLOATORDBL)(S? 0: *mxGetPr(mxGetPropertyShared(MatlabLC,0,"tEnd")))
+    (FLOATORDBL)(S_PDF? 0: *mxGetPr(mxGetPropertyShared(MatlabLC,0,"tStart"))),
+    (FLOATORDBL)(S_PDF? 0: *mxGetPr(mxGetPropertyShared(MatlabLC,0,"tEnd")))
   };
   struct lightCollector *LC = &LC_var;
 
@@ -501,191 +423,333 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   Pa->data = Pa->nExamplePaths? (FLOATORDBL *)malloc(4*Pa->pathsSize*sizeof(FLOATORDBL)): NULL;
   if(Pa->pathsSize && !Pa->data) mexErrMsgIdAndTxt("MCmatlab:OutOfMemory","Error: Out of memory");
 
-  // Prepare output MATLAB struct
+  // Prepare output MATLAB arrays and the temporary struct to store output data in
   plhs[0] = mxDuplicateArray(prhs[0]);
   
-  mxArray *MCout = mxGetPropertyShared(plhs[0],0,S? "FMC": "MC");
+  mxArray *MCout = mxGetPropertyShared(plhs[0],0,S_PDF? "FMC": "MC");
   mxArray *LCout = mxGetPropertyShared(MCout,0,"LC");
   
-  if(calcNFR)           mxSetPropertyShared(MCout,0,"NFR",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
-  if(calcNFRdet)        mxSetPropertyShared(MCout,0,"NFRdet",mxCreateNumericArray(3,dimPtr,mxDOUBLE_CLASS,mxREAL));
+  mwSize outDimPtr[4] = {dimPtr[0], dimPtr[1], dimPtr[2], nL};
+  if(calcNFR)           mxSetPropertyShared(MCout,0,"NFR",mxCreateNumericArray(4,outDimPtr,mxSINGLE_CLASS,mxREAL));
+  if(calcNFRdet)        mxSetPropertyShared(MCout,0,"NFRdet",mxCreateNumericArray(4,outDimPtr,mxSINGLE_CLASS,mxREAL));
   if(useLightCollector) {
-    mwSize LCsize[3] = {(mwSize)LC->res[0],(mwSize)LC->res[0],(mwSize)LC->res[1]};
-    mxSetPropertyShared(LCout,0,"image", mxCreateNumericArray(3,LCsize,mxDOUBLE_CLASS,mxREAL));
+    mwSize LCsize[4] = {(mwSize)LC->res[0],(mwSize)LC->res[0],(mwSize)LC->res[1],(mwSize)nL};
+    mxSetPropertyShared(LCout,0,"image", mxCreateNumericArray(4,LCsize,mxSINGLE_CLASS,mxREAL));
   }
-  if(G->farFieldRes)    mxSetPropertyShared(MCout,0,"farField", mxCreateDoubleMatrix(G->farFieldRes,G->farFieldRes,mxREAL));
+  if(G->farFieldRes)    {
+    mwSize FFsize[3] = {(mwSize)G->farFieldRes,(mwSize)G->farFieldRes,(mwSize)nL};
+    mxSetPropertyShared(MCout,0,"farField", mxCreateNumericArray(3,FFsize,mxSINGLE_CLASS,mxREAL));
+  }
   if(G->boundaryType == 1) {
-    mxSetPropertyShared(MCout,0,"NI_xpos", mxCreateDoubleMatrix(G->n[1],G->n[2],mxREAL));
-    mxSetPropertyShared(MCout,0,"NI_xneg", mxCreateDoubleMatrix(G->n[1],G->n[2],mxREAL));
-    mxSetPropertyShared(MCout,0,"NI_ypos", mxCreateDoubleMatrix(G->n[0],G->n[2],mxREAL));
-    mxSetPropertyShared(MCout,0,"NI_yneg", mxCreateDoubleMatrix(G->n[0],G->n[2],mxREAL));
-    mxSetPropertyShared(MCout,0,"NI_zpos", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
-    mxSetPropertyShared(MCout,0,"NI_zneg", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
-  } else if(G->boundaryType == 2) mxSetPropertyShared(MCout,0,"NI_zneg", mxCreateDoubleMatrix(KILLRANGE*G->n[0],KILLRANGE*G->n[1],mxREAL));
-  else if(G->boundaryType == 3) {
-    mxSetPropertyShared(MCout,0,"NI_zpos", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
-    mxSetPropertyShared(MCout,0,"NI_zneg", mxCreateDoubleMatrix(G->n[0],G->n[1],mxREAL));
+    mwSize NI_xSize[3] = {G->n[1],G->n[2],nL};
+    mwSize NI_ySize[3] = {G->n[0],G->n[2],nL};
+    mwSize NI_zSize[3] = {G->n[0],G->n[1],nL};
+    mxSetPropertyShared(MCout,0,"NI_xpos", mxCreateNumericArray(3,NI_xSize,mxSINGLE_CLASS,mxREAL));
+    mxSetPropertyShared(MCout,0,"NI_xneg", mxCreateNumericArray(3,NI_xSize,mxSINGLE_CLASS,mxREAL));
+    mxSetPropertyShared(MCout,0,"NI_ypos", mxCreateNumericArray(3,NI_ySize,mxSINGLE_CLASS,mxREAL));
+    mxSetPropertyShared(MCout,0,"NI_yneg", mxCreateNumericArray(3,NI_ySize,mxSINGLE_CLASS,mxREAL));
+    mxSetPropertyShared(MCout,0,"NI_zpos", mxCreateNumericArray(3,NI_zSize,mxSINGLE_CLASS,mxREAL));
+    mxSetPropertyShared(MCout,0,"NI_zneg", mxCreateNumericArray(3,NI_zSize,mxSINGLE_CLASS,mxREAL));
+  } else if(G->boundaryType == 2) {
+    mwSize NI_zSize[3] = {KILLRANGE*G->n[0],KILLRANGE*G->n[1],nL};
+    mxSetPropertyShared(MCout,0,"NI_zneg", mxCreateNumericArray(3,NI_zSize,mxSINGLE_CLASS,mxREAL));
+  } else if(G->boundaryType == 3) {
+    mwSize NI_zSize[3] = {G->n[0],G->n[1],nL};
+    mxSetPropertyShared(MCout,0,"NI_zpos", mxCreateNumericArray(3,NI_zSize,mxSINGLE_CLASS,mxREAL));
+    mxSetPropertyShared(MCout,0,"NI_zneg", mxCreateNumericArray(3,NI_zSize,mxSINGLE_CLASS,mxREAL));
   }
+
+  struct MATLABoutputs O_MATLAB_var = {
+    calcNFR? (float *)mxGetPr(mxGetPropertyShared(MCout,0,"NFR")): NULL,
+    calcNFRdet? (float *)mxGetPr(mxGetPropertyShared(MCout,0,"NFRdet")): NULL,
+    useLightCollector? (float *)mxGetPr(mxGetPropertyShared(LCout,0,"image")): NULL,
+    G->farFieldRes? (float *)mxGetPr(mxGetPropertyShared(MCout,0,"farField")): NULL,
+    G->boundaryType == 1? (float *)mxGetPr(mxGetPropertyShared(MCout,0,"NI_xpos")): NULL,
+    G->boundaryType == 1? (float *)mxGetPr(mxGetPropertyShared(MCout,0,"NI_xneg")): NULL,
+    G->boundaryType == 1? (float *)mxGetPr(mxGetPropertyShared(MCout,0,"NI_ypos")): NULL,
+    G->boundaryType == 1? (float *)mxGetPr(mxGetPropertyShared(MCout,0,"NI_yneg")): NULL,
+    G->boundaryType == 1 || G->boundaryType == 3?
+                          (float *)mxGetPr(mxGetPropertyShared(MCout,0,"NI_zpos")): NULL,
+    G->boundaryType != 0? (float *)mxGetPr(mxGetPropertyShared(MCout,0,"NI_zneg")): NULL
+  };
+  struct MATLABoutputs *O_MATLAB = &O_MATLAB_var;
   
   struct outputs O_var = {
     0, // nPhotons
-  	calcNFR? mxGetPr(mxGetPropertyShared(MCout,0,"NFR")): NULL,
-  	calcNFRdet? mxGetPr(mxGetPropertyShared(MCout,0,"NFRdet")): NULL,
-    useLightCollector? mxGetPr(mxGetPropertyShared(LCout,0,"image")): NULL,
-    G->farFieldRes? mxGetPr(mxGetPropertyShared(MCout,0,"farField")): NULL,
-    G->boundaryType == 1? mxGetPr(mxGetPropertyShared(MCout,0,"NI_xpos")): NULL,
-    G->boundaryType == 1? mxGetPr(mxGetPropertyShared(MCout,0,"NI_xneg")): NULL,
-    G->boundaryType == 1? mxGetPr(mxGetPropertyShared(MCout,0,"NI_ypos")): NULL,
-    G->boundaryType == 1? mxGetPr(mxGetPropertyShared(MCout,0,"NI_yneg")): NULL,
+    calcNFR? calloc(G->n[0]*G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
+    calcNFRdet? calloc(G->n[0]*G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
+    useLightCollector? calloc(LC->res[0]*LC->res[0]*LC->res[1],sizeof(FLOATORDBL)): NULL,
+    G->farFieldRes? calloc(G->farFieldRes*G->farFieldRes,sizeof(FLOATORDBL)): NULL,
+    G->boundaryType == 1? calloc(G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
+    G->boundaryType == 1? calloc(G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
+    G->boundaryType == 1? calloc(G->n[0]*G->n[2],sizeof(FLOATORDBL)): NULL,
+    G->boundaryType == 1? calloc(G->n[0]*G->n[2],sizeof(FLOATORDBL)): NULL,
     G->boundaryType == 1 || G->boundaryType == 3?
-                          mxGetPr(mxGetPropertyShared(MCout,0,"NI_zpos")): NULL,
-    G->boundaryType != 0? mxGetPr(mxGetPropertyShared(MCout,0,"NI_zneg")): NULL
+                          calloc(G->n[0]*G->n[1],sizeof(FLOATORDBL)): NULL,
+    G->boundaryType != 0? calloc(G->n[0]*G->n[1]*(G->boundaryType == 2? KILLRANGE*KILLRANGE: 1),sizeof(FLOATORDBL)): NULL
   };
   struct outputs *O = &O_var;
 
-  if(!silentMode) {
-    // Display progress indicator
-    printf(simFluorescence?"-----------Fluorescence Monte Carlo Simulation-----------\n":
-                           "-----------------Monte Carlo Simulation------------------\n");
-    if(simulationTimed) printf("Simulation duration = %0.3f min\n",simulationTimeRequested);
-    else                printf("Requested # of photons = %0.2e\n",(double)nPhotonsRequested);
+  // Beam struct definition
+  FLOATORDBL power        = 0;
+  FLOATORDBL *S           = NULL; // Cumulative distribution function
+  if(S_PDF) {
+    S = (FLOATORDBL *)malloc((L+1)*sizeof(FLOATORDBL));
+    if(!S) mexErrMsgIdAndTxt("MCmatlab:OutOfMemory","Error: Out of memory");
+    S[0] = 0;
   }
 
-
-  // ============================ MAJOR CYCLE ========================
-  #ifdef __NVCC__ // If compiling for CUDA
-  long GPUdevice = *(long *)mxGetPr(mxGetPropertyShared(MatlabMC,0,"GPUdevice"));
-  gpuErrchk(cudaSetDevice(GPUdevice));
-
-  int threadsPerBlock, blocks; gpuErrchk(cudaOccupancyMaxPotentialBlockSize(&blocks,&threadsPerBlock,&threadInitAndLoop,size_smallArrays,0));
-  double nThreads = threadsPerBlock*blocks;
-
-  struct cudaDeviceProp CDP; gpuErrchk(cudaGetDeviceProperties(&CDP,GPUdevice));
-//   if(!silentMode) printf("Using %s with CUDA compute capability %d.%d,\n    launching %d blocks, each with %d threads,\n    using %d/%d bytes of shared memory per block\n",CDP.name,CDP.major,CDP.minor,blocks,threadsPerBlock,384+size_smallArrays,CDP.sharedMemPerBlock);
-  if(!silentMode) printf("Using device %d: %s with CUDA compute capability %d.%d\n",GPUdevice,CDP.name,CDP.major,CDP.minor);
-
-  size_t heapSizeLimit; gpuErrchk(cudaDeviceGetLimit(&heapSizeLimit,cudaLimitMallocHeapSize));
-  if(calcNFRdet && heapSizeLimit < GPUHEAPMEMORYLIMIT) {
-    gpuErrchk(cudaDeviceReset());
-    gpuErrchk(cudaDeviceSetLimit(cudaLimitMallocHeapSize,GPUHEAPMEMORYLIMIT));
-  }
-
-  int clock; gpuErrchk(cudaDeviceGetAttribute(&clock,cudaDevAttrClockRate,GPUdevice));
-
-  struct geometry *G_dev;
-  struct beam *B_dev;
-  struct lightCollector *LC_dev;
-  struct paths *Pa_dev;
-  struct outputs *O_dev;
-  struct depositionCriteria *DC_dev;
-  struct debug *D_dev;
-  createDeviceStructs(G,&G_dev,B,&B_dev,LC,&LC_dev,Pa,&Pa_dev,O,&O_dev,DC,&DC_dev,nM,L,size_smallArrays,D,&D_dev);
-
-  int pctProgress = 0;
-  long long timeLeft = simulationTimed? (long long)(simulationTimeRequested*60000000): LLONG_MAX; // microseconds
-
-  if(!silentMode) {
-    printf("Calculating...   0%% done");
-    mexEvalString("drawnow; pause(.005);");
-  }
-  long long simulationTimeStart = getMicroSeconds();
-  long long prevtime = simulationTimeStart;
-  do {
-    // Run kernel
-    threadInitAndLoop<<<blocks, threadsPerBlock, size_smallArrays>>>(B_dev,G_dev,LC_dev,Pa_dev,O_dev,DC_dev,nM,size_smallArrays,prevtime,clock/1000*min((long long)KERNELTIME,timeLeft),nPhotonsRequested,NULL,false,D_dev);
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    // Progress indicator
-    long long newtime = getMicroSeconds();
-    gpuErrchk(cudaMemcpy(O, O_dev, sizeof(unsigned long long),cudaMemcpyDeviceToHost)); // Copy just nPhotons, the first 8 bytes of O
-    if(simulationTimed) {
-      timeLeft = (long long)(simulationTimeRequested*60000000) - newtime + simulationTimeStart; // In microseconds
-      pctProgress = (int)(100.0*(1.0 - timeLeft/(simulationTimeRequested*60000000.0)));
+  FLOATORDBL *FPIDdist1 = NULL, *FPIDdist2 = NULL, *AIDdist1 = NULL, *AIDdist2 = NULL;
+  if(sourceType >= 4) {
+    double *MatlabFPIDdist1 = mxGetPr(mxGetPropertyShared(MatlabSourceFPID,0,sourceType == 4? "radialDistr": "XDistr"));
+    FPIDdist1 = (FLOATORDBL *)(G->CDFidxv + nM);
+    if(L_FPID1 == 1) {
+      *FPIDdist1 = -1 - (FLOATORDBL)MatlabFPIDdist1[0];
     } else {
-      pctProgress = (int)(100.0*O->nPhotons/nPhotonsRequested);
+      FPIDdist1[0] = 0;
+      for(idx=1;idx<L_FPID1;idx++) FPIDdist1[idx] = FPIDdist1[idx-1] + (sourceType == 4? idx-1: 1)*(FLOATORDBL)MatlabFPIDdist1[idx-1] + (sourceType == 4? idx: 1)*(FLOATORDBL)MatlabFPIDdist1[idx];
+      for(idx=1;idx<L_FPID1;idx++) FPIDdist1[idx] /= FPIDdist1[L_FPID1-1];
     }
-
-    // Check for ctrl+c
-    if(utIsInterruptPending()) {
-      aborting = true;
-      printf("\nCtrl+C detected, stopping.");
+    
+    AIDdist1 = FPIDdist1 + L_FPID1;
+    double *MatlabAIDdist1 = mxGetPr(mxGetPropertyShared(MatlabSourceAID,0,sourceType == 4? "radialDistr": "XDistr"));
+    if(L_AID1 == 1) {
+      *AIDdist1 = -1 - (FLOATORDBL)MatlabAIDdist1[0];
+    } else {
+      AIDdist1[0] = 0;
+      for(idx=1;idx<L_AID1;idx++) AIDdist1[idx] = AIDdist1[idx-1] + (sourceType == 4? idx-1: 1)*(FLOATORDBL)MatlabAIDdist1[idx-1] + (sourceType == 4? idx: 1)*(FLOATORDBL)MatlabAIDdist1[idx];
+      for(idx=1;idx<L_AID1;idx++) AIDdist1[idx] /= AIDdist1[L_AID1-1];
     }
-
-    if(!silentMode) {
-      printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgress);
-      mexEvalString("drawnow; pause(.005);");
-    }
-    prevtime = newtime;
-    // Resize Pa->data if necessary
-    if(Pa->nExamplePaths) {
-      struct paths Pa_temp;
-      gpuErrchk(cudaMemcpy(&Pa_temp, Pa_dev, sizeof(struct paths),cudaMemcpyDeviceToHost));
-      if(Pa_temp.pathsElems == -1) {
-        Pa->pathsSize *= 10; // Increase the record's size by a factor of 10
-        Pa->data = (FLOATORDBL *)realloc(Pa->data,4*Pa->pathsSize*sizeof(FLOATORDBL));
-        if(!Pa->data) mexErrMsgIdAndTxt("MCmatlab:OutOfMemory","Error: Out of memory");
-        gpuErrchk(cudaFree(Pa_temp.data));
-        Pa_temp = *Pa;
-        gpuErrchk(cudaMalloc(&Pa_temp.data, 4*Pa->pathsSize*sizeof(FLOATORDBL)));
-        gpuErrchk(cudaMemcpy(Pa_dev,&Pa_temp,sizeof(struct paths),cudaMemcpyHostToDevice));
+    
+    if(sourceType == 5) {
+      FPIDdist2 = AIDdist1 + L_AID1;
+      double *MatlabFPIDdist2 = mxGetPr(mxGetPropertyShared(MatlabSourceFPID,0,"YDistr"));
+      if(L_FPID2 == 1) {
+        *FPIDdist2 = -1 - (FLOATORDBL)MatlabFPIDdist2[0];
+      } else {
+        FPIDdist2[0] = 0;
+        for(idx=1;idx<L_FPID2;idx++) FPIDdist2[idx] = FPIDdist2[idx-1] + (FLOATORDBL)MatlabFPIDdist2[idx-1] + (FLOATORDBL)MatlabFPIDdist2[idx];
+        for(idx=1;idx<L_FPID2;idx++) FPIDdist2[idx] /= FPIDdist2[L_FPID2-1];
+      }
+    
+      AIDdist2 = FPIDdist2 + L_FPID2;
+      double *MatlabAIDdist2 = mxGetPr(mxGetPropertyShared(MatlabSourceAID,0,"YDistr"));
+      if(L_AID2 == 1) {
+        *AIDdist2 = -1 - (FLOATORDBL)MatlabAIDdist2[0];
+      } else {
+        AIDdist2[0] = 0;
+        for(idx=1;idx<L_AID2;idx++) AIDdist2[idx] = AIDdist2[idx-1] + (FLOATORDBL)MatlabAIDdist2[idx-1] + (FLOATORDBL)MatlabAIDdist2[idx];
+        for(idx=1;idx<L_AID2;idx++) AIDdist2[idx] /= AIDdist2[L_AID2-1];
       }
     }
-  } while(timeLeft > 0 && O->nPhotons < nPhotonsRequested && !aborting && O->nPhotons); // The O->nPhotons is there to stop looping if launches failed
-  if(!silentMode && O->nPhotons) printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgress);
-
-  retrieveAndFreeDeviceStructs(G,G_dev,B,B_dev,LC,LC_dev,Pa,Pa_dev,O,O_dev,DC_dev,L,D,D_dev);
-
-  #else
-
-  if(!silentMode) {
-    printf("Calculating...   0%% done");
-    mexEvalString("drawnow; pause(.005);");
   }
-  long long simulationTimeStart = getMicroSeconds();
-  #ifdef _OPENMP
-  bool useAllCPUs = mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabMC,0,"useAllCPUs"));
-  double nThreads = useAllCPUs? omp_get_num_procs(): max(omp_get_num_procs()-1,1);
-  #pragma omp parallel num_threads((long)nThreads)
-  #else
-  double nThreads = 1;
-  #endif
-  {
-    threadInitAndLoop(B,G,LC,Pa,O,DC,nM,0,simulationTimeStart,(long long)(simulationTimeRequested*60000000),nPhotonsRequested,&aborting,silentMode,D);
-  }
-  #endif
 
-  double nPhotons = (double)O->nPhotons;
-  double simTime = (getMicroSeconds() - simulationTimeStart)/60000000.0; // In minutes
-  if(!silentMode) {
-    if(!nPhotons) printf("\nERROR: All photons launch outside simulation cuboid. Check your model definition.\n");
-    else {
-      if(simulationTimed) printf("\nSimulated %0.2e photons at a rate of %0.2e photons per minute\n",nPhotons, nPhotons/simTime);
-      else printf("\nSimulated for %0.2e minutes at a rate of %0.2e photons per minute\n",simTime, nPhotons/simTime);
-    }
-    mexEvalString("drawnow; pause(.005);");
-  }
-  normalizeDeposition(B,G,LC,O); // Convert data to relative fluence rate
-  free(G->M);
-  free(B->S);
-  free(smallArrays);
+  FLOATORDBL tb = (FLOATORDBL)(S? 0: *mxGetPr(mxGetPropertyShared(MatlabLS,0,"theta")));
+  FLOATORDBL pb = (FLOATORDBL)(S? 0: *mxGetPr(mxGetPropertyShared(MatlabLS,0,"phi")));
+  FLOATORDBL psib = (FLOATORDBL)(S? 0: *mxGetPr(mxGetPropertyShared(MatlabLS,0,"psi")));
+
+  FLOATORDBL u[3] = {SIN(tb)*COS(pb),SIN(tb)*SIN(pb),COS(tb)}; // Temporary array
   
+  FLOATORDBL w[3] = {1,0,0};
+  FLOATORDBL v[3] = {0,0,1};
+  if(u[2]!=1) unitcrossprod(u,v,w);
+  axisrotate(w,u,psib,v);
+  unitcrossprod(u,v,w);
+  
+  struct source B_var = {
+    S? 0: sourceType,
+    S? 0: emitterLength,
+    S? 0: FPIDdist1,
+    S? 0: L_FPID1,
+    S? 0: (FLOATORDBL)(sourceType == 5? *mxGetPr(mxGetPropertyShared(MatlabSourceFPID,0,"XWidth")): *mxGetPr(mxGetPropertyShared(MatlabSourceFPID,0,"radialWidth"))),
+    S? 0: FPIDdist2,
+    S? 0: L_FPID2,
+    S? 0: (FLOATORDBL)(sourceType == 5? *mxGetPr(mxGetPropertyShared(MatlabSourceFPID,0,"YWidth")): 0),
+    S? 0: AIDdist1,
+    S? 0: L_AID1,
+    S? 0: (FLOATORDBL)(sourceType == 5? *mxGetPr(mxGetPropertyShared(MatlabSourceAID,0,"XWidth")): *mxGetPr(mxGetPropertyShared(MatlabSourceAID,0,"radialWidth"))),
+    S? 0: AIDdist2,
+    S? 0: L_AID2,
+    S? 0: (FLOATORDBL)(sourceType == 5? *mxGetPr(mxGetPropertyShared(MatlabSourceAID,0,"YWidth")): 0),
+    S,
+    power,
+    {(FLOATORDBL)(S? 0: *mxGetPr(mxGetPropertyShared(MatlabLS,0,"xFocus"))),
+     (FLOATORDBL)(S? 0: *mxGetPr(mxGetPropertyShared(MatlabLS,0,"yFocus"))),
+     (FLOATORDBL)(S? 0: *mxGetPr(mxGetPropertyShared(MatlabLS,0,"zFocus")))},
+    {u[0],u[1],u[2]},
+    {v[0],v[1],v[2]}, // normal vector to beam center axis
+    {w[0],w[1],w[2]}
+  };
+  struct source *B = &B_var;
+
+  for(int iL = 0; iL < nL && !aborting; iL++) {
+    for(idx=0;idx<nM;idx++) {
+      G->muav[idx]    = (FLOATORDBL)      muaMATLAB[idx + iL*nM];
+      G->musv[idx]    = (FLOATORDBL)      musMATLAB[idx + iL*nM];
+      G->gv[idx]      = (FLOATORDBL)        gMATLAB[idx + iL*nM];
+      G->RIv[idx]     = (FLOATORDBL)        nMATLAB[idx + iL*nM];
+      G->CDFidxv[idx] = (unsigned char)CDFidxMATLAB[idx + iL*nM];
+    }
+    if(S) {
+      for(idx=1;idx<(L+1);idx++) S[idx] = S[idx-1] + (FLOATORDBL)S_PDF[iL*L + idx-1];
+      B->power        = (FLOATORDBL)(S[L]*G->d[0]*G->d[1]*G->d[2]);
+      for(idx=1;idx<(L+1);idx++) S[idx] /= S[L];
+    } else {
+      B->power        = (FLOATORDBL)mxGetPr(mxGetPropertyShared(MatlabMC,0,"spectrum"))[iL];
+    }
+
+    // ============================ MAJOR CYCLE ========================
+    unsigned long long nPhotonsRequested_ThisWavelength = simulationTimed? ULLONG_MAX: (iL == nL - 1? nPhotonsRequested - nPhotonsCumulative: nPhotonsRequested/nL);
+    double simulationTimeRequested_ThisWavelength = simulationTimeRequested/nL;
+    #ifdef __NVCC__ // If compiling for CUDA
+    long GPUdevice = *(long *)mxGetPr(mxGetPropertyShared(MatlabMC,0,"GPUdevice"));
+    gpuErrchk(cudaSetDevice(GPUdevice));
+  
+    int threadsPerBlock, blocks; gpuErrchk(cudaOccupancyMaxPotentialBlockSize(&blocks,&threadsPerBlock,&threadInitAndLoop,size_smallArrays,0));
+    double nThreads = threadsPerBlock*blocks;
+  
+    struct cudaDeviceProp CDP; gpuErrchk(cudaGetDeviceProperties(&CDP,GPUdevice));
+  //   if(!silentMode) printf("Using %s with CUDA compute capability %d.%d,\n    launching %d blocks, each with %d threads,\n    using %d/%d bytes of shared memory per block\n",CDP.name,CDP.major,CDP.minor,blocks,threadsPerBlock,384+size_smallArrays,CDP.sharedMemPerBlock);
+    if(!silentMode) printf("Using device %d: %s with CUDA compute capability %d.%d\n",GPUdevice,CDP.name,CDP.major,CDP.minor);
+  
+    size_t heapSizeLimit; gpuErrchk(cudaDeviceGetLimit(&heapSizeLimit,cudaLimitMallocHeapSize));
+    if(calcNFRdet && heapSizeLimit < GPUHEAPMEMORYLIMIT) {
+      gpuErrchk(cudaDeviceReset());
+      gpuErrchk(cudaDeviceSetLimit(cudaLimitMallocHeapSize,GPUHEAPMEMORYLIMIT));
+    }
+  
+    int clock; gpuErrchk(cudaDeviceGetAttribute(&clock,cudaDevAttrClockRate,GPUdevice));
+  
+    struct geometry *G_dev;
+    struct source *B_dev;
+    struct lightCollector *LC_dev;
+    struct paths *Pa_dev;
+    struct outputs *O_dev;
+    struct depositionCriteria *DC_dev;
+    struct debug *D_dev;
+    createDeviceStructs(G,&G_dev,B,&B_dev,LC,&LC_dev,Pa,&Pa_dev,O,&O_dev,DC,&DC_dev,nM,L,size_smallArrays,D,&D_dev);
+  
+    int pctProgressThisWavelength = 0;
+    long long timeLeft = simulationTimed? (long long)(simulationTimeRequested_ThisWavelength*60000000): LLONG_MAX; // microseconds
+  
+    if(!silentMode && iL == 0) {
+      printf("Calculating...   0%% done");
+      mexEvalString("drawnow; pause(.005);");
+    }
+    long long simulationTimeStart = getMicroSeconds();
+    long long prevtime = simulationTimeStart;
+    do {
+      // Run kernel
+      threadInitAndLoop<<<blocks, threadsPerBlock, size_smallArrays>>>(B_dev,G_dev,LC_dev,Pa_dev,O_dev,DC_dev,nM,size_smallArrays,prevtime,clock/1000*min((long long)KERNELTIME,timeLeft),nPhotonsRequested_ThisWavelength,NULL,false,D_dev);
+      gpuErrchk(cudaPeekAtLastError());
+      gpuErrchk(cudaDeviceSynchronize());
+      // Progress indicator
+      long long newtime = getMicroSeconds();
+      gpuErrchk(cudaMemcpy(O, O_dev, sizeof(unsigned long long),cudaMemcpyDeviceToHost)); // Copy just nPhotons, the first 8 bytes of O
+      if(simulationTimed) {
+        timeLeft = (long long)(simulationTimeRequested_ThisWavelength*60000000) - newtime + simulationTimeStart; // In microseconds
+        pctProgressThisWavelength = (int)(100.0*(1.0 - timeLeft/(simulationTimeRequested_ThisWavelength*60000000.0)));
+      } else {
+        pctProgressThisWavelength = (int)(100.0*O->nPhotons/nPhotonsRequested_ThisWavelength);
+      }
+  
+      // Check for ctrl+c
+      if(utIsInterruptPending()) {
+        aborting = true;
+        printf("\nCtrl+C detected, stopping.");
+      }
+  
+      if(!silentMode) {
+        printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgressThisWavelength);
+        mexEvalString("drawnow; pause(.005);");
+      }
+      prevtime = newtime;
+      // Resize Pa->data if necessary
+      if(Pa->nExamplePaths) {
+        struct paths Pa_temp;
+        gpuErrchk(cudaMemcpy(&Pa_temp, Pa_dev, sizeof(struct paths),cudaMemcpyDeviceToHost));
+        if(Pa_temp.pathsElems == -1) {
+          Pa->pathsSize *= 10; // Increase the record's size by a factor of 10
+          Pa->data = (FLOATORDBL *)realloc(Pa->data,4*Pa->pathsSize*sizeof(FLOATORDBL));
+          if(!Pa->data) mexErrMsgIdAndTxt("MCmatlab:OutOfMemory","Error: Out of memory");
+          gpuErrchk(cudaFree(Pa_temp.data));
+          Pa_temp = *Pa;
+          gpuErrchk(cudaMalloc(&Pa_temp.data, 4*Pa->pathsSize*sizeof(FLOATORDBL)));
+          gpuErrchk(cudaMemcpy(Pa_dev,&Pa_temp,sizeof(struct paths),cudaMemcpyHostToDevice));
+        }
+      }
+    } while(timeLeft > 0 && O->nPhotons < nPhotonsRequested_ThisWavelength && !aborting && O->nPhotons); // The O->nPhotons is there to stop looping if launches failed
+    if(!silentMode && O->nPhotons) printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgressThisWavelength);
+  
+    retrieveAndFreeDeviceStructs(G,G_dev,B,B_dev,LC,LC_dev,Pa,Pa_dev,O,O_dev,DC_dev,L,D,D_dev);
+  
+    #else
+  
+    if(!silentMode && iL == 0) {
+      printf("Calculating...   0%% done");
+      mexEvalString("drawnow; pause(.005);");
+    }
+    long long simulationTimeStart = getMicroSeconds();
+    #ifdef _OPENMP
+    bool useAllCPUs = mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabMC,0,"useAllCPUs"));
+    nThreads = useAllCPUs? omp_get_num_procs(): max(omp_get_num_procs()-1,1);
+    #pragma omp parallel num_threads((long)nThreads)
+    #else
+    nThreads = 1;
+    #endif
+    {
+      threadInitAndLoop(B,G,LC,Pa,O,DC,nM,0,simulationTimeStart,(long long)(simulationTimeRequested_ThisWavelength*60000000),nPhotonsRequested_ThisWavelength,iL,nL,&aborting,silentMode,D);
+    }
+    #endif
+  
+    double nPhotons = (double)O->nPhotons;
+    nPhotonsCumulative += nPhotons;
+    double simTime = (getMicroSeconds() - simulationTimeStart)/60000000.0; // In minutes
+    simulationTimeCumulative += simTime;
+    if(!silentMode) {
+      if(!nPhotons) printf("\nERROR: All photons launch outside simulation cuboid. Check your model definition.\n");
+      else if(iL == nL - 1) {
+        printf("\b\b\b\b\b\b\b\b\b100%% done");
+        printf("\nSimulated %0.2e photons over %0.2e minutes at a rate of %0.2e photons per minute\n",nPhotonsCumulative, simulationTimeCumulative, nPhotonsCumulative/simulationTimeCumulative);
+      }
+      mexEvalString("drawnow; pause(.005);");
+    }
+    normalizeDepositionAndResetO(B,G,LC,O,O_MATLAB,iL,B->power); // Convert data to relative fluence rate and save in O_MATLAB
+  }
+
   mxArray *output = mxCreateDoubleMatrix(1,1,mxREAL);
-  *mxGetPr(output) = nPhotons;
+  *mxGetPr(output) = nPhotonsCumulative;
   mxSetProperty(MCout,0,"nPhotons",output);
   *mxGetPr(output) = nThreads;
   mxSetProperty(MCout,0,"nThreads",output);
-  *mxGetPr(output) = simTime;
+  *mxGetPr(output) = simulationTimeCumulative;
   mxSetProperty(MCout,0,"simulationTime",output);
-  if(LC->res[0]*LC->res[1] == 1) {
-    *mxGetPr(output) = *O->image;
-    mxSetProperty(LCout,0,"image",output);
-  }
   mxDestroyArray(output);
+  if(LC->res[0]*LC->res[1]*nL == 1) {
+    mxArray *output = mxCreateNumericMatrix(1,1,mxSINGLE_CLASS,mxREAL);
+    *(float *)mxGetPr(output) = *O_MATLAB->image;
+    mxSetProperty(LCout,0,"image",output);
+    mxDestroyArray(output);
+  }
+
   if(Pa->nExamplePaths) {
     mxSetPropertyShared(MCout,0,"examplePaths",mxCreateNumericMatrix(4,Pa->pathsElems,mxDOUBLE_CLASS,mxREAL));
     for(idx=0;idx<4*Pa->pathsElems;idx++) mxGetPr(mxGetPropertyShared(MCout,0,"examplePaths"))[idx] = Pa->data[idx];
     free(Pa->data);
   }
-  
+
+  free(B->S);
+  free(smallArrays);
+  free(G->M);
+  free(O->NFR);
+  free(O->NFRdet);
+  free(O->image);
+  free(O->FF);
+  free(O->NI_xpos);
+  free(O->NI_xneg);
+  free(O->NI_ypos);
+  free(O->NI_yneg);
+  free(O->NI_zpos);
+  free(O->NI_zneg);
 //   printf("\nDebug: %.18e %.18e %.18e %llu %llu %llu\n",D->dbls[0],D->dbls[1],D->dbls[2],D->ulls[0],D->ulls[1],D->ulls[2]);
 }

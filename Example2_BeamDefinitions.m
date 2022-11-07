@@ -45,6 +45,8 @@ model.G.Lz                = .1; % [cm] z size of simulation cuboid
 model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined as a function at the end of this file
 model.G.geomFunc          = @geometryDefinition; % Function to use for defining the distribution of media in the cuboid. Defined at the end of this m file.
 
+model = plot(model,'G');
+
 %% Monte Carlo simulations
 %% Isotropic line emitter
 model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
@@ -66,7 +68,7 @@ model.MC.lightSource.zFocus       = 0.05; % [cm] z position of focus
 model.MC.lightSource.theta        = pi/4; % [rad] Polar angle of light source center axis
 model.MC.lightSource.phi          = pi/2; % [rad] Azimuthal angle of light source center axis
 
-% Execution, do not modify the next line:
+
 model = runMonteCarlo(model);
 model = plot(model,'MC');
 fprintf('Press enter to continue...\n');pause;
@@ -86,7 +88,7 @@ model.MC.lightSource.angularIntensityDistribution.radialWidth = pi/6; % [rad] Ra
 
 model.MC.lightSource.theta        = 0; % [rad] Polar angle of beam center axis
 
-% Execution, do not modify the next line:
+
 model = runMonteCarlo(model);
 model = plot(model,'MC');
 fprintf('Press enter to continue...\n');pause;
@@ -101,12 +103,11 @@ model.MC.lightSource.focalPlaneIntensityDistribution.YDistr = 0; % Y focal plane
 model.MC.lightSource.focalPlaneIntensityDistribution.YWidth = .01; % [cm] Y focal plane 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
 
 model.MC.lightSource.angularIntensityDistribution.XDistr = 2; % X angular intensity distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
-
 model.MC.lightSource.angularIntensityDistribution.YDistr = 2; % Y angular intensity distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
 
 model.MC.lightSource.psi          = pi/4; % [rad] (Default: 0) Axial rotation angle of beam, relevant only for XY distributed beams
 
-% Execution, do not modify the next line:
+
 model = runMonteCarlo(model);
 model = plot(model,'MC');
 fprintf('Press enter to continue...\n');pause;
@@ -126,7 +127,7 @@ customAngularDistribution = 1+cos(linspace(0,7*pi,1000));
 model.MC.lightSource.angularIntensityDistribution.radialDistr = customAngularDistribution; % Radial angular intensity distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
 model.MC.lightSource.angularIntensityDistribution.radialWidth = pi/4; % [rad] Radial angular 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom. For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength*1e-9/(pi*model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth*1e-2))
 
-% Execution, do not modify the next line:
+
 model = runMonteCarlo(model);
 model = plot(model,'MC');
 fprintf('Press enter to continue...\n');pause;
@@ -154,29 +155,19 @@ model.MC.lightSource.angularIntensityDistribution.YWidth = pi/8; % [rad] Y angul
 
 model.MC.lightSource.psi             = -pi/4; % [rad] (Default: 0) Axial rotation angle of beam, relevant only for XY distributed beams
 
-% Execution, do not modify the next line:
+
 model = runMonteCarlo(model);
 model = plot(model,'MC');
 
-%% Geometry function(s)
-% A geometry function takes as input X,Y,Z matrices as returned by the
-% "ndgrid" MATLAB function as well as any parameters the user may have
-% provided in the definition of Ginput. It returns the media matrix M,
-% containing numerical values indicating the media type (as defined in
-% mediaPropertiesFunc) at each voxel location.
+%% Geometry function(s) (see readme for details)
 function M = geometryDefinition(X,Y,Z,parameters)
   M = ones(size(X)); % Air
 end
 
-%% Media Properties function
-% The media properties function defines all the optical and thermal
-% properties of the media involved by constructing and returning a
-% "mediaProperties" struct with various fields. As its input, the function
-% takes the wavelength as well as any other parameters you might specify
-% above in the model file, for example parameters that you might loop over
-% in a for loop. Dependence on excitation fluence rate FR, temperature T or
-% fractional heat damage FD can be specified as in examples 12-15.
-function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
+%% Media Properties function (see readme for details)
+function mediaProperties = mediaPropertiesFunc(parameters)
+  mediaProperties = MCmatlab.mediumProperties;
+
   j=1;
   mediaProperties(j).name  = 'air';
   mediaProperties(j).mua   = 1e-8; % [cm^-1]
