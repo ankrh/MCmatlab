@@ -89,7 +89,7 @@ model.FMC.simulationTimeRequested  = .5; % [min] Time duration of the simulation
 
 model.FMC.matchedInterfaces        = true; % Assumes all refractive indices are the same
 model.FMC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
-model.FMC.wavelength               = linspace(500,650,11); % [nm] Excitation wavelength, used for determination of optical properties for excitation light
+model.FMC.wavelength               = linspace(500,700,11); % [nm] Fluorescence emission wavelength, used for determination of optical properties for the fluorescence light
 
 
 model = runMonteCarlo(model,'fluorescence');
@@ -219,17 +219,19 @@ function mediaProperties = mediaPropertiesFunc(parameters)
   end
 
   j=6;
-  mediaProperties(j).name  = 'red fluorescer';
-  mediaProperties(j).mua = 100; % [cm^-1]
-  mediaProperties(j).mus = 100;
-  mediaProperties(j).g   = 0.9;
-
-  mediaProperties(j).QY   = @QYfunc6; % Fluorescence quantum yield
-  function QY = QYfunc6(wavelength)
-    QY = 0.5*exp(-(wavelength-420).^2/(50).^2); % A simple Gaussian
+  mediaProperties(j).name  = 'Lucifer Yellow CH in water';
+  mediaProperties(j).mua = @muafunc6;
+  function mua = muafunc6(wavelength)
+    absorption = readtable("helperfuncs/LuciferYellowCHinWater-abs.txt"); % The absorption spectrum was downloaded from omlc.org
+    mua = interp1(absorption.Wavelength_nm,absorption.MolarExtinction_percmperM,wavelength)/10; % interpolate from the raw data to the wavelength in question. Assuming a concentration of 1/10 M.
   end
+  mediaProperties(j).mus = 10; % [cm^-1] This number is arbitrarily chosen in this case.
+  mediaProperties(j).g   = 0.9;
+  mediaProperties(j).QY   = 1; % Fluorescence quantum yield
   mediaProperties(j).ES = @ESfunc6;
   function ES = ESfunc6(wavelength)
-    ES = exp(-(wavelength-600).^2/(50).^2); % A simple Gaussian
+    emission = readtable("helperfuncs/LuciferYellowCHinWater-ems.txt"); % The emission spectrum was downloaded from omlc.org
+    ES = interp1(emission.Wavelength_nm,emission.Emission_AU,wavelength); % interpolate from the raw data to the wavelength in question. This doesn't need to be scaled, as MCmatlab normalises this function internally.
   end
+
 end
