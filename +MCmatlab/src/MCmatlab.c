@@ -34,6 +34,9 @@
  * 2. Type "mex -setup" in the MATLAB command window and ensure that MATLAB has set the C compiler to MinGW64
  * 3. mex should now be able to compile the code using the above GCC command
  *
+ * For C++ compiling:
+ * "copyfile ./+MCmatlab/src/MCmatlab.c ./+MCmatlab/src/MCmatlab.cpp; mex COMPFLAGS='/Zp8 /GR /EHs /nologo /MD /openmp /W4 /WX /wd4204 /wd4100' -outdir +MCmatlab\@model\private .\+MCmatlab\src\MCmatlab.cpp .\+MCmatlab\src\libut.lib"
+ * 
  * The source code in this file is written is such a way that it is
  * compilable by either C or C++ compilers, either with GCC, MSVC or
  * the Nvidia CUDA compiler called NVCC, which is based on MSVC. To
@@ -63,6 +66,7 @@
 // printf("Reached line %d...\n",__LINE__);mexEvalString("drawnow; pause(.005);");mexEvalString("drawnow; pause(.005);");mexEvalString("drawnow; pause(.005);"); // For inserting into code for debugging purposes
 
 #include "mex.h"
+#include "print.h"
 #include <math.h>
 
 #ifdef __GNUC__ // This is defined for GCC and CLANG but not for Microsoft Visual C++ compiler
@@ -203,17 +207,17 @@ void threadInitAndLoop(struct source *B_global, struct geometry *G_global,
     DC_var = *DC_global;
     memcpy(smallArrays,G->muav,size_smallArrays);
     // Set all array pointers to the correct new locations in the shared memory version of smallArrays
-    long CDFarraySize = (FLOATORDBL *)G->CDFidxv - G->CDFs;
+    long CDFarraySize = B->FPIDdist1? B->FPIDdist1 - G->CDFs: (FLOATORDBL *)G->CDFidxv - G->CDFs;
     G->muav = smallArrays;
     G->musv = G->muav + nM;
     G->gv = G->musv + nM;
     G->RIv = G->gv + nM;
     G->CDFs = G->RIv + nM;
-    G->CDFidxv = (unsigned char *)(G->CDFs + CDFarraySize);
-    B->FPIDdist1 = (FLOATORDBL *)(G->CDFidxv + nM);
+    B->FPIDdist1 = G->CDFs + CDFarraySize;
     B->AIDdist1 = B->FPIDdist1 + B->L_FPID1;
     B->FPIDdist2 = B->AIDdist1 + B->L_AID1;
     B->AIDdist2 = B->FPIDdist2 + B->L_FPID2;
+    G->CDFidxv = (unsigned char *)(B->AIDdist2 + B->L_AID2);
   }
   __syncthreads(); // All threads in the block wait for the copy to have finished
   
@@ -291,7 +295,6 @@ void threadInitAndLoop(struct source *B_global, struct geometry *G_global,
 }
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
-  
   struct debug D_var = {{0.0,0.0,0.0},{0,0,0}};
   struct debug *D = &D_var;
   
@@ -366,15 +369,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   long CDFarraySize = (long)mxGetNumberOfElements(MatlabCDFs);
   size_t size_smallArrays = (nM*4 + CDFarraySize + L_FPID1 + L_AID1 + L_FPID2 + L_AID2)*sizeof(FLOATORDBL) + nM*sizeof(unsigned char);
   char *smallArrays = (char *)malloc(size_smallArrays); // Because smallArrays contain different data types, we just use pointer to char (1 byte) here, and make it the correct types in the derived pointers
-
   G->muav = (FLOATORDBL *)smallArrays;
   G->musv = G->muav + nM;
   G->gv   = G->musv + nM;
   G->RIv  = G->gv + nM;
   G->CDFs = G->RIv + nM;
-  G->CDFidxv = (unsigned char *)(G->CDFs + CDFarraySize); // Array that describes which CDF array is the one that applies to a particular medium
   for(idx=0;idx<CDFarraySize;idx++) G->CDFs[idx] = (FLOATORDBL)mxGetPr(MatlabCDFs)[idx];
-  
+
   // Fill depositionCriteria struct
   mxArray *MatlabDC = mxGetProperty(MatlabMC,0,"depositionCriteria");
   struct depositionCriteria DC_var = {
@@ -429,7 +430,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   mxArray *MCout = mxGetPropertyShared(plhs[0],0,S_PDF? "FMC": "MC");
   mxArray *LCout = mxGetPropertyShared(MCout,0,"LC");
   
-  mwSize outDimPtr[4] = {dimPtr[0], dimPtr[1], dimPtr[2], nL};
+  mwSize outDimPtr[4] = {dimPtr[0], dimPtr[1], dimPtr[2], (mwSize)nL};
   if(calcNFR)           mxSetPropertyShared(MCout,0,"NFR",mxCreateNumericArray(4,outDimPtr,mxSINGLE_CLASS,mxREAL));
   if(calcNFRdet)        mxSetPropertyShared(MCout,0,"NFRdet",mxCreateNumericArray(4,outDimPtr,mxSINGLE_CLASS,mxREAL));
   if(useLightCollector) {
@@ -441,9 +442,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     mxSetPropertyShared(MCout,0,"farField", mxCreateNumericArray(3,FFsize,mxSINGLE_CLASS,mxREAL));
   }
   if(G->boundaryType == 1) {
-    mwSize NI_xSize[3] = {G->n[1],G->n[2],nL};
-    mwSize NI_ySize[3] = {G->n[0],G->n[2],nL};
-    mwSize NI_zSize[3] = {G->n[0],G->n[1],nL};
+    mwSize NI_xSize[3] = {(mwSize)G->n[1],(mwSize)G->n[2],(mwSize)nL};
+    mwSize NI_ySize[3] = {(mwSize)G->n[0],(mwSize)G->n[2],(mwSize)nL};
+    mwSize NI_zSize[3] = {(mwSize)G->n[0],(mwSize)G->n[1],(mwSize)nL};
     mxSetPropertyShared(MCout,0,"NI_xpos", mxCreateNumericArray(3,NI_xSize,mxSINGLE_CLASS,mxREAL));
     mxSetPropertyShared(MCout,0,"NI_xneg", mxCreateNumericArray(3,NI_xSize,mxSINGLE_CLASS,mxREAL));
     mxSetPropertyShared(MCout,0,"NI_ypos", mxCreateNumericArray(3,NI_ySize,mxSINGLE_CLASS,mxREAL));
@@ -451,10 +452,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     mxSetPropertyShared(MCout,0,"NI_zpos", mxCreateNumericArray(3,NI_zSize,mxSINGLE_CLASS,mxREAL));
     mxSetPropertyShared(MCout,0,"NI_zneg", mxCreateNumericArray(3,NI_zSize,mxSINGLE_CLASS,mxREAL));
   } else if(G->boundaryType == 2) {
-    mwSize NI_zSize[3] = {KILLRANGE*G->n[0],KILLRANGE*G->n[1],nL};
+    mwSize NI_zSize[3] = {(mwSize)(KILLRANGE*G->n[0]),(mwSize)(KILLRANGE*G->n[1]),(mwSize)nL};
     mxSetPropertyShared(MCout,0,"NI_zneg", mxCreateNumericArray(3,NI_zSize,mxSINGLE_CLASS,mxREAL));
   } else if(G->boundaryType == 3) {
-    mwSize NI_zSize[3] = {G->n[0],G->n[1],nL};
+    mwSize NI_zSize[3] = {(mwSize)G->n[0],(mwSize)G->n[1],(mwSize)nL};
     mxSetPropertyShared(MCout,0,"NI_zpos", mxCreateNumericArray(3,NI_zSize,mxSINGLE_CLASS,mxREAL));
     mxSetPropertyShared(MCout,0,"NI_zneg", mxCreateNumericArray(3,NI_zSize,mxSINGLE_CLASS,mxREAL));
   }
@@ -476,17 +477,17 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   
   struct outputs O_var = {
     0, // nPhotons
-    calcNFR? calloc(G->n[0]*G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
-    calcNFRdet? calloc(G->n[0]*G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
-    useLightCollector? calloc(LC->res[0]*LC->res[0]*LC->res[1],sizeof(FLOATORDBL)): NULL,
-    G->farFieldRes? calloc(G->farFieldRes*G->farFieldRes,sizeof(FLOATORDBL)): NULL,
-    G->boundaryType == 1? calloc(G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
-    G->boundaryType == 1? calloc(G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
-    G->boundaryType == 1? calloc(G->n[0]*G->n[2],sizeof(FLOATORDBL)): NULL,
-    G->boundaryType == 1? calloc(G->n[0]*G->n[2],sizeof(FLOATORDBL)): NULL,
+    calcNFR? (FLOATORDBL *)calloc(G->n[0]*G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
+    calcNFRdet? (FLOATORDBL *)calloc(G->n[0]*G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
+    useLightCollector? (FLOATORDBL *)calloc(LC->res[0]*LC->res[0]*LC->res[1],sizeof(FLOATORDBL)): NULL,
+    G->farFieldRes? (FLOATORDBL *)calloc(G->farFieldRes*G->farFieldRes,sizeof(FLOATORDBL)): NULL,
+    G->boundaryType == 1? (FLOATORDBL *)calloc(G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
+    G->boundaryType == 1? (FLOATORDBL *)calloc(G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
+    G->boundaryType == 1? (FLOATORDBL *)calloc(G->n[0]*G->n[2],sizeof(FLOATORDBL)): NULL,
+    G->boundaryType == 1? (FLOATORDBL *)calloc(G->n[0]*G->n[2],sizeof(FLOATORDBL)): NULL,
     G->boundaryType == 1 || G->boundaryType == 3?
-                          calloc(G->n[0]*G->n[1],sizeof(FLOATORDBL)): NULL,
-    G->boundaryType != 0? calloc(G->n[0]*G->n[1]*(G->boundaryType == 2? KILLRANGE*KILLRANGE: 1),sizeof(FLOATORDBL)): NULL
+                          (FLOATORDBL *)calloc(G->n[0]*G->n[1],sizeof(FLOATORDBL)): NULL,
+    G->boundaryType != 0? (FLOATORDBL *)calloc(G->n[0]*G->n[1]*(G->boundaryType == 2? KILLRANGE*KILLRANGE: 1),sizeof(FLOATORDBL)): NULL
   };
   struct outputs *O = &O_var;
 
@@ -499,10 +500,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     S[0] = 0;
   }
 
-  FLOATORDBL *FPIDdist1 = NULL, *FPIDdist2 = NULL, *AIDdist1 = NULL, *AIDdist2 = NULL;
+  FLOATORDBL *FPIDdist1 = G->CDFs + CDFarraySize;
+  FLOATORDBL *AIDdist1 = FPIDdist1 + L_FPID1;
+  FLOATORDBL *FPIDdist2 = AIDdist1 + L_AID1;
+  FLOATORDBL *AIDdist2 = FPIDdist2 + L_FPID2;
   if(sourceType >= 4) {
     double *MatlabFPIDdist1 = mxGetPr(mxGetPropertyShared(MatlabSourceFPID,0,sourceType == 4? "radialDistr": "XDistr"));
-    FPIDdist1 = (FLOATORDBL *)(G->CDFidxv + nM);
     if(L_FPID1 == 1) {
       *FPIDdist1 = -1 - (FLOATORDBL)MatlabFPIDdist1[0];
     } else {
@@ -511,7 +514,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
       for(idx=1;idx<L_FPID1;idx++) FPIDdist1[idx] /= FPIDdist1[L_FPID1-1];
     }
     
-    AIDdist1 = FPIDdist1 + L_FPID1;
     double *MatlabAIDdist1 = mxGetPr(mxGetPropertyShared(MatlabSourceAID,0,sourceType == 4? "radialDistr": "XDistr"));
     if(L_AID1 == 1) {
       *AIDdist1 = -1 - (FLOATORDBL)MatlabAIDdist1[0];
@@ -522,7 +524,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     }
     
     if(sourceType == 5) {
-      FPIDdist2 = AIDdist1 + L_AID1;
       double *MatlabFPIDdist2 = mxGetPr(mxGetPropertyShared(MatlabSourceFPID,0,"YDistr"));
       if(L_FPID2 == 1) {
         *FPIDdist2 = -1 - (FLOATORDBL)MatlabFPIDdist2[0];
@@ -532,7 +533,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         for(idx=1;idx<L_FPID2;idx++) FPIDdist2[idx] /= FPIDdist2[L_FPID2-1];
       }
     
-      AIDdist2 = FPIDdist2 + L_FPID2;
       double *MatlabAIDdist2 = mxGetPr(mxGetPropertyShared(MatlabSourceAID,0,"YDistr"));
       if(L_AID2 == 1) {
         *AIDdist2 = -1 - (FLOATORDBL)MatlabAIDdist2[0];
@@ -543,6 +543,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
       }
     }
   }
+  G->CDFidxv = (unsigned char *)(AIDdist2 + L_AID2); // Array that describes which CDF array is the one that applies to a particular medium
 
   FLOATORDBL tb = (FLOATORDBL)(S? 0: *mxGetPr(mxGetPropertyShared(MatlabLS,0,"theta")));
   FLOATORDBL pb = (FLOATORDBL)(S? 0: *mxGetPr(mxGetPropertyShared(MatlabLS,0,"phi")));
@@ -590,6 +591,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
       G->RIv[idx]     = (FLOATORDBL)        nMATLAB[idx + iL*nM];
       G->CDFidxv[idx] = (unsigned char)CDFidxMATLAB[idx + iL*nM];
     }
+
     if(S) {
       for(idx=1;idx<(L+1);idx++) S[idx] = S[idx-1] + (FLOATORDBL)S_PDF[iL*L + idx-1];
       B->power        = (FLOATORDBL)(S[L]*G->d[0]*G->d[1]*G->d[2]);
@@ -599,18 +601,18 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     }
 
     // ============================ MAJOR CYCLE ========================
-    unsigned long long nPhotonsRequested_ThisWavelength = simulationTimed? ULLONG_MAX: (iL == nL - 1? nPhotonsRequested - nPhotonsCumulative: nPhotonsRequested/nL);
+    unsigned long long nPhotonsRequested_ThisWavelength = simulationTimed? ULLONG_MAX: (unsigned long long)(iL == nL - 1? nPhotonsRequested - nPhotonsCumulative: nPhotonsRequested/nL);
     double simulationTimeRequested_ThisWavelength = simulationTimeRequested/nL;
     #ifdef __NVCC__ // If compiling for CUDA
     long GPUdevice = *(long *)mxGetPr(mxGetPropertyShared(MatlabMC,0,"GPUdevice"));
     gpuErrchk(cudaSetDevice(GPUdevice));
   
     int threadsPerBlock, blocks; gpuErrchk(cudaOccupancyMaxPotentialBlockSize(&blocks,&threadsPerBlock,&threadInitAndLoop,size_smallArrays,0));
-    double nThreads = threadsPerBlock*blocks;
+    nThreads = threadsPerBlock*blocks;
   
     struct cudaDeviceProp CDP; gpuErrchk(cudaGetDeviceProperties(&CDP,GPUdevice));
   //   if(!silentMode) printf("Using %s with CUDA compute capability %d.%d,\n    launching %d blocks, each with %d threads,\n    using %d/%d bytes of shared memory per block\n",CDP.name,CDP.major,CDP.minor,blocks,threadsPerBlock,384+size_smallArrays,CDP.sharedMemPerBlock);
-    if(!silentMode) printf("Using device %d: %s with CUDA compute capability %d.%d\n",GPUdevice,CDP.name,CDP.major,CDP.minor);
+    if(!silentMode && iL == 0) printf("Using device %d: %s with CUDA compute capability %d.%d\n",GPUdevice,CDP.name,CDP.major,CDP.minor);
   
     size_t heapSizeLimit; gpuErrchk(cudaDeviceGetLimit(&heapSizeLimit,cudaLimitMallocHeapSize));
     if(calcNFRdet && heapSizeLimit < GPUHEAPMEMORYLIMIT) {
@@ -629,7 +631,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     struct debug *D_dev;
     createDeviceStructs(G,&G_dev,B,&B_dev,LC,&LC_dev,Pa,&Pa_dev,O,&O_dev,DC,&DC_dev,nM,L,size_smallArrays,D,&D_dev);
   
-    int pctProgressThisWavelength = 0;
+    int pctProgress = 0;
     long long timeLeft = simulationTimed? (long long)(simulationTimeRequested_ThisWavelength*60000000): LLONG_MAX; // microseconds
   
     if(!silentMode && iL == 0) {
@@ -640,7 +642,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     long long prevtime = simulationTimeStart;
     do {
       // Run kernel
-      threadInitAndLoop<<<blocks, threadsPerBlock, size_smallArrays>>>(B_dev,G_dev,LC_dev,Pa_dev,O_dev,DC_dev,nM,size_smallArrays,prevtime,clock/1000*min((long long)KERNELTIME,timeLeft),nPhotonsRequested_ThisWavelength,NULL,false,D_dev);
+      threadInitAndLoop<<<blocks, threadsPerBlock, size_smallArrays>>>(B_dev,G_dev,LC_dev,Pa_dev,O_dev,DC_dev,nM,size_smallArrays,prevtime,clock/1000*min((long long)KERNELTIME,timeLeft),nPhotonsRequested_ThisWavelength,0,0,NULL,false,D_dev);
       gpuErrchk(cudaPeekAtLastError());
       gpuErrchk(cudaDeviceSynchronize());
       // Progress indicator
@@ -648,9 +650,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
       gpuErrchk(cudaMemcpy(O, O_dev, sizeof(unsigned long long),cudaMemcpyDeviceToHost)); // Copy just nPhotons, the first 8 bytes of O
       if(simulationTimed) {
         timeLeft = (long long)(simulationTimeRequested_ThisWavelength*60000000) - newtime + simulationTimeStart; // In microseconds
-        pctProgressThisWavelength = (int)(100.0*(1.0 - timeLeft/(simulationTimeRequested_ThisWavelength*60000000.0)));
+        pctProgress = (int)(100.0*(iL + 1.0 - timeLeft/(simulationTimeRequested_ThisWavelength*60000000.0))/nL);
       } else {
-        pctProgressThisWavelength = (int)(100.0*O->nPhotons/nPhotonsRequested_ThisWavelength);
+        pctProgress = (int)(100.0*(iL + O->nPhotons/nPhotonsRequested_ThisWavelength)/nL);
       }
   
       // Check for ctrl+c
@@ -660,7 +662,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
       }
   
       if(!silentMode) {
-        printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgressThisWavelength);
+        printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgress);
         mexEvalString("drawnow; pause(.005);");
       }
       prevtime = newtime;
@@ -679,7 +681,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         }
       }
     } while(timeLeft > 0 && O->nPhotons < nPhotonsRequested_ThisWavelength && !aborting && O->nPhotons); // The O->nPhotons is there to stop looping if launches failed
-    if(!silentMode && O->nPhotons) printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgressThisWavelength);
+    if(!silentMode && O->nPhotons) printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgress);
   
     retrieveAndFreeDeviceStructs(G,G_dev,B,B_dev,LC,LC_dev,Pa,Pa_dev,O,O_dev,DC_dev,L,D,D_dev);
   
@@ -726,7 +728,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   mxSetProperty(MCout,0,"simulationTime",output);
   mxDestroyArray(output);
   if(LC->res[0]*LC->res[1]*nL == 1) {
-    mxArray *output = mxCreateNumericMatrix(1,1,mxSINGLE_CLASS,mxREAL);
+    output = mxCreateNumericMatrix(1,1,mxSINGLE_CLASS,mxREAL);
     *(float *)mxGetPr(output) = *O_MATLAB->image;
     mxSetProperty(LCout,0,"image",output);
     mxDestroyArray(output);

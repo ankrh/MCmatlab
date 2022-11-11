@@ -1,4 +1,5 @@
 function redrawCuboidSurfaces(src,~,v)
+lambdatext = [955 ' [nm]']; % The 955 is the unicode number for the lambda character. Because the editors of MATLAB versions prior to 2020a do not support unicode, we have to make the lambda in this sneaky way.
 
 if src == v.h_centerbutton
   set(v.h_slider,'Value',(numel(v.l)-1)/2 + 1);
@@ -7,7 +8,7 @@ end
 plotLog = get(v.h_checkbox,'Value');
 lsi = floor(get(v.h_slider,'Value')); % lambda slice index
 ls = v.l(lsi);
-string = ['λ [nm] = ' num2str(ls,'%.3g')];
+string = [lambdatext ' = ' num2str(ls,'%.3g')];
 
 v.h_slidertext.String = string;
 prevpos = get(v.h_slidertext,'Position');

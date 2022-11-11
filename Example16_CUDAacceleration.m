@@ -17,7 +17,8 @@
 %
 % Currently, only one GPU will be used even if you have multiple GPUs
 % installed. If you are interested in using multiple GPUs in parallel,
-% contact the MCmatlab developer Anders K. Hansen at ankrh@fotonik.dtu.dk
+% contact the MCmatlab developer Anders K. Hansen at
+% anderskraghhansen@gmail.com
 
 %% MCmatlab abbreviations
 % G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
@@ -83,7 +84,7 @@ model.HS.heatBoundaryType    = 0; % 0: Insulating boundaries, 1: Constant-temper
 model.HS.durationOn          = 0.01; % [s] Pulse on-duration
 model.HS.durationOff         = 0.04; % [s] Pulse off-duration
 model.HS.durationEnd         = 0.2; % [s] Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train
-model.HS.Tinitial            = 37; % [deg C] Initial temperature
+model.HS.T                   = 37; % [deg C] Initial temperature
 
 model.HS.nPulses             = 5; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use nPulses = 1.
 

@@ -1,11 +1,13 @@
 %% Decription
 % This example showcases the ability to launch broadband simulations, in
 % which multiple wavelengths of excitation and fluorescence light are
-% simulated. The geometry is based on that of example 4 (blood vessel), but
-% with two artificial fluorescing spheres inserted into the dermis. The use
-% of the wavelength-dependent calc_mua() and calc_mus() functions in the
-% media properties allows us to easily take into account the tissues'
-% absorption and scattering variations with wavelength.
+% simulated. The geometry is loosely based on that of example 4 (blood
+% vessel), but with a sphere of some fluorescing stained cancerous tissue
+% inserted into the dermis and a droplet of water with Lucifer Yellow CH on
+% top of the epidermis. The use of the wavelength-dependent calc_mua() and
+% calc_mus() functions in the media properties allows us to easily take
+% into account the tissues' absorption and scattering variations with
+% wavelength.
 % 
 % Note the lambda slider that is now present in the output volumetric plots.
 % 
@@ -62,15 +64,15 @@ model.G.geomFunc          = @geometryDefinition; % Function to use for defining 
 model = plot(model,'G');
 
 %% Monte Carlo simulation
-model.MC.simulationTimeRequested  = .5; % [min] Time duration of the simulation
+model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
 
 model.MC.matchedInterfaces        = true; % Assumes all refractive indices are the same
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
-model.MC.wavelength               = linspace(300,500,11); % [nm] Excitation wavelength, used for determination of optical properties for excitation light
+model.MC.wavelength               = linspace(300,500,11); % [nm] Array of wavelength(s) for which to run incident-light Monte Carlo simulations
 model.MC.spectrumFunc             = @Sfunc; % Defined just above the geometry function, later in this file
 
 model.MC.lightSource.sourceType   = 4; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
-model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr = 0; % Radial focal plane intensity distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
+model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr = 1; % Radial focal plane intensity distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
 model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth = .03; % [cm] Radial focal plane 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
 model.MC.lightSource.angularIntensityDistribution.radialDistr = 0; % Radial angular intensity distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
 model.MC.lightSource.angularIntensityDistribution.radialWidth = 0; % [rad] Radial angular 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom. For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength*1e-9/(pi*model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth*1e-2))
@@ -85,11 +87,11 @@ model = runMonteCarlo(model);
 model = plot(model,'MC');
 
 %% Fluorescence Monte Carlo simulation
-model.FMC.simulationTimeRequested  = .5; % [min] Time duration of the simulation
+model.FMC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
 
 model.FMC.matchedInterfaces        = true; % Assumes all refractive indices are the same
 model.FMC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
-model.FMC.wavelength               = linspace(500,700,11); % [nm] Fluorescence emission wavelength, used for determination of optical properties for the fluorescence light
+model.FMC.wavelength               = linspace(500,800,11); % [nm] Array of wavelength(s) for which to run fluorescence-light Monte Carlo simulations
 
 
 model = runMonteCarlo(model,'fluorescence');
@@ -104,17 +106,17 @@ end
 %% Geometry function(s) (see readme for details)
 function M = geometryDefinition(X,Y,Z,parameters)
   % Blood vessel example:
-  zsurf = 0.01;
+  zsurf = 0.02;
   epd_thick = 0.006;
   vesselradius  = 0.0100;
   vesseldepth = 0.04;
-  M = ones(size(X)); % fill background with water (gel)
+  M = ones(size(X)); % fill background with air
   M(Z > zsurf) = 2; % epidermis
   M(Z > zsurf + epd_thick) = 3; % dermis
   M(X.^2 + (Z - (zsurf + vesseldepth)).^2 < vesselradius^2) = 4; % blood
   R_sphere = 0.01;
-  M(X.^2 + (Y - 0.03).^2 + (Z - 0.028).^2 < R_sphere^2) = 5; % green fluorescer
-  M(X.^2 + (Y + 0.03).^2 + (Z - 0.028).^2 < R_sphere^2) = 6; % green fluorescer
+  M(X.^2 + (Y - 0.03).^2 + (Z - 0.038).^2 < R_sphere^2) = 5; % stained cancerous tissue
+  M(X.^2 + (Y + 0.03).^2 + (Z - zsurf).^2 < R_sphere^2 & Z < zsurf) = 6; % Lucifer yellow fluorescer
 end
 
 %% Media Properties function (see readme for details)
@@ -122,12 +124,10 @@ function mediaProperties = mediaPropertiesFunc(parameters)
   mediaProperties = MCmatlab.mediumProperties;
 
   j=1;
-  mediaProperties(j).name  = 'water';
-  mediaProperties(j).mua   = 0.00036; % [cm^-1]
-  mediaProperties(j).mus   = 10; % [cm^-1]
+  mediaProperties(j).name  = 'air';
+  mediaProperties(j).mua   = 1e-8; % [cm^-1]
+  mediaProperties(j).mus   = 1e-8; % [cm^-1]
   mediaProperties(j).g     = 1.0;
-  mediaProperties(j).VHC   = 4.19; % [J cm^-3 K^-1]
-  mediaProperties(j).TC    = 5.8e-3; % [W cm^-1 K^-1]
 
   j=2;
   mediaProperties(j).name  = 'epidermis';
@@ -150,8 +150,6 @@ function mediaProperties = mediaPropertiesFunc(parameters)
     mus = calc_mus(wavelength,aPrime,fRay,bMie,g); % Jacques "Optical properties of biological tissues: a review" eq. 2
   end
   mediaProperties(j).g   = 0.9;
-  mediaProperties(j).VHC = 3391*1.109e-3; % [J cm^-3 K^-1]
-  mediaProperties(j).TC  = 0.37e-2; % [W cm^-1 K^-1]
 
   j=3;
   mediaProperties(j).name = 'dermis';
@@ -174,8 +172,6 @@ function mediaProperties = mediaPropertiesFunc(parameters)
     mus = calc_mus(wavelength,aPrime,fRay,bMie,g); % Jacques "Optical properties of biological tissues: a review" eq. 2
   end
   mediaProperties(j).g   = 0.9;
-  mediaProperties(j).VHC = 3391*1.109e-3; % [J cm^-3 K^-1]
-  mediaProperties(j).TC  = 0.37e-2; % [W cm^-1 K^-1]
 
   j=4;
   mediaProperties(j).name  = 'blood';
@@ -198,24 +194,40 @@ function mediaProperties = mediaPropertiesFunc(parameters)
     mus = calc_mus(wavelength,aPrime,fRay,bMie,g); % Jacques "Optical properties of biological tissues: a review" eq. 2
   end
   mediaProperties(j).g   = 0.9;
-  mediaProperties(j).VHC = 3617*1.050e-3; % [J cm^-3 K^-1]
-  mediaProperties(j).TC  = 0.52e-2; % [W cm^-1 K^-1]
-  mediaProperties(j).E   = 422.5e3; % J/mol    PLACEHOLDER DATA ONLY
-  mediaProperties(j).A   = 7.6e66; % 1/s        PLACEHOLDER DATA ONLY
 
   j=5;
-  mediaProperties(j).name  = 'green fluorescer';
-  mediaProperties(j).mua = 100;
-  mediaProperties(j).mus = 100; % [cm^-1]
+  mediaProperties(j).name  = 'stained cancerous tissue';
+  mediaProperties(j).mua = @func_mua5;
+  function mua = func_mua5(wavelength)
+    % We model the stained cancerous tissue absorption as a sum of the
+    % absorption of dermis and an extra contribution from absorption around
+    % 450 nm due to the fluorophore:
+    B = 0.002; % Blood content
+    S = 0.67; % Blood oxygen saturation
+    W = 0.65; % Water content
+    M = 0; % Melanin content
+    F = 0; % Fat content
+    mua = calc_mua(wavelength,S,B,W,F,M) + ... % Jacques "Optical properties of biological tissues: a review" eq. 12
+          100*exp(-(wavelength-450).^2/(50).^2); % A simple Gaussian
+  end
+
+  mediaProperties(j).mus = @func_mus5;
+  function mus = func_mus5(wavelength)
+    aPrime = 42.4; % musPrime at 500 nm
+    fRay = 0.62; % Fraction of scattering due to Rayleigh scattering
+    bMie = 1; % Scattering power for Mie scattering
+    g = 0.9; % Scattering anisotropy
+    mus = calc_mus(wavelength,aPrime,fRay,bMie,g); % Jacques "Optical properties of biological tissues: a review" eq. 2
+  end
   mediaProperties(j).g   = 0.9;
 
   mediaProperties(j).QY   = @QYfunc5; % Fluorescence quantum yield
   function QY = QYfunc5(wavelength)
-    QY = 0.6*exp(-(wavelength-400).^2/(50).^2); % A simple Gaussian
+    QY = 0.1*exp(-(wavelength-450).^2/(50).^2); % A simple Gaussian
   end
   mediaProperties(j).ES = @ESfunc5;
   function ES = ESfunc5(wavelength)
-    ES = exp(-(wavelength-550).^2/(50).^2); % A simple Gaussian
+    ES = exp(-(wavelength-650).^2/(50).^2); % A simple Gaussian
   end
 
   j=6;
@@ -223,15 +235,15 @@ function mediaProperties = mediaPropertiesFunc(parameters)
   mediaProperties(j).mua = @muafunc6;
   function mua = muafunc6(wavelength)
     absorption = readtable("helperfuncs/LuciferYellowCHinWater-abs.txt"); % The absorption spectrum was downloaded from omlc.org
-    mua = interp1(absorption.Wavelength_nm,absorption.MolarExtinction_percmperM,wavelength)/10; % interpolate from the raw data to the wavelength in question. Assuming a concentration of 1/10 M.
+    mua = interp1(absorption.Wavelength_nm,absorption.MolarExtinction_percmperM,wavelength,'linear',1e-8)/100; % interpolate from the raw data to the wavelength in question. Assuming a concentration of 10 mM. Allow extrapolation with value 1e-8 (mua may not be zero).
   end
   mediaProperties(j).mus = 10; % [cm^-1] This number is arbitrarily chosen in this case.
   mediaProperties(j).g   = 0.9;
-  mediaProperties(j).QY   = 1; % Fluorescence quantum yield
+  mediaProperties(j).QY   = 0.21; % Fluorescence quantum yield
   mediaProperties(j).ES = @ESfunc6;
   function ES = ESfunc6(wavelength)
     emission = readtable("helperfuncs/LuciferYellowCHinWater-ems.txt"); % The emission spectrum was downloaded from omlc.org
-    ES = interp1(emission.Wavelength_nm,emission.Emission_AU,wavelength); % interpolate from the raw data to the wavelength in question. This doesn't need to be scaled, as MCmatlab normalises this function internally.
+    ES = interp1(emission.Wavelength_nm,emission.Emission_AU,wavelength,'linear',0); % interpolate from the raw data to the wavelength in question. This doesn't need to be scaled, as MCmatlab normalises this function internally.
   end
 
 end

@@ -51,13 +51,17 @@ function h_f = plotMediaProperties(nFig,model)
       maxgs(iM,iL) = max(gvalues(:));
       mings(iM,iL) = min(gvalues(:));
       QYvalues = 100*mP_fH(iM).QY(Ls(iL),FR(idxs),T(idxs),FD(idxs));
+      QYvalues(isnan(QYvalues)) = 0;
       maxQYs(iM,iL) = max(QYvalues(:));
       minQYs(iM,iL) = min(QYvalues(:));
       ESvalues = mP_fH(iM).ES(Ls(iL),FR(idxs),T(idxs),FD(idxs));
+      ESvalues(isnan(ESvalues)) = 0;
       maxESs(iM,iL) = max(ESvalues(:));
       minESs(iM,iL) = min(ESvalues(:));
       ns(iM,iL) = mP_fH(iM).n(Ls(iL));
     end
+    maxESs(iM,:) = maxESs(iM,:)/trapz(Ls,maxESs(iM,:)); % Normalize visualization of emission spectra to unit integral
+    minESs(iM,:) = minESs(iM,:)/trapz(Ls,minESs(iM,:)); % Normalize visualization of emission spectra to unit integral
     VHCvalues = mP_fH(iM).VHC(T(idxs),FD(idxs));
     maxVHCs(iM) = max(VHCvalues(:));
     minVHCs(iM) = min(VHCvalues(:));
@@ -66,6 +70,7 @@ function h_f = plotMediaProperties(nFig,model)
     minTCs(iM) = min(TCvalues(:));
   end
   NFidxs = find(max(maxQYs,[],2) == 0); % Non-fluorescing media indexes
+  
   maxESs(NFidxs,:) = NaN; minESs(NFidxs,:) = NaN;
 
   nAxes = 2 + any(~isnan(maxgs(:))) + 2*any(maxQYs(:) > 0) + 2*(all(isfinite(maxVHCs(:))) && all(isfinite(maxTCs(:))));
@@ -120,6 +125,7 @@ function h_f = plotMediaProperties(nFig,model)
 end
 
 function plotProperty(L,maxvals,minvals,names,cmap)
+  lambdatext = [955 ' [nm]']; % The 955 is the unicode number for the lambda character. Because the editors of MATLAB versions prior to 2020a do not support unicode, we have to make the lambda in this sneaky way.
   hold on;
   nameCellArray = [];
   if numel(L) == 1
@@ -152,7 +158,7 @@ function plotProperty(L,maxvals,minvals,names,cmap)
       end
     end
     grid on; grid minor; box on;
-    xlabel('Wavelength [nm]');
+    xlabel(lambdatext);
     legend(nameCellArray,'FontSize',8,'Location','best');
   end
 end

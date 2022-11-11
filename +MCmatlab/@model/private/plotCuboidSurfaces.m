@@ -1,4 +1,6 @@
 function h_f = plotCuboidSurfaces(nFig,model,simFluorescence)
+  lambdatext = [955 ' [nm]']; % The 955 is the unicode number for the lambda character. Because the editors of MATLAB versions prior to 2020a do not support unicode, we have to make the lambda in this sneaky way.
+  
   x = model.G.x;
   y = model.G.y;
   z = model.G.z;
@@ -49,7 +51,7 @@ function h_f = plotCuboidSurfaces(nFig,model,simFluorescence)
     'value',lsi, 'min',1, 'max',nl,'SliderStep',[1/max(nl-1,1) max(1/(nl-1),0.1)]);
   warning('on','MATLAB:hg:UIControlSliderStepValueDifference');
   h_centerbutton = uicontrol('Parent',h_f,'Style','pushbutton','String','Center','Position',[10,10,40,20]);
-  string = ['λ [nm] = ' num2str(l(lsi),'%.3g')];
+  string = [lambdatext ' = ' num2str(l(lsi),'%.3g')];
   h_slidertext = uicontrol('style','text','String',string,'BackgroundColor','w',...
     'horizontalAlignment','left','Position',[160,7,5.5*numel(string),20]);
   

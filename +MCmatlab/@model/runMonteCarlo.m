@@ -116,6 +116,12 @@ function model = runMonteCarlo(model,varargin)
           end
         end
       end
+      if any(~isfinite(Fphotons(:))) || ~isreal(Fphotons) || any(Fphotons(:) < 0)
+        error('Error: A quantum yield function is returning values that are not finite, real and non-negative.');
+      end
+      if any(~isfinite(emSp(:))) || ~isreal(emSp) || any(emSp(:) < 0)
+        error('Error: An emission spectrum function is returning values that are not finite, real and non-negative.');
+      end
       
       emSp = emSp./repmat(sum(emSp,4),1,1,1,nL_F); % Normalization
       model.FMC.sourceDistribution = repmat(Fphotons,1,1,1,nL_F).*emSp./repmat(permute(Ls_F(:),[2 3 4 1]),G.nx,G.ny,G.nz,1); % The fluorescence source distribution is each voxel's emission spectrum normalized to a sum equal to the corresponding value in Fsources3D

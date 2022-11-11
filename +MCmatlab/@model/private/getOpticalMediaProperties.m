@@ -136,9 +136,9 @@ function model = getOpticalMediaProperties(model,simType)
         else % Aside from the first wavelength, we just set the mua, mus and g for all the subsequent wavelengths to the means of the new values in the previously binned voxels
           for k=0:nSM-1
             if any(M(:) == iSM + k)
-              mP.mua(iSM+k,iL)    = mean(mua3D(M == iSM + k));
-              mP.mus(iSM+k,iL)    = mean(mus3D(M == iSM + k));
-              mP.g  (iSM+k,iL)    = mean(g3D  (M == iSM + k));
+              mP.mua(iSM+k,iL)    = single(mean(double(mua3D(M == iSM + k)))); % Double data type is used to reduce the accumulation of numeric errors in the addition inside the mean function
+              mP.mus(iSM+k,iL)    = single(mean(double(mus3D(M == iSM + k))));
+              mP.g  (iSM+k,iL)    = single(mean(double(g3D  (M == iSM + k))));
             else
               mP.mua(iSM+k,iL)    = mP.mua(iSM,iL);
               mP.mus(iSM+k,iL)    = mP.mus(iSM,iL);
@@ -159,14 +159,14 @@ function model = getOpticalMediaProperties(model,simType)
   end
 
   %% Throw an error if a variable doesn't conform to its required interval
-  if ~all(isfinite(mP.mua) & mP.mua > 0)
-    error('Error: A medium has invalid mua');
-  elseif ~all(isfinite(mP.mus) & mP.mus > 0)
-    error('Error: A medium has invalid mus');
-  elseif ~all(isnan(mP.g) | (isfinite(mP.g) & abs(mP.g) <= 1))
-    error('Error: A medium has invalid g');
-  elseif ~all(mP.n >= 1)
-    error('Error: A medium has invalid n');
+  if any(~isfinite(mP.mua(:))) || any(mP.mua(:) <= 0) || ~isreal(mP.mua)
+    error('Error: A medium has invalid mua. Must be finite, real and positive.');
+  elseif any(~isfinite(mP.mus(:))) || any(mP.mus(:) <= 0) || ~isreal(mP.mus)
+    error('Error: A medium has invalid mus. Must be finite, real and positive.');
+  elseif ~all(isnan(mP.g(:)) | (isfinite(mP.g(:)) & abs(mP.g(:)) <= 1)) || ~isreal(mP.g)
+    error('Error: A medium has invalid g. Must be finite, real and between -1 and 1, or NaN.');
+  elseif any(~isfinite(mP.n(:))) || any(mP.n(:) < 1) || ~isreal(mP.n)
+    error('Error: A medium has invalid n. Must be finite, real and at least 1.');
   end
 
   %% Extract the refractive indices if not assuming matched interfaces, otherwise assume all 1's
