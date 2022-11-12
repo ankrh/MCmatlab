@@ -66,14 +66,12 @@ simFluorescence = ~isempty(varargin) && strcmp(varargin{1},'fluorescence');
 lambdatext = [955 ' [nm]']; % The 955 is the unicode number for the lambda character. Because the editors of MATLAB versions prior to 2020a do not support unicode, we have to make the lambda in this sneaky way.
 
 if simFluorescence
-  simType = 2;
   MCorFMC = model.FMC;
   figNumOffset = 10;
   fluorescenceOrIncident = 'fluorescence ';
   fluorescenceOrNothing = 'fluorescence ';
   fprintf('----------------Fluorescence plotMCmatlab-----------------\n');
 else
-  simType = 1;
   MCorFMC = model.MC;
   figNumOffset = 0;
   fluorescenceOrIncident = 'incident ';
@@ -142,7 +140,7 @@ end
 
 %% Plot example paths
 if MCorFMC.nExamplePaths > 0
-  h_f = MCmatlab.NdimSliderPlot(G.M_raw,...
+  [h_f,h_a] = MCmatlab.NdimSliderPlot(G.M_raw,...
     'nFig',5 + figNumOffset,...
     'axisValues',{G.x,G.y,G.z},...
     'axisLabels',{'x [cm]','y [cm]','z [cm]','Geometry Illustration'},...
@@ -157,7 +155,7 @@ if MCorFMC.nExamplePaths > 0
   else
     h_f.Name = 'Photon paths';
   end
-  title(h_f.Name);
+  title(h_a,h_f.Name);
   box on;grid on;grid minor;
 
   previousNaNidx = 1;
@@ -170,21 +168,21 @@ if MCorFMC.nExamplePaths > 0
       zdata = MCorFMC.examplePaths(3,previousNaNidx+1:idx-1);
       adata = MCorFMC.examplePaths(4,previousNaNidx+1:idx-1);
       previousNaNidx = idx;
-      surface([xdata;xdata],...
-              [ydata;ydata],...
-              [zdata;zdata],...
-              'AlphaData',uint8(64*[adata;adata]),...
-              'EdgeColor',[0 0 0],...
-              'EdgeAlpha','flat',...
-              'FaceColor','none',...
-              'LineWidth',2);
+      surface(h_a,[xdata;xdata],...
+                  [ydata;ydata],...
+                  [zdata;zdata],...
+                  'AlphaData',uint8(64*[adata;adata]),...
+                  'EdgeColor',[0 0 0],...
+                  'EdgeAlpha','flat',...
+                  'FaceColor','none',...
+                  'LineWidth',2);
     end
   end
 end
 
 %% If there's a light collector, show its orientation and the detected light
 if MCorFMC.useLightCollector
-  h_f = MCmatlab.NdimSliderPlot(G.M_raw,...
+  [h_f,h_a] = MCmatlab.NdimSliderPlot(G.M_raw,...
     'nFig',6 + figNumOffset,...
     'axisValues',{G.x,G.y,G.z},...
     'axisLabels',{'x [cm]','y [cm]','z [cm]','Geometry Illustration'},...
@@ -208,24 +206,24 @@ if MCorFMC.useLightCollector
   Yvec = cross(Zvec,Xvec);
   FPC = [LC.x , LC.y , LC.z]; % Focal Plane Center
   FPC_X = FPC + arrowlength*Xvec;
-  line([FPC(1) FPC_X(1)],[FPC(2) FPC_X(2)],[FPC(3) FPC_X(3)],'Linewidth',2,'Color','r')
-  text(FPC_X(1),FPC_X(2),FPC_X(3),'X','HorizontalAlignment','center','FontSize',18)
+  line(h_a,[FPC(1) FPC_X(1)],[FPC(2) FPC_X(2)],[FPC(3) FPC_X(3)],'Linewidth',2,'Color','r')
+  text(h_a,FPC_X(1),FPC_X(2),FPC_X(3),'X','HorizontalAlignment','center','FontSize',18)
   FPC_Y = FPC + arrowlength*Yvec;
-  line([FPC(1) FPC_Y(1)],[FPC(2) FPC_Y(2)],[FPC(3) FPC_Y(3)],'Linewidth',2,'Color','r')
-  text(FPC_Y(1),FPC_Y(2),FPC_Y(3),'Y','HorizontalAlignment','center','FontSize',18)
+  line(h_a,[FPC(1) FPC_Y(1)],[FPC(2) FPC_Y(2)],[FPC(3) FPC_Y(3)],'Linewidth',2,'Color','r')
+  text(h_a,FPC_Y(1),FPC_Y(2),FPC_Y(3),'Y','HorizontalAlignment','center','FontSize',18)
 
   if isfinite(LC.f)
     fieldperimeter = LC.fieldSize/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + FPC;
-    h1 = line(fieldperimeter(:,1),fieldperimeter(:,2),fieldperimeter(:,3),'Color','b','LineWidth',2);
+    h1 = line(h_a,fieldperimeter(:,1),fieldperimeter(:,2),fieldperimeter(:,3),'Color','b','LineWidth',2);
     LCC = FPC - Zvec*LC.f; % Light Collector Center
     detectoraperture = LC.diam/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
-    h2 = line(detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
-    legend([h1 h2],'Imaged area','Lens aperture','Location','northeast');
+    h2 = line(h_a,detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
+    legend(h_a,[h1 h2],'Imaged area','Lens aperture','Location','northeast');
   else
     LCC = FPC;
     detectoraperture = LC.diam/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
-    h2 = line(detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
-    legend(h2,'Fiber aperture','Location','northeast');
+    h2 = line(h_a,detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
+    legend(h_a,h2,'Fiber aperture','Location','northeast');
   end
 
   
@@ -242,7 +240,7 @@ if MCorFMC.useLightCollector
 
   %% Make NFRdet fluence rate plot
   if ~isscalar(MCorFMC.NFRdet)
-    h_f = MCmatlab.NdimSliderPlot(MCorFMC.NFRdet,...
+    [h_f,h_a] = MCmatlab.NdimSliderPlot(MCorFMC.NFRdet,...
       'nFig',7 + figNumOffset,...
       'axisValues',{G.x,G.y,G.z,MCorFMC.wavelength},...
       'axisLabels',{'x [cm]','y [cm]','z [cm]',lambdatext,['Normalized fluence rate of collected ' fluorescenceOrIncident 'light [W/cm^2/W.incident]']},...
@@ -255,7 +253,7 @@ if MCorFMC.useLightCollector
   
   %% Plot image
   if LC.res > 1 || LC.nTimeBins > 0
-    h_f = MCmatlab.NdimSliderPlot(MCorFMC.LC.image,...
+    [h_f,h_a] = MCmatlab.NdimSliderPlot(MCorFMC.LC.image,...
       'nFig',8 + figNumOffset,...
       'axisValues',{MCorFMC.LC.X,MCorFMC.LC.Y,MCorFMC.LC.t,MCorFMC.wavelength},...
       'axisLabels',{'X [cm]','Y [cm]','t [s]',lambdatext,'Normalized power [W/W.incident]'},...
@@ -268,15 +266,15 @@ if MCorFMC.useLightCollector
       h_f.Name = 'Collected light';
     end
     if LC.res > 1 && LC.nTimeBins > 0
-      title({'Normalized time-resolved fluence rate in the image plane','at 1x magnification [W/cm^2/W.incident]'});
+      title(h_a,{'Normalized time-resolved fluence rate in the image plane','at 1x magnification [W/cm^2/W.incident]'});
       fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
     elseif LC.res > 1
-      title({['Normalized ' fluorescenceOrNothing 'fluence rate in the image plane'],' at 1x magnification [W/cm^2/W.incident]'});
+      title(h_a,{['Normalized ' fluorescenceOrNothing 'fluence rate in the image plane'],' at 1x magnification [W/cm^2/W.incident]'});
     elseif LC.nTimeBins > 0
-      title('Normalized time-resolved power on the detector [W/W.incident]');
+      title(h_a,'Normalized time-resolved power on the detector [W/W.incident]');
       fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
     else
-      title('Normalized power on the detector [W/W.incident]');
+      title(h_a,'Normalized power on the detector [W/W.incident]');
     end
     set(h_f,'WindowStyle','Docked');
   end
@@ -286,14 +284,14 @@ end
 if ~isnan(MCorFMC.farField)
   fprintf(['%.3g%% of ' fluorescenceOrIncident 'light escapes.\n'],100*sum(MCorFMC.farField(:))/P_in);
   if ~isscalar(MCorFMC.farField)
-    h_f = plotFarField(9 + figNumOffset,{MCorFMC.wavelength},MCorFMC.farField,...
+    [h_f,h_a] = plotFarField(9 + figNumOffset,{MCorFMC.wavelength},MCorFMC.farField,...
       {lambdatext});
     if simFluorescence
       h_f.Name = 'Fluorescence far field';
     else
       h_f.Name = 'Far field';
     end
-    title(['Far field radiant intensity of escaped ' fluorescenceOrNothing 'photons [W/sr/W.incident]']);
+    title(h_a,['Far field radiant intensity of escaped ' fluorescenceOrNothing 'photons [W/sr/W.incident]']);
   end
 end
 
@@ -303,7 +301,7 @@ if MCorFMC.boundaryType ~= 0
 end
 
 %% Make the NFR plot active so it's the first one people see
-if ~isnan(MCorFMC.NFR(1))
+if ~isscalar(MCorFMC.NFR)
   figure(4 + figNumOffset);
 end
 drawnow;

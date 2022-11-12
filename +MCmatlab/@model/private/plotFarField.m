@@ -1,4 +1,4 @@
-function h_f = plotFarField(nFig,axisValues,data,axisLabels)
+function [h_f,h_a] = plotFarField(nFig,axisValues,data,axisLabels)
 %   arguments
 %     nFig       (1,1) double {mustBeInteger} % An integer denoting which figure number to make the plot in
 %     axisValues (1,:) cell                   % A (1,N) cell array, each element containing a 1D array of the values of the independent variable, excluding the far field angles theta and phi.

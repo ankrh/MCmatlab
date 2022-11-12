@@ -109,7 +109,7 @@ end
 if iscell(h_f.UserData)
   h_f.UserData = [h_f.UserData, file];
 else
-  h_f.UserData = {file};
+  h_f.UserData = file;
 end
 patch(squeeze(mesh(:,1,:)).',...
       squeeze(mesh(:,2,:)).',...

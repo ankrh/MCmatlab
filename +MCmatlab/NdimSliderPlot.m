@@ -1,4 +1,4 @@
-function h_f = NdimSliderPlot(data,varargin)
+function [h_f,h_a] = NdimSliderPlot(data,varargin)
 %   arguments
 %     data                                    % An N-dimensional array of the values of the dependent variable.
 %   end

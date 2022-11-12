@@ -165,8 +165,8 @@ function model = getOpticalMediaProperties(model,simType)
     error('Error: A medium has invalid mus. Must be finite, real and positive.');
   elseif ~all(isnan(mP.g(:)) | (isfinite(mP.g(:)) & abs(mP.g(:)) <= 1)) || ~isreal(mP.g)
     error('Error: A medium has invalid g. Must be finite, real and between -1 and 1, or NaN.');
-  elseif any(~isfinite(mP.n(:))) || any(mP.n(:) < 1) || ~isreal(mP.n)
-    error('Error: A medium has invalid n. Must be finite, real and at least 1.');
+  elseif any(isnan(mP.n(:))) || any(mP.n(:) < 1) || ~isreal(mP.n)
+    error('Error: A medium has invalid n. Must not be NaN, must be real and at least 1.');
   end
 
   %% Extract the refractive indices if not assuming matched interfaces, otherwise assume all 1's
