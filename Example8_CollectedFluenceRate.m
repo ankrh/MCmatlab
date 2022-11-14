@@ -34,6 +34,7 @@
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
+MCmatlab.closeMCmatlabFigures();
 model = MCmatlab.model;
 
 model.G.nx                = 100; % Number of bins in the x direction
@@ -88,6 +89,7 @@ model.MC.lightCollector.res       = 50; % X and Y resolution of light collector 
 
 model = runMonteCarlo(model);
 model = plot(model,'MC');
+figure(7); % Focus on the normalized fluence rate of collected light
 
 %% Fluorescence Monte Carlo
 model.FMC.nPhotonsRequested       = 5e6; % # of photons to launch
@@ -118,6 +120,7 @@ model.FMC.lightCollector.res      = 50; % X and Y resolution of light collector 
 
 model = runMonteCarlo(model,'fluorescence');
 model = plot(model,'FMC');
+figure(17); % Focus on the normalized fluence rate of collected light
 
 %% Geometry function(s) (see readme for details)
 function M = geometryDefinition(X,Y,Z,parameters)

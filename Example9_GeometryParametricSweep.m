@@ -41,6 +41,7 @@
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
+MCmatlab.closeMCmatlabFigures();
 model = MCmatlab.model;
 
 model.G.silentMode          = true; % Disables command window text and progress indication

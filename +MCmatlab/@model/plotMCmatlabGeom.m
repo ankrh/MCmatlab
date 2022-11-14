@@ -46,8 +46,8 @@ h_f = MCmatlab.NdimSliderPlot(M_trimmed,...
   'linColormap',lines(256),...
   'axisEqual',true,...
   'reversedAxes',3);
-set(h_f,'WindowStyle','Docked');
 h_f.Name = 'Geometry illustration';
 
 drawnow;
+figure(1);
 end

@@ -1,5 +1,6 @@
 function h_f = plotMediaProperties(nFig,model)
   h_f = figure(nFig);
+  set(h_f,'WindowStyle','Docked');
   clf reset;
   h_f.Color = 'w';
   cmap = colormap(lines);

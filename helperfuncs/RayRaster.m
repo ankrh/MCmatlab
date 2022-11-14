@@ -375,7 +375,7 @@ classdef RayRaster < handle
     
     methods ( Access = private, Static )
         function range = compute_index_range( x, mesh_x )
-            r = [ min( mesh_x, [], 'all' ) max( mesh_x, [], 'all' ) ];
+            r = [ min( mesh_x(:) ) max( mesh_x(:) ) ];
             r_min = abs( x - r( 1 ) );
             p_min = find( r_min == min( r_min ), 1, 'first' );
             r_max = abs( x - r( 2 ) );
@@ -386,8 +386,8 @@ classdef RayRaster < handle
         
         function range = compute_value_range( mesh_x )
             range = [ ...
-                min( mesh_x, [], 'all' ) - RayRaster.TOL ...
-                max( mesh_x, [], 'all' ) + RayRaster.TOL...
+                min( mesh_x(:) ) - RayRaster.TOL ...
+                max( mesh_x(:) ) + RayRaster.TOL...
                 ];
         end
     end

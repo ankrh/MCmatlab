@@ -47,6 +47,7 @@
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
+MCmatlab.closeMCmatlabFigures();
 model1 = MCmatlab.model;
 
 model1.G.nx                = 101; % Number of bins in the x direction

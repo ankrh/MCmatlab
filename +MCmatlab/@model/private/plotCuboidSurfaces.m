@@ -111,7 +111,7 @@ function h_f = plotCuboidSurfaces(nFig,model,simFluorescence)
       infwavecorrectionfactor = (size(MCorFMC.NI_zneg,1)/nx)^2;
       fprintf(['%.3g%% of ' fluorescenceOrIncident 'light hits the top cuboid boundary.\n'],100*sum(MCorFMC.NI_zneg(:))*dx*dy/P_in/infwavecorrectionfactor);
 
-      h_f.UserData = {[],[],pagetranspose(MCorFMC.NI_zneg),[],[],[]};
+      h_f.UserData = {[],[],permute(MCorFMC.NI_zneg,[2 1 3]),[],[],[]};
       h_xneg = NaN;
       h_yneg = NaN;
       h_zneg = imagesc(size(MCorFMC.NI_zneg,1)/2*[-dx dx],size(MCorFMC.NI_zneg,2)/2*[-dy dy],MCorFMC.NI_zneg(:,:,lsi).');
@@ -132,7 +132,7 @@ function h_f = plotCuboidSurfaces(nFig,model,simFluorescence)
     case 3
       fprintf(['%.3g%% of ' fluorescenceOrIncident 'light hits the top or bottom cuboid boundaries.\n'],100*sum(MCorFMC.NI_zneg(:) + MCorFMC.NI_zpos(:))*dx*dy/P_in);
 
-      h_f.UserData = {[],[],pagetranspose(MCorFMC.NI_zneg),[],[],pagetranspose(MCorFMC.NI_zpos)};
+      h_f.UserData = {[],[],permute(MCorFMC.NI_zneg,[2 1 3]),[],[],permute(MCorFMC.NI_zpos,[2 1 3])};
       h_xneg = NaN;
       h_yneg = NaN;
       subplot(2,1,1);

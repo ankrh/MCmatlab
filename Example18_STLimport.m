@@ -51,6 +51,7 @@
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
+MCmatlab.closeMCmatlabFigures();
 model = MCmatlab.model;
 
 model.G.nx                = 100; % Number of bins in the x direction
@@ -66,22 +67,26 @@ model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined a
 % translation along +z:
 model.G.geomFunc          = @geometryDefinition_1;
 model = plot(model,'G');
+figure(31); % Make the STL import illustration the active figure so we can see it
 fprintf('Press enter to continue...\n');pause;
 
 % Mirror along the z direction, scale and translate:
 model.G.geomFunc          = @geometryDefinition_2;
 model = plot(model,'G');
+figure(31); % Make the STL import illustration the active figure so we can see it
 fprintf('Press enter to continue...\n');pause;
 
 % Rotate by pi/2 (90 degrees) around the x axis, then scale and translate:
 model.G.geomFunc          = @geometryDefinition_3;
 model = plot(model,'G');
+figure(31); % Make the STL import illustration the active figure so we can see it
 fprintf('Press enter to continue...\n');pause;
 
 % Rotate by pi/2 (90 degrees) around the x axis, then -pi/2 (-90 degrees)
 % around the z axis, then scale and translate:
 model.G.geomFunc          = @geometryDefinition_4;
 model = plot(model,'G');
+figure(31); % Make the STL import illustration the active figure so we can see it
 
 %% Geometry function(s) (see readme for details)
 function M = geometryDefinition_1(X,Y,Z,parameters)

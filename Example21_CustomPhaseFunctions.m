@@ -17,9 +17,8 @@
 %
 % For the custom phase function for the scatterer, instead of setting the
 % "g" field in the media properties struct we set instead the
-% customPhaseFunc field, which has be be a char array that writes out a
-% MATLAB-evaluateable expression that is a function of theta. The
-% expression does not need to be normalized. MCmatlab will evaluate the
+% customPhaseFunc field, which has to be a function of lambda and theta.
+% The expression does not need to be normalized. MCmatlab will evaluate the
 % expression and use an efficient lookup table algorithm to find the
 % scattering angle at every scattering event.
 %
@@ -42,6 +41,7 @@
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
+MCmatlab.closeMCmatlabFigures();
 model = MCmatlab.model;
 
 model.G.nx                = 101; % Number of bins in the x direction
@@ -78,6 +78,7 @@ model.MC.depositionCriteria.minScatterings = 1;
 
 model = runMonteCarlo(model);
 model = plot(model,'MC');
+figure(9); % Show the far field plot
 
 %% Geometry function(s) (see readme for details)
 function M = geometryDefinition(X,Y,Z,parameters)

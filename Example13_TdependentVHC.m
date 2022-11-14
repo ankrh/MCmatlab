@@ -2,14 +2,14 @@
 % This example showcases the option of letting the thermal media properties
 % depend on temperature. A medium is defined that has a volumetric heat
 % capacity (VHC) that increases drastically when the temperature is around
-% 40째 C. Such a medium is not particularly realistic, but serves to
+% 40캜. Such a medium is not particularly realistic, but serves to
 % showcase the feature.
 %
-% As the medium heats up, the regions that approach 40째 C will not heat
+% As the medium heats up, the regions that approach 40캜 will not heat
 % much further due to the very high VHC, despite still absorbing the same
-% power as before. In the plot, the yellow color (40째 C) can be seen to
+% power as before. In the plot, the yellow color (40캜) can be seen to
 % extend further and further down into the medium as time goes, but even
-% the top layer has not become white (45째 C) by the end of the
+% the top layer has not become white (45캜) by the end of the
 % simulation.
 %
 % In models where optical or thermal properties depend on temperature or
@@ -31,6 +31,7 @@
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
+MCmatlab.closeMCmatlabFigures();
 model = MCmatlab.model;
 
 model.G.nx                = 100; % Number of bins in the x direction

@@ -18,8 +18,9 @@ function [h_f,h_a] = NdimSliderPlot(data,varargin)
   addOptional(p,'logColormap',MCmatlab.makec2f,@(x)(isnumeric(x) && ismatrix(x))); % The colormap to use for log plot mode
   addOptional(p,'axisDims',[],@isUniqueNaturalNumberArray); % An array of unique natural numbers denoting which dimensions of the data array should be used for axes in the visualization. All other dimensions that are not singleton dimensions are adjusted with sliders.
   addOptional(p,'slicePositions',[],@(x)(isnumeric(x) && all(x>=0) && all(x<=1))); % For geometry illustration plots
-  % The following three parameters are used only for plot types used in
-  % MCmatlab and are not intended to be for general-purpose use:
+  addOptional(p,'docked',true,@(x)(islogical(x))); % Should created figure be docked?
+  % The following parameter is used only for plot types used in MCmatlab
+  % and is not intended to be for general-purpose use:
   addOptional(p,'indexLabels',{},@(x)iscell(x)); % For geometry illustration plots
 
   parse(p,varargin{:});
@@ -116,6 +117,11 @@ function [h_f,h_a] = NdimSliderPlot(data,varargin)
     h_f = figure;
   else
     h_f = figure(p.Results.nFig);
+  end
+  if p.Results.docked
+    set(h_f,'WindowStyle','Docked');
+  else
+    set(h_f,'WindowStyle','normal');
   end
   clf reset;
   h_f.Color = 'w';

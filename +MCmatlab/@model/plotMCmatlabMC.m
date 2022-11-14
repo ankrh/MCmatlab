@@ -98,7 +98,6 @@ if simFluorescence
     'fromZero',true,...
     'axisEqual',true,...
     'reversedAxes',3);
-  set(h_f,'WindowStyle','Docked');
   h_f.Name = 'Fluorescence emitters';
 
   P_exc_abs = G.dx*G.dy*G.dz*sum(model.MC.NA(:));
@@ -109,7 +108,6 @@ end
 
 %% Make media properties plot
 h_f = plotMediaProperties(2,model);
-set(h_f,'WindowStyle','Docked');
 h_f.Name = 'Media properties';
 
 if ~isscalar(MCorFMC.NFR)
@@ -121,7 +119,6 @@ if ~isscalar(MCorFMC.NFR)
     'fromZero',true,...
     'axisEqual',true,...
     'reversedAxes',3);
-  set(h_f,'WindowStyle','Docked');
   h_f.Name = ['Normalized ' fluorescenceOrNothing 'absorption'];
   
   fprintf(['%.3g%% of ' fluorescenceOrIncident 'light was absorbed within the cuboid.\n'],100*G.dx*G.dy*G.dz*sum(MCorFMC.NA(:))/P_in);
@@ -134,7 +131,6 @@ if ~isscalar(MCorFMC.NFR)
     'fromZero',true,...
     'axisEqual',true,...
     'reversedAxes',3);
-  set(h_f,'WindowStyle','Docked');
   h_f.Name = ['Normalized ' fluorescenceOrNothing 'fluence rate'];
 end
 
@@ -149,7 +145,6 @@ if MCorFMC.nExamplePaths > 0
     'axisEqual',true,...
     'reversedAxes',3);
   legend off;
-  set(h_f,'WindowStyle','Docked');
   if simFluorescence
     h_f.Name = 'Fluorescence photon paths';
   else
@@ -191,7 +186,6 @@ if MCorFMC.useLightCollector
     'axisEqual',true,...
     'reversedAxes',3);
   legend off;
-  set(h_f,'WindowStyle','Docked');
   if simFluorescence
     h_f.Name = 'Fluorescence light collector illustration';
   else
@@ -247,7 +241,6 @@ if MCorFMC.useLightCollector
       'fromZero',true,...
       'axisEqual',true,...
       'reversedAxes',3);
-    set(h_f,'WindowStyle','Docked');
     h_f.Name = ['Normalized fluence rate of collected ' fluorescenceOrIncident 'light'];
   end
   
@@ -276,7 +269,6 @@ if MCorFMC.useLightCollector
     else
       title(h_a,'Normalized power on the detector [W/W.incident]');
     end
-    set(h_f,'WindowStyle','Docked');
   end
 end
 

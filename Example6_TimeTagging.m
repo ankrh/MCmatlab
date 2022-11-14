@@ -25,6 +25,7 @@
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
+MCmatlab.closeMCmatlabFigures();
 model = MCmatlab.model;
 
 model.G.nx                = 20; % Number of bins in the x direction
@@ -76,6 +77,7 @@ model.MC.lightCollector.nTimeBins = 100; % Number of bins between tStart and tEn
 
 model = runMonteCarlo(model);
 model = plot(model,'MC');
+figure(8); % Focus on the collected light plot
 
 %% Geometry function(s) (see readme for details)
 function M = geometryDefinition(X,Y,Z,parameters)

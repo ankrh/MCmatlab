@@ -54,7 +54,6 @@ if numTemperatureSensors
     'axisEqual',true,...
     'reversedAxes',3,...
     'slicePositions',model.HS.slicePositions);
-  set(h_f,'WindowStyle','Docked');
   h_f.Name = 'Temperature sensor illustration';
   title('Temperature sensor illustration');
 
@@ -68,9 +67,9 @@ if numTemperatureSensors
   text(model.HS.tempSensorPositions(:,1),model.HS.tempSensorPositions(:,2),model.HS.tempSensorPositions(:,3),sensorNumbers,'HorizontalAlignment','center','VerticalAlignment','middle','FontSize',18);
 
   h_f = figure(24);
+  clf reset;
   set(h_f,'WindowStyle','Docked');
   h_f.Color = 'w';
-  clf;
   h_f.Name = 'Temperature sensor data';
   plot(model.HS.sensorsTimeVector,model.HS.sensorTemps,'LineWidth',2);
   set(gca,'FontSize',16);
@@ -101,7 +100,6 @@ if ~isnan(model.HS.Omega(1))
     'axisEqual',true,...
     'reversedAxes',3,...
     'slicePositions',model.HS.slicePositions);
-  set(h_f,'WindowStyle','Docked');
   h_f.Name = 'Thermal damage illustration';
   title('Thermal damage illustration');
   fprintf('%.2e cm^3 was thermally damaged.\n',G.dx*G.dy*G.dz*sum(model.HS.Omega(:) > 1));
@@ -113,7 +111,6 @@ if ~isnan(model.HS.Omega(1))
     'axisEqual',true,...
     'reversedAxes',3,...
     'slicePositions',model.HS.slicePositions);
-  set(h_f,'WindowStyle','Docked');
   h_f.Name = 'Fractional damage';
   title('Fractional damage (1 - e^{-\Omega})');
 end
