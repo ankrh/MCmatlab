@@ -37,6 +37,7 @@
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
+MCmatlab.closeMCmatlabFigures();
 model = MCmatlab.model;
 
 model.G.nx                = 101; % Number of bins in the x direction
@@ -70,10 +71,10 @@ model.MC.lightSource.zFocus       = 0.03; % [cm] z position of focus
 model.MC.lightSource.theta        = pi/6; % [rad] Polar angle of beam center axis
 model.MC.lightSource.phi          = -pi/2; % [rad] Azimuthal angle of beam center axis
 
-% Execution, do not modify the next line:
-model = runMonteCarlo(model);
 
+model = runMonteCarlo(model);
 model = plot(model,'MC');
+figure(9); % Focus on the far field
 
 %% Fluorescence Monte Carlo
 model.FMC.simulationTimeRequested  = 0.1; % [min] Time duration of the simulation
@@ -83,57 +84,46 @@ model.FMC.matchedInterfaces        = true; % Assumes all refractive indices are 
 model.FMC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
 model.FMC.wavelength               = 550; % [nm] Fluorescence wavelength, used for determination of optical properties for fluorescence light
 
-% Execution, do not modify the next line:
+
 model = runMonteCarlo(model,'fluorescence');
-
 model = plot(model,'FMC');
+figure(19); % Focus on the far field
 
-%% Geometry function(s)
-% A geometry function takes as input X,Y,Z matrices as returned by the
-% "ndgrid" MATLAB function as well as any parameters the user may have
-% provided in the definition of model.G. It returns the media matrix M,
-% containing numerical values indicating the media type (as defined in
-% mediaPropertiesFunc) at each voxel location.
+%% Geometry function(s) (see readme for details)
 function M = geometryDefinition(X,Y,Z,parameters)
   cylinderradius  = 0.0100;
   M = 1*ones(size(X)); % fill background with fluorescence absorber
   M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 2; % fluorescer
 end
 
-%% Media Properties function
-% The media properties function defines all the optical and thermal
-% properties of the media involved by constructing and returning a
-% "mediaProperties" struct with various fields. As its input, the function
-% takes the wavelength as well as any other parameters you might specify
-% above in the model file, for example parameters that you might loop over
-% in a for loop. Dependence on excitation fluence rate FR, temperature T or
-% fractional heat damage FD can be specified as in examples 12-15.
-function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
+%% Media Properties function (see readme for details)
+function mediaProperties = mediaPropertiesFunc(parameters)
+  mediaProperties = MCmatlab.mediumProperties;
+
   j=1;
   mediaProperties(j).name  = 'fluorescence absorber';
-  if(wavelength<500)
-    mediaProperties(j).mua = 1; % [cm^-1]
-    mediaProperties(j).mus = 100; % [cm^-1]
-    mediaProperties(j).g   = 0.9;
-  else
-    mediaProperties(j).mua = 100; % [cm^-1]
-    mediaProperties(j).mus = 100; % [cm^-1]
-    mediaProperties(j).g   = 0.9;
+  mediaProperties(j).mua = @func1; % [cm^-1]
+  function mua = func1(wavelength)
+    if(wavelength<500)
+      mua = 1; % [cm^-1]
+    else
+      mua = 100; % [cm^-1]
+    end
   end
+  mediaProperties(j).mus = 100; % [cm^-1]
+  mediaProperties(j).g   = 0.9;
 
   j=2;
   mediaProperties(j).name  = 'fluorescer';
-  if(wavelength<500)
-    mediaProperties(j).mua = 100; % [cm^-1]
-    mediaProperties(j).mus = 100; % [cm^-1]
-    mediaProperties(j).g   = 0.9;
-  else
-    mediaProperties(j).mua = 1; % [cm^-1]
-    mediaProperties(j).mus = 100; % [cm^-1]
-    mediaProperties(j).g   = 0.9;
+  mediaProperties(j).mua = @func2; % [cm^-1]
+  function mua = func2(wavelength)
+    if(wavelength<500)
+      mua = 100; % [cm^-1]
+    else
+      mua = 1; % [cm^-1]
+    end
   end
-
-  % Only one of PY and QY may be defined:
-  mediaProperties(j).PY   = 0.5; % Fluorescence power yield (ratio of power emitted to power absorbed)
-  % mediaProperties(j).QY   = 0.6; % Fluorescence quantum yield (ratio of photons emitted to photons absorbed)
+  mediaProperties(j).mus = 100; % [cm^-1]
+  mediaProperties(j).g   = 0.9;
+  mediaProperties(j).QY   = 0.4; % Fluorescence quantum yield
 end

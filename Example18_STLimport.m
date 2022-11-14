@@ -33,9 +33,8 @@
 % clockwise in a right-handed coordinate system will be counter-clockwise
 % in MCmatlab's coordinate system.
 %
-% The STL import feature uses the function VOXELISE written by Adam H.
-% Aitkenhead
-% https://se.mathworks.com/matlabcentral/fileexchange/27390-mesh-voxelisation
+% The STL import feature uses the mesh_voxelization code by William Warriner:
+% https://github.com/wwarriner/mesh_voxelization
 % although the function has been lightly modified by Anders K. Hansen for
 % use in MCmatlab.
 
@@ -52,6 +51,7 @@
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
+MCmatlab.closeMCmatlabFigures();
 model = MCmatlab.model;
 
 model.G.nx                = 100; % Number of bins in the x direction
@@ -67,29 +67,28 @@ model.G.mediaPropertiesFunc = @mediaPropertiesFunc; % Media properties defined a
 % translation along +z:
 model.G.geomFunc          = @geometryDefinition_1;
 model = plot(model,'G');
+figure(31); % Make the STL import illustration the active figure so we can see it
 fprintf('Press enter to continue...\n');pause;
 
 % Mirror along the z direction, scale and translate:
 model.G.geomFunc          = @geometryDefinition_2;
 model = plot(model,'G');
+figure(31); % Make the STL import illustration the active figure so we can see it
 fprintf('Press enter to continue...\n');pause;
 
 % Rotate by pi/2 (90 degrees) around the x axis, then scale and translate:
 model.G.geomFunc          = @geometryDefinition_3;
 model = plot(model,'G');
+figure(31); % Make the STL import illustration the active figure so we can see it
 fprintf('Press enter to continue...\n');pause;
 
 % Rotate by pi/2 (90 degrees) around the x axis, then -pi/2 (-90 degrees)
 % around the z axis, then scale and translate:
 model.G.geomFunc          = @geometryDefinition_4;
 model = plot(model,'G');
+figure(31); % Make the STL import illustration the active figure so we can see it
 
-%% Geometry function(s)
-% A geometry function takes as input X,Y,Z matrices as returned by the
-% "ndgrid" MATLAB function as well as any parameters the user may have
-% provided in the definition of Ginput. It returns the media matrix M,
-% containing numerical values indicating the media type (as defined in
-% mediaPropertiesFunc) at each voxel location.
+%% Geometry function(s) (see readme for details)
 function M = geometryDefinition_1(X,Y,Z,parameters)
   % Don't rotate or mirror the STL mesh points, but convert the coordinates from mm to cm by multiplying by 0.1:
   A = 0.1*eye(3);
@@ -168,15 +167,10 @@ function M = geometryDefinition_4(X,Y,Z,parameters)
   M(insideVoxels) = 2;
 end
 
-%% Media Properties function
-% The media properties function defines all the optical and thermal
-% properties of the media involved by constructing and returning a
-% "mediaProperties" struct with various fields. As its input, the function
-% takes the wavelength as well as any other parameters you might specify
-% above in the model file, for example parameters that you might loop over
-% in a for loop. Dependence on excitation fluence rate FR, temperature T or
-% fractional heat damage FD can be specified as in examples 12-15.
-function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
+%% Media Properties function (see readme for details)
+function mediaProperties = mediaPropertiesFunc(parameters)
+  mediaProperties = MCmatlab.mediumProperties;
+
   j=1;
   mediaProperties(j).name  = 'air';
   mediaProperties(j).mua   = 1e-8; % [cm^-1]

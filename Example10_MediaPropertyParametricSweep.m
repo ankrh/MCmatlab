@@ -1,16 +1,16 @@
 %% Description
 % This example is another illustration of MC simulations inside a for loop,
-% this time simulating a pencil beam incident on a 100Âµm slab of scattering
+% this time simulating a pencil beam incident on a 100 µm slab of scattering
 % medium with a variable (parametrically sweeped) scattering anisotropy g.
 % g is passed in through the mediaPropParams field and used within
-% mediaPropertiesFunc. Light is collected in transmission at a 45Â° angle in
+% mediaPropertiesFunc. Light is collected in transmission at a 45° angle in
 % a fiber, similar to example 8. At the end of the script, collected power
 % as a function of g is plotted. The power is seen to be zero for g = +- 1,
 % which is because then the light can only be scattered exactly forward or
 % backward. The max is at about 0.6, fitting well with a single scattering
-% event at 45Â°. There is a secondary hump around -0.7, which fits with
+% event at 45°. There is a secondary hump around -0.7, which fits with
 % photons experiencing two scattering events at a scattering angle of
-% 157.5Â°.
+% 157.5°.
 %
 % As in example 9, calcNFR is again set to false to speed up the simulation
 % slightly.
@@ -32,6 +32,7 @@
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
+MCmatlab.closeMCmatlabFigures();
 model = MCmatlab.model;
 
 model.G.silentMode        = true; % Disables command window text and progress indication
@@ -105,25 +106,15 @@ xlabel('Scattering anisotropy g');
 ylabel('Normalized power collected by fiber');
 set(gca,'FontSize',18);grid on; grid minor;
 
-%% Geometry function(s)
-% A geometry function takes as input X,Y,Z matrices as returned by the
-% "ndgrid" MATLAB function as well as any parameters the user may have
-% provided in the definition of Ginput. It returns the media matrix M,
-% containing numerical values indicating the media type (as defined in
-% mediaPropertiesFunc) at each voxel location.
+%% Geometry function(s) (see readme for details)
 function M = geometryDefinition(X,Y,Z,parameters)
   M = ones(size(X)); % Variable g medium
 end
 
-%% Media Properties function
-% The media properties function defines all the optical and thermal
-% properties of the media involved by constructing and returning a
-% "mediaProperties" struct with various fields. As its input, the function
-% takes the wavelength as well as any other parameters you might specify
-% above in the model file, for example parameters that you might loop over
-% in a for loop. Dependence on excitation fluence rate FR, temperature T or
-% fractional heat damage FD can be specified as in examples 12-15.
-function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
+%% Media Properties function (see readme for details)
+function mediaProperties = mediaPropertiesFunc(parameters)
+  mediaProperties = MCmatlab.mediumProperties;
+
   j=1;
   mediaProperties(j).name  = 'variable g medium';
   mediaProperties(j).mua   = 10; % [cm^-1]

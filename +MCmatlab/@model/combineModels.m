@@ -1,8 +1,8 @@
 function model = combineModels(modelArray,simType)
-  arguments
-    modelArray (1,:) MCmatlab.model
-    simType (1,:) char
-  end
+%   arguments
+%     modelArray (1,:) MCmatlab.model
+%     simType (1,:) char
+%   end
 
   % Verify that G properties are identical
   Gprops = {'nx','ny','nz','Lx','Ly','Lz','mediaPropertiesFunc','mediaPropParams','geomFunc','geomFuncParams'};

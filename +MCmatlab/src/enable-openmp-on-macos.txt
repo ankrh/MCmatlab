@@ -1,7 +1,8 @@
 Thanks to Will Grissom who figured this method out for his tool kpTx (https://github.com/wgrissom)
 
-The following strategy worked for MATLAB R2022a running on Mac OS Monterey, 12.4:
+The following strategy worked for MATLAB R2022a running on Mac OS Ventura, 13.0:
 
+- Install XCode from the App Store and, subsequently, the Apple Command Line Tools: fire up a terminal and type "xcode-select --install"
 - Install Homebrew: https://brew.sh
 - Use Homebrew to install LLVM and OpenMP: brew install llvm libomp
 - Tell MATLAB to use a custom MEX setup for C compilation, which points to your llvm compiler and includes OpenMP flags: mex -setup:/path/to/clang_openmp_maci64.xml C (clang_openmp_maci64.xml is included in this repo)

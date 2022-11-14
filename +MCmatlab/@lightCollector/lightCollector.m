@@ -27,6 +27,7 @@ classdef lightCollector
     image = NaN
     X = NaN
     Y = NaN
+    t = NaN
   end
 
   methods

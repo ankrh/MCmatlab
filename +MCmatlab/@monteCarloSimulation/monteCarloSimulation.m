@@ -18,10 +18,12 @@ classdef monteCarloSimulation
     matchedInterfaces (1,1) logical = true % If true, assumes all refractive indices are 1. If false, uses the refractive indices defined in getMediaProperties
     smoothingLengthScale (1,1) double {mustBePositive} = 0.1 % Length scale over which smoothing of the Sobel interface gradients should be performed
     boundaryType (1,1) double {mustBeInteger, mustBeInRange(boundaryType,0,3)} = 1 % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
-    wavelength (1,1) double {mustBeFinitePositiveOrNaN} = NaN % [nm] Excitation wavelength, used for determination of optical properties for excitation light
-    P (1,1) double {mustBeFinitePositiveOrNaN} = NaN % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
+    wavelength (1,:) double {mustBeFinitePositive} = 800 % [nm] Excitation wavelength, used for determination of optical properties for excitation light
+    P (1,1) double {mustBeFinitePositive} = 1 % [W] Incident pulse peak power (in case of infinite plane waves, only the power incident upon the cuboid's top surface)
+    spectrumFunc (1,1) function_handle = @default1_11func
+    
     FRinitial (:,:,:) double {mustBeFiniteNonnegativeArrayOrNaNScalar} = NaN % [W/cm^2] Initial guess for the intensity distribution, to be used for fluence rate dependent simulations
-    FRdepIterations (1,1) double {mustBeInteger, mustBePositive} = 20
+    FRdepIterations (1,1) double {mustBeInteger, mustBeNonnegative} = 0
 
     lightSource (1,:) MCmatlab.lightSource {mustBeScalarOrEmpty} = MCmatlab.lightSource
 
@@ -35,22 +37,17 @@ classdef monteCarloSimulation
     nPhotons = NaN
     nThreads = NaN
 
-    mediaProperties_funcHandles = NaN % Wavelength-dependent
     mediaProperties = NaN % Wavelength- and splitting-dependent
-    CDFs = NaN % Cumulative distribution functions for custom phase functions (not Henyey Greenstein)
-    FRdependent logical = false
-    FDdependent logical = false
-    Tdependent logical = false
+    CDFs = {} % Cumulative distribution functions for custom phase functions (not Henyey Greenstein)
     M = NaN % Splitting-dependent
     interfaceNormals single = NaN
+    spectrum = NaN
 
     examplePaths = NaN
 
-    normalizedFluenceRate = NaN
-    normalizedFluenceRate_detected = NaN
-    normalizedAbsorption = NaN
-    normalizedAbsorption_detected = NaN
-    FR = NaN
+    normalizedFluenceRate = 0
+    normalizedFluenceRate_detected = 0
+    FR = 0
 
     farField = NaN
     farFieldTheta = NaN
@@ -62,6 +59,11 @@ classdef monteCarloSimulation
     normalizedIrradiance_yneg = NaN
     normalizedIrradiance_zpos = NaN
     normalizedIrradiance_zneg = NaN
+  end
+
+  properties (Dependent)
+    normalizedAbsorption
+    normalizedAbsorption_detected
   end
 
   properties (Hidden)
@@ -83,6 +85,38 @@ classdef monteCarloSimulation
   end
 
   methods
+    function obj = set.spectrumFunc(obj,x)
+      if abs(nargout(x)) ~= 1
+        error('Error: The function must return exactly one output argument (spectrum).')
+      end
+      if nargin(x) ~= 1
+        error('Error: The function must take one input argument (wavelength).');
+      end
+      obj.spectrumFunc = x;
+    end
+
+    function NA = get.normalizedAbsorption(obj)
+      if numel(obj.NFR) > 1
+        NA = NaN(size(obj.NFR));
+        for iWavelength = 1:numel(obj.wavelength)
+          mua_vec = [obj.mediaProperties.mua(:,iWavelength)];
+          NA(:,:,:,iWavelength) = mua_vec(obj.M).*obj.NFR(:,:,:,iWavelength);
+        end
+      else
+        NA = 0;
+      end
+    end
+    function NAdet = get.normalizedAbsorption_detected(obj)
+      if numel(obj.NFRdet) > 1
+        NAdet = NaN(size(obj.NFRdet));
+        for iWavelength = 1:size(obj.mediaProperties,2)
+          mua_vec = [obj.mediaProperties.mua(:,iWavelength)];
+          NAdet(:,:,:,iWavelength) = mua_vec(obj.M).*obj.NFRdet(:,:,:,iWavelength);
+        end
+      else
+        NAdet = 0;
+      end
+    end
     function x = get.beam(obj)
       warning('beam has been renamed lightSource (LS). The ability to reference lightSource through beam will be deprecated in a future version.');
       x = obj.lightSource;
@@ -131,12 +165,12 @@ else
 end
 end
 
-function mustBeFinitePositiveOrNaN(x)
+function mustBeFinitePositive(x)
 x = x(:);
-if all(isnan(x) | (isfinite(x) & x > 0))
+if all(isfinite(x) & x > 0)
   % Valid input
 else
-  error('Value must be finite positive or NaN.');
+  error('Value must be finite positive.');
 end
 end
 
@@ -167,4 +201,8 @@ function mustBeScalarOrEmpty(x)
 if numel(x) > 1
   error('Error: Value must be scalar or empty.');
 end
+end
+
+function x = default1_11func(~)
+  x = 1;
 end

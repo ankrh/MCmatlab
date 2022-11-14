@@ -40,6 +40,7 @@
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
+MCmatlab.closeMCmatlabFigures();
 model = MCmatlab.model;
 
 model.G.nx                = 100; % Number of bins in the x direction
@@ -73,9 +74,8 @@ model.MC.lightSource.zFocus       = 0.08; % [cm] z position of focus
 model.MC.lightSource.theta        = 0; % [rad] Polar angle of beam center axis
 model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of beam center axis
 
-% Execution, do not modify the next line:
-model = runMonteCarlo(model);
 
+model = runMonteCarlo(model);
 model = plot(model,'MC');
 
 %% Heat simulation
@@ -87,7 +87,7 @@ model.HS.heatBoundaryType    = 1; % 0: Insulating boundaries, 1: Constant-temper
 model.HS.durationOn          = 0.02; % [s] Pulse on-duration
 model.HS.durationOff         = 0.00; % [s] Pulse off-duration
 model.HS.durationEnd         = 0.02; % [s] Non-illuminated relaxation time to add to the end of the simulation to let temperature diffuse after the pulse train
-model.HS.Tinitial            = 20; % [deg C] Initial temperature
+model.HS.T                   = 20; % [deg C] Initial temperature
 
 model.HS.nPulses             = 1; % Number of consecutive pulses, each with an illumination phase and a diffusion phase. If simulating only illumination or only diffusion, use nPulses = 1.
 
@@ -99,33 +99,22 @@ model.HS.tempSensorPositions = [0 0 0.065
   0 0 0.075
   0 0 0.085]; % Each row is a temperature sensor's absolute [x y z] coordinates. Leave the matrix empty ([]) to disable temperature sensors.
 
-% Execution, do not modify the next line:
-model = simulateHeatDistribution(model);
 
+model = simulateHeatDistribution(model);
 model = plot(model,'HS');
 model = plot(model,'MC');
 
-%% Geometry function(s)
-% A geometry function takes as input X,Y,Z matrices as returned by the
-% "ndgrid" MATLAB function as well as any parameters the user may have
-% provided in the definition of Ginput. It returns the media matrix M,
-% containing numerical values indicating the media type (as defined in
-% mediaPropertiesFunc) at each voxel location.
+%% Geometry function(s) (see readme for details)
 function M = geometryDefinition(X,Y,Z,parameters)
   M = ones(size(X)); % fill background with water
   M(Z > 0.03) = 2; % egg white
   M(Z > 0.08) = 3; % absorber
 end
 
-%% Media Properties function
-% The media properties function defines all the optical and thermal
-% properties of the media involved by constructing and returning a
-% "mediaProperties" struct with various fields. As its input, the function
-% takes the wavelength as well as any other parameters you might specify
-% above in the model file, for example parameters that you might loop over
-% in a for loop. Dependence on excitation fluence rate FR, temperature T or
-% fractional heat damage FD can be specified as in examples 12-15.
-function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
+%% Media Properties function (see readme for details)
+function mediaProperties = mediaPropertiesFunc(parameters)
+  mediaProperties = MCmatlab.mediumProperties;
+
   j=1;
   mediaProperties(j).name  = 'water';
   mediaProperties(j).mua   = 0.00036; % [cm^-1]
@@ -137,7 +126,10 @@ function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
   j=2;
   mediaProperties(j).name  = 'egg white';
   mediaProperties(j).mua   = 1; % [cm^-1]
-  mediaProperties(j).mus   = '1+1000*FD'; % [cm^-1]
+  mediaProperties(j).mus   = @musfunc2;
+  function mus = musfunc2(wavelength,FR,T,FD)
+    mus = 1+1000*FD; % [cm^-1]
+  end
   mediaProperties(j).g     = 0.5;
   mediaProperties(j).VHC   = 4.19; % [J cm^-3 K^-1]
   mediaProperties(j).TC    = 5.8e-3; % [W cm^-1 K^-1]

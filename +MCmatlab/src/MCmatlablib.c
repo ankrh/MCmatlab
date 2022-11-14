@@ -27,21 +27,21 @@ struct geometry { // Struct type for the constant geometry definitions, includin
   float          *interfaceNormals;
 };
 
-struct beam { // Struct type for the constant beam definitions
+struct source { // Struct type for the constant beam definitions
   int            beamType;
   FLOATORDBL     emitterLength;
-  FLOATORDBL     *NFdist1; // Radial or X
-  long           L_NF1;
-  FLOATORDBL     NFwidth1;
-  FLOATORDBL     *NFdist2; // Azimuthal or Y
-  long           L_NF2;
-  FLOATORDBL     NFwidth2;
-  FLOATORDBL     *FFdist1; // Radial or X
-  long           L_FF1;
-  FLOATORDBL     FFwidth1;
-  FLOATORDBL     *FFdist2; // Azimuthal or Y
-  long           L_FF2;
-  FLOATORDBL     FFwidth2;
+  FLOATORDBL     *FPIDdist1; // Radial or X
+  long           L_FPID1;
+  FLOATORDBL     FPIDwidth1;
+  FLOATORDBL     *FPIDdist2; // Azimuthal or Y
+  long           L_FPID2;
+  FLOATORDBL     FPIDwidth2;
+  FLOATORDBL     *AIDdist1; // Radial or X
+  long           L_AID1;
+  FLOATORDBL     AIDwidth1;
+  FLOATORDBL     *AIDdist2; // Azimuthal or Y
+  long           L_AID2;
+  FLOATORDBL     AIDwidth2;
   FLOATORDBL     *S;
   FLOATORDBL     power;
   FLOATORDBL     focus[3];
@@ -89,18 +89,31 @@ struct paths { // Struct type for storing the paths taken by the nExamplePaths f
   FLOATORDBL     *data; // Array containing x, y, z and weight data for the photons, in which the paths of different photons are separated by four NaNs
 };
 
+struct MATLABoutputs {
+  float * NFR;
+  float * NFRdet;
+  float * image;
+  float * FF;
+  float * NI_xpos;
+  float * NI_xneg;
+  float * NI_ypos;
+  float * NI_yneg;
+  float * NI_zpos;
+  float * NI_zneg;
+};
+
 struct outputs {
   unsigned long long nPhotons;
-  double * NFR;
-  double * NFRdet;
-  double * image;
-  double * FF;
-  double * NI_xpos;
-  double * NI_xneg;
-  double * NI_ypos;
-  double * NI_yneg;
-  double * NI_zpos;
-  double * NI_zneg;
+  FLOATORDBL * NFR;
+  FLOATORDBL * NFRdet;
+  FLOATORDBL * image;
+  FLOATORDBL * FF;
+  FLOATORDBL * NI_xpos;
+  FLOATORDBL * NI_xneg;
+  FLOATORDBL * NI_ypos;
+  FLOATORDBL * NI_yneg;
+  FLOATORDBL * NI_zpos;
+  FLOATORDBL * NI_zneg;
 };
 
 #ifdef __NVCC__ // If compiling for CUDA
@@ -129,7 +142,7 @@ __device__
 #endif
 float sqrf(float x) {return x*x;}
 
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 600
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 600 && !defined(USEFLOATSFORGPU)
 __device__ double atomicAdd(double* address, double val) {
   unsigned long long int* address_as_ull = (unsigned long long int*)address;
   unsigned long long int old = *address_as_ull, assumed;
@@ -170,7 +183,7 @@ void atomicAddWrapperULL(unsigned long long *ptr, unsigned long long val) {
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void atomicAddWrapperDBL(double *ptr, double val) {
+void atomicAddWrapper(FLOATORDBL *ptr, double val) {
   #ifdef __NVCC__ // If compiling for CUDA
     atomicAdd(ptr,val);
   #else
@@ -268,7 +281,7 @@ void getNewj(struct geometry const *G, struct photon *P) {
 
 #ifdef __NVCC__ // If compiling for CUDA
 void createDeviceStructs(struct geometry const *G, struct geometry **G_devptr,
-                         struct beam const *B, struct beam **B_devptr,
+                         struct source const *B, struct source **B_devptr,
                          struct lightCollector const *LC, struct lightCollector **LC_devptr,
                          struct paths *Pa, struct paths **Pa_devptr,
                          struct outputs *O, struct outputs **O_devptr,
@@ -292,13 +305,13 @@ void createDeviceStructs(struct geometry const *G, struct geometry **G_devptr,
   gpuErrchk(cudaMemcpy(*G_devptr,&G_tempvar,sizeof(struct geometry),cudaMemcpyHostToDevice));
 
   // Allocate and copy beam struct
-  struct beam B_tempvar = *B;
+  struct source B_tempvar = *B;
   if(B->S) {
     gpuErrchk(cudaMalloc(&B_tempvar.S, (L+1)*sizeof(FLOATORDBL)));
     gpuErrchk(cudaMemcpy(B_tempvar.S, B->S, (L+1)*sizeof(FLOATORDBL),cudaMemcpyHostToDevice));
   }
-  gpuErrchk(cudaMalloc(B_devptr, sizeof(struct beam)));
-  gpuErrchk(cudaMemcpy(*B_devptr,&B_tempvar,sizeof(struct beam),cudaMemcpyHostToDevice));
+  gpuErrchk(cudaMalloc(B_devptr, sizeof(struct source)));
+  gpuErrchk(cudaMemcpy(*B_devptr,&B_tempvar,sizeof(struct source),cudaMemcpyHostToDevice));
 
   // Allocate and copy deposition criteria struct
   gpuErrchk(cudaMalloc(DC_devptr, sizeof(struct depositionCriteria)));
@@ -369,7 +382,7 @@ void createDeviceStructs(struct geometry const *G, struct geometry **G_devptr,
 
 #ifdef __NVCC__ // If compiling for CUDA
 void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_dev,
-                                  struct beam const *B, struct beam *B_dev,
+                                  struct source const *B, struct source *B_dev,
                                   struct lightCollector const *LC, struct lightCollector *LC_dev,
                                   struct paths *Pa, struct paths *Pa_dev,
                                   struct outputs *O, struct outputs *O_dev,
@@ -382,7 +395,7 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
   gpuErrchk(cudaFree(G_temp.interfaceNormals));
   gpuErrchk(cudaFree(G_dev));
 
-  struct beam B_temp; gpuErrchk(cudaMemcpy(&B_temp, B_dev, sizeof(struct beam),cudaMemcpyDeviceToHost));
+  struct source B_temp; gpuErrchk(cudaMemcpy(&B_temp, B_dev, sizeof(struct source),cudaMemcpyDeviceToHost));
   gpuErrchk(cudaFree(B_temp.S));
   gpuErrchk(cudaFree(B_dev));
   
@@ -402,43 +415,43 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
   struct outputs O_temp; gpuErrchk(cudaMemcpy(&O_temp, O_dev, sizeof(struct outputs),cudaMemcpyDeviceToHost));
   O->nPhotons = O_temp.nPhotons;
   if(O->NFR) {
-    gpuErrchk(cudaMemcpy(O->NFR, O_temp.NFR, L*sizeof(double),cudaMemcpyDeviceToHost));
+    gpuErrchk(cudaMemcpy(O->NFR, O_temp.NFR, L*sizeof(FLOATORDBL),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.NFR));
   }
   if(O->NFRdet) {
-    gpuErrchk(cudaMemcpy(O->NFRdet, O_temp.NFRdet, L*sizeof(double),cudaMemcpyDeviceToHost));
+    gpuErrchk(cudaMemcpy(O->NFRdet, O_temp.NFRdet, L*sizeof(FLOATORDBL),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.NFRdet));
   }
   if(O->image) {
-    gpuErrchk(cudaMemcpy(O->image, O_temp.image, LC->res[0]*LC->res[0]*LC->res[1]*sizeof(double),cudaMemcpyDeviceToHost));
+    gpuErrchk(cudaMemcpy(O->image, O_temp.image, LC->res[0]*LC->res[0]*LC->res[1]*sizeof(FLOATORDBL),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.image));
   }
   if(O->FF) {
-    gpuErrchk(cudaMemcpy(O->FF, O_temp.FF, G->farFieldRes*G->farFieldRes*sizeof(double),cudaMemcpyDeviceToHost));
+    gpuErrchk(cudaMemcpy(O->FF, O_temp.FF, G->farFieldRes*G->farFieldRes*sizeof(FLOATORDBL),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.FF));
   }
   if(O->NI_xpos) {
-    gpuErrchk(cudaMemcpy(O->NI_xpos, O_temp.NI_xpos, G->n[1]*G->n[2]*sizeof(double),cudaMemcpyDeviceToHost));
+    gpuErrchk(cudaMemcpy(O->NI_xpos, O_temp.NI_xpos, G->n[1]*G->n[2]*sizeof(FLOATORDBL),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.NI_xpos));
   }
   if(O->NI_xneg) {
-    gpuErrchk(cudaMemcpy(O->NI_xneg, O_temp.NI_xneg, G->n[1]*G->n[2]*sizeof(double),cudaMemcpyDeviceToHost));
+    gpuErrchk(cudaMemcpy(O->NI_xneg, O_temp.NI_xneg, G->n[1]*G->n[2]*sizeof(FLOATORDBL),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.NI_xneg));
   }
   if(O->NI_ypos) {
-    gpuErrchk(cudaMemcpy(O->NI_ypos, O_temp.NI_ypos, G->n[0]*G->n[2]*sizeof(double),cudaMemcpyDeviceToHost));
+    gpuErrchk(cudaMemcpy(O->NI_ypos, O_temp.NI_ypos, G->n[0]*G->n[2]*sizeof(FLOATORDBL),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.NI_ypos));
   }
   if(O->NI_yneg) {
-    gpuErrchk(cudaMemcpy(O->NI_yneg, O_temp.NI_yneg, G->n[0]*G->n[2]*sizeof(double),cudaMemcpyDeviceToHost));
+    gpuErrchk(cudaMemcpy(O->NI_yneg, O_temp.NI_yneg, G->n[0]*G->n[2]*sizeof(FLOATORDBL),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.NI_yneg));
   }
   if(O->NI_zpos) {
-    gpuErrchk(cudaMemcpy(O->NI_zpos, O_temp.NI_zpos, G->n[0]*G->n[1]*sizeof(double),cudaMemcpyDeviceToHost));
+    gpuErrchk(cudaMemcpy(O->NI_zpos, O_temp.NI_zpos, G->n[0]*G->n[1]*sizeof(FLOATORDBL),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.NI_zpos));
   }
   if(O->NI_zneg) {
-    gpuErrchk(cudaMemcpy(O->NI_zneg, O_temp.NI_zneg, (G->boundaryType == 2? KILLRANGE*KILLRANGE: 1)*G->n[0]*G->n[1]*sizeof(double),cudaMemcpyDeviceToHost));
+    gpuErrchk(cudaMemcpy(O->NI_zneg, O_temp.NI_zneg, (G->boundaryType == 2? KILLRANGE*KILLRANGE: 1)*G->n[0]*G->n[1]*sizeof(FLOATORDBL),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.NI_zneg));
   }
   gpuErrchk(cudaFree(O_dev));
@@ -474,7 +487,7 @@ void addToPhotonPath(struct photon * const P, struct paths * const Pa, struct ge
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void launchPhoton(struct photon * const P, struct beam const * const B, struct geometry const * const G, struct paths * const Pa, struct depositionCriteria *DC, bool * abortingPtr, struct debug * D) {
+void launchPhoton(struct photon * const P, struct source const * const B, struct geometry const * const G, struct paths * const Pa, struct depositionCriteria *DC, bool * abortingPtr, struct debug * D) {
   FLOATORDBL X,Y,r,phi,tanphiX,tanphiY,costheta,sintheta;
   long   j,idx;
   FLOATORDBL target[3]={0},w0[3];
@@ -540,9 +553,9 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
       case 3: // Laguerre-Gaussian LG01 beam
         phi     = RandomNum*2*PI;
         axisrotate(B->v,B->u,phi,w0); // w0 unit vector now points in the direction from focus center point to ray target point
-        r    = B->NFwidth1*SQRT(((FLOATORDBL)gsl_sf_lambert_Wm1(-RandomNum*EXP(-1.0f))+1)/(-2))/1.50087f; // for target calculation
+        r    = B->FPIDwidth1*SQRT(((FLOATORDBL)gsl_sf_lambert_Wm1(-RandomNum*EXP(-1.0f))+1)/(-2))/1.50087f; // for target calculation
         for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
-        phi     = B->FFwidth1*SQRT(((FLOATORDBL)gsl_sf_lambert_Wm1(-RandomNum*EXP(-1.0f))+1)/(-2))/1.50087f; // for trajectory calculation. The sqrt is valid within paraxial approximation.
+        phi     = B->AIDwidth1*SQRT(((FLOATORDBL)gsl_sf_lambert_Wm1(-RandomNum*EXP(-1.0f))+1)/(-2))/1.50087f; // for trajectory calculation. The sqrt is valid within paraxial approximation.
         axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
         P->i[0] = (target[0] - target[2]*P->u[0]/P->u[2])/G->d[0] + G->n[0]/2.0f; // the coordinates for the ray starting point is the intersection of the ray with the z = 0 surface
         P->i[1] = (target[1] - target[2]*P->u[1]/P->u[2])/G->d[1] + G->n[1]/2.0f;
@@ -556,26 +569,26 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
       case 4: // Radial
         // Near Field
         axisrotate(B->v,B->u,RandomNum*2*PI,w0); // w0 unit vector now points in the direction from focus center point to ray target point
-        if(*B->NFdist1 == -1) { // Top-hat radial distribution
-          r = B->NFwidth1*SQRT(RandomNum); // for target calculation
-        } else if(*B->NFdist1 == -2) { // Gaussian radial distribution
-          r = B->NFwidth1*SQRT(-0.5f*LOG(RandomNum)); // for target calculation
+        if(*B->FPIDdist1 == -1) { // Top-hat radial distribution
+          r = B->FPIDwidth1*SQRT(RandomNum); // for target calculation
+        } else if(*B->FPIDdist1 == -2) { // Gaussian radial distribution
+          r = B->FPIDwidth1*SQRT(-0.5f*LOG(RandomNum)); // for target calculation
         } else { // Custom distribution
-          r = B->NFwidth1*(binaryTreeSearch(RandomNum,B->L_NF1-1,B->NFdist1)+RandomNum)/(B->L_NF1-1);
+          r = B->FPIDwidth1*(binaryTreeSearch(RandomNum,B->L_FPID1-1,B->FPIDdist1)+RandomNum)/(B->L_FPID1-1);
         }
         for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + r*w0[idx];
         
         // Far Field
         axisrotate(B->v,B->u,RandomNum*2*PI,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction. Angle from v0 to w0 is phi.
 
-        if(*B->FFdist1 == -1) { // Top-hat radial distribution
-          phi = ATAN(TAN(B->FFwidth1)*SQRT(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-        } else if(*B->FFdist1 == -2) { // Gaussian radial distribution
-          phi = ATAN(TAN(B->FFwidth1)*SQRT(-0.5f*LOG(RandomNum))); // for trajectory calculation. The sqrt is valid within paraxial approximation.
-        } else if(*B->FFdist1 == -3) { // Lambertian
+        if(*B->AIDdist1 == -1) { // Top-hat radial distribution
+          phi = ATAN(TAN(B->AIDwidth1)*SQRT(RandomNum)); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+        } else if(*B->AIDdist1 == -2) { // Gaussian radial distribution
+          phi = ATAN(TAN(B->AIDwidth1)*SQRT(-0.5f*LOG(RandomNum))); // for trajectory calculation. The sqrt is valid within paraxial approximation.
+        } else if(*B->AIDdist1 == -3) { // Lambertian
           phi = ASIN(SQRT(RandomNum));
         } else { // Custom distribution
-          phi = ATAN(TAN(B->FFwidth1)*(binaryTreeSearch(RandomNum,B->L_FF1-1,B->FFdist1)+RandomNum)/(B->L_FF1-1));
+          phi = ATAN(TAN(B->AIDwidth1)*(binaryTreeSearch(RandomNum,B->L_AID1-1,B->AIDdist1)+RandomNum)/(B->L_AID1-1));
         }
         axisrotate(B->u,w0,phi,P->u); // ray propagation direction is found by rotating beam center axis an angle phi around w0
         
@@ -590,40 +603,40 @@ void launchPhoton(struct photon * const P, struct beam const * const B, struct g
         break;
       case 5: // X/Y
         // Near Field
-        if(*B->NFdist1 == -1) { // Top-hat X distribution
-          X = B->NFwidth1*(RandomNum*2-1); // for target calculation
-        } else if(*B->NFdist1 == -2) { // Gaussian X distribution
-          X = B->NFwidth1*SQRT(-0.5f*LOG(RandomNum))*COS(2*PI*RandomNum); // Box-Muller transform, for target calculation
+        if(*B->FPIDdist1 == -1) { // Top-hat X distribution
+          X = B->FPIDwidth1*(RandomNum*2-1); // for target calculation
+        } else if(*B->FPIDdist1 == -2) { // Gaussian X distribution
+          X = B->FPIDwidth1*SQRT(-0.5f*LOG(RandomNum))*COS(2*PI*RandomNum); // Box-Muller transform, for target calculation
         } else { // Custom X distribution
-          X = B->NFwidth1*((binaryTreeSearch(RandomNum,B->L_NF1-1,B->NFdist1)+RandomNum)/(B->L_NF1-1)*2-1);
+          X = B->FPIDwidth1*((binaryTreeSearch(RandomNum,B->L_FPID1-1,B->FPIDdist1)+RandomNum)/(B->L_FPID1-1)*2-1);
         }
-        if(*B->NFdist2 == -1) { // Top-hat Y distribution
-          Y = B->NFwidth2*(RandomNum*2-1); // for target calculation
-        } else if(*B->NFdist1 == -2) { // Gaussian Y distribution
-          Y = B->NFwidth2*SQRT(-0.5f*LOG(RandomNum))*COS(2*PI*RandomNum); // Box-Muller transform, for target calculation
+        if(*B->FPIDdist2 == -1) { // Top-hat Y distribution
+          Y = B->FPIDwidth2*(RandomNum*2-1); // for target calculation
+        } else if(*B->FPIDdist1 == -2) { // Gaussian Y distribution
+          Y = B->FPIDwidth2*SQRT(-0.5f*LOG(RandomNum))*COS(2*PI*RandomNum); // Box-Muller transform, for target calculation
         } else { // Custom distribution
-          Y = B->NFwidth2*((binaryTreeSearch(RandomNum,B->L_NF2-1,B->NFdist2)+RandomNum)/(B->L_NF2-1)*2-1);
+          Y = B->FPIDwidth2*((binaryTreeSearch(RandomNum,B->L_FPID2-1,B->FPIDdist2)+RandomNum)/(B->L_FPID2-1)*2-1);
         }
         for(idx=0;idx<3;idx++) target[idx] = B->focus[idx] + X*B->v[idx] + Y*B->w[idx];
 
         // Far Field
-        if(*B->FFdist1 == -3) { // Lambertian
+        if(*B->AIDdist1 == -3) { // Lambertian
           axisrotate(B->v,B->u,RandomNum*2*PI,w0); // w0 unit vector is now normal to both beam center axis and to ray propagation direction
           axisrotate(B->u,w0,ASIN(SQRT(RandomNum)),P->u); // ray propagation direction is found by rotating beam center axis around w0
         } else {
-          if(*B->FFdist1 == -1) { // Top-hat phiX distribution
-            tanphiX = TAN(B->FFwidth1)*(RandomNum*2-1); // for trajectory calculation
-          } else if(*B->FFdist1 == -2) { // Gaussian phiX distribution
-            tanphiX = TAN(B->FFwidth1)*SQRT(-0.5f*LOG(RandomNum))*COS(2*PI*RandomNum); // Box-Muller transform, for trajectory calculation
+          if(*B->AIDdist1 == -1) { // Top-hat phiX distribution
+            tanphiX = TAN(B->AIDwidth1)*(RandomNum*2-1); // for trajectory calculation
+          } else if(*B->AIDdist1 == -2) { // Gaussian phiX distribution
+            tanphiX = TAN(B->AIDwidth1)*SQRT(-0.5f*LOG(RandomNum))*COS(2*PI*RandomNum); // Box-Muller transform, for trajectory calculation
           } else { // Custom phi_X distribution
-            tanphiX = TAN(B->FFwidth1)*((binaryTreeSearch(RandomNum,B->L_FF1,B->FFdist1)+RandomNum)/B->L_FF1*2-1);
+            tanphiX = TAN(B->AIDwidth1)*((binaryTreeSearch(RandomNum,B->L_AID1,B->AIDdist1)+RandomNum)/B->L_AID1*2-1);
           }
-          if(*B->FFdist2 == -1) { // Top-hat phiY distribution
-            tanphiY = TAN(B->FFwidth2)*(RandomNum*2-1); // for trajectory calculation
-          } else if(*B->FFdist2 == -2) { // Gaussian phiY distribution
-            tanphiY = TAN(B->FFwidth2)*SQRT(-0.5f*LOG(RandomNum))*COS(2*PI*RandomNum); // Box-Muller transform, for trajectory calculation
+          if(*B->AIDdist2 == -1) { // Top-hat phiY distribution
+            tanphiY = TAN(B->AIDwidth2)*(RandomNum*2-1); // for trajectory calculation
+          } else if(*B->AIDdist2 == -2) { // Gaussian phiY distribution
+            tanphiY = TAN(B->AIDwidth2)*SQRT(-0.5f*LOG(RandomNum))*COS(2*PI*RandomNum); // Box-Muller transform, for trajectory calculation
           } else { // Custom distribution
-            tanphiY = TAN(B->FFwidth2)*((binaryTreeSearch(RandomNum,B->L_FF2,B->FFdist2)+RandomNum)/B->L_FF2*2-1);
+            tanphiY = TAN(B->AIDwidth2)*((binaryTreeSearch(RandomNum,B->L_AID2,B->AIDdist2)+RandomNum)/B->L_AID2*2-1);
           }
           axisrotate(B->v,B->u,ATAN2(tanphiX,tanphiY),w0); // w0 is now orthogonal to both beam propagation axis and ray propagation axis
           axisrotate(B->u,w0,ATAN(SQRT(tanphiX*tanphiX + tanphiY*tanphiY)),P->u); // ray propagation direction is found by rotating beam center axis around w0
@@ -722,20 +735,20 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
           long Xindex = (long)(LC->res[0]*(RImP[0]/LC->FSorNA + 1.0f/2));
           long Yindex = (long)(LC->res[0]*(RImP[1]/LC->FSorNA + 1.0f/2));
           long timeindex = LC->res[1] > 1? min(LC->res[1]-1,max(0L,(long)(1+(LC->res[1]-2)*(P->time - (Resc[2] - LC->f)/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)))): 0; // If we are not measuring time-resolved, LC->res[1] == 1
-          atomicAddWrapperDBL(&O->image[Xindex               +
+          atomicAddWrapper(&O->image[Xindex               +
                                         Yindex   *LC->res[0] +
                                         timeindex*LC->res[0]*LC->res[0]],P->weight);
           if(O->NFRdet) for(long i=0;i<P->recordElems;i++) {
-            atomicAddWrapperDBL(&O->NFRdet[P->j_record[i]],P->weight*P->weight_record[i]);
+            atomicAddWrapper(&O->NFRdet[P->j_record[i]],P->weight*P->weight_record[i]);
           }
         }
       } else { // If the light collector is a fiber tip
         FLOATORDBL thetaLCFF = ATAN(-SQRT(U[0]*U[0] + U[1]*U[1])/U[2]); // Light collector far field polar angle
         if(thetaLCFF < ASIN(min(1.0f,LC->FSorNA))) { // If the photon has an angle within the fiber's NA acceptance
           long timeindex = LC->res[1] > 1? min(LC->res[1]-1,max(0L,(long)(1+(LC->res[1]-2)*(P->time - Resc[2]/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)))): 0; // If we are not measuring time-resolved, LC->res[1] == 1
-          atomicAddWrapperDBL(&O->image[timeindex],P->weight);
+          atomicAddWrapper(&O->image[timeindex],P->weight);
           if(O->NFRdet) for(long i=0;i<P->recordElems;i++) {
-            atomicAddWrapperDBL(&O->NFRdet[P->j_record[i]],P->weight*P->weight_record[i]);
+            atomicAddWrapper(&O->NFRdet[P->j_record[i]],P->weight*P->weight_record[i]);
           }
         }
       }
@@ -749,7 +762,7 @@ __device__
 void formFarField(struct photon const * const P, struct geometry const *G, struct outputs const *O) {
   FLOATORDBL theta = (1-FLOATORDBLEPS)*ACOS(P->u[2]); // The (1-EPS) factor is to ensure that photons exiting with theta = PI will be stored correctly
   FLOATORDBL phi_shifted = (1-FLOATORDBLEPS)*(PI + ATAN2(P->u[1],P->u[0])); // Here it's to handle the case of phi = +PI
-  atomicAddWrapperDBL(&O->FF[(long)FLOOR(theta/PI*G->farFieldRes) + G->farFieldRes*(long)FLOOR(phi_shifted/(2*PI)*G->farFieldRes)],P->weight);
+  atomicAddWrapper(&O->FF[(long)FLOOR(theta/PI*G->farFieldRes) + G->farFieldRes*(long)FLOOR(phi_shifted/(2*PI)*G->farFieldRes)],P->weight);
 }
 
 #ifdef __NVCC__ // If compiling for CUDA
@@ -757,17 +770,17 @@ __device__
 #endif
 void formEdgeFluxes(struct photon const * const P, struct geometry const * const G, struct outputs const *O) {
   if(G->boundaryType == 1) {
-    if(P->i[2] < 0)             atomicAddWrapperDBL(&O->NI_zneg[(long)P->i[0] + G->n[0]*(long)P->i[1]],P->weight);
-    else if(P->i[2] >= G->n[2]) atomicAddWrapperDBL(&O->NI_zpos[(long)P->i[0] + G->n[0]*(long)P->i[1]],P->weight);
-    else if(P->i[1] < 0)        atomicAddWrapperDBL(&O->NI_yneg[(long)P->i[0] + G->n[0]*(long)P->i[2]],P->weight);
-    else if(P->i[1] >= G->n[1]) atomicAddWrapperDBL(&O->NI_ypos[(long)P->i[0] + G->n[0]*(long)P->i[2]],P->weight);
-    else if(P->i[0] < 0)        atomicAddWrapperDBL(&O->NI_xneg[(long)P->i[1] + G->n[1]*(long)P->i[2]],P->weight);
-    else if(P->i[0] >= G->n[0]) atomicAddWrapperDBL(&O->NI_xpos[(long)P->i[1] + G->n[1]*(long)P->i[2]],P->weight);
+    if(P->i[2] < 0)             atomicAddWrapper(&O->NI_zneg[(long)P->i[0] + G->n[0]*(long)P->i[1]],P->weight);
+    else if(P->i[2] >= G->n[2]) atomicAddWrapper(&O->NI_zpos[(long)P->i[0] + G->n[0]*(long)P->i[1]],P->weight);
+    else if(P->i[1] < 0)        atomicAddWrapper(&O->NI_yneg[(long)P->i[0] + G->n[0]*(long)P->i[2]],P->weight);
+    else if(P->i[1] >= G->n[1]) atomicAddWrapper(&O->NI_ypos[(long)P->i[0] + G->n[0]*(long)P->i[2]],P->weight);
+    else if(P->i[0] < 0)        atomicAddWrapper(&O->NI_xneg[(long)P->i[1] + G->n[1]*(long)P->i[2]],P->weight);
+    else if(P->i[0] >= G->n[0]) atomicAddWrapper(&O->NI_xpos[(long)P->i[1] + G->n[1]*(long)P->i[2]],P->weight);
   } else if(G->boundaryType == 2) {
-    if(P->i[2] < 0)             atomicAddWrapperDBL(&O->NI_zneg[(long)(P->i[0] + G->n[0]*(KILLRANGE-1)/2.0f) + (KILLRANGE*G->n[0])*((long)(P->i[1] + G->n[1]*(KILLRANGE-1)/2.0f))],P->weight);
+    if(P->i[2] < 0)             atomicAddWrapper(&O->NI_zneg[(long)(P->i[0] + G->n[0]*(KILLRANGE-1)/2.0f) + (KILLRANGE*G->n[0])*((long)(P->i[1] + G->n[1]*(KILLRANGE-1)/2.0f))],P->weight);
   } else { // boundaryType == 3
-    if(P->i[2] < 0)             atomicAddWrapperDBL(&O->NI_zneg[(long)P->i[0] + G->n[0]*(long)P->i[1]],P->weight);
-    else if(P->i[2] >= G->n[2]) atomicAddWrapperDBL(&O->NI_zpos[(long)P->i[0] + G->n[0]*(long)P->i[1]],P->weight);
+    if(P->i[2] < 0)             atomicAddWrapper(&O->NI_zneg[(long)P->i[0] + G->n[0]*(long)P->i[1]],P->weight);
+    else if(P->i[2] >= G->n[2]) atomicAddWrapper(&O->NI_zpos[(long)P->i[0] + G->n[0]*(long)P->i[1]],P->weight);
   }
 }
 
@@ -796,9 +809,10 @@ void checkEscape(struct photon * const P, struct paths *Pa, struct geometry cons
                        P->i[2]                   >= 0);
       escaped = (P->i[2] < 0) && P->RI == 1;
       break;
-    case 3:
-      P->alive = P->i[2] < G->n[2] && P->i[2] >= 0;
-      escaped = !P->alive && P->RI == 1;
+    case 3:; // A semicolon is necessary here because C is a wonderful language :-)
+      bool tooOld = P->time > 1000/C*SQRT(SQR(G->d[0]*G->n[0]) + SQR(G->d[1]*G->n[1]));  // Photon is "too old" if it has traveled more than 1000 times the diagonal xy box distance (may be in an infinite or near-infinite loop of cycling)
+      P->alive = P->i[2] < G->n[2] && P->i[2] >= 0 && !tooOld;
+      escaped = !P->alive && P->RI == 1 && !tooOld;
       bool photonTeleported = false;
       if(P->i[0] >= G->n[0]) {
         P->i[0] = 0; // Wrap x
@@ -870,9 +884,9 @@ void getNormal(struct geometry const * const G, FLOATORDBL *nxPtr, FLOATORDBL *n
 __device__
 #endif
 void getInterpolatedNormal(struct geometry const * const G, struct photon *P, FLOATORDBL *nxPtr, FLOATORDBL *nyPtr, FLOATORDBL *nzPtr, long j) {
-  long ix_coerced = ((P->i[0] < 0)? 0: ((P->i[0] >= G->n[0])? G->n[0]-1: P->i[0]));
-  long iy_coerced = ((P->i[1] < 0)? 0: ((P->i[1] >= G->n[1])? G->n[1]-1: P->i[1]));
-  long iz_coerced = ((P->i[2] < 0)? 0: ((P->i[2] >= G->n[2])? G->n[2]-1: P->i[2]));
+  long ix_coerced = (long)((P->i[0] < 0)? 0: ((P->i[0] >= G->n[0])? G->n[0]-1: P->i[0]));
+  long iy_coerced = (long)((P->i[1] < 0)? 0: ((P->i[1] >= G->n[1])? G->n[1]-1: P->i[1]));
+  long iz_coerced = (long)((P->i[2] < 0)? 0: ((P->i[2] >= G->n[2])? G->n[2]-1: P->i[2]));
 
   // Determine which set of 8 voxels to interpolate between. Let the corner with lowest indices have indices ix,iy,iz and the corner with highest indices have indices ix+1,iy+1,iz+1.
   long ix = (long)FLOOR(ix_coerced - 0.5);
@@ -1043,7 +1057,7 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, s
 
   if(P->insideVolume) {  // only save data if the photon is inside simulation cuboid
     if(O->NFR && depositionCriteriaMet(P,DC)) {
-      atomicAddWrapperDBL(&O->NFR[P->j],absorb);
+      atomicAddWrapper(&O->NFR[P->j],absorb);
     }
     if(P->recordSize && depositionCriteriaMet(P,DC)) { // store indices and weights in pseudosparse array, to later add to NFRdet if photon ends up on the light collector
       if(P->recordElems == P->recordSize) {
@@ -1100,6 +1114,7 @@ void scatterPhoton(struct photon * const P, struct geometry const * const G, str
                           FABS(P->g) <= SQRT(FLOATORDBLEPS)? 2*RandomNum - 1:
                           (1 + P->g*P->g - SQR((1 - P->g*P->g)/(1 - P->g + 2*P->g*RandomNum)))/(2*P->g);
   }
+
   FLOATORDBL sintheta = SQRT(1 - costheta*costheta);
   FLOATORDBL phi = 2*PI*RandomNum;
   FLOATORDBL cosphi = COS(phi);
@@ -1138,40 +1153,71 @@ void scatterPhoton(struct photon * const P, struct geometry const * const G, str
   }
 }
 
-void normalizeDeposition(struct beam const * const B, struct geometry const * const G, struct lightCollector const * const LC,
-        struct outputs const *O) {
+void normalizeDepositionAndResetO(struct source const * const B, struct geometry const * const G, struct lightCollector const * const LC,
+        struct outputs *O, struct MATLABoutputs *O_MATLAB, int iWavelength, double Pfraction) {
   long j;
   double V = G->d[0]*G->d[1]*G->d[2]; // Voxel volume
   long L = G->n[0]*G->n[1]*G->n[2]; // Total number of voxels in cuboid
   long L_LC = LC->res[0]*LC->res[0]; // Total number of spatial pixels in light collector planes
   long L_FF = G->farFieldRes*G->farFieldRes; // Total number of pixels in the far field array
-  // Normalize deposition to yield normalizes fluence rate (NFR). For fluorescence, the result is relative to
+  // Normalize deposition to yield normalized fluence rate (NFR). For fluorescence, the result is relative to
   // the incident excitation power (not emitted fluorescence power).
-  double normfactor = (double)O->nPhotons;
+  double normfactor = (double)O->nPhotons/Pfraction;
   if(B->S) { // For a 3D source distribution (e.g., fluorescence)
     normfactor /= B->power;
   } else if(B->beamType == 2 && (G->boundaryType == 0 || G->boundaryType == 2)) { // For infinite plane wave launched into volume without absorbing walls
     normfactor /= KILLRANGE*KILLRANGE;
   }
   
-  if(O->NFR)        for(j=0;j<L   ;j++) O->NFR[j]    /= V*normfactor*G->muav[G->M[j]];
-  if(O->NFRdet)     for(j=0;j<L   ;j++) O->NFRdet[j] /= V*normfactor;
-  if(O->FF)         for(j=0;j<L_FF;j++) O->FF[j]     /=   normfactor;
+  O->nPhotons = 0;
+  if(O->NFR) for(j=0;j<L   ;j++) {
+    O_MATLAB->NFR[j + iWavelength*G->n[0]*G->n[1]*G->n[2]] = (float)(O->NFR[j]/(V*normfactor*G->muav[G->M[j]]));
+    O->NFR[j] = 0;
+  }
+  if(O->NFRdet) for(j=0;j<L   ;j++) {
+    O_MATLAB->NFRdet[j + iWavelength*G->n[0]*G->n[1]*G->n[2]] = (float)(O->NFRdet[j]/(V*normfactor));
+    O->NFRdet[j] = 0;
+  }
+  if(O->FF) for(j=0;j<L_FF;j++) {
+    O_MATLAB->FF[j + iWavelength*G->farFieldRes*G->farFieldRes] = (float)(O->FF[j]/normfactor);
+    O->FF[j] = 0;
+  }
   if(O->image) {
-    if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) O->image[j] /= LC->FSorNA*LC->FSorNA/L_LC*normfactor;
-    else         for(j=0;j<     LC->res[1];j++) O->image[j] /= normfactor;
+    if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) {
+      O_MATLAB->image[j + iWavelength*LC->res[0]*LC->res[0]*LC->res[1]] = (float)(O->image[j]/(LC->FSorNA*LC->FSorNA/L_LC*normfactor));
+      O->image[j] = 0;
+    }
+    else         for(j=0;j<     LC->res[1];j++) {
+      O_MATLAB->image[j + iWavelength*LC->res[0]*LC->res[0]*LC->res[1]] = (float)(O->image[j]/normfactor);
+      O->image[j] = 0;
+    }
   }
   if(G->boundaryType == 1) {
-    for(j=0;j<G->n[1]*G->n[2];j++) O->NI_xpos[j] /= G->d[1]*G->d[2]*normfactor;
-    for(j=0;j<G->n[1]*G->n[2];j++) O->NI_xneg[j] /= G->d[1]*G->d[2]*normfactor;
-    for(j=0;j<G->n[0]*G->n[2];j++) O->NI_ypos[j] /= G->d[0]*G->d[2]*normfactor;
-    for(j=0;j<G->n[0]*G->n[2];j++) O->NI_yneg[j] /= G->d[0]*G->d[2]*normfactor;
-    for(j=0;j<G->n[0]*G->n[1];j++) O->NI_zpos[j] /= G->d[0]*G->d[1]*normfactor;
-    for(j=0;j<G->n[0]*G->n[1];j++) O->NI_zneg[j] /= G->d[0]*G->d[1]*normfactor;
-  } else if(G->boundaryType == 2) {
-    for(j=0;j<KILLRANGE*G->n[0]*KILLRANGE*G->n[1];j++) O->NI_zneg[j] /= G->d[0]*G->d[1]*normfactor;
-  } else if(G->boundaryType == 3) {
-    for(j=0;j<G->n[0]*G->n[1];j++) O->NI_zpos[j] /= G->d[0]*G->d[1]*normfactor;
-    for(j=0;j<G->n[0]*G->n[1];j++) O->NI_zneg[j] /= G->d[0]*G->d[1]*normfactor;
+    for(j=0;j<G->n[1]*G->n[2];j++) {
+      O_MATLAB->NI_xpos[j + iWavelength*G->n[1]*G->n[2]] = (float)(O->NI_xpos[j]/(G->d[1]*G->d[2]*normfactor));
+      O->NI_xpos[j] = 0;
+      O_MATLAB->NI_xneg[j + iWavelength*G->n[1]*G->n[2]] = (float)(O->NI_xneg[j]/(G->d[1]*G->d[2]*normfactor));
+      O->NI_xneg[j] = 0;
+    }
+    for(j=0;j<G->n[0]*G->n[2];j++) {
+      O_MATLAB->NI_ypos[j + iWavelength*G->n[0]*G->n[2]] = (float)(O->NI_ypos[j]/(G->d[0]*G->d[2]*normfactor));
+      O->NI_ypos[j] = 0;
+      O_MATLAB->NI_yneg[j + iWavelength*G->n[0]*G->n[2]] = (float)(O->NI_yneg[j]/(G->d[0]*G->d[2]*normfactor));
+      O->NI_yneg[j] = 0;
+    }
+    for(j=0;j<G->n[0]*G->n[1];j++) {
+      O_MATLAB->NI_zpos[j + iWavelength*G->n[0]*G->n[1]] = (float)(O->NI_zpos[j]/(G->d[0]*G->d[1]*normfactor));
+      O->NI_zpos[j] = 0;
+      O_MATLAB->NI_zneg[j + iWavelength*G->n[0]*G->n[1]] = (float)(O->NI_zneg[j]/(G->d[0]*G->d[1]*normfactor));
+      O->NI_zneg[j] = 0;
+    }
+  } else if(G->boundaryType == 2) for(j=0;j<KILLRANGE*G->n[0]*KILLRANGE*G->n[1];j++) {
+    O_MATLAB->NI_zneg[j + iWavelength*G->n[0]*G->n[1]*(G->boundaryType == 2? KILLRANGE*KILLRANGE: 1)] = (float)(O->NI_zneg[j]/(G->d[0]*G->d[1]*normfactor));
+    O->NI_zneg[j] = 0;
+  } else if(G->boundaryType == 3) for(j=0;j<G->n[0]*G->n[1];j++) {
+    O_MATLAB->NI_zpos[j + iWavelength*G->n[0]*G->n[1]] = (float)(O->NI_zpos[j]/(G->d[0]*G->d[1]*normfactor));
+    O->NI_zpos[j] = 0;
+    O_MATLAB->NI_zneg[j + iWavelength*G->n[0]*G->n[1]] = (float)(O->NI_zneg[j]/(G->d[0]*G->d[1]*normfactor));
+    O->NI_zneg[j] = 0;
   }
 }

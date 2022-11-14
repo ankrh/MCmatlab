@@ -13,11 +13,18 @@ classdef geometry
     Lx (1,1) double {mustBeFinite, mustBePositive} = 1 % [cm] x size of simulation cuboid
     Ly (1,1) double {mustBeFinite, mustBePositive} = 1 % [cm] y size of simulation cuboid
     Lz (1,1) double {mustBeFinite, mustBePositive} = 1 % [cm] z size of simulation cuboid
-    mediaPropertiesFunc (1,1) function_handle {mustHave2Input1OutputArgs} = @defaultMediaPropertiesFunc % Media properties defined as a function at the end of the model file
+    mediaPropertiesFunc (1,1) function_handle {mustHave1Input1OutputArgs} = @defaultMediaPropertiesFunc % Media properties defined as a function at the end of the model file
     mediaPropParams cell = {} % Cell array containing any additional parameters to be passed to the getMediaProperties function
     geomFunc (1,1) function_handle {mustHave4Input1OutputArgs} = @defaultGeomFunc % Function to use for defining the distribution of media in the cuboid. Defined at the end of the model file.
     geomFuncParams cell = {} % Cell array containing any additional parameters to pass into the geometry function, such as media depths, inhomogeneity positions, radii etc.
+
+    %% Calculated
     M_raw uint8
+    FRdependent = false
+    optTdependent = false
+    optFDdependent = false
+    thmTdependent = false
+    thmFDdependent = false
   end
 
   properties (Hidden)
@@ -34,7 +41,7 @@ classdef geometry
   end
 
   methods
-    function obj = update_M_raw(obj)
+    function obj = updateGeometry(obj)
       if obj.needsRecalculation
         [X,Y,Z] = ndgrid(single(obj.x),single(obj.y),single(obj.z)); % The single data type is used to conserve memory
         M_rawtemp = obj.geomFunc(X,Y,Z,obj.geomFuncParams);
@@ -54,6 +61,53 @@ classdef geometry
           error('Error: The M returned by the geometry function must not contain numbers over 255.');
         end
         obj.M_raw = M_rawtemp;
+
+        mP_fH = obj.mediaPropertiesFunc(obj.mediaPropParams); % Unsplit media
+        mP_fH = mP_fH(unique(obj.M_raw));
+        nM = numel(mP_fH);
+        obj.FRdependent = false;
+        obj.optTdependent  = false;
+        obj.optFDdependent = false;
+        testWavelengths = linspace(100e-9,10000e-9,10);
+        testFRs_vec = [0 logspace(-20,20,9)];
+        testTs_vec = linspace(-100,300,10);
+        testFDs_vec = linspace(0,1,10);
+        [testFRs,testTs,testFD] = ndgrid(testFRs_vec,testTs_vec,testFDs_vec);
+        for iM = 1:nM
+          for iL = 1:numel(testWavelengths)
+            muas = mP_fH(iM).mua(testWavelengths(iL),testFRs,testTs,testFD);
+            muss = mP_fH(iM).mus(testWavelengths(iL),testFRs,testTs,testFD);
+            gs   = mP_fH(iM).g  (testWavelengths(iL),testFRs,testTs,testFD);
+            QYs  = mP_fH(iM).QY (testWavelengths(iL),testFRs,testTs,testFD);
+            ESs  = mP_fH(iM).ES(testWavelengths(iL),testFRs,testTs,testFD);
+            FRdifferences    = ~isequaln(max(muas,[],1), min(muas,[],1)) | ...
+                               ~isequaln(max(muss,[],1), min(muss,[],1)) | ...
+                               ~isequaln(max(gs  ,[],1), min(gs  ,[],1)) | ...
+                               ~isequaln(max(QYs ,[],1), min(QYs ,[],1)) | ...
+                               ~isequaln(max(ESs ,[],1), min(ESs ,[],1));
+            obj.FRdependent = obj.FRdependent || any(FRdifferences(:));
+            optTdifferences  = ~isequaln(max(muas,[],2), min(muas,[],2)) | ...
+                               ~isequaln(max(muss,[],2), min(muss,[],2)) | ...
+                               ~isequaln(max(gs  ,[],2), min(gs  ,[],2)) | ...
+                               ~isequaln(max(QYs ,[],2), min(QYs ,[],2)) | ...
+                               ~isequaln(max(ESs ,[],2), min(ESs ,[],2));
+            obj.optTdependent = obj.optTdependent || any(optTdifferences(:));
+            optFDdifferences = ~isequaln(max(muas,[],3), min(muas,[],3)) | ...
+                               ~isequaln(max(muss,[],3), min(muss,[],3)) | ...
+                               ~isequaln(max(gs  ,[],3), min(gs  ,[],3)) | ...
+                               ~isequaln(max(QYs ,[],3), min(QYs ,[],3)) | ...
+                               ~isequaln(max(ESs ,[],3), min(ESs ,[],3));
+            obj.optFDdependent = obj.optFDdependent || any(optFDdifferences(:));
+          end
+          VHCs = mP_fH(iM).VHC(testTs,testFD);
+          TCs  = mP_fH(iM).TC (testTs,testFD);
+          thmTdifferences = ~isequaln(max(VHCs,[],1), min(VHCs,[],1)) | ...
+                            ~isequaln(max(TCs,[],1), min(TCs,[],1));
+          obj.thmTdependent = obj.thmTdependent || any(thmTdifferences(:));
+          thmFDdifferences = ~isequaln(max(VHCs,[],2), min(VHCs,[],2)) | ...
+                             ~isequaln(max(TCs,[],2), min(TCs,[],2));
+          obj.thmFDdependent = obj.thmFDdependent || any(thmFDdifferences(:));
+        end
         obj.needsRecalculation = false;
       end
     end
@@ -99,12 +153,12 @@ if nargout(f) ~= 1
 end
 end
 
-function mustHave2Input1OutputArgs(f)
-if nargin(f) ~= 2
-  error('Error: The function must take exactly 2 input arguments (wavelength,parameters).');
+function mustHave1Input1OutputArgs(f)
+if nargin(f) ~= 1
+  error('Error: The syntax for defining media properties has changed slightly. The function must now take exactly 1 input argument (media properties parameters). Any wavelength dependence must be specified as in the examples.');
 end
 if nargout(f) ~= 1
-  error('Error: The function must return exactly 1 output argument (mediaProperties, the struct of media optical and (optionally) thermal properties)');
+  error('Error: The function must return exactly 1 output argument (an array of mediumProperties objects, the collection of media optical and (optionally) thermal properties). See the examples on how to define this array.');
 end
 end
 
@@ -112,6 +166,6 @@ function M = defaultGeomFunc(X,~,~,~)
 M = ones(size(X));
 end
 
-function mediaProperties = defaultMediaPropertiesFunc(~,~)
-mediaProperties = struct();
+function mediaProperties = defaultMediaPropertiesFunc(~)
+mediaProperties = MCmatlab.mediumProperties;
 end

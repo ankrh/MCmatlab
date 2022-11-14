@@ -1,3 +1,30 @@
+# mesh_voxelization
+Forked from original code posted at  https://www.mathworks.com/matlabcentral/fileexchange/27390-mesh-voxelisation
+
+Changes:
+ - Primary functionality contained in Raster class.
+   - To use, create a Grid object from three grid vectors (formerly gridX, gridY, gridZ).
+   - Create an FV-struct, possibly from read_stl().
+   - Choose ray directions, default is 'xyz'.
+   - Create the Raster object as Raster(grid, fv, rays).
+   - The previous gridOUTPUT is contained in the interior property of the Raster object.
+   - There is also a faces property, which is a table of faces crossed by rays, and the voxel the crossing occurred in as a linear index.
+   - There is also a normals property, which is a table like faces, but contains the x, y, and z coordinates of unit normal vectors for each face, as well as the ray direction the crossing occurred for.
+   - The example has been improved to show off these new features.
+   - Primary functionality is now about 2-3 times faster, but allocates 2-5 times as much memory.
+ - read_stl() was improved.
+   - Binary files are now fully buffered, and a vectorized approach is used using new fread() typecasting functionality.
+   - ASCII files have improved vectorization, and use string arrays for improved code readability.
+ - compute_normals() was vectorized, and the vertex winding fix was refactored into its own function, fix_vertex_ordering().
+ - CONVERT_mesh_format() was renamed convert_triangle_geometry_format() and the interface was simplified.
+   - Passing an FV-struct returns an Nx3x3 (like the old meshXYZ).
+   - Passing an array of faces and array of vertices returns an Nx3x3.
+   - Passing an Nx3x3 returns an FV-struct.
+
+Original readme below.
+
+- VOXELISE.m modified by William Warriner 19 July 2019 to fix edge intersection issue.
+
 Polygon mesh voxelisation
 =========================
 

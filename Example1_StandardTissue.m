@@ -21,6 +21,7 @@
 % "model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr"
 
 %% Geometry definition
+MCmatlab.closeMCmatlabFigures();
 model = MCmatlab.model;
 
 model.G.nx                = 101; % Number of bins in the x direction
@@ -53,12 +54,12 @@ model.MC.lightSource.theta        = 0; % [rad] Polar angle of beam center axis
 model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of beam center axis
 
 
-% Execution, do not modify the next line:
+% These lines will run the Monte Carlo simulation with the provided
+% parameters and subsequently plot the results:
 model = runMonteCarlo(model);
-
 model = plot(model,'MC');
 
-%% Geometry function(s)
+%% Geometry function(s) (see readme for details)
 % A geometry function takes as input X,Y,Z matrices as returned by the
 % "ndgrid" MATLAB function as well as any parameters the user may have
 % provided in the definition of Ginput. It returns the media matrix M,
@@ -70,24 +71,38 @@ function M = geometryDefinition(X,Y,Z,parameters)
   M(Z > zSurface) = 2; % "Standard" tissue
 end
 
-%% Media Properties function
+%% Media Properties function (see readme for details)
 % The media properties function defines all the optical and thermal
-% properties of the media involved by constructing and returning a
-% "mediaProperties" struct with various fields. As its input, the function
-% takes the wavelength as well as any other parameters you might specify
-% above in the model file, for example parameters that you might loop over
-% in a for loop. Dependence on excitation fluence rate FR, temperature T or
-% fractional heat damage FD can be specified as in examples 12-15.
-function mediaProperties = mediaPropertiesFunc(wavelength,parameters)
+% properties of the media involved by filling out and returning a
+% "mediaProperties" array of "mediumProperties" objects with various
+% properties. The j indices are the numbers that are referred to in the
+% geometry function (in this case, 1 for "air" and 2 for "standard tissue")
+% See the readme file or the examples for a list of properties you may
+% specify. Most properties may be specified as a numeric constant or as
+% function handles.
+% 
+% The function must take one input; the cell array containing any special
+% parameters you might specify above in the model file, for example
+% parameters that you might loop over in a for loop. In most simulations
+% this "parameters" cell array is empty. Dependence on wavelength is shown
+% in examples 4 and 23. Dependence on excitation fluence rate FR,
+% temperature T or fractional heat damage FD can be specified as in
+% examples 12-15.
+function mediaProperties = mediaPropertiesFunc(parameters)
+  % Always leave the following line in place to initialize the
+  % mediaProperties array:
+  mediaProperties = MCmatlab.mediumProperties;
+
+  % Put in your own media property definitions below:
   j=1;
   mediaProperties(j).name  = 'air';
-  mediaProperties(j).mua   = 1e-8; % [cm^-1]
-  mediaProperties(j).mus   = 1e-8; % [cm^-1]
-  mediaProperties(j).g     = 1;
+  mediaProperties(j).mua   = 1e-8; % Absorption coefficient [cm^-1]
+  mediaProperties(j).mus   = 1e-8; % Scattering coefficient [cm^-1]
+  mediaProperties(j).g     = 1; % Henyey-Greenstein scattering anisotropy
 
   j=2;
   mediaProperties(j).name  = 'standard tissue';
-  mediaProperties(j).mua   = 1; % [cm^-1]
-  mediaProperties(j).mus   = 100; % [cm^-1]
-  mediaProperties(j).g     = 0.9;
+  mediaProperties(j).mua   = 1; % Absorption coefficient [cm^-1]
+  mediaProperties(j).mus   = 100; % Scattering coefficient [cm^-1]
+  mediaProperties(j).g     = 0.9; % Henyey-Greenstein scattering anisotropy
 end

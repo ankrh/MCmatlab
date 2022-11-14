@@ -5,14 +5,25 @@ classdef model
   %   required to define a full MCmatlab model.
 
   properties
-    G   (1,1) MCmatlab.geometry
-    MC  (1,1) MCmatlab.monteCarloSimulation
-    FMC (1,1) MCmatlab.fluorescenceMonteCarloSimulation
-    HS  (1,1) MCmatlab.heatSimulation
+    name (1,:) char
+    G    (1,1) MCmatlab.geometry
+    MC   (1,1) MCmatlab.monteCarloSimulation
+    FMC  (1,1) MCmatlab.fluorescenceMonteCarloSimulation
+    HS   (1,1) MCmatlab.heatSimulation
   end
 
   methods
     function obj = model()
+      caller = dbstack(1);
+      if isempty(caller) || contains(caller(1).name,'LiveEditorEvaluation')
+        [~,obj.name,~] = fileparts(matlab.desktop.editor.getActiveFilename);
+%         warning('Could not automatically determine the model name. Assuming the model name is that of the file currently open in the editor "%s". This might be caused by running the script with F9 or "Run Section". The model name is used only to determine which file to save output heat simulator videos to.',obj.name);
+      else
+        obj.name = caller(1).name;
+      end
+
+      addpath('./helperfuncs/');
+
       %% The following code is inspired by the version check method of the unrelated but excellent export_fig() function made by Yair Altman
       % Check for newer version (only once a day)
       persistent lastCheckTime
@@ -142,11 +153,9 @@ classdef model
     end
 
     obj = simulateHeatDistribution(obj)
-
     obj = plotMCmatlabMC(obj, varargin)
     obj = plotMCmatlabGeom(obj)
     obj = plotMCmatlabHeat(obj)
-
   end
 
   methods (Static)

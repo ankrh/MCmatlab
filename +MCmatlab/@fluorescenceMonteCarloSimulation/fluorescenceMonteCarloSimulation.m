@@ -9,7 +9,7 @@ classdef fluorescenceMonteCarloSimulation
     useGPU (1,1) logical = false % Use CUDA acceleration for NVIDIA GPUs
     GPUdevice (1,1) int32 = 0 % GPU device index to run on (default: 0, the first one)
     simulationTimeRequested (1,1) double {mustBePositive} = 0.1 % [min] Time duration of the simulation
-    nPhotonsRequested (1,1) double {mustBePositiveIntegerOrNaN} = NaN % # of photons to launch
+    nPhotonsRequested (1,1) double {mustBeFinitePositiveIntegerOrNaN} = NaN % # of photons to launch
     calcNormalizedFluenceRate (1,1) logical = true % If true, the 3D normalized fluence rate output array will be calculated. Set to false if you have a light collector and you're only interested in the image output.
     calcNormalizedFluenceRate_detected (1,1) logical = false % If true, the 3D fluence rate output array normalizedFluenceRate_detected will be calculated. Only photons that end up on the light collector are counted in normalizedFluenceRate_detected.
     nExamplePaths (1,1) double {mustBeInteger, mustBeNonnegative} = 0 % This number of photons will have their paths stored and shown after completion, for illustrative purposes
@@ -18,7 +18,7 @@ classdef fluorescenceMonteCarloSimulation
     matchedInterfaces (1,1) logical = true % If true, assumes all refractive indices are 1. If false, uses the refractive indices defined in getMediaProperties
     smoothingLengthScale (1,1) double {mustBePositive} = 0.1 % Length scale over which smoothing of the Sobel interface gradients should be performed
     boundaryType (1,1) double {mustBeInteger, mustBeInRange(boundaryType,0,3)} = 1 % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
-    wavelength (1,1) double {mustBePositiveOrNaN} = NaN % [nm] Excitation wavelength, used for determination of optical properties for excitation light
+    wavelength (1,:) double {mustBeFinitePositiveOrNaN} = NaN % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
     useLightCollector (1,1) logical = false
     lightCollector (1,1) MCmatlab.lightCollector
@@ -30,21 +30,15 @@ classdef fluorescenceMonteCarloSimulation
     nPhotons = NaN;
     nThreads = NaN;
 
-    mediaProperties_funcHandles = NaN; % Wavelength-dependent
     mediaProperties = NaN; % Wavelength- and splitting-dependent
     CDFs = NaN % Cumulative distribution functions for custom phase functions (not Henyey Greenstein)
-    FRdependent logical = false;
-    FDdependent logical = false;
-    Tdependent logical = false;
     M = NaN; % Splitting-dependent
     interfaceNormals single = NaN
 
     examplePaths = NaN;
 
-    normalizedFluenceRate = NaN
+    normalizedFluenceRate single = 0
     normalizedFluenceRate_detected = NaN
-    normalizedAbsorption = NaN
-    normalizedAbsorption_detected = NaN
 
     farField = NaN;
     farFieldTheta = NaN;
@@ -58,6 +52,11 @@ classdef fluorescenceMonteCarloSimulation
     normalizedIrradiance_yneg = NaN
     normalizedIrradiance_zpos = NaN
     normalizedIrradiance_zneg = NaN
+  end
+
+  properties (Dependent)
+    normalizedAbsorption
+    normalizedAbsorption_detected
   end
 
   properties (Hidden)
@@ -77,6 +76,28 @@ classdef fluorescenceMonteCarloSimulation
   end
 
   methods
+    function NA = get.normalizedAbsorption(obj)
+      if numel(obj.NFR) > 1
+        NA = NaN(size(obj.NFR));
+        for iWavelength = 1:numel(obj.wavelength)
+          mua_vec = [obj.mediaProperties.mua(:,iWavelength)];
+          NA(:,:,:,iWavelength) = mua_vec(obj.M).*obj.NFR(:,:,:,iWavelength);
+        end
+      else
+        NA = 0;
+      end
+    end
+    function NAdet = get.normalizedAbsorption_detected(obj)
+      if numel(obj.NFRdet) > 1
+        NAdet = NaN(size(obj.NFRdet));
+        for iWavelength = 1:size(obj.mediaProperties,2)
+          mua_vec = [obj.mediaProperties.mua(:,iWavelength)];
+          NAdet(:,:,:,iWavelength) = mua_vec(obj.M).*obj.NFRdet(:,:,:,iWavelength);
+        end
+      else
+        NAdet = 0;
+      end
+    end
     function x   = get.calcNFR(obj  ); x = obj.calcNormalizedFluenceRate; end
     function obj = set.calcNFR(obj,x);     obj.calcNormalizedFluenceRate = x; end %#ok<MCSUP> 
     function x   = get.calcNFRdet(obj  ); x = obj.calcNormalizedFluenceRate_detected; end
@@ -106,18 +127,22 @@ classdef fluorescenceMonteCarloSimulation
   end
 end
 
-function mustBePositiveIntegerOrNaN(x)
-  x = x(:);
-  if ~any(isnan(x)) && (~any(isfinite(x)) || any(rem(x,1) ~= 0) || any(x <= 0))
-    error('Value must be a positive integer or NaN.');
-  end
+function mustBeFinitePositiveIntegerOrNaN(x)
+x = x(:);
+if all(isnan(x) | (isfinite(x) & rem(x,1) == 0 & x > 0))
+  % Input valid
+else
+  error('Value must be a finite positive integer or NaN.');
+end
 end
 
-function mustBePositiveOrNaN(x)
-  x = x(:);
-  if ~any(isnan(x)) && (~any(isfinite(x)) || any(x <= 0))
-    error('Value must be positive or NaN.');
-  end
+function mustBeFinitePositiveOrNaN(x)
+x = x(:);
+if all(isnan(x) | (isfinite(x) & x > 0))
+  % Valid input
+else
+  error('Value must be finite positive or NaN.');
+end
 end
 
 function mustBeInRange(x,a,b)
