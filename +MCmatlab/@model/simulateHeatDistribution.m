@@ -59,8 +59,7 @@ function model = simulateHeatDistribution(model)
     error('Error: If either on-duration or off-duration is 0, nPulses must be 1');
   end
 
-  if model.HS.silentMode && ~(model.MC.Tdependent  == true || model.FMC.Tdependent  == true || model.HS.Tdependent  == true || ...
-      model.MC.FDdependent == true || model.FMC.FDdependent == true || model.HS.FDdependent == true)
+  if model.HS.silentMode && ~any(G.optTdependent(:) | G.thmTdependent(:) | G.optFDdependent(:) | G.thmFDdependent(:))
     model.HS.nUpdates = 1;
   end
 
@@ -501,7 +500,7 @@ function [model,heatSimParameters] = heatSimParamsRecalc(model,heatSimParameters
   MCsilent = model.MC.silentMode;
   FMCsilent = model.FMC.silentMode;
 
-  if model.G.optTdependent || model.G.optFDdependent % If there is a heat simulation dependence in the MC step...
+  if any(model.G.optTdependent(:) | model.G.optFDdependent(:)) % If there is a heat simulation dependence in the MC or FMC step...
     model.MC.silentMode = true;
     fprintf('(Recalculating Monte Carlo)');
     model = runMonteCarlo(model); % then run the MC again
@@ -515,7 +514,7 @@ function [model,heatSimParameters] = heatSimParamsRecalc(model,heatSimParameters
       model.FMC.silentMode = FMCsilent;
     end
     model = getThermalMediaProperties(model); % Then get the new thermal media properties, including a new split media matrix
-  elseif model.G.thmTdependent || model.G.thmFDdependent % Otherwise if only the heat sim step (the thermal media properties) is temperature or FD dependent, no need to re-run any MC but the thermal media properties must be updated, including a new split media matrix.
+  elseif any(model.G.thmTdependent(:) | model.G.thmFDdependent(:)) % Otherwise if only the heat sim step (the thermal media properties) is temperature or FD dependent, no need to re-run any MC but the thermal media properties must be updated, including a new split media matrix.
     model = getThermalMediaProperties(model);
   end
   heatSimParameters.M = model.HS.M-1; % The new media matrix must be loaded into heatSimParameters

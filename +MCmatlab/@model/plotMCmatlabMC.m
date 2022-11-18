@@ -111,8 +111,9 @@ h_f = plotMediaProperties(2,model);
 h_f.Name = 'Media properties';
 
 if ~isscalar(MCorFMC.NFR)
+  NA = MCorFMC.NA;
   %% Make absorption plot
-  h_f = MCmatlab.NdimSliderPlot(MCorFMC.NA,...
+  h_f = MCmatlab.NdimSliderPlot(NA,...
     'nFig',3 + figNumOffset,...
     'axisValues',{G.x,G.y,G.z,MCorFMC.wavelength},...
     'axisLabels',{'x [cm]','y [cm]','z [cm]',lambdatext,['Normalized ' fluorescenceOrNothing 'absorbed power per unit volume [W/cm^3/W.incident]']},...
@@ -121,7 +122,7 @@ if ~isscalar(MCorFMC.NFR)
     'reversedAxes',3);
   h_f.Name = ['Normalized ' fluorescenceOrNothing 'absorption'];
   
-  fprintf(['%.3g%% of ' fluorescenceOrIncident 'light was absorbed within the cuboid.\n'],100*G.dx*G.dy*G.dz*sum(MCorFMC.NA(:))/P_in);
+  fprintf(['%.3g%% of ' fluorescenceOrIncident 'light was absorbed within the cuboid.\n'],100*G.dx*G.dy*G.dz*sum(NA(:))/P_in);
   
   %% Make fluence rate plot
   h_f = MCmatlab.NdimSliderPlot(MCorFMC.NFR,...

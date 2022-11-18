@@ -102,16 +102,32 @@ function model = runMonteCarlo(model,varargin)
       nM = numel(mP_fH);
       Fphotons = zeros(size(G.M_raw)); % Proportional to how many fluorescence photons are emitted, as function of xyz, summed over all wavelengths
       emSp = NaN([size(G.M_raw),nL_F]); % The emission spectra as function of wavelength. These start out non-normalized but will be normalized later. Because each emission spectrum may depend on FR, T and FD, each voxel may have its own emission spectrum
+      NA = model.MC.NA;
       for iM = 1:nM
         idxs = find(G.M_raw == iM);
+        FRs = FR(idxs);
+        Ts = T(idxs);
+        FDs = FD(idxs);
+        Fphotons_thisMedium = zeros(size(idxs));
         for iL_E = 1:nL_E % Loop over excitation wavelengths
-          NAs = model.MC.NA(:,:,:,iL_E);
-          try Fphotons(idxs) = Fphotons(idxs) + NAs(idxs).*mP_fH(iM).QY(Ls_E(iL_E),FR(idxs),T(idxs),FD(idxs)).*Ls_E(iL_E);
+          try
+            if G.FRdependent(iM,4) || G.optTdependent(iM,4) || G.optFDdependent(iM,4)
+              QYs = mP_fH(iM).QY(Ls_E(iL_E),FRs,Ts,FDs);
+            else
+              QYs = mP_fH(iM).QY(Ls_E(iL_E),0,0,0);
+            end
           catch; error('Error: The QY function of medium %s is throwing an error. If you have specified the function with four input arguments, it must be able to accept the first (wavelength in nm) as a scalar and the next three (fluence rate FR, temperature T and fractional damage FD) as 3D arrays. Therefore, remember to use element-wise arithmetic operators (.* instead of *, ./ instead of / etc.)',mP_fH(iM).name);
           end
+          Fphotons_thisMedium = Fphotons_thisMedium + NA(idxs + (iL_E-1)*G.nx*G.ny*G.nz).*QYs.*Ls_E(iL_E);
         end
+        Fphotons(idxs) = Fphotons_thisMedium;
         for iL_F = 1:nL_F % Loop over fluorescence wavelengths
-          try emSp(idxs + (iL_F-1)*G.nx*G.ny*G.nz) = mP_fH(iM).ES(Ls_F(iL_F),FR(idxs),T(idxs),FD(idxs));
+          try 
+            if G.FRdependent(iM,5) || G.optTdependent(iM,5) || G.optFDdependent(iM,5)
+              emSp(idxs + (iL_F-1)*G.nx*G.ny*G.nz) = mP_fH(iM).ES(Ls_F(iL_F),FRs,Ts,FDs);
+            else
+              emSp(idxs + (iL_F-1)*G.nx*G.ny*G.nz) = mP_fH(iM).ES(Ls_F(iL_F),0,0,0);
+            end
           catch; error('Error: The ES function of medium %s is throwing an error. If you have specified the function with four input arguments, it must be able to accept the first (wavelength in nm) as a scalar and the next three (fluence rate FR, temperature T and fractional damage FD) as 3D arrays. Therefore, remember to use element-wise arithmetic operators (.* instead of *, ./ instead of / etc.)',mP_fH(iM).name);
           end
         end

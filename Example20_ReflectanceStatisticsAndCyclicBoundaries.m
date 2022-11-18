@@ -14,7 +14,7 @@
 % we don't want photons to escape at the side walls and disappear from the
 % simulation. One possibility for how to avoid this is to use a cuboid with
 % very large Lx and Ly. Another is to use cyclic boundary conditions, which
-% we emply here by setting model.MC.boundaryType = 3. With cyclic boundary
+% we employ here by setting model.MC.boundaryType = 3. With cyclic boundary
 % conditions, all photons that hit a side wall will immediately enter the
 % cuboid again on the opposite wall. Because our geometry is supposed to
 % represent a slab of tissue with infinite horizontal extent, this is a
@@ -28,7 +28,7 @@
 % keep nx and ny at reasonable values of 101 in this example. Also Lx and
 % Ly could be set arbitrarily low due to the use of the cyclic boundaryType.
 %
-% The reflectance that we calculate is the total refletance, including the
+% The reflectance that we calculate is the total reflectance, including the
 % specular reflection that we get when simulating without matched
 % interfaces. We can obtain the diffuse reflectance by subtracting the
 % Fresnel reflectivity, ((1 - 1.4)/(1 + 1.4))^2, from the total

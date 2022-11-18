@@ -28,6 +28,7 @@ classdef fluorescenceMonteCarloSimulation
     %% Calculated properties
     simulationTime = NaN;
     nPhotons = NaN;
+    nPhotonsDetected = NaN
     nThreads = NaN;
 
     mediaProperties = NaN; % Wavelength- and splitting-dependent

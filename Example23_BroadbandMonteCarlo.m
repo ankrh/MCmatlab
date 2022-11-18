@@ -65,11 +65,11 @@ model.G.geomFunc          = @geometryDefinition; % Function to use for defining 
 model = plot(model,'G');
 
 %% Monte Carlo simulation
-model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
+model.MC.simulationTimeRequested  = 1; % [min] Time duration of the simulation
 
 model.MC.matchedInterfaces        = true; % Assumes all refractive indices are the same
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
-model.MC.wavelength               = linspace(300,500,11); % [nm] Array of wavelength(s) for which to run incident-light Monte Carlo simulations
+model.MC.wavelength               = linspace(300,550,51); % [nm] Array of wavelength(s) for which to run incident-light Monte Carlo simulations
 model.MC.spectrumFunc             = @Sfunc; % Defined just above the geometry function, later in this file
 
 model.MC.lightSource.sourceType   = 4; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
@@ -88,11 +88,11 @@ model = runMonteCarlo(model);
 model = plot(model,'MC');
 
 %% Fluorescence Monte Carlo simulation
-model.FMC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
+model.FMC.simulationTimeRequested  = 1; % [min] Time duration of the simulation
 
 model.FMC.matchedInterfaces        = true; % Assumes all refractive indices are the same
 model.FMC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
-model.FMC.wavelength               = linspace(500,800,11); % [nm] Array of wavelength(s) for which to run fluorescence-light Monte Carlo simulations
+model.FMC.wavelength               = linspace(450,750,61); % [nm] Array of wavelength(s) for which to run fluorescence-light Monte Carlo simulations
 
 
 model = runMonteCarlo(model,'fluorescence');
@@ -101,7 +101,7 @@ model = plot(model,'FMC');
 %% Spectrum function
 % The spectral power for the excitation light:
 function spectralpower = Sfunc(wavelength)
-  spectralpower = exp(-(wavelength-400).^2/(50).^2); % A simple Gaussian
+  spectralpower = exp(-(wavelength-400).^2/(40).^2); % A simple Gaussian
 end
 
 %% Geometry function(s) (see readme for details)
@@ -234,16 +234,25 @@ function mediaProperties = mediaPropertiesFunc(parameters)
   j=6;
   mediaProperties(j).name  = 'Lucifer Yellow CH in water';
   mediaProperties(j).mua = @muafunc6;
+  % For the absorption curve we use an imported data set from the omlc
+  % website. We define the "absorption" variable outside the function
+  % definition to ensure the file only has to be read once. If the
+  % readtable() function was placed inside the function, the file would
+  % unnecessarily be read many times during the execution of
+  % runMonteCarlo().
+  absorption = readtable("helperfuncs/LuciferYellowCHinWater-abs.txt"); % The absorption spectrum was downloaded from omlc.org
   function mua = muafunc6(wavelength)
-    absorption = readtable("helperfuncs/LuciferYellowCHinWater-abs.txt"); % The absorption spectrum was downloaded from omlc.org
     mua = interp1(absorption.Wavelength_nm,absorption.MolarExtinction_percmperM,wavelength,'linear',1e-8)/100; % interpolate from the raw data to the wavelength in question. Assuming a concentration of 10 mM. Allow extrapolation with value 1e-8 (mua may not be zero).
+    mua = max(1e-8,mua); % Ensure that all absorptions stay positive, even out in the tail of the curve
   end
   mediaProperties(j).mus = 10; % [cm^-1] This number is arbitrarily chosen in this case.
   mediaProperties(j).g   = 0.9;
   mediaProperties(j).QY   = 0.21; % Fluorescence quantum yield
   mediaProperties(j).ES = @ESfunc6;
+  % We also use a data set from omlc for the emission curve. Once again we
+  % put readtable() outside the function so the file is only read once:
+  emission = readtable("helperfuncs/LuciferYellowCHinWater-ems.txt"); % The emission spectrum was downloaded from omlc.org
   function ES = ESfunc6(wavelength)
-    emission = readtable("helperfuncs/LuciferYellowCHinWater-ems.txt"); % The emission spectrum was downloaded from omlc.org
     ES = interp1(emission.Wavelength_nm,emission.Emission_AU,wavelength,'linear',0); % interpolate from the raw data to the wavelength in question. This doesn't need to be scaled, as MCmatlab normalises this function internally.
   end
 

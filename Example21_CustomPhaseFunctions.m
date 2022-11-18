@@ -16,11 +16,11 @@
 % criteria work.
 %
 % For the custom phase function for the scatterer, instead of setting the
-% "g" field in the media properties struct we set instead the
-% customPhaseFunc field, which has to be a function of lambda and theta.
-% The expression does not need to be normalized. MCmatlab will evaluate the
-% expression and use an efficient lookup table algorithm to find the
-% scattering angle at every scattering event.
+% "g" property in the media properties function we set instead the
+% customPhaseFunc property, which has to be a function of lambda and theta.
+% The customPhaseFunc values do not need to be normalized. MCmatlab will
+% evaluate the expression and use an efficient lookup table algorithm to
+% find the scattering angle at every scattering event.
 %
 % In this example, we set the custom phase function to that of Rayleigh
 % scattering of unpolarized light. This distribution has equal scattering

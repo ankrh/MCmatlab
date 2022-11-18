@@ -104,6 +104,7 @@ struct MATLABoutputs {
 
 struct outputs {
   unsigned long long nPhotons;
+  unsigned long long nPhotonsDetected;
   FLOATORDBL * NFR;
   FLOATORDBL * NFRdet;
   FLOATORDBL * image;
@@ -169,7 +170,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line) {
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void atomicAddWrapperULL(unsigned long long *ptr, unsigned long long val) {
+void atomicAddWrapperULL(unsigned long long * ptr, unsigned long long val) {
   #ifdef __NVCC__ // If compiling for CUDA
     atomicAdd(ptr,val);
   #else
@@ -414,6 +415,7 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
 
   struct outputs O_temp; gpuErrchk(cudaMemcpy(&O_temp, O_dev, sizeof(struct outputs),cudaMemcpyDeviceToHost));
   O->nPhotons = O_temp.nPhotons;
+  O->nPhotonsDetected = O_temp.nPhotonsDetected;
   if(O->NFR) {
     gpuErrchk(cudaMemcpy(O->NFR, O_temp.NFR, L*sizeof(FLOATORDBL),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.NFR));
@@ -707,7 +709,7 @@ void launchPhoton(struct photon * const P, struct source const * const B, struct
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void formImage(struct photon * const P, struct geometry const * const G, struct lightCollector const * const LC, struct outputs const *O) {
+void formImage(struct photon * const P, struct geometry const * const G, struct lightCollector const * const LC, struct outputs *O) {
   FLOATORDBL U[3];
   xyztoXYZ(P->u,LC->theta,LC->phi,U); // U is now the photon trajectory in basis of detection frame (X,Y,Z)
   
@@ -736,8 +738,9 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
           long Yindex = (long)(LC->res[0]*(RImP[1]/LC->FSorNA + 1.0f/2));
           long timeindex = LC->res[1] > 1? min(LC->res[1]-1,max(0L,(long)(1+(LC->res[1]-2)*(P->time - (Resc[2] - LC->f)/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)))): 0; // If we are not measuring time-resolved, LC->res[1] == 1
           atomicAddWrapper(&O->image[Xindex               +
-                                        Yindex   *LC->res[0] +
-                                        timeindex*LC->res[0]*LC->res[0]],P->weight);
+                                     Yindex   *LC->res[0] +
+                                     timeindex*LC->res[0]*LC->res[0]],P->weight);
+          atomicAddWrapperULL(&O->nPhotonsDetected,1);
           if(O->NFRdet) for(long i=0;i<P->recordElems;i++) {
             atomicAddWrapper(&O->NFRdet[P->j_record[i]],P->weight*P->weight_record[i]);
           }
@@ -747,6 +750,7 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
         if(thetaLCFF < ASIN(min(1.0f,LC->FSorNA))) { // If the photon has an angle within the fiber's NA acceptance
           long timeindex = LC->res[1] > 1? min(LC->res[1]-1,max(0L,(long)(1+(LC->res[1]-2)*(P->time - Resc[2]/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)))): 0; // If we are not measuring time-resolved, LC->res[1] == 1
           atomicAddWrapper(&O->image[timeindex],P->weight);
+          atomicAddWrapperULL(&O->nPhotonsDetected,1);
           if(O->NFRdet) for(long i=0;i<P->recordElems;i++) {
             atomicAddWrapper(&O->NFRdet[P->j_record[i]],P->weight*P->weight_record[i]);
           }
@@ -788,7 +792,7 @@ void formEdgeFluxes(struct photon const * const P, struct geometry const * const
 __device__
 #endif
 void checkEscape(struct photon * const P, struct paths *Pa, struct geometry const * const G, struct lightCollector const * const LC,
-        struct outputs const *O, struct depositionCriteria *DC) {
+        struct outputs *O, struct depositionCriteria *DC) {
   bool escaped = false;
   switch (G->boundaryType) {
     case 0:
@@ -1170,6 +1174,7 @@ void normalizeDepositionAndResetO(struct source const * const B, struct geometry
   }
   
   O->nPhotons = 0;
+  O->nPhotonsDetected = 0;
   if(O->NFR) for(j=0;j<L   ;j++) {
     O_MATLAB->NFR[j + iWavelength*G->n[0]*G->n[1]*G->n[2]] = (float)(O->NFR[j]/(V*normfactor*G->muav[G->M[j]]));
     O->NFR[j] = 0;

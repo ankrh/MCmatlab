@@ -336,6 +336,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   int nM = (int)mxGetM(mxGetField(mediaProperties,0,"mua")); // Number of media
 
   double nPhotonsCumulative = 0;
+  double nPhotonsDetectedCumulative = 0;
   double simulationTimeCumulative = 0;
   mwSize const *dimPtr = mxGetDimensions(mxGetPropertyShared(MatlabMC,0,"M"));
   int sourceType = S_PDF? -1: (int)*mxGetPr(mxGetPropertyShared(MatlabLS,0,"sourceType"));
@@ -477,6 +478,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   
   struct outputs O_var = {
     0, // nPhotons
+    0, // nPhotonsDetected
     calcNFR? (FLOATORDBL *)calloc(G->n[0]*G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
     calcNFRdet? (FLOATORDBL *)calloc(G->n[0]*G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
     useLightCollector? (FLOATORDBL *)calloc(LC->res[0]*LC->res[0]*LC->res[1],sizeof(FLOATORDBL)): NULL,
@@ -706,6 +708,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   
     double nPhotons = (double)O->nPhotons;
     nPhotonsCumulative += nPhotons;
+    double nPhotonsDetected = (double)O->nPhotonsDetected;
+    nPhotonsDetectedCumulative += nPhotonsDetected;
     double simTime = (getMicroSeconds() - simulationTimeStart)/60000000.0; // In minutes
     simulationTimeCumulative += simTime;
     if(!silentMode) {
@@ -722,6 +726,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   mxArray *output = mxCreateDoubleMatrix(1,1,mxREAL);
   *mxGetPr(output) = nPhotonsCumulative;
   mxSetProperty(MCout,0,"nPhotons",output);
+  *mxGetPr(output) = nPhotonsDetectedCumulative;
+  mxSetProperty(MCout,0,"nPhotonsDetected",output);
   *mxGetPr(output) = nThreads;
   mxSetProperty(MCout,0,"nThreads",output);
   *mxGetPr(output) = simulationTimeCumulative;

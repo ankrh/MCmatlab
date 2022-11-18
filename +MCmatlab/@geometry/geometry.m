@@ -20,11 +20,11 @@ classdef geometry
 
     %% Calculated
     M_raw uint8
-    FRdependent = false
-    optTdependent = false
-    optFDdependent = false
-    thmTdependent = false
-    thmFDdependent = false
+    FRdependent (:,5) logical
+    optTdependent (:,5) logical
+    optFDdependent (:,5) logical
+    thmTdependent (:,2) logical
+    thmFDdependent (:,2) logical
   end
 
   properties (Hidden)
@@ -65,9 +65,9 @@ classdef geometry
         mP_fH = obj.mediaPropertiesFunc(obj.mediaPropParams); % Unsplit media
         mP_fH = mP_fH(unique(obj.M_raw));
         nM = numel(mP_fH);
-        obj.FRdependent = false;
-        obj.optTdependent  = false;
-        obj.optFDdependent = false;
+        obj.FRdependent = false(nM,5);
+        obj.optTdependent  = false(nM,5);
+        obj.optFDdependent = false(nM,5);
         testWavelengths = linspace(100e-9,10000e-9,10);
         testFRs_vec = [0 logspace(-20,20,9)];
         testTs_vec = linspace(-100,300,10);
@@ -79,34 +79,29 @@ classdef geometry
             muss = mP_fH(iM).mus(testWavelengths(iL),testFRs,testTs,testFD);
             gs   = mP_fH(iM).g  (testWavelengths(iL),testFRs,testTs,testFD);
             QYs  = mP_fH(iM).QY (testWavelengths(iL),testFRs,testTs,testFD);
-            ESs  = mP_fH(iM).ES(testWavelengths(iL),testFRs,testTs,testFD);
-            FRdifferences    = ~isequaln(max(muas,[],1), min(muas,[],1)) | ...
-                               ~isequaln(max(muss,[],1), min(muss,[],1)) | ...
-                               ~isequaln(max(gs  ,[],1), min(gs  ,[],1)) | ...
-                               ~isequaln(max(QYs ,[],1), min(QYs ,[],1)) | ...
-                               ~isequaln(max(ESs ,[],1), min(ESs ,[],1));
-            obj.FRdependent = obj.FRdependent || any(FRdifferences(:));
-            optTdifferences  = ~isequaln(max(muas,[],2), min(muas,[],2)) | ...
-                               ~isequaln(max(muss,[],2), min(muss,[],2)) | ...
-                               ~isequaln(max(gs  ,[],2), min(gs  ,[],2)) | ...
-                               ~isequaln(max(QYs ,[],2), min(QYs ,[],2)) | ...
-                               ~isequaln(max(ESs ,[],2), min(ESs ,[],2));
-            obj.optTdependent = obj.optTdependent || any(optTdifferences(:));
-            optFDdifferences = ~isequaln(max(muas,[],3), min(muas,[],3)) | ...
-                               ~isequaln(max(muss,[],3), min(muss,[],3)) | ...
-                               ~isequaln(max(gs  ,[],3), min(gs  ,[],3)) | ...
-                               ~isequaln(max(QYs ,[],3), min(QYs ,[],3)) | ...
-                               ~isequaln(max(ESs ,[],3), min(ESs ,[],3));
-            obj.optFDdependent = obj.optFDdependent || any(optFDdifferences(:));
+            ESs  = mP_fH(iM).ES (testWavelengths(iL),testFRs,testTs,testFD);
+            obj.FRdependent(iM,1) = obj.FRdependent(iM,1) || any(~isequaln(max(muas,[],1), min(muas,[],1)));
+            obj.FRdependent(iM,2) = obj.FRdependent(iM,2) || any(~isequaln(max(muss,[],1), min(muss,[],1)));
+            obj.FRdependent(iM,3) = obj.FRdependent(iM,3) || any(~isequaln(max(gs,[],1), min(gs,[],1)));
+            obj.FRdependent(iM,4) = obj.FRdependent(iM,4) || any(~isequaln(max(QYs,[],1), min(QYs,[],1)));
+            obj.FRdependent(iM,5) = obj.FRdependent(iM,5) || any(~isequaln(max(ESs,[],1), min(ESs,[],1)));
+            obj.optTdependent(iM,1) = obj.optTdependent(iM,1) || any(~isequaln(max(muas,[],2), min(muas,[],2)));
+            obj.optTdependent(iM,2) = obj.optTdependent(iM,2) || any(~isequaln(max(muss,[],2), min(muss,[],2)));
+            obj.optTdependent(iM,3) = obj.optTdependent(iM,3) || any(~isequaln(max(gs,[],2), min(gs,[],2)));
+            obj.optTdependent(iM,4) = obj.optTdependent(iM,4) || any(~isequaln(max(QYs,[],2), min(QYs,[],2)));
+            obj.optTdependent(iM,5) = obj.optTdependent(iM,5) || any(~isequaln(max(ESs,[],2), min(ESs,[],2)));
+            obj.optFDdependent(iM,1) = obj.optFDdependent(iM,1) || any(~isequaln(max(muas,[],3), min(muas,[],3)));
+            obj.optFDdependent(iM,2) = obj.optFDdependent(iM,2) || any(~isequaln(max(muss,[],3), min(muss,[],3)));
+            obj.optFDdependent(iM,3) = obj.optFDdependent(iM,3) || any(~isequaln(max(gs,[],3), min(gs,[],3)));
+            obj.optFDdependent(iM,4) = obj.optFDdependent(iM,4) || any(~isequaln(max(QYs,[],3), min(QYs,[],3)));
+            obj.optFDdependent(iM,5) = obj.optFDdependent(iM,5) || any(~isequaln(max(ESs,[],3), min(ESs,[],3)));
           end
           VHCs = mP_fH(iM).VHC(testTs,testFD);
           TCs  = mP_fH(iM).TC (testTs,testFD);
-          thmTdifferences = ~isequaln(max(VHCs,[],1), min(VHCs,[],1)) | ...
-                            ~isequaln(max(TCs,[],1), min(TCs,[],1));
-          obj.thmTdependent = obj.thmTdependent || any(thmTdifferences(:));
-          thmFDdifferences = ~isequaln(max(VHCs,[],2), min(VHCs,[],2)) | ...
-                             ~isequaln(max(TCs,[],2), min(TCs,[],2));
-          obj.thmFDdependent = obj.thmFDdependent || any(thmFDdifferences(:));
+          obj.thmTdependent(iM,1) = any(~isequaln(max(VHCs,[],1), min(VHCs,[],1)));
+          obj.thmTdependent(iM,2) = any(~isequaln(max(TCs,[],1), min(TCs,[],1)));
+          obj.thmFDdependent(iM,1) = any(~isequaln(max(VHCs,[],2), min(VHCs,[],2)));
+          obj.thmFDdependent(iM,2) = any(~isequaln(max(TCs,[],2), min(TCs,[],2)));
         end
         obj.needsRecalculation = false;
       end
