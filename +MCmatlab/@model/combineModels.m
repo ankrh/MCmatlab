@@ -83,7 +83,7 @@ function model = combineModels(modelArray,simType)
 
       model.MC.simulationTime = model.MC.simulationTime + modelArray(iModel).MC.simulationTime;
       model.MC.nPhotons = model.MC.nPhotons + modelArray(iModel).MC.nPhotons;
-      model.MC.nPhotonsDetected = model.MC.nPhotonsDetected + modelArray(iModel).MC.nPhotonsDetected;
+      model.MC.nPhotonsCollected = model.MC.nPhotonsCollected + modelArray(iModel).MC.nPhotonsCollected;
       model.MC.examplePaths = cat(2,model.MC.examplePaths,modelArray(iModel).MC.examplePaths);
       if ~lightSourcesAndPowersEqual
         model.MC.P = model.MC.P + modelArray(iModel).MC.P;
@@ -166,7 +166,7 @@ function model = combineModels(modelArray,simType)
 
       model.FMC.simulationTime = model.FMC.simulationTime + modelArray(iModel).FMC.simulationTime;
       model.FMC.nPhotons = model.FMC.nPhotons + modelArray(iModel).FMC.nPhotons;
-      model.FMC.nPhotonsDetected = model.FMC.nPhotonsDetected + modelArray(iModel).FMC.nPhotonsDetected;
+      model.FMC.nPhotonsCollected = model.FMC.nPhotonsCollected + modelArray(iModel).FMC.nPhotonsCollected;
       model.FMC.examplePaths = cat(2,model.FMC.examplePaths,modelArray(iModel).FMC.examplePaths);
 
       model.FMC.LC.image   = model.FMC.LC.image   + w/w1*modelArray(iModel).FMC.LC.image;

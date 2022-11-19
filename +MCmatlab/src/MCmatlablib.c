@@ -104,7 +104,7 @@ struct MATLABoutputs {
 
 struct outputs {
   unsigned long long nPhotons;
-  unsigned long long nPhotonsDetected;
+  unsigned long long nPhotonsCollected;
   FLOATORDBL * NFR;
   FLOATORDBL * NFRdet;
   FLOATORDBL * image;
@@ -415,7 +415,7 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
 
   struct outputs O_temp; gpuErrchk(cudaMemcpy(&O_temp, O_dev, sizeof(struct outputs),cudaMemcpyDeviceToHost));
   O->nPhotons = O_temp.nPhotons;
-  O->nPhotonsDetected = O_temp.nPhotonsDetected;
+  O->nPhotonsCollected = O_temp.nPhotonsCollected;
   if(O->NFR) {
     gpuErrchk(cudaMemcpy(O->NFR, O_temp.NFR, L*sizeof(FLOATORDBL),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.NFR));
@@ -740,7 +740,7 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
           atomicAddWrapper(&O->image[Xindex               +
                                      Yindex   *LC->res[0] +
                                      timeindex*LC->res[0]*LC->res[0]],P->weight);
-          atomicAddWrapperULL(&O->nPhotonsDetected,1);
+          atomicAddWrapperULL(&O->nPhotonsCollected,1);
           if(O->NFRdet) for(long i=0;i<P->recordElems;i++) {
             atomicAddWrapper(&O->NFRdet[P->j_record[i]],P->weight*P->weight_record[i]);
           }
@@ -750,7 +750,7 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
         if(thetaLCFF < ASIN(min(1.0f,LC->FSorNA))) { // If the photon has an angle within the fiber's NA acceptance
           long timeindex = LC->res[1] > 1? min(LC->res[1]-1,max(0L,(long)(1+(LC->res[1]-2)*(P->time - Resc[2]/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)))): 0; // If we are not measuring time-resolved, LC->res[1] == 1
           atomicAddWrapper(&O->image[timeindex],P->weight);
-          atomicAddWrapperULL(&O->nPhotonsDetected,1);
+          atomicAddWrapperULL(&O->nPhotonsCollected,1);
           if(O->NFRdet) for(long i=0;i<P->recordElems;i++) {
             atomicAddWrapper(&O->NFRdet[P->j_record[i]],P->weight*P->weight_record[i]);
           }
@@ -1174,7 +1174,7 @@ void normalizeDepositionAndResetO(struct source const * const B, struct geometry
   }
   
   O->nPhotons = 0;
-  O->nPhotonsDetected = 0;
+  O->nPhotonsCollected = 0;
   if(O->NFR) for(j=0;j<L   ;j++) {
     O_MATLAB->NFR[j + iWavelength*G->n[0]*G->n[1]*G->n[2]] = (float)(O->NFR[j]/(V*normfactor*G->muav[G->M[j]]));
     O->NFR[j] = 0;

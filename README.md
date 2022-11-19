@@ -170,6 +170,12 @@ The time to run the MC simualtion for, in minutes. The number of photos launched
 (Mutually exclusive with model.MC.simulationTimeRequested)
 The number of photons to launch. The execution time will vary from run to run.
 
+`model.MC.requestCollectedPhotons
+[-]
+(Default: False)
+(Only used if model.MC.nPhotonsRequested is specified)
+If true, model.MC.nPhotonsRequested is interpreted as the requested number of collected photon packets, rather than launched photon packets.
+
 `model.MC.silentMode`
 [-]
 (Default: False)
@@ -535,6 +541,10 @@ The actual simulation time of the most recent Monte Carlo simulation run. If you
 `model.MC.nPhotons`
 [-]
 The actual number of photon packets launched in the most recent Monte Carlo simulation run. If you defined model.MC.nPhotonsRequested, then model.MC.nPhotons will be equal to that number.
+
+`model.MC.nPhotonsCollected`
+[-]
+The actual number of photon packets that was registered on the light collected in the most recent Monte Carlo simulation run. If you set model.MC.requestCollectedPhotons = true, then model.MC.nPhotonsCollected will be equal to model.MC.nPhotonsRequested.
 
 `model.MC.mediaProperties`
 [-]

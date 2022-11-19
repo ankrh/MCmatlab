@@ -176,7 +176,7 @@ __global__
 void threadInitAndLoop(struct source *B_global, struct geometry *G_global,
           struct lightCollector *LC_global, struct paths *Pa, struct outputs *O_global, struct depositionCriteria *DC_global, long nM, size_t size_smallArrays,
           long long simulationTimeStart, long long microSecondsOrGPUCycles, unsigned long long nPhotonsRequested,
-          int iL, int nL,
+          int iL, int nL, bool requestCollectedPhotons,
           bool *abortingPtr, bool silentMode, struct debug *D) {
   struct photon P_var;
   struct photon *P = &P_var;
@@ -226,7 +226,7 @@ void threadInitAndLoop(struct source *B_global, struct geometry *G_global,
   long long tEnd = clock64() + microSecondsOrGPUCycles;
 
   // Launch major loop
-  while(clock64() < tEnd && O->nPhotons + THREADNUM < nPhotonsRequested) { // "+ THREADNUM" ensures that we avoid race conditions that might launch more than nPhotonsRequested photons
+  while(clock64() < tEnd && (requestCollectedPhotons? O->nPhotonsCollected: O->nPhotons) + THREADNUM < nPhotonsRequested) { // "+ THREADNUM" ensures that we avoid race conditions that might launch more than nPhotonsRequested photons
   #else
   struct source *B = B_global;
   struct geometry *G = G_global;
@@ -240,7 +240,7 @@ void threadInitAndLoop(struct source *B_global, struct geometry *G_global,
   int pctProgressThisWavelength = 0;      // Simulation progress in percent
   int pctProgress = 0;
   // Launch major loop
-  while(pctProgressThisWavelength < 100 && O->nPhotons + THREADNUM < nPhotonsRequested && !*abortingPtr) { // "+ THREADNUM" ensures that we avoid race conditions that might launch more than nPhotonsRequested photons
+  while(pctProgressThisWavelength < 100 && (requestCollectedPhotons? O->nPhotonsCollected: O->nPhotons) + THREADNUM < nPhotonsRequested && !*abortingPtr) { // "+ THREADNUM" ensures that we avoid race conditions that might launch more than nPhotonsRequested photons
   #endif
     launchPhoton(P,B,G,Pa,DC,abortingPtr,D);
     if(P->alive) getNewVoxelProperties(P,G,D);
@@ -261,9 +261,9 @@ void threadInitAndLoop(struct source *B_global, struct geometry *G_global,
     #ifndef __NVCC__
       // Check progress
       int pctTimeProgressThisWavelength = (int)(100.0*(getMicroSeconds() - simulationTimeStart)/microSecondsOrGPUCycles);
-      int pctPhotonsProgressThisWavelength = (int)(100.0*O->nPhotons/nPhotonsRequested);
+      int pctPhotonsProgressThisWavelength = (int)(100.0*(requestCollectedPhotons? O->nPhotonsCollected: O->nPhotons)/nPhotonsRequested);
       int pctTimeProgress = (int)(100.0*(iL + (double)(getMicroSeconds() - simulationTimeStart)/microSecondsOrGPUCycles)/nL);
-      int pctPhotonsProgress = (int)(100.0*(iL + (double)O->nPhotons/nPhotonsRequested)/nL);
+      int pctPhotonsProgress = (int)(100.0*(iL + (double)(requestCollectedPhotons? O->nPhotonsCollected: O->nPhotons)/nPhotonsRequested)/nL);
 
       #ifdef _OPENMP
       #pragma omp master
@@ -312,6 +312,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 
   // Variables for timekeeping and number of photons
   bool            simulationTimed = mxIsNaN(*mxGetPr(mxGetPropertyShared(MatlabMC,0,"nPhotonsRequested")));
+  bool            requestCollectedPhotons = mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabMC,0,"requestCollectedPhotons"));
   bool            aborting = false;
   double          simulationTimeRequested = simulationTimed? *mxGetPr(mxGetPropertyShared(MatlabMC,0,"simulationTimeRequested")): INFINITY;
   unsigned long long nPhotonsRequested = simulationTimed? ULLONG_MAX: (unsigned long long)*mxGetPr(mxGetPropertyShared(MatlabMC,0,"nPhotonsRequested"));
@@ -321,8 +322,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     // Display progress indicator
     printf(simFluorescence?"-----------Fluorescence Monte Carlo Simulation-----------\n":
                            "-----------------Monte Carlo Simulation------------------\n");
-    if(simulationTimed) printf("Simulation duration = %0.3f min\n",simulationTimeRequested);
-    else                printf("Requested # of photons = %0.2e\n",(double)nPhotonsRequested);
+    if(simulationTimed)              printf("Simulation duration = %0.3f min\n",simulationTimeRequested);
+    else if(requestCollectedPhotons) printf("Requested # of collected photons = %0.2e\n",(double)nPhotonsRequested);
+    else                             printf("Requested # of launched photons = %0.2e\n",(double)nPhotonsRequested);
   }
 
   // Find out how much total memory to allocate for the small arrays (the array that for GPUs would be stored in GPU shared memory)
@@ -336,7 +338,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   int nM = (int)mxGetM(mxGetField(mediaProperties,0,"mua")); // Number of media
 
   double nPhotonsCumulative = 0;
-  double nPhotonsDetectedCumulative = 0;
+  double nPhotonsCollectedCumulative = 0;
   double simulationTimeCumulative = 0;
   mwSize const *dimPtr = mxGetDimensions(mxGetPropertyShared(MatlabMC,0,"M"));
   int sourceType = S_PDF? -1: (int)*mxGetPr(mxGetPropertyShared(MatlabLS,0,"sourceType"));
@@ -478,7 +480,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   
   struct outputs O_var = {
     0, // nPhotons
-    0, // nPhotonsDetected
+    0, // nPhotonsCollected
     calcNFR? (FLOATORDBL *)calloc(G->n[0]*G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
     calcNFRdet? (FLOATORDBL *)calloc(G->n[0]*G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
     useLightCollector? (FLOATORDBL *)calloc(LC->res[0]*LC->res[0]*LC->res[1],sizeof(FLOATORDBL)): NULL,
@@ -603,7 +605,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     }
 
     // ============================ MAJOR CYCLE ========================
-    unsigned long long nPhotonsRequested_ThisWavelength = simulationTimed? ULLONG_MAX: (unsigned long long)(iL == nL - 1? nPhotonsRequested - nPhotonsCumulative: nPhotonsRequested/nL);
+    unsigned long long nPhotonsRequested_ThisWavelength = simulationTimed? ULLONG_MAX: (unsigned long long)(iL == nL - 1? nPhotonsRequested - (requestCollectedPhotons? nPhotonsCollectedCumulative: nPhotonsCumulative): nPhotonsRequested/nL);
     double simulationTimeRequested_ThisWavelength = simulationTimeRequested/nL;
     #ifdef __NVCC__ // If compiling for CUDA
     long GPUdevice = *(long *)mxGetPr(mxGetPropertyShared(MatlabMC,0,"GPUdevice"));
@@ -644,17 +646,17 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     long long prevtime = simulationTimeStart;
     do {
       // Run kernel
-      threadInitAndLoop<<<blocks, threadsPerBlock, size_smallArrays>>>(B_dev,G_dev,LC_dev,Pa_dev,O_dev,DC_dev,nM,size_smallArrays,prevtime,clock/1000*min((long long)KERNELTIME,timeLeft),nPhotonsRequested_ThisWavelength,0,0,NULL,false,D_dev);
+      threadInitAndLoop<<<blocks, threadsPerBlock, size_smallArrays>>>(B_dev,G_dev,LC_dev,Pa_dev,O_dev,DC_dev,nM,size_smallArrays,prevtime,clock/1000*min((long long)KERNELTIME,timeLeft),nPhotonsRequested_ThisWavelength,0,0,requestCollectedPhotons,NULL,false,D_dev);
       gpuErrchk(cudaPeekAtLastError());
       gpuErrchk(cudaDeviceSynchronize());
       // Progress indicator
       long long newtime = getMicroSeconds();
-      gpuErrchk(cudaMemcpy(O, O_dev, sizeof(unsigned long long),cudaMemcpyDeviceToHost)); // Copy just nPhotons, the first 8 bytes of O
+      gpuErrchk(cudaMemcpy(O, O_dev, 2*sizeof(unsigned long long),cudaMemcpyDeviceToHost)); // Copy just nPhotons and nPhotonsCollected, the first 2*8 bytes of O
       if(simulationTimed) {
         timeLeft = (long long)(simulationTimeRequested_ThisWavelength*60000000) - newtime + simulationTimeStart; // In microseconds
         pctProgress = (int)(100.0*(iL + 1.0 - timeLeft/(simulationTimeRequested_ThisWavelength*60000000.0))/nL);
       } else {
-        pctProgress = (int)(100.0*(iL + O->nPhotons/nPhotonsRequested_ThisWavelength)/nL);
+        pctProgress = (int)(100.0*(iL + (requestCollectedPhotons? O->nPhotonsCollecte: O->nPhotons)/nPhotonsRequested_ThisWavelength)/nL);
       }
   
       // Check for ctrl+c
@@ -682,7 +684,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
           gpuErrchk(cudaMemcpy(Pa_dev,&Pa_temp,sizeof(struct paths),cudaMemcpyHostToDevice));
         }
       }
-    } while(timeLeft > 0 && O->nPhotons < nPhotonsRequested_ThisWavelength && !aborting && O->nPhotons); // The O->nPhotons is there to stop looping if launches failed
+    } while(timeLeft > 0 && (requestCollectedPhotons? O->nPhotonsCollected: O->nPhotons) < nPhotonsRequested_ThisWavelength && !aborting && O->nPhotons); // The O->nPhotons is there to stop looping if launches failed
     if(!silentMode && O->nPhotons) printf("\b\b\b\b\b\b\b\b\b%3d%% done",pctProgress);
   
     retrieveAndFreeDeviceStructs(G,G_dev,B,B_dev,LC,LC_dev,Pa,Pa_dev,O,O_dev,DC_dev,L,D,D_dev);
@@ -702,14 +704,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     nThreads = 1;
     #endif
     {
-      threadInitAndLoop(B,G,LC,Pa,O,DC,nM,0,simulationTimeStart,(long long)(simulationTimeRequested_ThisWavelength*60000000),nPhotonsRequested_ThisWavelength,iL,nL,&aborting,silentMode,D);
+      threadInitAndLoop(B,G,LC,Pa,O,DC,nM,0,simulationTimeStart,(long long)(simulationTimeRequested_ThisWavelength*60000000),nPhotonsRequested_ThisWavelength,iL,nL,requestCollectedPhotons,&aborting,silentMode,D);
     }
     #endif
   
     double nPhotons = (double)O->nPhotons;
     nPhotonsCumulative += nPhotons;
-    double nPhotonsDetected = (double)O->nPhotonsDetected;
-    nPhotonsDetectedCumulative += nPhotonsDetected;
+    double nPhotonsCollected = (double)O->nPhotonsCollected;
+    nPhotonsCollectedCumulative += nPhotonsCollected;
     double simTime = (getMicroSeconds() - simulationTimeStart)/60000000.0; // In minutes
     simulationTimeCumulative += simTime;
     if(!silentMode) {
@@ -726,8 +728,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   mxArray *output = mxCreateDoubleMatrix(1,1,mxREAL);
   *mxGetPr(output) = nPhotonsCumulative;
   mxSetProperty(MCout,0,"nPhotons",output);
-  *mxGetPr(output) = nPhotonsDetectedCumulative;
-  mxSetProperty(MCout,0,"nPhotonsDetected",output);
+  *mxGetPr(output) = nPhotonsCollectedCumulative;
+  mxSetProperty(MCout,0,"nPhotonsCollected",output);
   *mxGetPr(output) = nThreads;
   mxSetProperty(MCout,0,"nThreads",output);
   *mxGetPr(output) = simulationTimeCumulative;
