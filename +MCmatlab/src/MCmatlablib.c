@@ -709,7 +709,7 @@ void launchPhoton(struct photon * const P, struct source const * const B, struct
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void formImage(struct photon * const P, struct geometry const * const G, struct lightCollector const * const LC, struct outputs *O) {
+void formImage(struct photon * const P, struct geometry const * const G, struct lightCollector const * const LC, struct outputs *O, unsigned long long * nPhotonsCollectedPtr) {
   FLOATORDBL U[3];
   xyztoXYZ(P->u,LC->theta,LC->phi,U); // U is now the photon trajectory in basis of detection frame (X,Y,Z)
   
@@ -740,7 +740,7 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
           atomicAddWrapper(&O->image[Xindex               +
                                      Yindex   *LC->res[0] +
                                      timeindex*LC->res[0]*LC->res[0]],P->weight);
-          atomicAddWrapperULL(&O->nPhotonsCollected,1);
+          atomicAddWrapperULL(nPhotonsCollectedPtr,1);
           if(O->NFRdet) for(long i=0;i<P->recordElems;i++) {
             atomicAddWrapper(&O->NFRdet[P->j_record[i]],P->weight*P->weight_record[i]);
           }
@@ -750,7 +750,7 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
         if(thetaLCFF < ASIN(min(1.0f,LC->FSorNA))) { // If the photon has an angle within the fiber's NA acceptance
           long timeindex = LC->res[1] > 1? min(LC->res[1]-1,max(0L,(long)(1+(LC->res[1]-2)*(P->time - Resc[2]/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)))): 0; // If we are not measuring time-resolved, LC->res[1] == 1
           atomicAddWrapper(&O->image[timeindex],P->weight);
-          atomicAddWrapperULL(&O->nPhotonsCollected,1);
+          atomicAddWrapperULL(nPhotonsCollectedPtr,1);
           if(O->NFRdet) for(long i=0;i<P->recordElems;i++) {
             atomicAddWrapper(&O->NFRdet[P->j_record[i]],P->weight*P->weight_record[i]);
           }
@@ -792,7 +792,7 @@ void formEdgeFluxes(struct photon const * const P, struct geometry const * const
 __device__
 #endif
 void checkEscape(struct photon * const P, struct paths *Pa, struct geometry const * const G, struct lightCollector const * const LC,
-        struct outputs *O, struct depositionCriteria *DC) {
+        struct outputs *O, struct depositionCriteria *DC, unsigned long long * nPhotonsCollectedPtr) {
   bool escaped = false;
   switch (G->boundaryType) {
     case 0:
@@ -855,7 +855,7 @@ void checkEscape(struct photon * const P, struct paths *Pa, struct geometry cons
   
   if(!P->alive && G->boundaryType && depositionCriteriaMet(P,DC)) formEdgeFluxes(P,G,O);
   if(escaped && O->FF && depositionCriteriaMet(P,DC))             formFarField(P,G,O);
-  if(escaped && O->image && depositionCriteriaMet(P,DC))          formImage(P,G,LC,O); // If image is not NULL then that's because useLightCollector was set to true (non-zero)
+  if(escaped && O->image && depositionCriteriaMet(P,DC))          formImage(P,G,LC,O,nPhotonsCollectedPtr); // If image is not NULL then that's because useLightCollector was set to true (non-zero)
 }
 
 #ifdef __NVCC__ // If compiling for CUDA

@@ -226,7 +226,7 @@ void threadInitAndLoop(struct source *B_global, struct geometry *G_global,
   long long tEnd = clock64() + microSecondsOrGPUCycles;
 
   // Launch major loop
-  while(clock64() < tEnd && (requestCollectedPhotons? O->nPhotonsCollected: O->nPhotons) + THREADNUM < nPhotonsRequested) { // "+ THREADNUM" ensures that we avoid race conditions that might launch more than nPhotonsRequested photons
+  while(clock64() < tEnd && (requestCollectedPhotons? O_global->nPhotonsCollected: O_global->nPhotons + THREADNUM) < nPhotonsRequested) { // "+ THREADNUM" ensures that we avoid race conditions that might launch more than nPhotonsRequested photons
   #else
   struct source *B = B_global;
   struct geometry *G = G_global;
@@ -250,7 +250,7 @@ void threadInitAndLoop(struct source *B_global, struct geometry *G_global,
       while(P->alive && P->stepLeft>0) { // keep propagating
         propagatePhoton(P,G,O,DC,Pa,D);
         if(!P->sameVoxel) {
-          checkEscape(P,Pa,G,LC,O,DC); // photon may die here
+          checkEscape(P,Pa,G,LC,O,DC,&O_global->nPhotonsCollected); // photon may die here
           if(P->alive) getNewVoxelProperties(P,G,D);
         }
       }
@@ -656,7 +656,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
         timeLeft = (long long)(simulationTimeRequested_ThisWavelength*60000000) - newtime + simulationTimeStart; // In microseconds
         pctProgress = (int)(100.0*(iL + 1.0 - timeLeft/(simulationTimeRequested_ThisWavelength*60000000.0))/nL);
       } else {
-        pctProgress = (int)(100.0*(iL + (requestCollectedPhotons? O->nPhotonsCollecte: O->nPhotons)/nPhotonsRequested_ThisWavelength)/nL);
+        pctProgress = (int)(100.0*(iL + (double)(requestCollectedPhotons? O->nPhotonsCollected: O->nPhotons)/nPhotonsRequested_ThisWavelength)/nL);
       }
   
       // Check for ctrl+c
