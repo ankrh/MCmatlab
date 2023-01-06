@@ -158,6 +158,11 @@ classdef model
     obj = plotMCmatlabHeat(obj)
   end
 
+  methods (Static)
+    function obj = loadobj(obj)
+      addpath('./helperfuncs/');
+    end
+  end
 
   methods (Access = private)
     finiteElementHeatPropagator(T,Omega,heatSimParameters)
