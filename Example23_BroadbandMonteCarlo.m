@@ -240,9 +240,10 @@ function mediaProperties = mediaPropertiesFunc(parameters)
   % readtable() function was placed inside the function, the file would
   % unnecessarily be read many times during the execution of
   % runMonteCarlo().
+  warning('OFF', 'MATLAB:table:ModifiedAndSavedVarnames'); % We're going to load data from a file with badly formatted column headers. Here we suppress the warning about them.
   absorption = readtable("helperfuncs/LuciferYellowCHinWater-abs.txt"); % The absorption spectrum was downloaded from omlc.org
   function mua = muafunc6(wavelength)
-    mua = interp1(absorption.Wavelength_nm,absorption.MolarExtinction_percmperM,wavelength,'linear',1e-8)/100; % interpolate from the raw data to the wavelength in question. Assuming a concentration of 10 mM. Allow extrapolation with value 1e-8 (mua may not be zero).
+    mua = interp1(absorption.x__Wavelength_nm_,absorption.MolarExtinction_cm_1_M_,wavelength,'linear',1e-8)/100; % interpolate from the raw data to the wavelength in question. Assuming a concentration of 10 mM. Allow extrapolation with value 1e-8 (mua may not be zero).
     mua = max(1e-8,mua); % Ensure that all absorptions stay positive, even out in the tail of the curve
   end
   mediaProperties(j).mus = 10; % [cm^-1] This number is arbitrarily chosen in this case.
@@ -253,7 +254,7 @@ function mediaProperties = mediaPropertiesFunc(parameters)
   % put readtable() outside the function so the file is only read once:
   emission = readtable("helperfuncs/LuciferYellowCHinWater-ems.txt"); % The emission spectrum was downloaded from omlc.org
   function ES = ESfunc6(wavelength)
-    ES = interp1(emission.Wavelength_nm,emission.Emission_AU,wavelength,'linear',0); % interpolate from the raw data to the wavelength in question. This doesn't need to be scaled, as MCmatlab normalises this function internally.
+    ES = interp1(emission.x__Wavelength_nm_,emission.Emission_AU_,wavelength,'linear',0); % interpolate from the raw data to the wavelength in question. This doesn't need to be scaled, as MCmatlab normalises this function internally.
   end
 
 end

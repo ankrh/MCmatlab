@@ -20,7 +20,7 @@
 # The reported molar extinction coefficient is from
 # Stewart, W. W. (1981) Synthesis of 3,6-disulfonated 4-aminonapthalimides.  J. Am. Chem. Soc. 103, 7615-7620.
 #
-Wavelength_nm	MolarExtinction_percmperM
+##Wavelength (nm)	Molar Extinction (cm-1/M) 
 219.75	21703
 220	21651
 220.25	21659

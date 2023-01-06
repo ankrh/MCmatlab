@@ -13,7 +13,7 @@
 # The spectral absorption measurements were made by  on in the summer of 1995 
 # using a Spex FluoroMax.   The excitation and emission monochromators were set at 1 mm, giving a spectral bandwidth of 4.25 nm.  The data interval was 0.5 nm and the integration time was 2.0 sec. Samples were prepared in 1cm pathlength quartz cells with absorbance less than 0.1 at the excitation and all emission wavelengths to uniformly illuminate across the sample, and to avoid the inner-filter effect.  The dark counts were subtracted and the spectra were corrected for wavelength-dependent instrument sensitivity.
 #
-Wavelength_nm	Emission_AU
+##Wavelength (nm)	Emission (AU)
 400	616
 400.5	586
 401	588
