@@ -68,7 +68,7 @@ classdef monteCarloSimulation
     normalizedAbsorption_detected
   end
 
-  properties (Hidden)
+  properties (Hidden, Dependent)
     calcNFR
     calcNFRdet
     beam
@@ -125,36 +125,36 @@ classdef monteCarloSimulation
     end
     function obj = set.beam(obj,x)
       warning('beam has been renamed lightSource (LS). The ability to reference lightSource through beam will be deprecated in a future version.');
-      obj.lightSource = x; %#ok<MCSUP> 
+      obj.lightSource = x;  
     end
     function x   = get.calcNFR(obj  ); x = obj.calcNormalizedFluenceRate; end
-    function obj = set.calcNFR(obj,x);     obj.calcNormalizedFluenceRate = x; end %#ok<MCSUP> 
+    function obj = set.calcNFR(obj,x);     obj.calcNormalizedFluenceRate = x; end  
     function x   = get.calcNFRdet(obj  ); x = obj.calcNormalizedFluenceRate_detected; end
-    function obj = set.calcNFRdet(obj,x);     obj.calcNormalizedFluenceRate_detected = x; end %#ok<MCSUP> 
+    function obj = set.calcNFRdet(obj,x);     obj.calcNormalizedFluenceRate_detected = x; end  
     function x   = get.LS(obj  ); x = obj.lightSource; end
-    function obj = set.LS(obj,x);     obj.lightSource = x; end %#ok<MCSUP> 
+    function obj = set.LS(obj,x);     obj.lightSource = x; end  
     function x   = get.LC(obj  ); x = obj.lightCollector; end
-    function obj = set.LC(obj,x);     obj.lightCollector = x; end %#ok<MCSUP> 
+    function obj = set.LC(obj,x);     obj.lightCollector = x; end  
     function x   = get.NFR(obj  ); x = obj.normalizedFluenceRate; end
-    function obj = set.NFR(obj,x);     obj.normalizedFluenceRate = x; end %#ok<MCSUP> 
+    function obj = set.NFR(obj,x);     obj.normalizedFluenceRate = x; end  
     function x   = get.NFRdet(obj  ); x = obj.normalizedFluenceRate_detected; end
-    function obj = set.NFRdet(obj,x);     obj.normalizedFluenceRate_detected = x; end %#ok<MCSUP> 
+    function obj = set.NFRdet(obj,x);     obj.normalizedFluenceRate_detected = x; end  
     function x   = get.NA(obj  ); x = obj.normalizedAbsorption; end
-    function obj = set.NA(obj,x);     obj.normalizedAbsorption = x; end %#ok<MCSUP> 
+    function obj = set.NA(obj,x);     obj.normalizedAbsorption = x; end  
     function x   = get.NAdet(obj  ); x = obj.normalizedAbsorption_detected; end
-    function obj = set.NAdet(obj,x);     obj.normalizedAbsorption_detected = x; end %#ok<MCSUP> 
+    function obj = set.NAdet(obj,x);     obj.normalizedAbsorption_detected = x; end  
     function x   = get.NI_xpos(obj  ); x = obj.normalizedIrradiance_xpos; end
-    function obj = set.NI_xpos(obj,x);     obj.normalizedIrradiance_xpos = x; end %#ok<MCSUP> 
+    function obj = set.NI_xpos(obj,x);     obj.normalizedIrradiance_xpos = x; end  
     function x   = get.NI_xneg(obj  ); x = obj.normalizedIrradiance_xneg; end
-    function obj = set.NI_xneg(obj,x);     obj.normalizedIrradiance_xneg = x; end %#ok<MCSUP> 
+    function obj = set.NI_xneg(obj,x);     obj.normalizedIrradiance_xneg = x; end  
     function x   = get.NI_ypos(obj  ); x = obj.normalizedIrradiance_ypos; end
-    function obj = set.NI_ypos(obj,x);     obj.normalizedIrradiance_ypos = x; end %#ok<MCSUP> 
+    function obj = set.NI_ypos(obj,x);     obj.normalizedIrradiance_ypos = x; end  
     function x   = get.NI_yneg(obj  ); x = obj.normalizedIrradiance_yneg; end
-    function obj = set.NI_yneg(obj,x);     obj.normalizedIrradiance_yneg = x; end %#ok<MCSUP> 
+    function obj = set.NI_yneg(obj,x);     obj.normalizedIrradiance_yneg = x; end  
     function x   = get.NI_zpos(obj  ); x = obj.normalizedIrradiance_zpos; end
-    function obj = set.NI_zpos(obj,x);     obj.normalizedIrradiance_zpos = x; end %#ok<MCSUP> 
+    function obj = set.NI_zpos(obj,x);     obj.normalizedIrradiance_zpos = x; end  
     function x   = get.NI_zneg(obj  ); x = obj.normalizedIrradiance_zneg; end
-    function obj = set.NI_zneg(obj,x);     obj.normalizedIrradiance_zneg = x; end %#ok<MCSUP> 
+    function obj = set.NI_zneg(obj,x);     obj.normalizedIrradiance_zneg = x; end  
   end
 end
 

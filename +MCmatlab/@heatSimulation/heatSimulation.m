@@ -40,7 +40,7 @@ classdef heatSimulation
     movieFrames = NaN
   end
 
-  properties (Hidden)
+  properties (Hidden, Dependent)
     Tinitial
   end
 
@@ -49,9 +49,10 @@ classdef heatSimulation
       %HEATSIMULATION Construct an instance of this class
     end
     function obj = set.Tinitial(obj,x)
-      obj.T = x; %#ok<MCSUP> 
+      obj.T = x;
       warning('Tinitial has been deprecated. Set the initial temperature, either as a scalar or 3D array, directly to the model.HS.T property. model.HS.T thus functions both as an input and output property.');
     end
+    function x = get.Tinitial(obj); x = obj.T; end
   end
 end
 

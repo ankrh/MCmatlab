@@ -23,7 +23,7 @@ classdef lightSource
     sourceDistribution = NaN
   end
 
-  properties (Hidden)
+  properties (Hidden, Dependent)
     beamType
     NF
     FF
@@ -38,7 +38,7 @@ classdef lightSource
     end
     function obj = set.beamType(obj,x)
       warning('beamType has been renamed sourceType. The ability to reference sourceType through beamType will be deprecated in a future version.');
-      obj.sourceType = x; %#ok<MCSUP> 
+      obj.sourceType = x;
     end
     function x = get.NF(obj)
       warning('NF has been renamed focalPlaneIntensityDistribution (FPID). The ability to reference focalPlaneIntensityDistribution through NF will be deprecated in a future version.');
@@ -46,7 +46,7 @@ classdef lightSource
     end
     function obj = set.NF(obj,x)
       warning('NF has been renamed focalPlaneIntensityDistribution (FPID). The ability to reference focalPlaneIntensityDistribution through NF will be deprecated in a future version.');
-      obj.focalPlaneIntensityDistribution = x; %#ok<MCSUP> 
+      obj.focalPlaneIntensityDistribution = x;
     end
     function x = get.FF(obj)
       warning('FF has been renamed angularIntensityDistribution (AID). The ability to reference angularIntensityDistribution through FF will be deprecated in a future version.');
@@ -54,12 +54,12 @@ classdef lightSource
     end
     function obj = set.FF(obj,x)
       warning('FF has been renamed angularIntensityDistribution (AID). The ability to reference angularIntensityDistribution through FF will be deprecated in a future version.');
-      obj.angularIntensityDistribution = x; %#ok<MCSUP> 
+      obj.angularIntensityDistribution = x;
     end
     function x   = get.FPID(obj  ); x = obj.focalPlaneIntensityDistribution; end
-    function obj = set.FPID(obj,x);     obj.focalPlaneIntensityDistribution = x; end %#ok<MCSUP> 
+    function obj = set.FPID(obj,x);     obj.focalPlaneIntensityDistribution = x; end 
     function x   = get.AID(obj  );  x = obj.angularIntensityDistribution; end
-    function obj = set.AID(obj,x);      obj.angularIntensityDistribution = x; end %#ok<MCSUP> 
+    function obj = set.AID(obj,x);      obj.angularIntensityDistribution = x; end 
   end
 end
 
