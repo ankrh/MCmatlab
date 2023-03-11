@@ -389,7 +389,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"minReflections"))),
     infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"maxReflections"))),
     infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"minInterfaceTransitions"))),
-    infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"maxInterfaceTransitions")))
+    infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"maxInterfaceTransitions"))),
+    infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"minSubmediaIdx")))-1, // -1 is to convert from MATLAB indexing to C-style indexing
+    infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"maxSubmediaIdx")))-1 // -1 is to convert from MATLAB indexing to C-style indexing
   };
   struct depositionCriteria *DC = &DC_var;
 

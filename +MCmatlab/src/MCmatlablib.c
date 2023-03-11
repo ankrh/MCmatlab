@@ -13,6 +13,8 @@ struct depositionCriteria { // Struct type for the deposition criteria, that det
   unsigned long  maxRefl;
   unsigned long  minI;
   unsigned long  maxI;
+  unsigned long  minIdx;
+  unsigned long  maxIdx;
 };
 
 struct geometry { // Struct type for the constant geometry definitions, including the wavelength-dependent optical properties and the boundary type
@@ -1037,7 +1039,8 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, s
           P->D[1] = P->u[1]? (FLOOR(P->i[1]) + (P->u[1]>0) - P->i[1])*G->d[1]/P->u[1]: INFINITY; // Recalculate voxel boundary distance for y
           P->D[2] = P->u[2]? (FLOOR(P->i[2]) + (P->u[2]>0) - P->i[2])*G->d[2]/P->u[2]: INFINITY; // Recalculate voxel boundary distance for z
           // We deliberately do not get the refractive index of the new voxel here, since a reflection means the photon is effectively still in the same medium, despite perhaps temporarily traveling in the new medium's voxel
-          P->reflections++;
+          if(G->M[j_new] >= DC->minIdx && G->M[j_new] <= DC->maxIdx)
+            P->reflections++;
         } else { // u_refr = sqrt(1 - mu^2*(1 - (u dot n)^2))*n + mu*(u - (u dot n)*n) = sqrt(1 - mu^2*(1 - cos(theta_in)^2))*n + mu*(u - cos(theta_in)*n) = (sqrt(1 - mu^2*(1 - cos(theta_in)^2)) - mu*cos(theta_in))*n + mu*u
           FLOATORDBL ncoeff = SQRT(cos_out_sqr) - mu*cos_in;
           P->u[0] = ncoeff*nx + mu*P->u[0];
@@ -1047,12 +1050,15 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, s
           P->D[1] = P->u[1]? (FLOOR(P->i[1]) + (P->u[1]>0) - P->i[1])*G->d[1]/P->u[1]: INFINITY; // Recalculate voxel boundary distance for y
           P->D[2] = P->u[2]? (FLOOR(P->i[2]) + (P->u[2]>0) - P->i[2])*G->d[2]/P->u[2]: INFINITY; // Recalculate voxel boundary distance for z
           P->RI = G->RIv[G->M[j_new]]; // Since we have refracted into the new medium, we retrieve the new refractive index
-          P->refractions++;
-          P->interfaceTransitions++;
+          if(G->M[j_new] >= DC->minIdx && G->M[j_new] <= DC->maxIdx) {
+            P->refractions++;
+            P->interfaceTransitions++;
+          }
         }
       }
     } else if(G->M[j_new] != G->M[P->j] && G->RIv[G->M[P->j]] == P->RI) { // No refraction or reflection, but we are in a new medium. The G->RIv[G->M[P->j]] == P->RI check is to ensure that we are not just coming out from a reflection event, because in that case the RI of the old voxel will not correspond to the P->RI value.
-      P->interfaceTransitions++;
+      if(G->M[j_new] >= DC->minIdx && G->M[j_new] <= DC->maxIdx)
+        P->interfaceTransitions++;
     }
   }
   
@@ -1141,7 +1147,8 @@ void scatterPhoton(struct photon * const P, struct geometry const * const G, str
   
   P->stepLeft  = -LOG(RandomNum);
 
-  P->scatterings++;
+  if(G->M[P->j] >= DC->minIdx && G->M[P->j] <= DC->maxIdx)
+    P->scatterings++;
 
   #ifdef __NVCC__ // If compiling for CUDA
   if(!threadIdx.x && !blockIdx.x)

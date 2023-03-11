@@ -345,7 +345,15 @@ Polar and azimuthal angle of the beam center axis.
 
 `model.MC.depositionCriteria.minScatterings`, `model.MC.depositionCriteria.maxScatterings`, `model.MC.depositionCriteria.minRefractions`, `model.MC.depositionCriteria.maxRefractions`, `model.MC.depositionCriteria.minReflections`, `model.MC.depositionCriteria.maxReflections`, `model.MC.depositionCriteria.minInterfaceTransitions`, `model.MC.depositionCriteria.maxInterfaceTransitions`
 [-]
-The minimum and maximum number of scattering, refraction, reflection and interface transition events the photon packet must have undergone in order to deposit weight into the output arrays (normalized fluence rate, normalized boundary irradiances, image and far field). There is an implied AND between all the criteria. Note that the underlying absorption and propagation of all photon packets are independent of the specified deposition criteria.
+The minimum and maximum number of scattering, refraction, reflection and interface transition events the photon packet must have undergone in order to be registered as an example photon path and to deposit weight into the output arrays (normalized fluence rate, normalized boundary irradiances, image and far field). There is an implied AND between all the criteria. Note that the underlying absorption and propagation of all photon packets are independent of the specified deposition criteria.
+
+`model.MC.depositionCriteria.minMediumIdxToConsider`, `model.MC.depositionCriteria.maxMediumIdxToConsider`
+[-]
+The minimum and maximum medium index that the above deposition criteria apply to. For example, if you've specified minScatterings = 2, minMediumIdxToConsider = 4 and maxMediumIdxToConsider = 5, then only photons that have experienced at least 2 scattering events in media 4 and/or 5 will deposit their weight in the output arrays. It doesn't matter how many scattering events have happened in other media.
+
+Interface transitions and refractions will be considered if the medium transitioned *into* has index between minMediumIdxToConsider and maxMediumIdxToConsider.
+
+Keep in mind that you can rearrange the media in the media definition and geometry function as required so that the indices of the set of media that you want to consider in deposition criteria are in a contiguous interval.
 
 `model.MC.P`
 [W]

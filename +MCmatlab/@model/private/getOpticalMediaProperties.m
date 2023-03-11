@@ -13,10 +13,12 @@ function model = getOpticalMediaProperties(model,simType)
     matchedInterfaces = model.FMC.matchedInterfaces;
     smoothingLengthScale = model.FMC.smoothingLengthScale;
     Ls = model.FMC.wavelength; % lambdas
+    DC = model.FMC.depositionCriteria;
   else
     matchedInterfaces = model.MC.matchedInterfaces;
     smoothingLengthScale = model.MC.smoothingLengthScale;
     Ls = model.MC.wavelength;
+    DC = model.MC.depositionCriteria;
   end
 
   T = NaN([G.nx G.ny G.nz],'single');
@@ -123,6 +125,12 @@ function model = getOpticalMediaProperties(model,simType)
       end
 
       nSM = mP_fHtrim(iM).nBins; % Number of sub-media to split the iM'th medium into
+      if DC.minMediumIdxToConsider == uniqueMedia(iM)
+        DC.minSubmediaIdx = iSM;
+      end
+      if DC.maxMediumIdxToConsider == uniqueMedia(iM)
+        DC.maxSubmediaIdx = iSM + nSM - 1;
+      end
       if isscalar(muavals) && isscalar(musvals) && isscalar(gvals)
         % No downsampling necessary
         if iL == 1
@@ -240,10 +248,12 @@ function model = getOpticalMediaProperties(model,simType)
     model.MC.interfaceNormals = interfaceNormals;
     model.MC.M = M;
     model.MC.CDFs = uniqueCDFs;
+    model.MC.depositionCriteria = DC;
   else
     model.FMC.mediaProperties = mP;
     model.FMC.interfaceNormals = interfaceNormals;
     model.FMC.M = M;
     model.FMC.CDFs = uniqueCDFs;
+    model.FMC.depositionCriteria = DC;
   end
 end
