@@ -65,7 +65,7 @@ struct lightCollector { // Struct type for the constant light collector definiti
 };
 
 struct photon { // Struct type for parameters describing the thread-specific current state of a photon
-  FLOATORDBL     i[3],u[3],D[3]; // Fractional position indices i, ray trajectory unit vector u and distances D to next voxel boundary (yz, xz or yz) along current trajectory
+  FLOATORDBL     i[3],u[3],D[3]; // Fractional position indices i, ray trajectory unit vector u and distances D to next voxel boundary (yz, xz or xy) along current trajectory
   long           j; // Linear index of current voxel (or closest defined voxel if photon outside cuboid)
   FLOATORDBL     mua,mus,g,RI; // Absorption, scattering, anisotropy, refractive index values and a pointer to the phase function CDF array at current photon position
   unsigned char  CDFidx;
