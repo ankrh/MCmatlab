@@ -12,7 +12,6 @@ classdef fluorescenceMonteCarloSimulation
     nPhotonsRequested (1,1) double {mustBeFinitePositiveIntegerOrNaN} = NaN % # of photons to launch
     requestCollectedPhotons (1,1) logical = false % If true, the photon # in nPhotonsRequested is interpreted as collected photons rather than launched photons
     calcNormalizedFluenceRate (1,1) logical = true % If true, the 3D normalized fluence rate output array will be calculated. Set to false if you have a light collector and you're only interested in the image output.
-    calcNormalizedFluenceRate_detected (1,1) logical = false % If true, the 3D fluence rate output array normalizedFluenceRate_detected will be calculated. Only photons that end up on the light collector are counted in normalizedFluenceRate_detected.
     nExamplePaths (1,1) double {mustBeInteger, mustBeNonnegative} = 0 % This number of photons will have their paths stored and shown after completion, for illustrative purposes
     farFieldRes (1,1) double {mustBeInteger, mustBeNonnegative} = 0 % If nonzero, photons that "escape" will have their energies tracked in a 2D angle distribution (theta,phi) array with theta and phi resolutions equal to this number. An "escaping" photon is one that hits the top cuboid boundary (if boundaryType == 2) or any cuboid boundary (if boundaryType == 1) where the medium has refractive index 1.
 

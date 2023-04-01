@@ -18,6 +18,16 @@ classdef depositionCriteria
 % The user can rearrange the media in the media definition as required so
 % that the set of media that he/she wants to consider in deposition
 % criteria are in a contiguous interval.
+
+% If evaluateOnlyAtEndOfLife is false, the photons will deposit weight into
+% the output arrays only in those segments of the paths where the criteria
+% are satisfied. If it is true, weight is deposited along the full path if
+% the criteria are satisfied at the end of the photon's life span.
+
+% If evaluateOnlyAtEndOfLife is true, you may also specify onlyCollected.
+% It is an extra criterion that states that the photon must have been
+% collected on the light collector.
+
   properties
     minScatterings (1,1) double {mustBeInteger,mustBeNonnegative} = 0
     maxScatterings (1,1) double {mustBeNonnegativeIntegerOrPositiveInfinite} = Inf
@@ -30,6 +40,9 @@ classdef depositionCriteria
 
     minMediumIdxToConsider (1,1) double {mustBePositiveIntegerOrPositiveInfinite} = 1
     maxMediumIdxToConsider (1,1) double {mustBePositiveIntegerOrPositiveInfinite} = Inf
+
+    onlyCollected (1,1) logical = false
+    evaluateOnlyAtEndOfLife (1,1) logical = true
   end
 
   properties (Hidden) % Calculated based on minMediumIdxToConsider and maxMediumIdxToConsider

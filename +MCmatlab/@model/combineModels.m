@@ -24,7 +24,7 @@ function model = combineModels(modelArray,simType)
   end
 
   % Verify that the relevant MC input properties are identical
-  MCprops = {'calcNormalizedFluenceRate','calcNormalizedFluenceRate_detected','farFieldRes','matchedInterfaces','smoothingLengthScale','boundaryType','wavelength','useLightCollector','depositionCriteria'};
+  MCprops = {'calcNormalizedFluenceRate','farFieldRes','matchedInterfaces','smoothingLengthScale','boundaryType','wavelength','useLightCollector','depositionCriteria'};
   for iProp = 1:numel(MCprops)
     allEqual = true;
     for iModel = 2:numel(modelArray)
@@ -134,7 +134,7 @@ function model = combineModels(modelArray,simType)
     end
 
     % Verify that the relevant FMC input properties are identical
-    FMCprops = {'calcNormalizedFluenceRate','calcNormalizedFluenceRate_detected','farFieldRes','matchedInterfaces','smoothingLengthScale','boundaryType','wavelength','useLightCollector'};
+    FMCprops = {'calcNormalizedFluenceRate','farFieldRes','matchedInterfaces','smoothingLengthScale','boundaryType','wavelength','useLightCollector'};
     for iProp = 1:numel(FMCprops)
       allEqual = true;
       for iModel = 2:numel(modelArray)

@@ -79,12 +79,13 @@
 #endif
 #include "lambert.c" // For calculating the Lambert W function, originally part of the GNU Scientific Library, created by K. Briggs, G. Jungman and B. Gough and slightly modified by A. Hansen for easier MCmatlab integration
 
-#ifndef __clang__ // If compiling with CLANG (on Mac)
+#ifndef __clang__ // If not compiling with CLANG (on Mac)
   #ifdef __cplusplus
   extern "C"
   #endif
   extern bool utIsInterruptPending(void); // Allows catching ctrl+c while executing the mex function
 #endif
+// bool utIsInterruptPending() {return false;}
 
 #define USEFLOATSFORGPU 1 // Comment out this line if you want the Monte Carlo routine to work internally with double-precision floating point numbers
 #if defined(USEFLOATSFORGPU) && defined(__NVCC__)
@@ -129,7 +130,7 @@
   #else
     #define RandomNum   curand_uniform_double(&P->PRNGstate) // Calls for a random double in (0,1]
   #endif
-  #define GPUHEAPMEMORYLIMIT 500000000 // Bytes to allow the GPU to allocate, mostly for tracking photons prior to storage in NFRdet. Must be less than the available memory.
+  #define GPUHEAPMEMORYLIMIT 500000000 // Bytes to allow the GPU to allocate, mostly for tracking photons when depositionCriteria.evaluateCriteriaAtEndOfLife = true. Must be less than the available memory.
   #define KERNELTIME 50000 // Microseconds to spend in each kernel call (watchdog timer is said to termine kernel function that take more than a few seconds)
   #include <curand_kernel.h>
   typedef curandStateXORWOW_t PRNG_t;
@@ -181,9 +182,9 @@ void threadInitAndLoop(struct source *B_global, struct geometry *G_global,
   struct photon P_var;
   struct photon *P = &P_var;
 
-  P->recordSize    = O_global->NFRdet? INITIALRECORDSIZE: 0; // If we're supposed to calculate NFRdet, we start the record at a size of 1000 elements - it will be dynamically expanded later if needed
-  P->j_record      = O_global->NFRdet? (long *)malloc(P->recordSize*sizeof(long)): NULL;
-  P->weight_record = O_global->NFRdet? (FLOATORDBL *)malloc(P->recordSize*sizeof(FLOATORDBL)): NULL;
+  P->recordSize    = DC_global->evaluateCriteriaAtEndOfLife? INITIALRECORDSIZE: 0; // If we're supposed to deposit weight retroactively, we start the record at a size of 1000 elements - it will be dynamically expanded later if needed
+  P->j_record      = DC_global->evaluateCriteriaAtEndOfLife? (long *)malloc(P->recordSize*sizeof(long)): NULL;
+  P->weight_record = DC_global->evaluateCriteriaAtEndOfLife? (FLOATORDBL *)malloc(P->recordSize*sizeof(FLOATORDBL)): NULL;
 
   #ifdef __NVCC__ // If compiling for CUDA
   // Copy structs from global device memory to shared device memory, which is orders of magnitude faster since it is on-chip
@@ -254,10 +255,28 @@ void threadInitAndLoop(struct source *B_global, struct geometry *G_global,
           if(P->alive) getNewVoxelProperties(P,G,D);
         }
       }
-      if(P->alive) checkRoulette(P);
+      if(P->alive) checkRoulette(P); // photon may die here
       if(P->alive) scatterPhoton(P,G,Pa,DC,D);
     }
-
+    if(DC->evaluateCriteriaAtEndOfLife && depositionCriteriaMet(P,DC)) {
+      for(long i=0;i<P->recordElems;i++) atomicAddWrapper(&O->NFR[P->j_record[i]],P->weight*P->weight_record[i]);
+    }
+    
+    #ifdef __NVCC__ // If compiling for CUDA
+    if(!threadIdx.x && !blockIdx.x)
+    #elif defined(_OPENMP)
+    #pragma omp master
+    #endif
+    {
+      if(Pa->pathStartedThisPhoton) {
+        if(DC->evaluateCriteriaAtEndOfLife && !depositionCriteriaMet(P,DC)) {
+          deletePhotonPath(Pa);
+        } else {
+          Pa->nExamplePhotonPathsFinished++;
+        }
+      }
+    }
+    
     #ifndef __NVCC__
       // Check progress
       int pctTimeProgressThisWavelength = (int)(100.0*(getMicroSeconds() - simulationTimeStart)/microSecondsOrGPUCycles);
@@ -304,7 +323,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   
   bool silentMode = mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabMC,0,"silentMode"));
   bool calcNFR    = mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabMC,0,"calcNFR")); // Are we supposed to calculate the NFR matrix?
-  bool calcNFRdet = mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabMC,0,"calcNFRdet")); // Are we supposed to calculate the NFRdet matrix?
 
   // To know if we are simulating fluorescence, we check if a "sourceDistribution" field exists. If so, we will use it later in the beam definition.
   mxArray *MatlabLS = mxGetProperty(MatlabMC,0,"LS");
@@ -391,9 +409,18 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"minInterfaceTransitions"))),
     infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"maxInterfaceTransitions"))),
     infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"minSubmediaIdx")))-1, // -1 is to convert from MATLAB indexing to C-style indexing
-    infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"maxSubmediaIdx")))-1 // -1 is to convert from MATLAB indexing to C-style indexing
+    infCast(*mxGetPr(mxGetPropertyShared(MatlabDC,0,"maxSubmediaIdx")))-1, // -1 is to convert from MATLAB indexing to C-style indexing
+    mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabDC,0,"onlyCollected")),
+    mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabDC,0,"evaluateOnlyAtEndOfLife"))
   };
   struct depositionCriteria *DC = &DC_var;
+  if( DC->minS    == 0 && DC->maxS    == ULONG_MAX &&
+      DC->minRefr == 0 && DC->maxRefr == ULONG_MAX &&
+      DC->minRefl == 0 && DC->maxRefl == ULONG_MAX &&
+      DC->minI == 0 && DC->maxI == ULONG_MAX &&
+     !DC->onlyCollected) {
+    DC->evaluateCriteriaAtEndOfLife = false; // If there are no restrictive deposition criteria, there's no need to deposit retroactively
+  }
 
   // Light Collector struct definition
   mxArray *MatlabLC      = mxGetPropertyShared(MatlabMC,0,"LC");
@@ -423,7 +450,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   struct paths Pa_var;
   struct paths *Pa = &Pa_var;
   Pa->nExamplePaths = (long)*mxGetPr(mxGetPropertyShared(MatlabMC,0,"nExamplePaths")); // How many photon path examples are we supposed to store?
-  Pa->nExamplePhotonPathsStarted = 0;
+  Pa->nExamplePhotonPathsFinished = 0;
   Pa->pathsSize = INITIALPATHSSIZE*Pa->nExamplePaths; // Will be dynamically increased later if needed
   Pa->pathsElems = 0;
   Pa->data = Pa->nExamplePaths? (FLOATORDBL *)malloc(4*Pa->pathsSize*sizeof(FLOATORDBL)): NULL;
@@ -437,7 +464,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   
   mwSize outDimPtr[4] = {dimPtr[0], dimPtr[1], dimPtr[2], (mwSize)nL};
   if(calcNFR)           mxSetPropertyShared(MCout,0,"NFR",mxCreateNumericArray(4,outDimPtr,mxSINGLE_CLASS,mxREAL));
-  if(calcNFRdet)        mxSetPropertyShared(MCout,0,"NFRdet",mxCreateNumericArray(4,outDimPtr,mxSINGLE_CLASS,mxREAL));
   if(useLightCollector) {
     mwSize LCsize[4] = {(mwSize)LC->res[0],(mwSize)LC->res[0],(mwSize)LC->res[1],(mwSize)nL};
     mxSetPropertyShared(LCout,0,"image", mxCreateNumericArray(4,LCsize,mxSINGLE_CLASS,mxREAL));
@@ -467,7 +493,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
 
   struct MATLABoutputs O_MATLAB_var = {
     calcNFR? (float *)mxGetPr(mxGetPropertyShared(MCout,0,"NFR")): NULL,
-    calcNFRdet? (float *)mxGetPr(mxGetPropertyShared(MCout,0,"NFRdet")): NULL,
     useLightCollector? (float *)mxGetPr(mxGetPropertyShared(LCout,0,"image")): NULL,
     G->farFieldRes? (float *)mxGetPr(mxGetPropertyShared(MCout,0,"farField")): NULL,
     G->boundaryType == 1? (float *)mxGetPr(mxGetPropertyShared(MCout,0,"NI_xpos")): NULL,
@@ -484,7 +509,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     0, // nPhotons
     0, // nPhotonsCollected
     calcNFR? (FLOATORDBL *)calloc(G->n[0]*G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
-    calcNFRdet? (FLOATORDBL *)calloc(G->n[0]*G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
     useLightCollector? (FLOATORDBL *)calloc(LC->res[0]*LC->res[0]*LC->res[1],sizeof(FLOATORDBL)): NULL,
     G->farFieldRes? (FLOATORDBL *)calloc(G->farFieldRes*G->farFieldRes,sizeof(FLOATORDBL)): NULL,
     G->boundaryType == 1? (FLOATORDBL *)calloc(G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
@@ -621,7 +645,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     if(!silentMode && iL == 0) printf("Using device %d: %s with CUDA compute capability %d.%d\n",GPUdevice,CDP.name,CDP.major,CDP.minor);
   
     size_t heapSizeLimit; gpuErrchk(cudaDeviceGetLimit(&heapSizeLimit,cudaLimitMallocHeapSize));
-    if(calcNFRdet && heapSizeLimit < GPUHEAPMEMORYLIMIT) {
+    if(DC->evaluateCriteriaAtEndOfLife && heapSizeLimit < GPUHEAPMEMORYLIMIT) {
       gpuErrchk(cudaDeviceReset());
       gpuErrchk(cudaDeviceSetLimit(cudaLimitMallocHeapSize,GPUHEAPMEMORYLIMIT));
     }
@@ -754,7 +778,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   free(smallArrays);
   free(G->M);
   free(O->NFR);
-  free(O->NFRdet);
   free(O->image);
   free(O->FF);
   free(O->NI_xpos);

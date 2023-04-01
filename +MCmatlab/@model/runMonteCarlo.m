@@ -215,14 +215,17 @@ function checkMCinputFields(model,simType)
   end
 
   %% Check other fields
+  if MCorFMC.depositionCriteria.onlyCollected && ~MCorFMC.depositionCriteria.evaluateOnlyAtEndOfLife
+    error('Error: depositionCriteria.onlyCollected = true requires depositionCriteria.evaluateOnlyAtEndOfLife = true.');
+  end
   if MCorFMC.nExamplePaths ~= 0 && ~isscalar(MCorFMC.wavelength)
     error('Error: Example paths are not supported when simulating broadband illumination.');
   end
   if isnan(MCorFMC.wavelength)
     error('Error: No wavelength defined');
   end
-  if MCorFMC.calcNFRdet && ~MCorFMC.useLightCollector
-    error('Error: calcNormalizedFluenceRatedet is true, but no light collector is defined');
+  if MCorFMC.depositionCriteria.onlyCollected && ~MCorFMC.useLightCollector
+    error('Error: depositionCriteria.onlyCollected is true, but no light collector is defined');
   end
   if MCorFMC.farFieldRes && MCorFMC.boundaryType == 0
     error('Error: If boundaryType == 0, no photons can escape to be registered in the far field. Set farFieldRes to zero or change boundaryType.');
@@ -231,6 +234,14 @@ function checkMCinputFields(model,simType)
   if simType == 2
     if isscalar(model.MC.NFR)
       error('Error: normalizedFluenceRate matrix not calculated for excitation light');
+    end
+    DC = model.MC.depositionCriteria;
+    if DC.minScatterings ~= 0 || ~isinf(DC.maxScatterings) || ...
+       DC.minRefractions ~= 0 || ~isinf(DC.maxRefractions) || ...
+       DC.minReflections ~= 0 || ~isinf(DC.maxReflections) || ...
+       DC.minInterfaceTransitions ~= 0 || ~isinf(DC.maxInterfaceTransitions) || ...
+       DC.onlyCollected
+      error('The excitation step must be calculated without restrictive deposition criteria in order to calculate fluorescence.');
     end
   else
 

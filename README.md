@@ -102,7 +102,7 @@ You build each model in a separate m-file. Each model requires the first two and
 #### 7. (Optional) Calculate the far field angular distribution of light escaping the simulation volume
 - See "Example7_FarField.m". Note that the far field does not include "killed" photons, that is, photons that have exited at a boundary where the refractive index is different to 1, or photons that exit on boundaries that are not "escaping".
 
-#### 8. (Optional) Calculate the normalized fluence rate array of only those photons which end up on the detector
+#### 8. (Optional) Use deposition criteria to show the normalized fluence rate array of only those photons which end up on the detector
 - See "Example8_CollectedFluenceRate.m".
 
 #### 9. (Optional) Programmatically assign values to the parameters
@@ -191,13 +191,8 @@ If false, MCmatlab will still be multithreaded but will leave one CPU logical pr
 `model.MC.calcNFR`
 [-]
 (Default: True)
-If true, will calculate and store the normalized fluence rate (NFR) 3D or 4D array (4D if simulating broadband light). The array takes 8\*nx\*ny\*nz bytes of memory (and disk space, if the resulting model file is saved to disk subsequently)
+If true, will calculate and store the normalized fluence rate (NFR) 3D or 4D array (4D if simulating broadband light). The array takes 8\*nx\*ny\*nz\*nl bytes of memory (and disk space, if the resulting model file is saved to disk subsequently)
 For some simulations in which you are only interested, for example, in the detector image/power, you might not need the NFR and could therefore set this to false.
-
-`model.MC.calcNFRdet`
-[-]
-(Default: False)
-If true, will additionally calculate a normalized fluence rate 3D or 4D array similar to the ordinary NFR array, but only counting the areas passed through by those photons that end up registered by the detector/light collector.
 
 `model.MC.nExamplePaths`
 [-]
@@ -349,11 +344,19 @@ The minimum and maximum number of scattering, refraction, reflection and interfa
 
 `model.MC.depositionCriteria.minMediumIdxToConsider`, `model.MC.depositionCriteria.maxMediumIdxToConsider`
 [-]
-The minimum and maximum medium index that the above deposition criteria apply to. For example, if you've specified minScatterings = 2, minMediumIdxToConsider = 4 and maxMediumIdxToConsider = 5, then only photons that have experienced at least 2 scattering events in media 4 and/or 5 will deposit their weight in the output arrays. It doesn't matter how many scattering events have happened in other media.
+The minimum and maximum medium index that the above deposition criteria apply to. For example, if you've specified minScatterings = 2, minMediumIdxToConsider = 4 and maxMediumIdxToConsider = 5, then only photons that have experienced at least 2 scattering events in media 4 and/or 5 will deposit their weight in the output arrays and register as photon paths. It doesn't matter how many scattering events have happened in other media.
 
 Interface transitions and refractions will be considered if the medium transitioned *into* has index between minMediumIdxToConsider and maxMediumIdxToConsider.
 
 Keep in mind that you can rearrange the media in the media definition and geometry function as required so that the indices of the set of media that you want to consider in deposition criteria are in a contiguous interval.
+
+`model.MC.depositionCriteria.evaluateOnlyAtEndOfLife`
+[-]
+If evaluateOnlyAtEndOfLife is false, the photons will only deposit weight into the output arrays and register as photon paths in those segments of the paths where the criteria are satisfied. If it is true, weight is deposited and path is registered along the full path if the criteria are satisfied at the end of the photon's life span.
+
+`model.MC.depositionCriteria.onlyCollected`
+[-]
+If evaluateOnlyAtEndOfLife is true, you may also specify onlyCollected. It is an extra criterion that states that the photon must have been collected on the light collector.
 
 `model.MC.P`
 [W]
@@ -439,7 +442,7 @@ Number of bins between tStart and tEnd. If zero, the measurement is not time-res
 
 #### Fluorescence Monte Carlo parameters
 The following properties exist for fluorescence Monte Carlo simulations, and they work the same as for regular MC simulations:
-`FMC.useGPU`, `FMC.GPUdevice`, `FMC.simulationTimeRequested`, `FMC.nPhotonsRequested`, `FMC.silentMode`, `FMC.useAllCPUs`, `FMC.calcNormalizedFluenceRate`, `FMC.calcNormalizedFluenceRate_detected`, `FMC.nExamplePaths`, `FMC.farFieldRes`, `FMC.matchedInterfaces`, `FMC.smoothingLengthScale`, `FMC.boundaryType`, `FMC.wavelength`, `FMC.useLightCollector`, `FMC.lightCollector.x`, `FMC.lightCollector.y`, `FMC.lightCollector.z`, `FMC.lightCollector.theta`, `FMC.lightCollector.phi`, `FMC.lightCollector.f`, `FMC.lightCollector.diam`, `FMC.lightCollector.fieldSize`, `FMC.lightCollector.NA`, `FMC.lightCollector.res`
+`FMC.useGPU`, `FMC.GPUdevice`, `FMC.simulationTimeRequested`, `FMC.nPhotonsRequested`, `FMC.silentMode`, `FMC.useAllCPUs`, `FMC.calcNormalizedFluenceRate`, `FMC.nExamplePaths`, `FMC.farFieldRes`, `FMC.matchedInterfaces`, `FMC.smoothingLengthScale`, `FMC.boundaryType`, `FMC.wavelength`, `FMC.useLightCollector`, `FMC.lightCollector.x`, `FMC.lightCollector.y`, `FMC.lightCollector.z`, `FMC.lightCollector.theta`, `FMC.lightCollector.phi`, `FMC.lightCollector.f`, `FMC.lightCollector.diam`, `FMC.lightCollector.fieldSize`, `FMC.lightCollector.NA`, `FMC.lightCollector.res`
 
 #### Heat solver parameters
 `model.HS.useGPU`
@@ -578,20 +581,10 @@ A 3D or 4D array (4D if simulating broadband light) (x,y,z,lambda) of normalized
 - `figure(100);`
 - `imagesc(model.G.y,model.G.z,NFRslice.');` We can use the 1D coordinate arrays from model.G for the y and z coordinate values. The `.'` is there because Mathworks has designed the imagesc function to plot the first coordinate along the vertical axis and the second coordinate along the horizontal axis, which is the opposite of what we want.
 
-`model.MC.normalizedFluenceRate_detected`
-[W/cm^2/W.incident]
-(Note that normalizedFluenceRate can be abbreviated NFR in your code)
-A 3D or 4D array (4D if simulating broadband light) (x,y,z,lambda) of normalized fluence rate values like model.MC.NFR, but only counting those photons that ended up on the light collector.
-
 `model.MC.normalizedAbsorption`
 [W/cm^3/W.incident]
 (Note that normalizedAbsorption can be abbreviated NA in your code)
 A 3D or 4D array (4D if simulating broadband light) (x,y,z,lambda) of normalized absorption values. This is what's plotted in figure 3.
-
-`model.MC.normalizedAbsorption_detected`
-[W/cm^3/W.incident]
-(Note that normalizedAbsorption can be abbreviated NA in your code)
-A 3D or 4D array (4D if simulating broadband light) (x,y,z,lambda) of normalized absorption values like model.MC.NA, but only counting those photons that ended up on the light collector.
 
 `model.MC.farField`
 [W/sr/W.incident]

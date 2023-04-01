@@ -2,7 +2,8 @@
 % This example illustrates that deposition criteria can be specified to determine when
 % photon packets should contribute to output data, for example one could
 % specify the number of scattering events must be at least 1 and at most 3.
-%
+% See also examples 8 and 25 for more use of the deposition criteria.
+% 
 % The list of criteria are:
 % Minimum and maximum # of scattering events
 % Minimum and maximum # of refraction events (for non-matched interfaces)
@@ -27,12 +28,25 @@
 % data will only be registered (deposited) into the output arrays when the
 % photon packets fulfill the criteria.
 %
+% If the setting model.MC.depositionCriteria.evaluateOnlyAtEndOfLife is
+% true, as it is by default, the deposition criteria will only be checked
+% when the photon "dies" and then the entire photon path gets counted if
+% the criteria is met. If the setting is false, the criteria are evaluated
+% at every step along the entire path and weight is deposited into the
+% outputs whenever the criteria are met. That means weight will not be
+% deposited into the outputs in the part of the path that lies before it
+% started to fulfill the criteria or the part that lies after it no longer
+% fulfills the criteria.
+%
 % In this example, we use the same geometry and settings as example 1,
 % except that we add some photon paths and we choose only to plot data for
 % photons that have been scattered exactly once by setting
-% model.MC.depositionCriteria.minScatterings = 1 and
-% model.MC.depositionCriteria.maxScatterings = 1. Notice how you can see the linear
-% paths of photons scattered away from the center column.
+% model.MC.depositionCriteria.minScatterings = 1,
+% model.MC.depositionCriteria.maxScatterings = 1 and 
+% model.MC.depositionCriteria.evaluateOnlyAtEndOfLife = false.
+% 
+% Notice how you can see the linear paths of photons scattered away from
+% the center column.
 %
 % See the readme.md file for all the properties of the depositionCriteria
 % object.
@@ -83,7 +97,7 @@ model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of beam center ax
 model.MC.nExamplePaths = 25;
 model.MC.depositionCriteria.minScatterings = 1; % Don't collect data for non-scattered photons
 model.MC.depositionCriteria.maxScatterings = 1; % Don't collect data for photons with more than 1 scattering
-
+model.MC.depositionCriteria.evaluateOnlyAtEndOfLife = false;
 
 model = runMonteCarlo(model);
 model = plot(model,'MC');

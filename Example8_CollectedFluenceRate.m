@@ -1,13 +1,17 @@
 %% Description
-% This example shows how to use the calcNFRdet flag to calculate and plot
-% the fluence rate of only that light which ends up on the light collector.
-% This is shown for both excitation light and fluorescence light. The
-% geometry is again almost the same as in example 5, into which a Gaussian
-% beam is injected at x = 0.02 and the light collector is looking at x =
-% -0.02.
+% This example shows how to use one of the "deposition criteria" to
+% calculate and plot the fluence rate (and the other outputs) of only that
+% light which ends up on the light collector. The geometry is a block of
+% standard tissue, into which we launch a Gaussian beam. We have a light
+% collector looking at y = -0.02.
 %
-% In the fluence rate plot for collected light, you can see how the photons
-% all start at the source and end at the light collector.
+% We specify that we only want to look at those photons that end up on the
+% light collector with model.MC.depositionCriteria.onlyCollected = true;
+% See examples 19 and 25 for more use of the deposition criteria.
+% 
+% In the fluence rate plot, you can see how the photons all start at the
+% source and end at the light collector. This is also very clear in the
+% photon paths plot.
 %
 % To use a light collector, the cuboid boundary type towards the detector
 % has to be set to "escaping". Additionally, the voxels touching that
@@ -15,11 +19,11 @@
 %
 % This example also shows two other features: (1) That the Monte Carlo
 % simulation can be set to launch a set number of photons rather than run
-% for a set time using the MC.nPhotonsRequested and FMC.nPhotonsRequested
-% fields, and (2) that by setting the boundaryType flags to 2, we can allow
-% photons to travel outside the cuboid in the x, y, and +z directions as
-% seen in the photon paths illustrations, although absorption and fluence
-% rate data is still only tracked within the main cuboid.
+% for a set time using the MC.nPhotonsRequested property, and (2) that by
+% setting the boundaryType flags to 2, we can allow photons to travel
+% outside the cuboid in the x, y, and +z directions as seen in the photon
+% paths illustrations, although absorption and fluence rate data is still
+% only tracked within the main cuboid.
 
 %% MCmatlab abbreviations
 % G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
@@ -52,28 +56,26 @@ model = plot(model,'G');
 %% Monte Carlo simulation
 model.MC.nPhotonsRequested        = 5e6; % # of photons to launch
 
-model.MC.calcNormalizedFluenceRate = true; % (Default: true) If true, the 3D fluence rate output matrix NFR will be calculated. Set to false if you have a light collector and you're only interested in the image output.
-model.MC.calcNormalizedFluenceRate_detected = true; % (Default: false) If true, the 3D fluence rate output matrix NFRdet will be calculated. Only photons that end up on the light collector are counted in NFRdet.
-model.MC.nExamplePaths            = 200;
+model.MC.nExamplePaths            = 20;
 
 model.MC.matchedInterfaces        = true; % Assumes all refractive indices are the same
 model.MC.boundaryType             = 2; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
-model.MC.wavelength               = 450; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
+model.MC.wavelength               = 400; % [nm] Excitation wavelength, used for determination of optical properties for excitation light
 
 model.MC.lightSource.sourceType   = 4; % 0: Pencil beam, 1: Isotropically emitting line or point source, 2: Infinite plane wave, 3: Laguerre-Gaussian LG01 beam, 4: Radial-factorizable beam (e.g., a Gaussian beam), 5: X/Y factorizable beam (e.g., a rectangular LED emitter)
 model.MC.lightSource.focalPlaneIntensityDistribution.radialDistr = 1; % Radial focal plane intensity distribution - 0: Top-hat, 1: Gaussian, Array: Custom. Doesn't need to be normalized.
-model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth = .005; % [cm] Radial focal plane 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
+model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth = .01; % [cm] Radial focal plane 1/e^2 radius if top-hat or Gaussian or half-width of the full distribution if custom
 model.MC.lightSource.angularIntensityDistribution.radialDistr = 1; % Radial angular intensity distribution - 0: Top-hat, 1: Gaussian, 2: Cosine (Lambertian), Array: Custom. Doesn't need to be normalized.
-model.MC.lightSource.angularIntensityDistribution.radialWidth = 5/180*pi; % [rad] Radial angular 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom. For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength*1e-9/(pi*model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth*1e-2))
-model.MC.lightSource.xFocus       = 0.02; % [cm] x position of focus
-model.MC.lightSource.yFocus       = 0; % [cm] y position of focus
+model.MC.lightSource.angularIntensityDistribution.radialWidth = 0; % [rad] Radial angular 1/e^2 half-angle if top-hat or Gaussian or half-angle of the full distribution if custom. For a diffraction limited Gaussian beam, this should be set to model.MC.wavelength*1e-9/(pi*model.MC.lightSource.focalPlaneIntensityDistribution.radialWidth*1e-2))
+model.MC.lightSource.xFocus       = 0; % [cm] x position of focus
+model.MC.lightSource.yFocus       = 0.025; % [cm] y position of focus
 model.MC.lightSource.zFocus       = 0; % [cm] z position of focus
 model.MC.lightSource.theta        = 0; % [rad] Polar angle of beam center axis
 model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of beam center axis
 
 model.MC.useLightCollector        = true;
-model.MC.lightCollector.x         = -0.02; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
-model.MC.lightCollector.y         = 0; % [cm] y position
+model.MC.lightCollector.x         = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
+model.MC.lightCollector.y         = -0.025; % [cm] y position
 model.MC.lightCollector.z         = 0; % [cm] z position
 
 model.MC.lightCollector.theta     = 0; % [rad] Polar angle of direction the light collector is facing
@@ -86,47 +88,17 @@ model.MC.lightCollector.NA        = 0.22; % [-] Fiber NA. Only used for infinite
 
 model.MC.lightCollector.res       = 50; % X and Y resolution of light collector in pixels, only used for finite f
 
+model.MC.depositionCriteria.onlyCollected = true;
+
 
 model = runMonteCarlo(model);
 model = plot(model,'MC');
-figure(7); % Focus on the normalized fluence rate of collected light
-
-%% Fluorescence Monte Carlo
-model.FMC.nPhotonsRequested       = 5e6; % # of photons to launch
-
-model.FMC.calcNormalizedFluenceRate = true; % (Default: true) If true, the 3D fluence rate output matrix NFR will be calculated. Set to false if you have a light collector and you're only interested in the image output.
-model.FMC.calcNormalizedFluenceRate_detected = true; % (Default: false) If true, the 3D fluence rate output matrix NFRdet will be calculated. Only photons that end up on the light collector are counted in NFRdet.
-model.FMC.nExamplePaths           = 200;
-
-model.FMC.matchedInterfaces       = true; % Assumes all refractive indices are the same
-model.FMC.boundaryType            = 2; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
-model.FMC.wavelength              = 550; % [nm] Fluorescence wavelength, used for determination of optical properties for fluorescence light
-
-model.FMC.useLightCollector       = true;
-model.FMC.lightCollector.x        = -0.02; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
-model.FMC.lightCollector.y        = 0; % [cm] y position
-model.FMC.lightCollector.z        = 0; % [cm] z position
-
-model.FMC.lightCollector.theta    = 0; % [rad] Polar angle of direction the light collector is facing
-model.FMC.lightCollector.phi      = pi/2; % [rad] Azimuthal angle of direction the light collector is facing
-
-model.FMC.lightCollector.f        = .1; % [cm] Focal length of the objective lens (if light collector is a fiber, set this to Inf).
-model.FMC.lightCollector.diam     = .1; % [cm] Diameter of the light collector aperture. For an ideal thin lens, this is 2*f*tan(asin(NA)).
-model.FMC.lightCollector.fieldSize = .04; % [cm] Field Size of the imaging system (diameter of area in object plane that gets imaged). Only used for finite f.
-model.FMC.lightCollector.NA       = 0.22; % [-] Fiber NA. Only used for infinite f.
-
-model.FMC.lightCollector.res      = 50; % X and Y resolution of light collector in pixels, only used for finite f
-
-
-model = runMonteCarlo(model,'fluorescence');
-model = plot(model,'FMC');
-figure(17); % Focus on the normalized fluence rate of collected light
 
 %% Geometry function(s) (see readme for details)
 function M = geometryDefinition(X,Y,Z,parameters)
-  cylinderradius  = 0.0100;
-  M = ones(size(X)); % fill background with fluorescence absorber
-  M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 2; % fluorescer
+  zSurface = 0.01;
+  M = ones(size(X)); % Air
+  M(Z > zSurface) = 2; % "Standard" tissue
 end
 
 %% Media Properties function (see readme for details)
@@ -134,29 +106,14 @@ function mediaProperties = mediaPropertiesFunc(parameters)
   mediaProperties = MCmatlab.mediumProperties;
 
   j=1;
-  mediaProperties(j).name  = 'fluorescence absorber';
-  mediaProperties(j).mua = @func1; % [cm^-1]
-  function mua = func1(wavelength)
-    if(wavelength<500)
-      mua = 10; % [cm^-1]
-    else
-      mua = 100; % [cm^-1]
-    end
-  end
-  mediaProperties(j).mus = 100; % [cm^-1]
-  mediaProperties(j).g   = 0.9;
+  mediaProperties(j).name  = 'air';
+  mediaProperties(j).mua   = 1e-8; % Absorption coefficient [cm^-1]
+  mediaProperties(j).mus   = 1e-8; % Scattering coefficient [cm^-1]
+  mediaProperties(j).g     = 1; % Henyey-Greenstein scattering anisotropy
 
   j=2;
-  mediaProperties(j).name  = 'fluorescer';
-  mediaProperties(j).mua = @func2; % [cm^-1]
-  function mua = func2(wavelength)
-    if(wavelength<500)
-      mua = 100; % [cm^-1]
-    else
-      mua = 10; % [cm^-1]
-    end
-  end
-  mediaProperties(j).mus = 100; % [cm^-1]
-  mediaProperties(j).g   = 0.9;
-  mediaProperties(j).QY   = 0.7; % Fluorescence quantum yield
+  mediaProperties(j).name  = 'standard tissue';
+  mediaProperties(j).mua   = 1; % Absorption coefficient [cm^-1]
+  mediaProperties(j).mus   = 100; % Scattering coefficient [cm^-1]
+  mediaProperties(j).g     = 0.9; % Henyey-Greenstein scattering anisotropy
 end

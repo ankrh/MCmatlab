@@ -1,7 +1,7 @@
 %% Decription
 % This example uses the media and geometry of example 4 and serves to
 % illustrate how the deposition criteria minMediumIdxToConsider and
-% maxMediumIdxToConsider work. See also example 19.
+% maxMediumIdxToConsider work. See also examples 8 and 19.
 % 
 % minMediumIdxToConsider and maxMediumIdxToConsider specify the minimum and
 % maximum medium index that the rest of the deposition criteria apply to.
@@ -11,17 +11,20 @@
 % and/or 5 will deposit their weight in the output arrays. It doesn't
 % matter how many scattering events have happened in other media.
 % 
-% Interface transitions and refractions will be considered if the medium
+% Interface transitions and refractions will be counted if the medium
 % transitioned *into* has index between minMediumIdxToConsider and
 % maxMediumIdxToConsider.
 % 
 % In this example, we set minInterfaceTransitions = 1,
 % minMediumIdxToConsider = 4 and maxMediumIdxToConsider = 4 so that we only
 % see deposition and example paths from the photons that have entered the
-% blood medium (index 4) at least once.
+% blood medium (index 4) at least once. We don't want to see deposition
+% happen before the photon enters the blood vessel, so we set
+% model.MC.depositionCriteria.evaluateOnlyAtEndOfLife = false.
 % 
-% This is most clearly visible in figure 5, where it is clear that all the
-% photon paths originate on the surface of the blood medium.
+% The effect of the deposition criteria is most clearly visible in figure
+% 5, where it is clear that all the photon paths originate on the surface
+% of the blood medium.
 % 
 % Keep in mind that you can rearrange the media in the media definition as
 % required so that the set of media that you want to consider in deposition
@@ -77,6 +80,7 @@ model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of beam center ax
 model.MC.depositionCriteria.minInterfaceTransitions = 1;
 model.MC.depositionCriteria.minMediumIdxToConsider = 4;
 model.MC.depositionCriteria.maxMediumIdxToConsider = 4;
+model.MC.depositionCriteria.evaluateOnlyAtEndOfLife = false;
 
 model = runMonteCarlo(model);
 model = plot(model,'MC');

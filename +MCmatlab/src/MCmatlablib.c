@@ -15,6 +15,8 @@ struct depositionCriteria { // Struct type for the deposition criteria, that det
   unsigned long  maxI;
   unsigned long  minIdx;
   unsigned long  maxIdx;
+  bool           onlyCollected;
+  bool           evaluateCriteriaAtEndOfLife;
 };
 
 struct geometry { // Struct type for the constant geometry definitions, including the wavelength-dependent optical properties and the boundary type
@@ -72,28 +74,28 @@ struct photon { // Struct type for parameters describing the thread-specific cur
   FLOATORDBL     stepLeft,weight,time;
   bool           insideVolume,alive,sameVoxel;
   PRNG_t         PRNGstate; // "State" of the Mersenne Twister pseudo-random number generator
-  long           recordSize; // Current size of the list of voxels in which power has been deposited, used only if calcNFRdet is true
-  long           recordElems; // Current number of elements used of the record. Starts at 0 every photon launch, used only if calcNFRdet is true
-  long           *j_record; // List of the indices of the voxels in which the current photon has deposited power, used only if calcNFRdet is true
-  FLOATORDBL     *weight_record; // List of the weights that have been deposited into the voxels, used only if calcNFRdet is true
+  long           recordSize; // Current size of the list of voxels in which power has been deposited, used only if depositionCriteria.evaluateCriteriaAtEndOfLife is true
+  long           recordElems; // Current number of elements used of the record. Starts at 0 every photon launch, used only if depositionCriteria.evaluateCriteriaAtEndOfLife is true
+  long           *j_record; // List of the indices of the voxels in which the current photon has deposited power, used only if depositionCriteria.evaluateCriteriaAtEndOfLife is true
+  FLOATORDBL     *weight_record; // List of the weights that have been deposited into the voxels, used only if depositionCriteria.evaluateCriteriaAtEndOfLife is true
   unsigned long  scatterings;
   unsigned long  refractions;
   unsigned long  reflections;
   unsigned long  interfaceTransitions;
+  char           killed_escaped_collected;
 };
 
 struct paths { // Struct type for storing the paths taken by the nExamplePaths first photons simulated by the master thread
   long           pathsElems; // Current number of elements used
-  long           threadNum;
   long           nExamplePaths; // Number of photons to store the path of
-  long           nExamplePhotonPathsStarted; // Number of example photon paths the master thread has started
+  long           nExamplePhotonPathsFinished; // Number of example photon paths the master thread has started
+  bool           pathStartedThisPhoton;
   long           pathsSize; // Current size of the list
   FLOATORDBL     *data; // Array containing x, y, z and weight data for the photons, in which the paths of different photons are separated by four NaNs
 };
 
 struct MATLABoutputs {
   float * NFR;
-  float * NFRdet;
   float * image;
   float * FF;
   float * NI_xpos;
@@ -108,7 +110,6 @@ struct outputs {
   unsigned long long nPhotons;
   unsigned long long nPhotonsCollected;
   FLOATORDBL * NFR;
-  FLOATORDBL * NFRdet;
   FLOATORDBL * image;
   FLOATORDBL * FF;
   FLOATORDBL * NI_xpos;
@@ -123,14 +124,15 @@ struct outputs {
 __device__
 #endif
 bool depositionCriteriaMet(struct photon *P,struct depositionCriteria *DC) {
-  return P->scatterings          >= DC->minS &&
-         P->scatterings          <= DC->maxS &&
-         P->refractions          >= DC->minRefr &&
-         P->refractions          <= DC->maxRefr &&
-         P->reflections          >= DC->minRefl &&
-         P->reflections          <= DC->maxRefl &&
-         P->interfaceTransitions >= DC->minI &&
-         P->interfaceTransitions <= DC->maxI;
+  return P->scatterings                                                                      >= DC->minS &&
+         (!P->alive && P->killed_escaped_collected == 0? ULONG_MAX: P->scatterings)          <= DC->maxS &&
+         P->refractions                                                                      >= DC->minRefr &&
+         (!P->alive && P->killed_escaped_collected == 0? ULONG_MAX: P->refractions)          <= DC->maxRefr &&
+         P->reflections                                                                      >= DC->minRefl &&
+         (!P->alive && P->killed_escaped_collected == 0? ULONG_MAX: P->reflections)          <= DC->maxRefl &&
+         P->interfaceTransitions                                                             >= DC->minI &&
+         (!P->alive && P->killed_escaped_collected == 0? ULONG_MAX: P->interfaceTransitions) <= DC->maxI &&
+         (DC->onlyCollected? P->killed_escaped_collected == 2: true);
 }
 
 unsigned long infCast(double x) {return mxIsInf(x)? ULONG_MAX: (unsigned long)x;}
@@ -337,10 +339,6 @@ void createDeviceStructs(struct geometry const *G, struct geometry **G_devptr,
     gpuErrchk(cudaMalloc(&O_tempvar.NFR, L*sizeof(double)));
     gpuErrchk(cudaMemset(O_tempvar.NFR,0,L*sizeof(double)));
   }
-  if(O->NFRdet) {
-    gpuErrchk(cudaMalloc(&O_tempvar.NFRdet, L*sizeof(double)));
-    gpuErrchk(cudaMemset(O_tempvar.NFRdet,0,L*sizeof(double)));
-  }
   if(O->image) {
     gpuErrchk(cudaMalloc(&O_tempvar.image, LC->res[0]*LC->res[0]*LC->res[1]*sizeof(double)));
     gpuErrchk(cudaMemset(O_tempvar.image,0,LC->res[0]*LC->res[0]*LC->res[1]*sizeof(double)));
@@ -422,10 +420,6 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
     gpuErrchk(cudaMemcpy(O->NFR, O_temp.NFR, L*sizeof(FLOATORDBL),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.NFR));
   }
-  if(O->NFRdet) {
-    gpuErrchk(cudaMemcpy(O->NFRdet, O_temp.NFRdet, L*sizeof(FLOATORDBL),cudaMemcpyDeviceToHost));
-    gpuErrchk(cudaFree(O_temp.NFRdet));
-  }
   if(O->image) {
     gpuErrchk(cudaMemcpy(O->image, O_temp.image, LC->res[0]*LC->res[0]*LC->res[1]*sizeof(FLOATORDBL),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.image));
@@ -468,22 +462,53 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void addToPhotonPath(struct photon * const P, struct paths * const Pa, struct geometry const * const G, bool addNaN) {
-  if(Pa->nExamplePhotonPathsStarted <= Pa->nExamplePaths) {
-    if(Pa->pathsElems == Pa->pathsSize) {
-      #ifdef __NVCC__ // If compiling for CUDA
-      Pa->pathsElems = -1; // Buffer not large enough, has to be resized by host
-      #else
-      Pa->pathsSize *= 2; // double the record's size
-      Pa->data = (FLOATORDBL *)reallocWrapper(Pa->data,2*Pa->pathsSize*sizeof(FLOATORDBL),4*Pa->pathsSize*sizeof(FLOATORDBL));
-      #endif
+void deletePhotonPath(struct paths * const Pa) {
+  for(; Pa->pathsElems > 1; Pa->pathsElems--) {
+    if(ISNAN(Pa->data[4*(Pa->pathsElems - 1)]) && ISNAN(Pa->data[4*(Pa->pathsElems - 2)])) { // 4 entries per column. Two previous columns NaN means the start of the path.
+      Pa->pathsElems--;
+      Pa->pathsElems--;
+      break;
     }
-    if(Pa->pathsElems != -1) {
-      Pa->data[4*Pa->pathsElems  ] = addNaN? NAN: (P->i[0] - G->n[0]/2.0f)*G->d[0]; // Store x
-      Pa->data[4*Pa->pathsElems+1] = addNaN? NAN: (P->i[1] - G->n[1]/2.0f)*G->d[1]; // Store y
-      Pa->data[4*Pa->pathsElems+2] = addNaN? NAN: (P->i[2]               )*G->d[2]; // Store z
-      Pa->data[4*Pa->pathsElems+3] = addNaN? NAN: P->weight;                       // Store photon weight
+  }
+}
+
+#ifdef __NVCC__ // If compiling for CUDA
+__device__
+#endif
+void addToPhotonPath(struct photon * const P, struct paths * const Pa, struct geometry const * const G, char NaNcolumns) {
+  if(Pa->pathsElems == Pa->pathsSize - NaNcolumns) {
+    #ifdef __NVCC__ // If compiling for CUDA
+    Pa->pathsElems = -1; // Buffer not large enough, has to be resized by host
+    #else
+    Pa->pathsSize *= 2; // double the record's size
+    Pa->data = (FLOATORDBL *)reallocWrapper(Pa->data,2*Pa->pathsSize*sizeof(FLOATORDBL),4*Pa->pathsSize*sizeof(FLOATORDBL));
+    #endif
+  }
+  if(Pa->pathsElems != -1) {
+    for(int i = 0; i < NaNcolumns; i++) {
+      Pa->data[4*Pa->pathsElems  ] = NAN;
+      Pa->data[4*Pa->pathsElems+1] = NAN;
+      Pa->data[4*Pa->pathsElems+2] = NAN;
+      Pa->data[4*Pa->pathsElems+3] = NAN;
       Pa->pathsElems++;
+    }
+    Pa->data[4*Pa->pathsElems  ] = (P->i[0] - G->n[0]/2.0f)*G->d[0]; // Store x
+    Pa->data[4*Pa->pathsElems+1] = (P->i[1] - G->n[1]/2.0f)*G->d[1]; // Store y
+    Pa->data[4*Pa->pathsElems+2] = (P->i[2]               )*G->d[2]; // Store z
+    Pa->data[4*Pa->pathsElems+3] = P->weight;                        // Store photon weight
+    Pa->pathsElems++;
+  }
+  Pa->pathStartedThisPhoton = true;
+}
+
+#ifdef __NVCC__ // If compiling for CUDA
+__device__
+#endif
+void updatePaths(struct photon * const P, struct paths * const Pa, struct geometry const * const G, struct depositionCriteria * DC, bool photonTeleported) {
+  if(Pa->nExamplePhotonPathsFinished < Pa->nExamplePaths) {
+    if(DC->evaluateCriteriaAtEndOfLife || depositionCriteriaMet(P,DC)) {
+      char NaNcolumns = Pa->pathStartedThisPhoton? (photonTeleported? 1: 0): 2;
+      addToPhotonPath(P,Pa,G,NaNcolumns);
     }
   }
 }
@@ -499,6 +524,7 @@ void launchPhoton(struct photon * const P, struct source const * const B, struct
   P->sameVoxel = false;
   P->weight = 1;
   P->recordElems = 0;
+  P->killed_escaped_collected = 0; // Default state to killed
   long launchAttempts = 0;
   do{
     if(B->S) { // If a 3D source distribution was defined
@@ -700,18 +726,15 @@ void launchPhoton(struct photon * const P, struct source const * const B, struct
   #pragma omp master
   #endif
   {
-    if(depositionCriteriaMet(P,DC)) {
-      Pa->nExamplePhotonPathsStarted++;
-      addToPhotonPath(P,Pa,G,true); // Add a photon path entry of NaNs to mark the beginning of a new trajectory
-      addToPhotonPath(P,Pa,G,false); // Add a photon path entry with the current position
-    }
+    Pa->pathStartedThisPhoton = false;
+    updatePaths(P,Pa,G,DC,false);
   }
 }
 
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void formImage(struct photon * const P, struct geometry const * const G, struct lightCollector const * const LC, struct outputs *O, unsigned long long * nPhotonsCollectedPtr) {
+void formImage(struct photon * const P, struct geometry const * const G, struct lightCollector const * const LC, struct depositionCriteria *DC, struct outputs *O, unsigned long long * nPhotonsCollectedPtr) {
   FLOATORDBL U[3];
   xyztoXYZ(P->u,LC->theta,LC->phi,U); // U is now the photon trajectory in basis of detection frame (X,Y,Z)
   
@@ -739,22 +762,22 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
           long Xindex = (long)(LC->res[0]*(RImP[0]/LC->FSorNA + 1.0f/2));
           long Yindex = (long)(LC->res[0]*(RImP[1]/LC->FSorNA + 1.0f/2));
           long timeindex = LC->res[1] > 1? min(LC->res[1]-1,max(0L,(long)(1+(LC->res[1]-2)*(P->time - (Resc[2] - LC->f)/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)))): 0; // If we are not measuring time-resolved, LC->res[1] == 1
-          atomicAddWrapper(&O->image[Xindex               +
-                                     Yindex   *LC->res[0] +
-                                     timeindex*LC->res[0]*LC->res[0]],P->weight);
-          atomicAddWrapperULL(nPhotonsCollectedPtr,1);
-          if(O->NFRdet) for(long i=0;i<P->recordElems;i++) {
-            atomicAddWrapper(&O->NFRdet[P->j_record[i]],P->weight*P->weight_record[i]);
+          P->killed_escaped_collected = 2; // Collected
+          if(depositionCriteriaMet(P,DC)) {
+            atomicAddWrapper(&O->image[Xindex               +
+                                       Yindex   *LC->res[0] +
+                                       timeindex*LC->res[0]*LC->res[0]],P->weight);
+            atomicAddWrapperULL(nPhotonsCollectedPtr,1);
           }
         }
       } else { // If the light collector is a fiber tip
         FLOATORDBL thetaLCFF = ATAN(-SQRT(U[0]*U[0] + U[1]*U[1])/U[2]); // Light collector far field polar angle
         if(thetaLCFF < ASIN(min(1.0f,LC->FSorNA))) { // If the photon has an angle within the fiber's NA acceptance
           long timeindex = LC->res[1] > 1? min(LC->res[1]-1,max(0L,(long)(1+(LC->res[1]-2)*(P->time - Resc[2]/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)))): 0; // If we are not measuring time-resolved, LC->res[1] == 1
-          atomicAddWrapper(&O->image[timeindex],P->weight);
-          atomicAddWrapperULL(nPhotonsCollectedPtr,1);
-          if(O->NFRdet) for(long i=0;i<P->recordElems;i++) {
-            atomicAddWrapper(&O->NFRdet[P->j_record[i]],P->weight*P->weight_record[i]);
+          P->killed_escaped_collected = 2; // Collected
+          if(depositionCriteriaMet(P,DC)) {
+            atomicAddWrapper(&O->image[timeindex],P->weight);
+            atomicAddWrapperULL(nPhotonsCollectedPtr,1);
           }
         }
       }
@@ -843,9 +866,8 @@ void checkEscape(struct photon * const P, struct paths *Pa, struct geometry cons
       #pragma omp master
       #endif
       {
-        if(photonTeleported && depositionCriteriaMet(P,DC)) {
-          addToPhotonPath(P,Pa,G,true); // Add a photon path entry of NaNs to mark the beginning of a new trajectory
-          addToPhotonPath(P,Pa,G,false); // Add a photon path entry with the current position
+        if(photonTeleported && (DC->evaluateCriteriaAtEndOfLife || depositionCriteriaMet(P,DC))) {
+          updatePaths(P,Pa,G,DC,photonTeleported);
         }
       }
       break;
@@ -855,9 +877,13 @@ void checkEscape(struct photon * const P, struct paths *Pa, struct geometry cons
                     P->i[1] < G->n[1] && P->i[1] >= 0 &&
                     P->i[2] < G->n[2] && P->i[2] >= 0;
   
+  if(escaped) {
+    P->killed_escaped_collected = 1; // Escaped, may be overwritten by collected in formImage
+    // We have to check formImage first because that's where we find out if the photon is collected
+    if(O->image) formImage(P,G,LC,DC,O,nPhotonsCollectedPtr); // If image is not NULL then that's because useLightCollector was set to true (non-zero)
+    if(O->FF && depositionCriteriaMet(P,DC)) formFarField(P,G,O);
+  }
   if(!P->alive && G->boundaryType && depositionCriteriaMet(P,DC)) formEdgeFluxes(P,G,O);
-  if(escaped && O->FF && depositionCriteriaMet(P,DC))             formFarField(P,G,O);
-  if(escaped && O->image && depositionCriteriaMet(P,DC))          formImage(P,G,LC,O,nPhotonsCollectedPtr); // If image is not NULL then that's because useLightCollector was set to true (non-zero)
 }
 
 #ifdef __NVCC__ // If compiling for CUDA
@@ -990,7 +1016,6 @@ __device__
 #endif
 void propagatePhoton(struct photon * const P, struct geometry const * const G, struct outputs const *O, struct depositionCriteria *DC, struct paths * const Pa, struct debug *D) {
   long idx;
-  bool criteriaPreviouslyMet = depositionCriteriaMet(P,DC);
 
   P->sameVoxel = true;
   
@@ -1066,17 +1091,18 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, s
   P->weight -= absorb;             // decrement WEIGHT by amount absorbed
 
   if(P->insideVolume) {  // only save data if the photon is inside simulation cuboid
-    if(O->NFR && depositionCriteriaMet(P,DC)) {
-      atomicAddWrapper(&O->NFR[P->j],absorb);
-    }
-    if(P->recordSize && depositionCriteriaMet(P,DC)) { // store indices and weights in pseudosparse array, to later add to NFRdet if photon ends up on the light collector
+    if(!DC->evaluateCriteriaAtEndOfLife) {
+      if(O->NFR && depositionCriteriaMet(P,DC)) {
+        atomicAddWrapper(&O->NFR[P->j],absorb);
+      }
+    } else { // store indices and weights in pseudosparse array, to later add to NFR if photon ends up on the light collector
       if(P->recordElems == P->recordSize) {
         P->recordSize *= 2; // double the record's size
         P->j_record = (long *)reallocWrapper(P->j_record,P->recordSize/2*sizeof(long),P->recordSize*sizeof(long));
         P->weight_record = (FLOATORDBL *)reallocWrapper(P->weight_record,P->recordSize/2*sizeof(FLOATORDBL),P->recordSize*sizeof(FLOATORDBL));
       }
       P->j_record[P->recordElems] = P->j;
-      P->weight_record[P->recordElems] = s;
+      P->weight_record[P->recordElems] = absorb;
       P->recordElems++;
     }
   }
@@ -1086,11 +1112,7 @@ void propagatePhoton(struct photon * const P, struct geometry const * const G, s
   #pragma omp master
   #endif
   {
-    if(!criteriaPreviouslyMet && depositionCriteriaMet(P,DC)) {
-      Pa->nExamplePhotonPathsStarted++;
-      addToPhotonPath(P,Pa,G,true); // Add a photon path entry of NaNs to mark the beginning of a new trajectory
-    }
-    if(depositionCriteriaMet(P,DC)) addToPhotonPath(P,Pa,G,false); // Add a photon path entry with the current position
+    updatePaths(P,Pa,G,DC,false);
   }
 }
 
@@ -1112,7 +1134,6 @@ void checkRoulette(struct photon * const P) {
 __device__
 #endif
 void scatterPhoton(struct photon * const P, struct geometry const * const G, struct paths *Pa, struct depositionCriteria *DC, struct debug *D) {
-  bool criteriaPreviouslyMet = depositionCriteriaMet(P,DC);
   FLOATORDBL costheta;
   if(ISNAN(P->g)) {
     // Sample for theta using the cumulative distribution function (CDF)
@@ -1156,16 +1177,12 @@ void scatterPhoton(struct photon * const P, struct geometry const * const G, str
   #pragma omp master
   #endif
   {
-    if(!criteriaPreviouslyMet && depositionCriteriaMet(P,DC)) {
-      Pa->nExamplePhotonPathsStarted++;
-      addToPhotonPath(P,Pa,G,true); // Add a photon path entry of NaNs to mark the beginning of a new trajectory
-      addToPhotonPath(P,Pa,G,false); // Add a photon path entry with the current position
-    }
+    updatePaths(P,Pa,G,DC,false);
   }
 }
 
 void normalizeDepositionAndResetO(struct source const * const B, struct geometry const * const G, struct lightCollector const * const LC,
-        struct outputs *O, struct MATLABoutputs *O_MATLAB, int iWavelength, double Pfraction) {
+        struct outputs *O, struct MATLABoutputs *O_MATLAB, long iWavelength, double Pfraction) {
   long j;
   double V = G->d[0]*G->d[1]*G->d[2]; // Voxel volume
   long L = G->n[0]*G->n[1]*G->n[2]; // Total number of voxels in cuboid
@@ -1183,12 +1200,8 @@ void normalizeDepositionAndResetO(struct source const * const B, struct geometry
   O->nPhotons = 0;
   O->nPhotonsCollected = 0;
   if(O->NFR) for(j=0;j<L   ;j++) {
-    O_MATLAB->NFR[j + iWavelength*G->n[0]*G->n[1]*G->n[2]] = (float)(O->NFR[j]/(V*normfactor*G->muav[G->M[j]]));
+    O_MATLAB->NFR[j + (unsigned long long)iWavelength*G->n[0]*G->n[1]*G->n[2]] = (float)(O->NFR[j]/(V*normfactor*G->muav[G->M[j]]));
     O->NFR[j] = 0;
-  }
-  if(O->NFRdet) for(j=0;j<L   ;j++) {
-    O_MATLAB->NFRdet[j + iWavelength*G->n[0]*G->n[1]*G->n[2]] = (float)(O->NFRdet[j]/(V*normfactor));
-    O->NFRdet[j] = 0;
   }
   if(O->FF) for(j=0;j<L_FF;j++) {
     O_MATLAB->FF[j + iWavelength*G->farFieldRes*G->farFieldRes] = (float)(O->FF[j]/normfactor);
