@@ -154,9 +154,13 @@ if MCorFMC.nExamplePaths > 0
   title(h_a,h_f.Name);
   box on;grid on;grid minor;
 
-  previousNaNidx = 2; % in examplePaths, each path starts with two NaN columns
-  for idx=3:(size(MCorFMC.examplePaths,2)+1)
+  pathsRecorded = 0;
+  previousNaNidx = 1; % in examplePaths, each path starts with two NaN columns
+  for idx=1:(size(MCorFMC.examplePaths,2)+1)
     if idx == size(MCorFMC.examplePaths,2)+1 || isnan(MCorFMC.examplePaths(1,idx))
+      if previousNaNidx == idx-1
+        pathsRecorded = pathsRecorded + 1;
+      end
       xdata = MCorFMC.examplePaths(1,previousNaNidx+1:idx-1);
       ydata = MCorFMC.examplePaths(2,previousNaNidx+1:idx-1);
       zdata = MCorFMC.examplePaths(3,previousNaNidx+1:idx-1);
@@ -173,6 +177,10 @@ if MCorFMC.nExamplePaths > 0
                     'LineWidth',2);
       end
     end
+  end
+  
+  if pathsRecorded < MCorFMC.nExamplePaths
+    warning(sprintf('MCmatlab didn''t manage to generate the requested number of example paths. Possible reasons for this are\n1) Your simulation time is short\n2) Your deposition criteria are rarely satisfied\nand/or\n3) You''re running on GPU. The GPU is less good at generating example paths because paths can only be recorded by a single GPU thread, handling a very small fraction of launched photons.')); %#ok<SPWRN>
   end
 end
 
