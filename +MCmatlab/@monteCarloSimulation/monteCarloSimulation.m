@@ -47,7 +47,6 @@ classdef monteCarloSimulation
     examplePaths = NaN
 
     normalizedFluenceRate = 0
-    normalizedFluenceRate_detected = 0
     FR = 0
 
     farField = NaN
@@ -64,19 +63,17 @@ classdef monteCarloSimulation
 
   properties (Dependent)
     normalizedAbsorption
-    normalizedAbsorption_detected
   end
 
   properties (Hidden, Dependent)
     calcNFR
+    calcNormalizedFluenceRate_detected
     calcNFRdet
     beam
     LS
     LC
     NFR
-    NFRdet
     NA
-    NAdet
     NI_xpos
     NI_xneg
     NI_ypos
@@ -107,17 +104,6 @@ classdef monteCarloSimulation
         NA = 0;
       end
     end
-    function NAdet = get.normalizedAbsorption_detected(obj)
-      if numel(obj.NFRdet) > 1
-        NAdet = NaN(size(obj.NFRdet));
-        for iWavelength = 1:size(obj.mediaProperties,2)
-          mua_vec = [obj.mediaProperties.mua(:,iWavelength)];
-          NAdet(:,:,:,iWavelength) = mua_vec(obj.M).*obj.NFRdet(:,:,:,iWavelength);
-        end
-      else
-        NAdet = 0;
-      end
-    end
     function x = get.beam(obj)
       warning('beam has been renamed lightSource (LS). The ability to reference lightSource through beam will be deprecated in a future version.');
       x = obj.lightSource;
@@ -126,22 +112,24 @@ classdef monteCarloSimulation
       warning('beam has been renamed lightSource (LS). The ability to reference lightSource through beam will be deprecated in a future version.');
       obj.lightSource = x;  
     end
-    function x   = get.calcNFR(obj  ); x = obj.calcNormalizedFluenceRate; end
-    function obj = set.calcNFR(obj,x);     obj.calcNormalizedFluenceRate = x; end  
     function x   = get.calcNFRdet(obj  ); x = obj.calcNormalizedFluenceRate_detected; end
     function obj = set.calcNFRdet(obj,x);     obj.calcNormalizedFluenceRate_detected = x; end  
+    function x   = get.calcNormalizedFluenceRate_detected(obj)
+      error('Error: calcNormalizedFluenceRate_detected has been deprecated. Please use deposition criteria as shown in example 8 instead.');
+    end
+    function obj = set.calcNormalizedFluenceRate_detected(obj,x)
+      error('Error: calcNormalizedFluenceRate_detected has been deprecated. Please use deposition criteria as shown in example 8 instead.');
+    end
+    function x   = get.calcNFR(obj  ); x = obj.calcNormalizedFluenceRate; end
+    function obj = set.calcNFR(obj,x);     obj.calcNormalizedFluenceRate = x; end  
     function x   = get.LS(obj  ); x = obj.lightSource; end
     function obj = set.LS(obj,x);     obj.lightSource = x; end  
     function x   = get.LC(obj  ); x = obj.lightCollector; end
     function obj = set.LC(obj,x);     obj.lightCollector = x; end  
     function x   = get.NFR(obj  ); x = obj.normalizedFluenceRate; end
     function obj = set.NFR(obj,x);     obj.normalizedFluenceRate = x; end  
-    function x   = get.NFRdet(obj  ); x = obj.normalizedFluenceRate_detected; end
-    function obj = set.NFRdet(obj,x);     obj.normalizedFluenceRate_detected = x; end  
     function x   = get.NA(obj  ); x = obj.normalizedAbsorption; end
     function obj = set.NA(obj,x);     obj.normalizedAbsorption = x; end  
-    function x   = get.NAdet(obj  ); x = obj.normalizedAbsorption_detected; end
-    function obj = set.NAdet(obj,x);     obj.normalizedAbsorption_detected = x; end  
     function x   = get.NI_xpos(obj  ); x = obj.normalizedIrradiance_xpos; end
     function obj = set.NI_xpos(obj,x);     obj.normalizedIrradiance_xpos = x; end  
     function x   = get.NI_xneg(obj  ); x = obj.normalizedIrradiance_xneg; end

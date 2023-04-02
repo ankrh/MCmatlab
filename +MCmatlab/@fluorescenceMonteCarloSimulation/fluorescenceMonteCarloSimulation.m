@@ -39,7 +39,6 @@ classdef fluorescenceMonteCarloSimulation
     examplePaths = NaN;
 
     normalizedFluenceRate single = 0
-    normalizedFluenceRate_detected = NaN
 
     farField = NaN;
     farFieldTheta = NaN;
@@ -57,17 +56,15 @@ classdef fluorescenceMonteCarloSimulation
 
   properties (Dependent)
     normalizedAbsorption
-    normalizedAbsorption_detected
   end
 
-  properties (Hidden)
+  properties (Hidden, Dependent)
     calcNFR
+    calcNormalizedFluenceRate_detected
     calcNFRdet
     LC
     NFR
-    NFRdet
     NA
-    NAdet
     NI_xpos
     NI_xneg
     NI_ypos
@@ -88,31 +85,22 @@ classdef fluorescenceMonteCarloSimulation
         NA = 0;
       end
     end
-    function NAdet = get.normalizedAbsorption_detected(obj)
-      if numel(obj.NFRdet) > 1
-        NAdet = NaN(size(obj.NFRdet));
-        for iWavelength = 1:size(obj.mediaProperties,2)
-          mua_vec = [obj.mediaProperties.mua(:,iWavelength)];
-          NAdet(:,:,:,iWavelength) = mua_vec(obj.M).*obj.NFRdet(:,:,:,iWavelength);
-        end
-      else
-        NAdet = 0;
-      end
+    function x   = get.calcNFRdet(obj  ); x = obj.calcNormalizedFluenceRate_detected; end
+    function obj = set.calcNFRdet(obj,x);     obj.calcNormalizedFluenceRate_detected = x; end  
+    function x   = get.calcNormalizedFluenceRate_detected(obj)
+      error('Error: calcNormalizedFluenceRate_detected has been deprecated. Please use deposition criteria as shown in example 8 instead.');
+    end
+    function obj = set.calcNormalizedFluenceRate_detected(obj,x)
+      error('Error: calcNormalizedFluenceRate_detected has been deprecated. Please use deposition criteria as shown in example 8 instead.');
     end
     function x   = get.calcNFR(obj  ); x = obj.calcNormalizedFluenceRate; end
     function obj = set.calcNFR(obj,x);     obj.calcNormalizedFluenceRate = x; end %#ok<MCSUP> 
-    function x   = get.calcNFRdet(obj  ); x = obj.calcNormalizedFluenceRate_detected; end
-    function obj = set.calcNFRdet(obj,x);     obj.calcNormalizedFluenceRate_detected = x; end %#ok<MCSUP> 
     function x   = get.LC(obj  ); x = obj.lightCollector; end
     function obj = set.LC(obj,x);     obj.lightCollector = x; end %#ok<MCSUP> 
     function x   = get.NFR(obj  ); x = obj.normalizedFluenceRate; end
     function obj = set.NFR(obj,x);     obj.normalizedFluenceRate = x; end %#ok<MCSUP> 
-    function x   = get.NFRdet(obj  ); x = obj.normalizedFluenceRate_detected; end
-    function obj = set.NFRdet(obj,x);     obj.normalizedFluenceRate_detected = x; end %#ok<MCSUP> 
     function x   = get.NA(obj  ); x = obj.normalizedAbsorption; end
     function obj = set.NA(obj,x);     obj.normalizedAbsorption = x; end %#ok<MCSUP> 
-    function x   = get.NAdet(obj  ); x = obj.normalizedAbsorption_detected; end
-    function obj = set.NAdet(obj,x);     obj.normalizedAbsorption_detected = x; end %#ok<MCSUP> 
     function x   = get.NI_xpos(obj  ); x = obj.normalizedIrradiance_xpos; end
     function obj = set.NI_xpos(obj,x);     obj.normalizedIrradiance_xpos = x; end %#ok<MCSUP> 
     function x   = get.NI_xneg(obj  ); x = obj.normalizedIrradiance_xneg; end

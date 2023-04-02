@@ -230,7 +230,7 @@ if MCorFMC.useLightCollector
   fprintf(['%.3g%% of ' fluorescenceOrIncident 'light ends up on the detector.\n'],detFraction/P_in);
 
   if detFraction == 0
-    warning('No light was collected on the detector. Are you sure that the light escapes through media that have refractive index 1? Otherwise the photons will not be counted. Depending on your geometry, you could maybe add a layer of air on top of your simulation, or set matchedInterfaces = true, which will set all refractive indices to 1.');
+    warning('No light was collected on the detector. Are you sure that your light collector is oriented the right way and that the light escapes through media that have refractive index 1? Otherwise the photons will not be counted. Depending on your geometry, you could maybe add a layer of air on top of your simulation, or set matchedInterfaces = true, which will set all refractive indices to 1.');
   end
 
   %% Plot image

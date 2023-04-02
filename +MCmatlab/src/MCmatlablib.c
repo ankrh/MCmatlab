@@ -746,38 +746,40 @@ void formImage(struct photon * const P, struct geometry const * const G, struct 
     FLOATORDBL Resc[3];
     xyztoXYZ(resc,LC->theta,LC->phi,Resc); // Resc is now the photon position in the light collector frame (X,Y,Z) when it escapes the cuboid
     
-    FLOATORDBL RLCP[2]; // XY coordinates of the point where the photon crosses the light collector plane
-    RLCP[0] = Resc[0] - Resc[2]*U[0]/U[2];
-    RLCP[1] = Resc[1] - Resc[2]*U[1]/U[2];
-    
-    FLOATORDBL distLCP = SQRT(RLCP[0]*RLCP[0] + RLCP[1]*RLCP[1]); // Distance between light collector center and the point where the photon crosses the light collector plane
-    
-    if(distLCP < LC->diam/2) { // If the distance is less than the radius of the light collector
-      if(ISFINITE(LC->f)) { // If the light collector is an objective lens
-        FLOATORDBL RImP[2]; // Back-propagated position that the photon would have had in the object plane if propagating freely. This corresponds to where the photon will end up in the image plane for magnification 1x.
-        RImP[0] = RLCP[0] + LC->f*U[0]/U[2];
-        RImP[1] = RLCP[1] + LC->f*U[1]/U[2];
-        FLOATORDBL distImP = SQRT(RImP[0]*RImP[0] + RImP[1]*RImP[1]);
-        if(distImP < LC->FSorNA/2) { // If the photon is coming from the area within the Field Size
-          long Xindex = (long)(LC->res[0]*(RImP[0]/LC->FSorNA + 1.0f/2));
-          long Yindex = (long)(LC->res[0]*(RImP[1]/LC->FSorNA + 1.0f/2));
-          long timeindex = LC->res[1] > 1? min(LC->res[1]-1,max(0L,(long)(1+(LC->res[1]-2)*(P->time - (Resc[2] - LC->f)/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)))): 0; // If we are not measuring time-resolved, LC->res[1] == 1
-          P->killed_escaped_collected = 2; // Collected
-          if(depositionCriteriaMet(P,DC)) {
-            atomicAddWrapper(&O->image[Xindex               +
-                                       Yindex   *LC->res[0] +
-                                       timeindex*LC->res[0]*LC->res[0]],P->weight);
-            atomicAddWrapperULL(nPhotonsCollectedPtr,1);
+    if(Resc[2] > 0) { // If the Z coordinate in the light collector frame is positive (negative means the photon is already on the wrong side)
+      FLOATORDBL RLCP[2]; // XY coordinates of the point where the photon crosses the light collector plane
+      RLCP[0] = Resc[0] - Resc[2]*U[0]/U[2];
+      RLCP[1] = Resc[1] - Resc[2]*U[1]/U[2];
+      
+      FLOATORDBL distLCP = SQRT(RLCP[0]*RLCP[0] + RLCP[1]*RLCP[1]); // Distance between light collector center and the point where the photon crosses the light collector plane
+      
+      if(distLCP < LC->diam/2) { // If the distance is less than the radius of the light collector
+        if(ISFINITE(LC->f)) { // If the light collector is an objective lens
+          FLOATORDBL RImP[2]; // Back-propagated position that the photon would have had in the object plane if propagating freely. This corresponds to where the photon will end up in the image plane for magnification 1x.
+          RImP[0] = RLCP[0] + LC->f*U[0]/U[2];
+          RImP[1] = RLCP[1] + LC->f*U[1]/U[2];
+          FLOATORDBL distImP = SQRT(RImP[0]*RImP[0] + RImP[1]*RImP[1]);
+          if(distImP < LC->FSorNA/2) { // If the photon is coming from the area within the Field Size
+            long Xindex = (long)(LC->res[0]*(RImP[0]/LC->FSorNA + 1.0f/2));
+            long Yindex = (long)(LC->res[0]*(RImP[1]/LC->FSorNA + 1.0f/2));
+            long timeindex = LC->res[1] > 1? min(LC->res[1]-1,max(0L,(long)(1+(LC->res[1]-2)*(P->time - (Resc[2] - LC->f)/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)))): 0; // If we are not measuring time-resolved, LC->res[1] == 1
+            P->killed_escaped_collected = 2; // Collected
+            if(depositionCriteriaMet(P,DC)) {
+              atomicAddWrapper(&O->image[Xindex               +
+                                         Yindex   *LC->res[0] +
+                                         timeindex*LC->res[0]*LC->res[0]],P->weight);
+              atomicAddWrapperULL(nPhotonsCollectedPtr,1);
+            }
           }
-        }
-      } else { // If the light collector is a fiber tip
-        FLOATORDBL thetaLCFF = ATAN(-SQRT(U[0]*U[0] + U[1]*U[1])/U[2]); // Light collector far field polar angle
-        if(thetaLCFF < ASIN(min(1.0f,LC->FSorNA))) { // If the photon has an angle within the fiber's NA acceptance
-          long timeindex = LC->res[1] > 1? min(LC->res[1]-1,max(0L,(long)(1+(LC->res[1]-2)*(P->time - Resc[2]/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)))): 0; // If we are not measuring time-resolved, LC->res[1] == 1
-          P->killed_escaped_collected = 2; // Collected
-          if(depositionCriteriaMet(P,DC)) {
-            atomicAddWrapper(&O->image[timeindex],P->weight);
-            atomicAddWrapperULL(nPhotonsCollectedPtr,1);
+        } else { // If the light collector is a fiber tip
+          FLOATORDBL thetaLCFF = ATAN(-SQRT(U[0]*U[0] + U[1]*U[1])/U[2]); // Light collector far field polar angle
+          if(thetaLCFF < ASIN(min(1.0f,LC->FSorNA))) { // If the photon has an angle within the fiber's NA acceptance
+            long timeindex = LC->res[1] > 1? min(LC->res[1]-1,max(0L,(long)(1+(LC->res[1]-2)*(P->time - Resc[2]/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)))): 0; // If we are not measuring time-resolved, LC->res[1] == 1
+            P->killed_escaped_collected = 2; // Collected
+            if(depositionCriteriaMet(P,DC)) {
+              atomicAddWrapper(&O->image[timeindex],P->weight);
+              atomicAddWrapperULL(nPhotonsCollectedPtr,1);
+            }
           }
         }
       }
