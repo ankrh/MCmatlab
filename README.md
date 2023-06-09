@@ -20,25 +20,30 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ## How do I get set up?
-### Requirements:
+### Requirements
 - Windows 7, macOS 10.12 (Sierra) or newer or Linux
 - MATLAB R2018a or newer
 - (For GPU accelerated computation) A Windows PC with a CUDA-enabled graphics card and the MATLAB Parallel Computing Toolbox
 
-### Helper files:
-All the helper functions needed for running MCmatlab are located in the folder (MATLAB package) "+MCmatlab", and its parent folder therefore has to be on your MATLAB path when trying to run any MCmatlab model files. You will not need to modify any of the contained files. We recommend keeping the model files in a folder together with the "+MCmatlab" folder, such that you don't need to manually add "+MCmatlab" to your MATLAB path.
+### Helper files
+All the helper functions needed for running MCmatlab are located in the folder (MATLAB package) "+MCmatlab", and its parent folder therefore has to be on your MATLAB path when trying to run any MCmatlab model files. You will not need to modify any of the contained files. We recommend keeping the model files in a folder together with the "+MCmatlab" folder, such that you don't need to manually add the parent folder of "+MCmatlab" to your MATLAB path.
 
 ## How do I use MCmatlab?
 ### Compilation
 The folders include all the executables necessary, so you don't need to compile anything. If, however, you want to change the routine in either the MCmatlab.c source code or the finiteElementHeatPropagator.c source code (both located in the folder "+MCmatlab/src"), you will need to recompile the respective mex-files. Check out those two source-files on how to do so. The source code is written in such a way that it can be compiled as either C or C++ code using either GCC, MSVC, clang or as CUDA source code using NVCC.
 
-### Model files:
-In MCmatlab, you set up your model in a single m-file. You can find some examples to get you started in the root folder of MCmatlab. A complete list of parameters that can be set is provided below.
+### Model files
+In MCmatlab, you set up your model in a single m-file called "Model File". You can find some examples of Model Files to get you started in the parent folder of "+MCmatlab". A complete list of parameters that can be set is provided below.
+
+### Model object
+A "Model Object" stores all the parameters for a single Monte Carlo simulation: a single geometry and a single type of lightsource, together with all the results from the Monte Carlo (and optional heat transfer) simulation. The Model Object is an instance of the class MCmatlab.model, i.e., it's of the class "model" in the MATLAB-package "MCmatlab". One Model File can, if desired, generate multiple Model Objects with a different geometry and/or lightsource each.
+
+Model Objects can be saved to and loaded from a standard binary MATLAB MAT-file like any other MATLAB variable. When loading a Model Object from a MATLAB MAT-file, the parent folder of "+MCmatlab" needs to be on your MATLAB path: prior to loading the Model Object, either navigate to the parent folder of "+MCmatlab" in the "Current Folder" view of MATLAB, or use the command "addpath" to add the parent folder of "+MCmatlab" to your path.
 
 ### MATLAB function definitions
 MCmatlab makes extensive use of user-defined functions, passed into the simulation in the form of function handles. For more information, see `https://www.mathworks.com/help/matlab/matlab_prog/creating-a-function-handle.html`. Inside other functions, nested functions can be defined anywhere, but in the main model file script, MATLAB requires that all functions are defined at the end of the m file.
 
-### Media properties:
+### Media properties
 The optical properties of all media are defined in a function at the end of the model file. The examples contain some media you can modify or copy-paste to your own model file, or you define your own media from scratch in your own models. All media properties functions must start with this line: `mediaProperties = MCmatlab.mediumProperties;` in order to initialize the `mediaProperties` variable as an array of `mediumProperties` objects. Make sure that each media in a single model file has its distinct "j"-number, as this is the number you will refer to when building your model in the geometry function (see below).
 
 Each medium can be specified with up to 13 properties. Many of these may be specified either as a scalar or as function handles that can take wavelength, fluence rate (FR), temperature (T) and fractional damage (FD) as input:
