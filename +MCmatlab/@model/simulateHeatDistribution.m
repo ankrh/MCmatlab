@@ -10,6 +10,11 @@ function model = simulateHeatDistribution(model)
     if contains(cmdout,'com.apple.quarantine'); system('xattr -d com.apple.quarantine ./+MCmatlab/@model/private/finiteElementHeatPropagator.mexmaci64'); end
   end
 
+  forceSingleThreaded = isunix && ~ismac && verLessThan('matlab','9.9');
+  if forceSingleThreaded % Multithreading doesn't work properly on Linux older than R2020b for some reason
+    warning('Linux MCmatlab multithreading is disabled on MATLAB versions older than R2020b. Update your MATLAB to utilize multithreading.');
+  end
+
   if isscalar(model.MC.NFR)
     error('Error: MC.NFR was not calculated');
   end
@@ -253,7 +258,11 @@ function model = simulateHeatDistribution(model)
         if model.HS.useGPU
           [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator_CUDA(model.HS.T,model.HS.Omega,heatSimParameters);
         else
-          [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(model.HS.T,model.HS.Omega,heatSimParameters);
+          if forceSingleThreaded % Multithreading doesn't work properly on Linux older than R2020b for some reason
+            [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator_singlethreaded(model.HS.T,model.HS.Omega,heatSimParameters);
+          else
+            [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(model.HS.T,model.HS.Omega,heatSimParameters);
+          end
         end
 
         SMidx = 1; % sub-medium index
@@ -310,7 +319,11 @@ function model = simulateHeatDistribution(model)
         if model.HS.useGPU
           [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator_CUDA(model.HS.T,model.HS.Omega,heatSimParameters);
         else
-          [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(model.HS.T,model.HS.Omega,heatSimParameters);
+          if forceSingleThreaded % Multithreading doesn't work properly on Linux older than R2020b for some reason
+            [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator_singlethreaded(model.HS.T,model.HS.Omega,heatSimParameters);
+          else
+            [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(model.HS.T,model.HS.Omega,heatSimParameters);
+          end
         end
 
         SMidx = 1; % sub-medium index
@@ -367,7 +380,11 @@ function model = simulateHeatDistribution(model)
     if model.HS.useGPU
       [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator_CUDA(model.HS.T,model.HS.Omega,heatSimParameters);
     else
-      [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(model.HS.T,model.HS.Omega,heatSimParameters);
+      if forceSingleThreaded % Multithreading doesn't work properly on Linux older than R2020b for some reason
+        [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator_singlethreaded(model.HS.T,model.HS.Omega,heatSimParameters);
+      else
+        [model.HS.T,model.HS.Omega,newSensorTemps,newMaxMediaTemps] = finiteElementHeatPropagator(model.HS.T,model.HS.Omega,heatSimParameters);
+      end
     end
 
     SMidx = 1; % sub-medium index

@@ -52,7 +52,8 @@
  * 2. Type "mex -setup" in the MATLAB command window
  *
  ** Compiling on Linux
- * "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' -outdir +MCmatlab/@model/private ./+MCmatlab/src/finiteElementHeatPropagator.c ./+MCmatlab/src/libut.so"
+ * "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -fopenmp -std=c11 -Wall' -outdir +MCmatlab/@model/private ./+MCmatlab/src/finiteElementHeatPropagator.c -lut"
+ * "mex COPTIMFLAGS='$COPTIMFLAGS -Ofast -std=c11 -Wall' LDOPTIMFLAGS='$LDOPTIMFLAGS -Ofast -std=c11 -Wall' -outdir +MCmatlab/@model/private -output finiteElementHeatPropagator_singlethreaded ./+MCmatlab/src/finiteElementHeatPropagator.c -lut"
  *
  * To get the MATLAB C compiler to work, try this:
  * 1. Use a package manager like apt to install GCC (on Ubuntu, part of the build-essential package)

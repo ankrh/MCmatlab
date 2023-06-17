@@ -31,6 +31,11 @@ function model = runMonteCarlo(model,varargin)
     if contains(cmdout,'com.apple.quarantine'); system('xattr -d com.apple.quarantine ./+MCmatlab/@model/private/getDownsampledParamVals.mexmaci64'); end
   end
 
+  forceSingleThreaded = isunix && ~ismac && verLessThan('matlab','9.9');
+  if forceSingleThreaded % Multithreading doesn't work properly on Linux older than R2020b for some reason
+    warning('Linux MCmatlab multithreading is disabled on MATLAB versions older than R2020b. Update your MATLAB to utilize multithreading.');
+  end
+
   model.G = model.G.updateGeometry;
   G = model.G;
 
@@ -81,7 +86,11 @@ function model = runMonteCarlo(model,varargin)
       if useGPU
         model = MCmatlab_CUDA(model,simType);
       else
-        model = MCmatlab(model,simType);
+        if forceSingleThreaded % Multithreading doesn't work properly on Linux older than R2020b for some reason
+          model = MCmatlab_singlethreaded(model,simType);
+        else
+          model = MCmatlab(model,simType);
+        end
       end
       if i<nIterations; model.MC.FR = model.MC.P*model.MC.NFR; end
     end
@@ -147,7 +156,11 @@ function model = runMonteCarlo(model,varargin)
     if useGPU
       model = MCmatlab_CUDA(model,simType);
     else
-      model = MCmatlab(model,simType);
+      if forceSingleThreaded % Multithreading doesn't work properly on Linux older than R2020b for some reason
+        model = MCmatlab_singlethreaded(model,simType);
+      else
+        model = MCmatlab(model,simType);
+      end
     end
   end
 
