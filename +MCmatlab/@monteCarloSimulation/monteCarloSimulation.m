@@ -32,6 +32,8 @@ classdef monteCarloSimulation
 
     depositionCriteria (1,1) MCmatlab.depositionCriteria
 
+    sourceDistribution single = NaN
+
     %% Calculated properties
     simulationTime = NaN
     nPhotons = NaN

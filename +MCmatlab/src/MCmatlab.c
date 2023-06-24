@@ -325,9 +325,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   bool silentMode = mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabMC,0,"silentMode"));
   bool calcNFR    = mxIsLogicalScalarTrue(mxGetPropertyShared(MatlabMC,0,"calcNFR")); // Are we supposed to calculate the NFR matrix?
 
-  // To know if we are simulating fluorescence, we check if a "sourceDistribution" field exists. If so, we will use it later in the beam definition.
   mxArray *MatlabLS = mxGetProperty(MatlabMC,0,"LS");
-  double *S_PDF       = simFluorescence? (double *)mxGetData(mxGetProperty(MatlabMC,0,"sourceDistribution")): NULL; // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
+  float *S_PDF = (float *)mxGetData(mxGetProperty(MatlabMC,0,"sourceDistribution"));  // Power emitted by the individual voxels per unit volume. Can be percieved as an unnormalized probability density function of the 3D source distribution
+  if(ISNAN(*S_PDF)) S_PDF = NULL;
 
   // Variables for timekeeping and number of photons
   bool            simulationTimed = mxIsNaN(*mxGetPr(mxGetPropertyShared(MatlabMC,0,"nPhotonsRequested")));
@@ -460,7 +460,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   // Prepare output MATLAB arrays and the temporary struct to store output data in
   plhs[0] = mxDuplicateArray(prhs[0]);
   
-  mxArray *MCout = mxGetPropertyShared(plhs[0],0,S_PDF? "FMC": "MC");
+  mxArray *MCout = mxGetPropertyShared(plhs[0],0,simFluorescence? "FMC": "MC");
   mxArray *LCout = mxGetPropertyShared(MCout,0,"LC");
   
   mwSize outDimPtr[4] = {dimPtr[0], dimPtr[1], dimPtr[2], (mwSize)nL};

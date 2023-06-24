@@ -44,7 +44,7 @@ classdef fluorescenceMonteCarloSimulation
     farFieldTheta = NaN;
     farFieldPhi = NaN;
 
-    sourceDistribution = NaN;
+    sourceDistribution single = NaN;
 
     normalizedIrradiance_xpos = NaN % Normalized irradiance on the boundary in the positive x direction
     normalizedIrradiance_xneg = NaN

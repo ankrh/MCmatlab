@@ -343,6 +343,10 @@ Axial rotation angle of the beam.
 [rad]
 Polar and azimuthal angle of the beam center axis.
 
+`model.MC.sourceDistribution`
+[-]
+If set to an array of dimensions [nx, ny, nz, nLambda], this will be interpreted as the spatial and spectral distribution of emitters. If this is specified, the contents of lightSource will be disregarded. This array will be normalized by MCmatlab during the call to runMonteCarlo().
+
 `model.MC.depositionCriteria.minScatterings`, `model.MC.depositionCriteria.maxScatterings`, `model.MC.depositionCriteria.minRefractions`, `model.MC.depositionCriteria.maxRefractions`, `model.MC.depositionCriteria.minReflections`, `model.MC.depositionCriteria.maxReflections`, `model.MC.depositionCriteria.minInterfaceTransitions`, `model.MC.depositionCriteria.maxInterfaceTransitions`
 [-]
 The minimum and maximum number of scattering, refraction, reflection and interface transition events the photon packet must have undergone in order to be registered as an example photon path and to deposit weight into the output arrays (normalized fluence rate, normalized boundary irradiances, image and far field). There is an implied AND between all the criteria. Note that the underlying absorption and propagation of all photon packets are independent of the specified deposition criteria.

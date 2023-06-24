@@ -42,12 +42,12 @@ function model = plotMCmatlabMC(model,varargin)
 % 4: NFR
 % 5: Paths
 % 6: LC illustration
-% 7: Unused
+% 7: Excitation emitter distribution (3D light source)
 % 8: Collected light
 % 9: Far field
 % 10: Boundary Irradiances
 % 11: Emitter distribution
-% 12-20: Same as incident light but for fluorescence
+% 12-20: Same as incident light but for fluorescence, 17 unused
 % 21: Temperature plot during heat sim
 % 22: Thermal media properties
 % 23: Temperature sensor locations
@@ -104,6 +104,15 @@ if simFluorescence
   P_flu_emit = G.dx*G.dy*G.dz*sum(model.FMC.sourceDistribution(:));
   fprintf('%.3g%% of absorbed incident light was re-emitted as fluorescence.\n',100*P_flu_emit/P_exc_abs);
   P_in = P_flu_emit;
+elseif ~isnan(model.MC.sourceDistribution(1))
+  h_f = MCmatlab.NdimSliderPlot(model.MC.sourceDistribution,...
+    'nFig',7,...
+    'axisValues',{G.x,G.y,G.z,MCorFMC.wavelength},...
+    'axisLabels',{'x [cm]','y [cm]','z [cm]',lambdatext,'Emitter distribution [W/cm^3/W.incident]'},...
+    'fromZero',true,...
+    'axisEqual',true,...
+    'reversedAxes',3);
+  h_f.Name = 'Emitters';
 end
 
 %% Make media properties plot

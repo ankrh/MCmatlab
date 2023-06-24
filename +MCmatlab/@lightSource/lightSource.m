@@ -19,8 +19,6 @@ classdef lightSource
     focalPlaneIntensityDistribution (1,1) MCmatlab.sourceIntensityDistribution
     angularIntensityDistribution (1,1) MCmatlab.sourceIntensityDistribution
 
-    %% Calculated properties
-    sourceDistribution = NaN
   end
 
   properties (Hidden, Dependent)
