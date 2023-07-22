@@ -64,7 +64,7 @@ function model = simulateHeatDistribution(model)
     error('Error: If either on-duration or off-duration is 0, nPulses must be 1');
   end
 
-  if model.HS.silentMode && ~any(G.optTdependent(:) | G.thmTdependent(:) | G.optFDdependent(:) | G.thmFDdependent(:))
+  if model.HS.silentMode && ~any(G.optTdependent(:)) && ~any(G.thmTdependent(:)) && ~any(G.optFDdependent(:)) && ~any(G.thmFDdependent(:))
     model.HS.nUpdates = 1;
   end
 
