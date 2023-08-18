@@ -5,7 +5,9 @@ MCmatlab is a Monte Carlo simulation for modeling light propagation in a 3D voxe
 
 Primarily targeted for tissue optics, but can be used in any environment with turbid media in which the wave nature of light (interference phenomena) is negligible and a ray-tracing model is appropriate.
 
-You can find the latest version of MCmatlab on https://github.com/ankrh/MCmatlab. If you publish results obtained with this software, we would be thankful if you cited its accompanying article: doi:10.1117/1.JBO.23.12.121622
+You can find the latest version of MCmatlab on https://github.com/ankrh/MCmatlab. You can also use MCmatlab directly in MATLAB online by clicking the button below. If you publish results obtained with this software, we would be thankful if you cited its accompanying article: doi:10.1117/1.JBO.23.12.121622
+
+[![Open in MATLAB Online](https://www.mathworks.com/images/responsive/global/open-in-matlab-online.svg)](https://matlab.mathworks.com/open/github/v1?repo=ankrh/MCmatlab&file=Example1_StandardTissue.m)
 
 ## License
 This program is free software: you can redistribute it and/or modify
