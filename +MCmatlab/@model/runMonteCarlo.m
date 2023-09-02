@@ -171,9 +171,12 @@ function model = runMonteCarlo(model,varargin)
     if model.FMC.useLightCollector && model.FMC.LC.res > 1
       model.FMC.LC.X = linspace(model.FMC.LC.fieldSize*(1/model.FMC.LC.res-1),model.FMC.LC.fieldSize*(1-1/model.FMC.LC.res),model.FMC.LC.res)/2;
       model.FMC.LC.Y = model.FMC.LC.X;
-      if model.FMC.LC.nTimeBins > 0
-        model.FMC.LC.t = (-1/2:(model.FMC.LC.nTimeBins+1/2))*(model.FMC.LC.tEnd-model.FMC.LC.tStart)/model.FMC.LC.nTimeBins + model.FMC.LC.tStart;
+    end
+    if model.FMC.useLightCollector && model.FMC.LC.nTimeBins > 0
+      if model.FMC.matchedInterfaces
+        warning('Time tagging is on, but matchedInterfaces is true, which sets all refractive indices to 1.');
       end
+      model.FMC.LC.t = (-1/2:(model.FMC.LC.nTimeBins+1/2))*(model.FMC.LC.tEnd-model.FMC.LC.tStart)/model.FMC.LC.nTimeBins + model.FMC.LC.tStart;
     end
 
     % Add angles of the centers of the far field pixels
@@ -187,9 +190,12 @@ function model = runMonteCarlo(model,varargin)
     if model.MC.useLightCollector && model.MC.LC.res > 1
       model.MC.LC.X = linspace(model.MC.LC.fieldSize*(1/model.MC.LC.res-1),model.MC.LC.fieldSize*(1-1/model.MC.LC.res),model.MC.LC.res)/2;
       model.MC.LC.Y = model.MC.LC.X;
-      if model.MC.LC.nTimeBins > 0
-        model.MC.LC.t = (-1/2:(model.MC.LC.nTimeBins+1/2))*(model.MC.LC.tEnd-model.MC.LC.tStart)/model.MC.LC.nTimeBins + model.MC.LC.tStart;
+    end
+    if model.MC.useLightCollector && model.MC.LC.nTimeBins > 0
+      if model.MC.matchedInterfaces
+        warning('Time tagging is on, but matchedInterfaces is true, which sets all refractive indices to 1.');
       end
+      model.MC.LC.t = (-1/2:(model.MC.LC.nTimeBins+1/2))*(model.MC.LC.tEnd-model.MC.LC.tStart)/model.MC.LC.nTimeBins + model.MC.LC.tStart;
     end
 
     % Add angles of the centers of the far field pixels
