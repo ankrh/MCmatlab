@@ -256,25 +256,32 @@ if ~isempty(MCorFMC.Dets)
 %   end
 
   %% Plot image
-%   if LC.res > 1 || LC.nTimeBins > 0
-%     [h_f,h_a] = MCmatlab.NdimSliderPlot(MCorFMC.LC.image,...
+%   if D.res > 1 || D.nTimeBins > 0
+%     if D.res == 1
+%       axisDims = 3;
+%       axisEqual = false;
+%     else
+%       axisDims = [1 2];
+%       axisEqual = true;
+%     end
+%     [h_f,h_a] = MCmatlab.NdimSliderPlot(MCorFMC.D.image,...
 %       'nFig',8 + figNumOffset,...
-%       'axisValues',{MCorFMC.LC.X,MCorFMC.LC.Y,MCorFMC.LC.t,MCorFMC.wavelength},...
+%       'axisValues',{MCorFMC.D.X,MCorFMC.D.Y,MCorFMC.D.t,MCorFMC.wavelength},...
 %       'axisLabels',{'X [cm]','Y [cm]','t [s]',lambdatext,'Normalized power [W/W.incident]'},...
 %       'fromZero',true,...
-%       'axisDims',[1 2],...
-%       'axisEqual',true);
+%       'axisDims',axisDims,...
+%       'axisEqual',axisEqual);
 %     if simFluorescence
 %       h_f.Name = 'Collected fluorescence light';
 %     else
 %       h_f.Name = 'Collected light';
 %     end
-%     if LC.res > 1 && LC.nTimeBins > 0
+%     if D.res > 1 && D.nTimeBins > 0
 %       title(h_a,{'Normalized time-resolved fluence rate in the image plane','at 1x magnification [W/cm^2/W.incident]'});
 %       fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
-%     elseif LC.res > 1
+%     elseif D.res > 1
 %       title(h_a,{['Normalized ' fluorescenceOrNothing 'fluence rate in the image plane'],' at 1x magnification [W/cm^2/W.incident]'});
-%     elseif LC.nTimeBins > 0
+%     elseif D.nTimeBins > 0
 %       title(h_a,'Normalized time-resolved power on the detector [W/W.incident]');
 %       fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
 %     else

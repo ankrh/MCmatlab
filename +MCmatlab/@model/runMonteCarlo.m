@@ -171,9 +171,12 @@ function model = runMonteCarlo(model,varargin)
     if model.FMC.useLightCollector && model.FMC.D.res > 1
       model.FMC.D.X = linspace(model.FMC.D.fieldSize*(1/model.FMC.D.res-1),model.FMC.D.fieldSize*(1-1/model.FMC.D.res),model.FMC.D.res)/2;
       model.FMC.D.Y = model.FMC.D.X;
-      if model.FMC.D.nTimeBins > 0
-        model.FMC.D.t = (-1/2:(model.FMC.D.nTimeBins+1/2))*(model.FMC.D.tEnd-model.FMC.D.tStart)/model.FMC.D.nTimeBins + model.FMC.D.tStart;
+    end
+    if model.FMC.useLightCollector && model.FMC.D.nTimeBins > 0
+      if model.FMC.matchedInterfaces
+        warning('Time tagging is on, but matchedInterfaces is true, which sets all refractive indices to 1.');
       end
+      model.FMC.D.t = (-1/2:(model.FMC.D.nTimeBins+1/2))*(model.FMC.D.tEnd-model.FMC.D.tStart)/model.FMC.D.nTimeBins + model.FMC.D.tStart;
     end
 
     % Add angles of the centers of the far field pixels
@@ -184,13 +187,16 @@ function model = runMonteCarlo(model,varargin)
   else
     % Add positions of the centers of the pixels in the light collector
     % image and the time array
-%     if ~isempty(model.MC.D) && model.MC.D.res > 1
-%       model.MC.D.X = linspace(model.MC.D.fieldSize*(1/model.MC.D.res-1),model.MC.D.fieldSize*(1-1/model.MC.D.res),model.MC.D.res)/2;
-%       model.MC.D.Y = model.MC.D.X;
-%       if model.MC.D.nTimeBins > 0
-%         model.MC.D.t = (-1/2:(model.MC.D.nTimeBins+1/2))*(model.MC.D.tEnd-model.MC.D.tStart)/model.MC.D.nTimeBins + model.MC.D.tStart;
-%       end
-%     end
+    if model.MC.useLightCollector && model.MC.D.res > 1
+      model.MC.D.X = linspace(model.MC.D.fieldSize*(1/model.MC.D.res-1),model.MC.D.fieldSize*(1-1/model.MC.D.res),model.MC.D.res)/2;
+      model.MC.D.Y = model.MC.D.X;
+    end
+    if model.MC.useLightCollector && model.MC.D.nTimeBins > 0
+      if model.MC.matchedInterfaces
+        warning('Time tagging is on, but matchedInterfaces is true, which sets all refractive indices to 1.');
+      end
+      model.MC.D.t = (-1/2:(model.MC.D.nTimeBins+1/2))*(model.MC.D.tEnd-model.MC.D.tStart)/model.MC.D.nTimeBins + model.MC.D.tStart;
+    end
 
     % Add angles of the centers of the far field pixels
     if model.MC.farFieldRes
