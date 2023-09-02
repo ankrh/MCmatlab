@@ -27,8 +27,7 @@ classdef monteCarloSimulation
 
     lightSource (1,:) MCmatlab.lightSource {mustBeScalarOrEmpty} = MCmatlab.lightSource
 
-    useLightCollector (1,1) logical = false
-    lightCollector (1,1) MCmatlab.lightCollector
+    detectors (:,1) MCmatlab.detector
 
     depositionCriteria (1,1) MCmatlab.depositionCriteria
 
@@ -73,7 +72,7 @@ classdef monteCarloSimulation
     calcNFRdet
     beam
     LS
-    LC
+    Dets
     NFR
     NA
     NI_xpos
@@ -126,8 +125,8 @@ classdef monteCarloSimulation
     function obj = set.calcNFR(obj,x);     obj.calcNormalizedFluenceRate = x; end  
     function x   = get.LS(obj  ); x = obj.lightSource; end
     function obj = set.LS(obj,x);     obj.lightSource = x; end  
-    function x   = get.LC(obj  ); x = obj.lightCollector; end
-    function obj = set.LC(obj,x);     obj.lightCollector = x; end  
+    function x   = get.Dets(obj  ); x = obj.detectors; end
+    function obj = set.Dets(obj,x);     obj.detectors = x; end  
     function x   = get.NFR(obj  ); x = obj.normalizedFluenceRate; end
     function obj = set.NFR(obj,x);     obj.normalizedFluenceRate = x; end  
     function x   = get.NA(obj  ); x = obj.normalizedAbsorption; end

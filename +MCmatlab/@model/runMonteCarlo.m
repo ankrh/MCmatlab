@@ -168,11 +168,11 @@ function model = runMonteCarlo(model,varargin)
   if simType == 2
     % Add positions of the centers of the pixels in the light collector
     % image and the time array
-    if model.FMC.useLightCollector && model.FMC.LC.res > 1
-      model.FMC.LC.X = linspace(model.FMC.LC.fieldSize*(1/model.FMC.LC.res-1),model.FMC.LC.fieldSize*(1-1/model.FMC.LC.res),model.FMC.LC.res)/2;
-      model.FMC.LC.Y = model.FMC.LC.X;
-      if model.FMC.LC.nTimeBins > 0
-        model.FMC.LC.t = (-1/2:(model.FMC.LC.nTimeBins+1/2))*(model.FMC.LC.tEnd-model.FMC.LC.tStart)/model.FMC.LC.nTimeBins + model.FMC.LC.tStart;
+    if model.FMC.useLightCollector && model.FMC.D.res > 1
+      model.FMC.D.X = linspace(model.FMC.D.fieldSize*(1/model.FMC.D.res-1),model.FMC.D.fieldSize*(1-1/model.FMC.D.res),model.FMC.D.res)/2;
+      model.FMC.D.Y = model.FMC.D.X;
+      if model.FMC.D.nTimeBins > 0
+        model.FMC.D.t = (-1/2:(model.FMC.D.nTimeBins+1/2))*(model.FMC.D.tEnd-model.FMC.D.tStart)/model.FMC.D.nTimeBins + model.FMC.D.tStart;
       end
     end
 
@@ -184,13 +184,13 @@ function model = runMonteCarlo(model,varargin)
   else
     % Add positions of the centers of the pixels in the light collector
     % image and the time array
-    if model.MC.useLightCollector && model.MC.LC.res > 1
-      model.MC.LC.X = linspace(model.MC.LC.fieldSize*(1/model.MC.LC.res-1),model.MC.LC.fieldSize*(1-1/model.MC.LC.res),model.MC.LC.res)/2;
-      model.MC.LC.Y = model.MC.LC.X;
-      if model.MC.LC.nTimeBins > 0
-        model.MC.LC.t = (-1/2:(model.MC.LC.nTimeBins+1/2))*(model.MC.LC.tEnd-model.MC.LC.tStart)/model.MC.LC.nTimeBins + model.MC.LC.tStart;
-      end
-    end
+%     if ~isempty(model.MC.D) && model.MC.D.res > 1
+%       model.MC.D.X = linspace(model.MC.D.fieldSize*(1/model.MC.D.res-1),model.MC.D.fieldSize*(1-1/model.MC.D.res),model.MC.D.res)/2;
+%       model.MC.D.Y = model.MC.D.X;
+%       if model.MC.D.nTimeBins > 0
+%         model.MC.D.t = (-1/2:(model.MC.D.nTimeBins+1/2))*(model.MC.D.tEnd-model.MC.D.tStart)/model.MC.D.nTimeBins + model.MC.D.tStart;
+%       end
+%     end
 
     % Add angles of the centers of the far field pixels
     if model.MC.farFieldRes
@@ -331,28 +331,23 @@ function checkMCinputFields(model,simType)
     end
   end
 
-  if MCorFMC.useLightCollector
-    %% Check to ensure that the light collector is not inside the cuboid and set res to 1 if using fiber
+  if ~isempty(MCorFMC.Dets)
     if MCorFMC.boundaryType == 0
-      error('Error: If boundaryType == 0, no photons can escape to be registered on the light collector. Disable light collector or change boundaryType.');
-    end
-    if isfinite(MCorFMC.LC.f)
-      xLCC = MCorFMC.LC.x - MCorFMC.LC.f*sin(MCorFMC.LC.theta)*cos(MCorFMC.LC.phi); % x position of Light Collector Center
-      yLCC = MCorFMC.LC.y - MCorFMC.LC.f*sin(MCorFMC.LC.theta)*sin(MCorFMC.LC.phi); % y position
-      zLCC = MCorFMC.LC.z - MCorFMC.LC.f*cos(MCorFMC.LC.theta);                     % z position
-    else
-      xLCC = MCorFMC.LC.x;
-      yLCC = MCorFMC.LC.y;
-      zLCC = MCorFMC.LC.z;
-      if MCorFMC.LC.res ~= 1
-        error('Error: lightCollector.res must be 1 when lightCollector.f is Inf');
+      detectorOutside = false;
+      for iD = 1:numel(MCorFMC.Dets)
+        xD = MCorFMC.D.x;
+        yD = MCorFMC.D.y;
+        zD = MCorFMC.D.z;
+  
+        if (abs(xD)               < G.nx*G.dx/2 && ...
+            abs(yD)               < G.ny*G.dy/2 && ...
+            abs(zD - G.nz*G.dz/2) < G.nz*G.dz/2)
+          detectorOutside = true;
+        end
       end
-    end
-
-    if (abs(xLCC)               < G.nx*G.dx/2 && ...
-        abs(yLCC)               < G.ny*G.dy/2 && ...
-        abs(zLCC - G.nz*G.dz/2) < G.nz*G.dz/2)
-      error('Error: Light collector center (%.4f,%.4f,%.4f) is inside cuboid',xLCC,yLCC,zLCC);
+      if detectorOutside 
+        warning('You have a detector outside the cuboid. Since boundaryType == 0, no photons can escape to be registered on it.');
+      end
     end
   end
 end

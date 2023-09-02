@@ -54,16 +54,23 @@ struct source { // Struct type for the constant beam definitions
   FLOATORDBL     w[3];
 };
 
-struct lightCollector { // Struct type for the constant light collector definitions. It can be either an objective lens (for 0<f<INFINITY) or a fiber tip or simple aperture (for f=INFINITY)
-  FLOATORDBL     r[3]; // Position of center of objective focal plane (not the objective itself) or position of center of the fiber tip
-  FLOATORDBL     theta; // Polar angle that the objective or fiber is facing
-  FLOATORDBL     phi; // Azimuthal angle of objective or fiber orientation
-  FLOATORDBL     f; // Focal length of the objective. If the light collector is a fiber tip, this will be INFINITY.
-  FLOATORDBL     diam; // Diameter of the objective aperture or core diameter of the fiber. For an ideal thin lens objective, this is 2*tan(arcsin(lensNA/f)).
-  FLOATORDBL     FSorNA; // For an objective lens: Field Size of the imaging system (diameter of area in object plane that gets imaged). For a fiber tip: The fiber's NA.
-  long           res[2]; // Resolution of image plane in pixels along the spatial and time axes. For a fiber, spatial resolution is 1.
+struct detector { // Struct type for the constant detector definitions.
+  FLOATORDBL     r[3]; // Position of center of detector face
+  FLOATORDBL     theta; // Polar angle
+  FLOATORDBL     phi; // Azimuthal angle
+  FLOATORDBL     psi; // Axial rotation angle
+  FLOATORDBL     Xsize;
+  FLOATORDBL     Ysize;
+  unsigned char  shape; // 0: Ellipse, 1: Rectangle
+  long           res[2]; // Resolution of image plane in pixels along the spatial and time axes.
   FLOATORDBL     tStart; // Start time for the interval used for binned time-resolved detection
   FLOATORDBL     tEnd; // End time for the interval used for binned time-resolved detection
+  FLOATORDBL    *signal;
+};
+
+struct detectors {
+  long nDetectors;
+  struct detector *ptr;
 };
 
 struct photon { // Struct type for parameters describing the thread-specific current state of a photon
@@ -96,7 +103,7 @@ struct paths { // Struct type for storing the paths taken by the nExamplePaths f
 
 struct MATLABoutputs {
   float * NFR;
-  float * image;
+  float **signals;
   float * FF;
   float * NI_xpos;
   float * NI_xneg;
@@ -110,7 +117,6 @@ struct outputs {
   unsigned long long nPhotons;
   unsigned long long nPhotonsCollected;
   FLOATORDBL * NFR;
-  FLOATORDBL * image;
   FLOATORDBL * FF;
   FLOATORDBL * NI_xpos;
   FLOATORDBL * NI_xneg;
@@ -119,6 +125,19 @@ struct outputs {
   FLOATORDBL * NI_zpos;
   FLOATORDBL * NI_zneg;
 };
+
+void printDetector(struct detector Det) {
+  printArray(Det.r,3);
+  print(Det.theta);
+  print(Det.phi);
+  print(Det.psi);
+  print(Det.Xsize);
+  print(Det.Ysize);
+  print(Det.shape);
+  printArray(Det.res,2);
+  print(Det.tStart);
+  print(Det.tEnd);
+}
 
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
@@ -260,11 +279,11 @@ void axisrotate(FLOATORDBL const * const r, FLOATORDBL const * const u, FLOATORD
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-long binaryTreeSearch(FLOATORDBL rand, long N, FLOATORDBL *D) {
+long binaryTreeSearch(FLOATORDBL rand, long N, FLOATORDBL *arr) {
   long d = N-1; // Number of elements in the current section to be searched, minus one
   long j = d/2; // Index of the middle element of the current section
-  while(!(D[j] < rand && D[j+1] >= rand)) { // Binary tree search
-    if(D[j] >= rand) {
+  while(!(arr[j] < rand && arr[j+1] >= rand)) { // Binary tree search
+    if(arr[j] >= rand) {
       j = j + (d-2)/4 - d/2;
       d = d/2 - 1;
     } else {
@@ -287,13 +306,13 @@ void getNewj(struct geometry const *G, struct photon *P) {
 #ifdef __NVCC__ // If compiling for CUDA
 void createDeviceStructs(struct geometry const *G, struct geometry **G_devptr,
                          struct source const *B, struct source **B_devptr,
-                         struct lightCollector const *LC, struct lightCollector **LC_devptr,
+                         struct detectors const *Dets, struct detectors **Dets_devptr,
                          struct paths *Pa, struct paths **Pa_devptr,
                          struct outputs *O, struct outputs **O_devptr,
                          struct depositionCriteria *DC, struct depositionCriteria **DC_devptr,
                          int nM, long L,
                          size_t size_smallArrays,
-                         struct debug *D, struct debug **D_devptr) {
+                         struct debug *Debug, struct debug **Debug_devptr) {
   bool matchedInterfaces = true;
   for(long iM=1;iM<nM;iM++) matchedInterfaces &= G->RIv[iM] == G->RIv[iM-1];
 
@@ -322,9 +341,9 @@ void createDeviceStructs(struct geometry const *G, struct geometry **G_devptr,
   gpuErrchk(cudaMalloc(DC_devptr, sizeof(struct depositionCriteria)));
   gpuErrchk(cudaMemcpy(*DC_devptr,DC,sizeof(struct depositionCriteria),cudaMemcpyHostToDevice));
 
-  // Allocate and copy lightCollector struct
-  gpuErrchk(cudaMalloc(LC_devptr, sizeof(struct lightCollector)));
-  gpuErrchk(cudaMemcpy(*LC_devptr,LC,sizeof(struct lightCollector),cudaMemcpyHostToDevice));
+  // Allocate and copy detector struct
+//   gpuErrchk(cudaMalloc(Ds_devptr, sizeof(struct detector)));
+//   gpuErrchk(cudaMemcpy(*Ds_devptr,Ds,sizeof(struct detector),cudaMemcpyHostToDevice));
 
   // Allocate and copy paths struct
   struct paths Pa_tempvar = *Pa;
@@ -340,8 +359,8 @@ void createDeviceStructs(struct geometry const *G, struct geometry **G_devptr,
     gpuErrchk(cudaMemset(O_tempvar.NFR,0,L*sizeof(double)));
   }
   if(O->image) {
-    gpuErrchk(cudaMalloc(&O_tempvar.image, LC->res[0]*LC->res[0]*LC->res[1]*sizeof(double)));
-    gpuErrchk(cudaMemset(O_tempvar.image,0,LC->res[0]*LC->res[0]*LC->res[1]*sizeof(double)));
+    gpuErrchk(cudaMalloc(&O_tempvar.image, D->res[0]*D->res[0]*D->res[1]*sizeof(double)));
+    gpuErrchk(cudaMemset(O_tempvar.image,0,D->res[0]*D->res[0]*D->res[1]*sizeof(double)));
   }
   if(O->FF) {
     gpuErrchk(cudaMalloc(&O_tempvar.FF, G->farFieldRes*G->farFieldRes*sizeof(double)));
@@ -375,21 +394,21 @@ void createDeviceStructs(struct geometry const *G, struct geometry **G_devptr,
   gpuErrchk(cudaMemcpy(*O_devptr,&O_tempvar,sizeof(struct outputs),cudaMemcpyHostToDevice));
   
   // Allocate and copy debug struct
-  struct debug D_tempvar = *D;
-  gpuErrchk(cudaMalloc(D_devptr, sizeof(struct debug)));
-  gpuErrchk(cudaMemcpy(*D_devptr,&D_tempvar,sizeof(struct debug),cudaMemcpyHostToDevice));
+  struct debug Debug_tempvar = *Debug;
+  gpuErrchk(cudaMalloc(Debug_devptr, sizeof(struct debug)));
+  gpuErrchk(cudaMemcpy(*Debug_devptr,&Debug_tempvar,sizeof(struct debug),cudaMemcpyHostToDevice));
 }
 #endif
 
 #ifdef __NVCC__ // If compiling for CUDA
 void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_dev,
                                   struct source const *B, struct source *B_dev,
-                                  struct lightCollector const *LC, struct lightCollector *LC_dev,
+                                  struct detectors const *Dets, struct detectors *Dets_dev,
                                   struct paths *Pa, struct paths *Pa_dev,
                                   struct outputs *O, struct outputs *O_dev,
                                   struct depositionCriteria *DC_dev,
                                   long L,
-                                  struct debug *D, struct debug *D_dev) {
+                                  struct debug *Debug, struct debug *Debug_dev) {
   struct geometry G_temp; gpuErrchk(cudaMemcpy(&G_temp, G_dev, sizeof(struct geometry),cudaMemcpyDeviceToHost));
   gpuErrchk(cudaFree(G_temp.muav)); // This frees all of smallArrays in the global memory on the device
   gpuErrchk(cudaFree(G_temp.M));
@@ -402,7 +421,7 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
   
   gpuErrchk(cudaFree(DC_dev));
 
-  gpuErrchk(cudaFree(LC_dev));
+  gpuErrchk(cudaFree(Ds_dev));
   
   struct paths Pa_temp = *Pa;
   gpuErrchk(cudaMemcpy(Pa, Pa_dev, sizeof(struct paths),cudaMemcpyDeviceToHost));
@@ -421,7 +440,7 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
     gpuErrchk(cudaFree(O_temp.NFR));
   }
   if(O->image) {
-    gpuErrchk(cudaMemcpy(O->image, O_temp.image, LC->res[0]*LC->res[0]*LC->res[1]*sizeof(FLOATORDBL),cudaMemcpyDeviceToHost));
+    gpuErrchk(cudaMemcpy(O->image, O_temp.image, D->res[0]*D->res[0]*D->res[1]*sizeof(FLOATORDBL),cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(O_temp.image));
   }
   if(O->FF) {
@@ -454,8 +473,8 @@ void retrieveAndFreeDeviceStructs(struct geometry const *G, struct geometry *G_d
   }
   gpuErrchk(cudaFree(O_dev));
   
-  gpuErrchk(cudaMemcpy(D, D_dev, sizeof(struct debug),cudaMemcpyDeviceToHost));
-  gpuErrchk(cudaFree(D_dev));
+  gpuErrchk(cudaMemcpy(Debug, Debug_dev, sizeof(struct debug),cudaMemcpyDeviceToHost));
+  gpuErrchk(cudaFree(Debug_dev));
 }
 #endif
 
@@ -516,7 +535,7 @@ void updatePaths(struct photon * const P, struct paths * const Pa, struct geomet
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void launchPhoton(struct photon * const P, struct source const * const B, struct geometry const * const G, struct paths * const Pa, struct depositionCriteria *DC, bool * abortingPtr, struct debug * D) {
+void launchPhoton(struct photon * const P, struct source const * const B, struct geometry const * const G, struct paths * const Pa, struct depositionCriteria *DC, bool * abortingPtr, struct debug * Debug) {
   FLOATORDBL X,Y,r,phi,tanphiX,tanphiY,costheta,sintheta;
   long   j,idx;
   FLOATORDBL target[3]={0},w0[3];
@@ -731,61 +750,61 @@ void launchPhoton(struct photon * const P, struct source const * const B, struct
   }
 }
 
-#ifdef __NVCC__ // If compiling for CUDA
-__device__
-#endif
-void formImage(struct photon * const P, struct geometry const * const G, struct lightCollector const * const LC, struct depositionCriteria *DC, struct outputs *O, unsigned long long * nPhotonsCollectedPtr) {
-  FLOATORDBL U[3];
-  xyztoXYZ(P->u,LC->theta,LC->phi,U); // U is now the photon trajectory in basis of detection frame (X,Y,Z)
-  
-  if(U[2] < 0) { // If the Z component of U is negative then the photon is moving towards the light collector plane
-    FLOATORDBL resc[3] = {(P->i[0] - G->n[0]/2.0f)*G->d[0] - LC->r[0],
-                          (P->i[1] - G->n[1]/2.0f)*G->d[1] - LC->r[1],
-                          (P->i[2]               )*G->d[2] - LC->r[2]}; // Photon position relative to the light collector focal plane center when it escapes the cuboid, in the (x,y,z) basis
-    
-    FLOATORDBL Resc[3];
-    xyztoXYZ(resc,LC->theta,LC->phi,Resc); // Resc is now the photon position in the light collector frame (X,Y,Z) when it escapes the cuboid
-    
-    if(Resc[2] > 0) { // If the Z coordinate in the light collector frame is positive (negative means the photon is already on the wrong side)
-      FLOATORDBL RLCP[2]; // XY coordinates of the point where the photon crosses the light collector plane
-      RLCP[0] = Resc[0] - Resc[2]*U[0]/U[2];
-      RLCP[1] = Resc[1] - Resc[2]*U[1]/U[2];
-      
-      FLOATORDBL distLCP = SQRT(RLCP[0]*RLCP[0] + RLCP[1]*RLCP[1]); // Distance between light collector center and the point where the photon crosses the light collector plane
-      
-      if(distLCP < LC->diam/2) { // If the distance is less than the radius of the light collector
-        if(ISFINITE(LC->f)) { // If the light collector is an objective lens
-          FLOATORDBL RImP[2]; // Back-propagated position that the photon would have had in the object plane if propagating freely. This corresponds to where the photon will end up in the image plane for magnification 1x.
-          RImP[0] = RLCP[0] + LC->f*U[0]/U[2];
-          RImP[1] = RLCP[1] + LC->f*U[1]/U[2];
-          FLOATORDBL distImP = SQRT(RImP[0]*RImP[0] + RImP[1]*RImP[1]);
-          if(distImP < LC->FSorNA/2) { // If the photon is coming from the area within the Field Size
-            long Xindex = (long)(LC->res[0]*(RImP[0]/LC->FSorNA + 1.0f/2));
-            long Yindex = (long)(LC->res[0]*(RImP[1]/LC->FSorNA + 1.0f/2));
-            long timeindex = LC->res[1] > 1? min(LC->res[1]-1,max(0L,(long)(1+(LC->res[1]-2)*(P->time - (Resc[2] - LC->f)/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)))): 0; // If we are not measuring time-resolved, LC->res[1] == 1
-            P->killed_escaped_collected = 2; // Collected
-            if(depositionCriteriaMet(P,DC)) {
-              atomicAddWrapper(&O->image[Xindex               +
-                                         Yindex   *LC->res[0] +
-                                         timeindex*LC->res[0]*LC->res[0]],P->weight);
-              atomicAddWrapperULL(nPhotonsCollectedPtr,1);
-            }
-          }
-        } else { // If the light collector is a fiber tip
-          FLOATORDBL thetaLCFF = ATAN(-SQRT(U[0]*U[0] + U[1]*U[1])/U[2]); // Light collector far field polar angle
-          if(thetaLCFF < ASIN(min(1.0f,LC->FSorNA))) { // If the photon has an angle within the fiber's NA acceptance
-            long timeindex = LC->res[1] > 1? min(LC->res[1]-1,max(0L,(long)(1+(LC->res[1]-2)*(P->time - Resc[2]/U[2]*P->RI/C - LC->tStart)/(LC->tEnd - LC->tStart)))): 0; // If we are not measuring time-resolved, LC->res[1] == 1
-            P->killed_escaped_collected = 2; // Collected
-            if(depositionCriteriaMet(P,DC)) {
-              atomicAddWrapper(&O->image[timeindex],P->weight);
-              atomicAddWrapperULL(nPhotonsCollectedPtr,1);
-            }
-          }
-        }
-      }
-    }
-  }
-}
+// #ifdef __NVCC__ // If compiling for CUDA
+// __device__
+// #endif
+// void formImage(struct photon * const P, struct geometry const * const G, struct detectors const * const Dets, struct depositionCriteria *DC, struct outputs *O, unsigned long long * nPhotonsCollectedPtr) {
+//   FLOATORDBL U[3];
+//   xyztoXYZ(P->u,D->theta,D->phi,U); // U is now the photon trajectory in basis of detection frame (X,Y,Z)
+//   
+//   if(U[2] < 0) { // If the Z component of U is negative then the photon is moving towards the light collector plane
+//     FLOATORDBL resc[3] = {(P->i[0] - G->n[0]/2.0f)*G->d[0] - D->r[0],
+//                           (P->i[1] - G->n[1]/2.0f)*G->d[1] - D->r[1],
+//                           (P->i[2]               )*G->d[2] - D->r[2]}; // Photon position relative to the light collector focal plane center when it escapes the cuboid, in the (x,y,z) basis
+//     
+//     FLOATORDBL Resc[3];
+//     xyztoXYZ(resc,D->theta,D->phi,Resc); // Resc is now the photon position in the light collector frame (X,Y,Z) when it escapes the cuboid
+//     
+//     if(Resc[2] > 0) { // If the Z coordinate in the light collector frame is positive (negative means the photon is already on the wrong side)
+//       FLOATORDBL RLCP[2]; // XY coordinates of the point where the photon crosses the light collector plane
+//       RLCP[0] = Resc[0] - Resc[2]*U[0]/U[2];
+//       RLCP[1] = Resc[1] - Resc[2]*U[1]/U[2];
+//       
+//       FLOATORDBL distLCP = SQRT(RLCP[0]*RLCP[0] + RLCP[1]*RLCP[1]); // Distance between light collector center and the point where the photon crosses the light collector plane
+//       
+//       if(distLCP < D->diam/2) { // If the distance is less than the radius of the light collector
+//         if(ISFINITE(D->f)) { // If the light collector is an objective lens
+//           FLOATORDBL RImP[2]; // Back-propagated position that the photon would have had in the object plane if propagating freely. This corresponds to where the photon will end up in the image plane for magnification 1x.
+//           RImP[0] = RLCP[0] + D->f*U[0]/U[2];
+//           RImP[1] = RLCP[1] + D->f*U[1]/U[2];
+//           FLOATORDBL distImP = SQRT(RImP[0]*RImP[0] + RImP[1]*RImP[1]);
+//           if(distImP < D->FSorNA/2) { // If the photon is coming from the area within the Field Size
+//             long Xindex = (long)(D->res[0]*(RImP[0]/D->FSorNA + 1.0f/2));
+//             long Yindex = (long)(D->res[0]*(RImP[1]/D->FSorNA + 1.0f/2));
+//             long timeindex = D->res[1] > 1? min(D->res[1]-1,max(0L,(long)(1+(D->res[1]-2)*(P->time - (Resc[2] - D->f)/U[2]*P->RI/C - D->tStart)/(D->tEnd - D->tStart)))): 0; // If we are not measuring time-resolved, D->res[1] == 1
+//             P->killed_escaped_collected = 2; // Collected
+//             if(depositionCriteriaMet(P,DC)) {
+//               atomicAddWrapper(&O->image[Xindex               +
+//                                          Yindex   *D->res[0] +
+//                                          timeindex*D->res[0]*D->res[0]],P->weight);
+//               atomicAddWrapperULL(nPhotonsCollectedPtr,1);
+//             }
+//           }
+//         } else { // If the light collector is a fiber tip
+//           FLOATORDBL thetaLCFF = ATAN(-SQRT(U[0]*U[0] + U[1]*U[1])/U[2]); // Light collector far field polar angle
+//           if(thetaLCFF < ASIN(min(1.0f,D->FSorNA))) { // If the photon has an angle within the fiber's NA acceptance
+//             long timeindex = D->res[1] > 1? min(D->res[1]-1,max(0L,(long)(1+(D->res[1]-2)*(P->time - Resc[2]/U[2]*P->RI/C - D->tStart)/(D->tEnd - D->tStart)))): 0; // If we are not measuring time-resolved, D->res[1] == 1
+//             P->killed_escaped_collected = 2; // Collected
+//             if(depositionCriteriaMet(P,DC)) {
+//               atomicAddWrapper(&O->image[timeindex],P->weight);
+//               atomicAddWrapperULL(nPhotonsCollectedPtr,1);
+//             }
+//           }
+//         }
+//       }
+//     }
+//   }
+// }
 
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
@@ -818,7 +837,7 @@ void formEdgeFluxes(struct photon const * const P, struct geometry const * const
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void checkEscape(struct photon * const P, struct paths *Pa, struct geometry const * const G, struct lightCollector const * const LC,
+void checkEscape(struct photon * const P, struct paths *Pa, struct geometry const * const G, struct detectors const * const Dets,
         struct outputs *O, struct depositionCriteria *DC, unsigned long long * nPhotonsCollectedPtr) {
   bool escaped = false;
   switch (G->boundaryType) {
@@ -882,7 +901,7 @@ void checkEscape(struct photon * const P, struct paths *Pa, struct geometry cons
   if(escaped) {
     P->killed_escaped_collected = 1; // Escaped, may be overwritten by collected in formImage
     // We have to check formImage first because that's where we find out if the photon is collected
-    if(O->image) formImage(P,G,LC,DC,O,nPhotonsCollectedPtr); // If image is not NULL then that's because useLightCollector was set to true (non-zero)
+//     if(O->image) formImage(P,G,Ds,DC,O,nPhotonsCollectedPtr); // If image is not NULL then that's because useLightCollector was set to true (non-zero)
     if(O->FF && depositionCriteriaMet(P,DC)) formFarField(P,G,O);
   }
   if(!P->alive && G->boundaryType && depositionCriteriaMet(P,DC)) formEdgeFluxes(P,G,O);
@@ -891,7 +910,7 @@ void checkEscape(struct photon * const P, struct paths *Pa, struct geometry cons
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void getNewVoxelProperties(struct photon * const P, struct geometry const * const G, struct debug *D) {
+void getNewVoxelProperties(struct photon * const P, struct geometry const * const G, struct debug *Debug) {
   /* Get optical properties of current voxel.
    * If photon is outside cuboid, properties are those of
    * the closest defined voxel. */
@@ -1016,7 +1035,7 @@ void getInterpolatedNormal(struct geometry const * const G, struct photon *P, FL
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void propagatePhoton(struct photon * const P, struct geometry const * const G, struct outputs const *O, struct depositionCriteria *DC, struct paths * const Pa, struct debug *D) {
+void propagatePhoton(struct photon * const P, struct geometry const * const G, struct outputs const *O, struct depositionCriteria *DC, struct paths * const Pa, struct debug *Debug) {
   long idx;
 
   P->sameVoxel = true;
@@ -1135,7 +1154,7 @@ void checkRoulette(struct photon * const P) {
 #ifdef __NVCC__ // If compiling for CUDA
 __device__
 #endif
-void scatterPhoton(struct photon * const P, struct geometry const * const G, struct paths *Pa, struct depositionCriteria *DC, struct debug *D) {
+void scatterPhoton(struct photon * const P, struct geometry const * const G, struct paths *Pa, struct depositionCriteria *DC, struct debug *Debug) {
   FLOATORDBL costheta;
   if(ISNAN(P->g)) {
     // Sample for theta using the cumulative distribution function (CDF)
@@ -1183,12 +1202,12 @@ void scatterPhoton(struct photon * const P, struct geometry const * const G, str
   }
 }
 
-void normalizeDepositionAndResetO(struct source const * const B, struct geometry const * const G, struct lightCollector const * const LC,
+void normalizeDepositionAndResetO(struct source const * const B, struct geometry const * const G, struct detectors const * const Dets,
         struct outputs *O, struct MATLABoutputs *O_MATLAB, long iWavelength, double Pfraction) {
   long j;
   double V = G->d[0]*G->d[1]*G->d[2]; // Voxel volume
   long L = G->n[0]*G->n[1]*G->n[2]; // Total number of voxels in cuboid
-  long L_LC = LC->res[0]*LC->res[0]; // Total number of spatial pixels in light collector planes
+//   long L_D = D->res[0]*D->res[0]; // Total number of spatial pixels in light collector planes
   long L_FF = G->farFieldRes*G->farFieldRes; // Total number of pixels in the far field array
   // Normalize deposition to yield normalized fluence rate (NFR). For fluorescence, the result is relative to
   // the incident excitation power (not emitted fluorescence power).
@@ -1209,16 +1228,16 @@ void normalizeDepositionAndResetO(struct source const * const B, struct geometry
     O_MATLAB->FF[j + iWavelength*G->farFieldRes*G->farFieldRes] = (float)(O->FF[j]/normfactor);
     O->FF[j] = 0;
   }
-  if(O->image) {
-    if(L_LC > 1) for(j=0;j<L_LC*LC->res[1];j++) {
-      O_MATLAB->image[j + iWavelength*LC->res[0]*LC->res[0]*LC->res[1]] = (float)(O->image[j]/(LC->FSorNA*LC->FSorNA/L_LC*normfactor));
-      O->image[j] = 0;
-    }
-    else         for(j=0;j<     LC->res[1];j++) {
-      O_MATLAB->image[j + iWavelength*LC->res[0]*LC->res[0]*LC->res[1]] = (float)(O->image[j]/normfactor);
-      O->image[j] = 0;
-    }
-  }
+//   if(O->image) {
+//     if(L_D > 1) for(j=0;j<L_D*D->res[1];j++) {
+//       O_MATLAB->image[j + iWavelength*D->res[0]*D->res[0]*D->res[1]] = (float)(O->image[j]/(D->FSorNA*D->FSorNA/L_D*normfactor));
+//       O->image[j] = 0;
+//     }
+//     else         for(j=0;j<     D->res[1];j++) {
+//       O_MATLAB->image[j + iWavelength*D->res[0]*D->res[0]*D->res[1]] = (float)(O->image[j]/normfactor);
+//       O->image[j] = 0;
+//     }
+//   }
   if(G->boundaryType == 1) {
     for(j=0;j<G->n[1]*G->n[2];j++) {
       O_MATLAB->NI_xpos[j + iWavelength*G->n[1]*G->n[2]] = (float)(O->NI_xpos[j]/(G->d[1]*G->d[2]*normfactor));

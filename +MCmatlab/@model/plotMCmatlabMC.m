@@ -86,7 +86,7 @@ if MCorFMC.nPhotons == 0
   error('Error: No photons were successfully simulated. Check your model file to ensure photons launch within the simulation cuboid.');
 end
 
-LC = MCorFMC.LC;
+Dets = MCorFMC.Dets;
 
 %% Plot emitter distribution
 P_in = 1;
@@ -194,7 +194,7 @@ if MCorFMC.nExamplePaths > 0
 end
 
 %% If there's a light collector, show its orientation and the detected light
-if MCorFMC.useLightCollector
+if ~isempty(MCorFMC.Dets)
   [h_f,h_a] = MCmatlab.NdimSliderPlot(G.M_raw,...
     'nFig',6 + figNumOffset,...
     'axisValues',{G.x,G.y,G.z},...
@@ -213,69 +213,74 @@ if MCorFMC.useLightCollector
   box on;grid on;grid minor;
 
   arrowlength = sqrt((G.nx*G.dx)^2+(G.ny*G.dy)^2+(G.nz*G.dz)^2)/5;
-  Zvec = [sin(LC.theta)*cos(LC.phi) , sin(LC.theta)*sin(LC.phi) , cos(LC.theta)];
-  Xvec = [sin(LC.phi) , -cos(LC.phi) , 0];
-  Yvec = cross(Zvec,Xvec);
-  FPC = [LC.x , LC.y , LC.z]; % Focal Plane Center
-  FPC_X = FPC + arrowlength*Xvec;
-  line(h_a,[FPC(1) FPC_X(1)],[FPC(2) FPC_X(2)],[FPC(3) FPC_X(3)],'Linewidth',2,'Color','r')
-  text(h_a,FPC_X(1),FPC_X(2),FPC_X(3),'X','HorizontalAlignment','center','FontSize',18)
-  FPC_Y = FPC + arrowlength*Yvec;
-  line(h_a,[FPC(1) FPC_Y(1)],[FPC(2) FPC_Y(2)],[FPC(3) FPC_Y(3)],'Linewidth',2,'Color','r')
-  text(h_a,FPC_Y(1),FPC_Y(2),FPC_Y(3),'Y','HorizontalAlignment','center','FontSize',18)
+  for iDet = 1:numel(Dets)
+    Zvec = [sin(Dets(iDet).theta)*cos(Dets(iDet).phi) , sin(Dets(iDet).theta)*sin(Dets(iDet).phi) , cos(Dets(iDet).theta)];
+    Xvec = axisRotate([sin(Dets(iDet).phi) , -cos(Dets(iDet).phi) , 0],Zvec,Dets(iDet).psi);
+    Yvec = cross(Zvec,Xvec);
+    DetC = [Dets(iDet).x , Dets(iDet).y , Dets(iDet).z]; % Detector center
+    DetC_X = DetC + arrowlength*Xvec;
+    line(h_a,[DetC(1) DetC_X(1)],[DetC(2) DetC_X(2)],[DetC(3) DetC_X(3)],'Linewidth',2,'Color','r')
+    text(h_a,DetC_X(1),DetC_X(2),DetC_X(3),'X','HorizontalAlignment','center','FontSize',18)
+    DetC_Y = DetC + arrowlength*Yvec;
+    line(h_a,[DetC(1) DetC_Y(1)],[DetC(2) DetC_Y(2)],[DetC(3) DetC_Y(3)],'Linewidth',2,'Color','r')
+    text(h_a,DetC_Y(1),DetC_Y(2),DetC_Y(3),'Y','HorizontalAlignment','center','FontSize',18)
 
-  if isfinite(LC.f)
-    fieldperimeter = LC.fieldSize/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + FPC;
-    h1 = line(h_a,fieldperimeter(:,1),fieldperimeter(:,2),fieldperimeter(:,3),'Color','b','LineWidth',2);
-    LCC = FPC - Zvec*LC.f; % Light Collector Center
-    detectoraperture = LC.diam/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
+%   if isfinite(LC.f)
+%     fieldperimeter = LC.fieldSize/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + FPC;
+%     h1 = line(h_a,fieldperimeter(:,1),fieldperimeter(:,2),fieldperimeter(:,3),'Color','b','LineWidth',2);
+%     LCC = FPC - Zvec*LC.f; % Light Collector Center
+%     detectoraperture = LC.diam/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
+%     h2 = line(h_a,detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
+%     legend(h_a,[h1 h2],'Imaged area','Lens aperture','Location','northeast');
+%   else
+    if Dets(iDet).shape == MCmatlab.shape.Rectangle
+      detectoraperture = [1 1 -1 -1 1].'*Dets(iDet).Xsize/2*Xvec + [-1 1 1 -1 -1].'*Dets(iDet).Ysize/2*Yvec + DetC;
+    else
+      detectoraperture = Dets(iDet).Xsize/2*cos(linspace(0,2*pi,100).')*Xvec + Dets(iDet).Ysize/2*sin(linspace(0,2*pi,100).')*Yvec + DetC;
+    end
     h2 = line(h_a,detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
-    legend(h_a,[h1 h2],'Imaged area','Lens aperture','Location','northeast');
-  else
-    LCC = FPC;
-    detectoraperture = LC.diam/2*(cos(linspace(0,2*pi,100).')*Xvec + sin(linspace(0,2*pi,100).')*Yvec) + LCC;
-    h2 = line(h_a,detectoraperture(:,1),detectoraperture(:,2),detectoraperture(:,3),'Color','r','LineWidth',2);
-    legend(h_a,h2,'Fiber aperture','Location','northeast');
+%   end
+    legend(h_a,h2,'Detector area','Location','northeast');
   end
 
   
-  if LC.res > 1
-    detFraction = 100*mean(mean(sum(MCorFMC.LC.image(:,:,:),3)))*LC.fieldSize^2;
-  else
-    detFraction = 100*sum(MCorFMC.LC.image(:));
-  end
-  fprintf(['%.3g%% of ' fluorescenceOrIncident 'light ends up on the detector.\n'],detFraction/P_in);
+%   if LC.res > 1
+%     detFraction = 100*mean(mean(sum(MCorFMC.LC.image(:,:,:),3)))*LC.fieldSize^2;
+%   else
+%     detFraction = 100*sum(MCorFMC.LC.image(:));
+%   end
+%   fprintf(['%.3g%% of ' fluorescenceOrIncident 'light ends up on the detector.\n'],detFraction/P_in);
 
-  if detFraction == 0
-    warning('No light was collected on the detector. Are you sure that your light collector is oriented the right way and that the light escapes through media that have refractive index 1? Otherwise the photons will not be counted. Depending on your geometry, you could maybe add a layer of air on top of your simulation, or set matchedInterfaces = true, which will set all refractive indices to 1.');
-  end
+%   if detFraction == 0
+%     warning('No light was collected on the detector. Are you sure that your light collector is oriented the right way and that the light escapes through media that have refractive index 1? Otherwise the photons will not be counted. Depending on your geometry, you could maybe add a layer of air on top of your simulation, or set matchedInterfaces = true, which will set all refractive indices to 1.');
+%   end
 
   %% Plot image
-  if LC.res > 1 || LC.nTimeBins > 0
-    [h_f,h_a] = MCmatlab.NdimSliderPlot(MCorFMC.LC.image,...
-      'nFig',8 + figNumOffset,...
-      'axisValues',{MCorFMC.LC.X,MCorFMC.LC.Y,MCorFMC.LC.t,MCorFMC.wavelength},...
-      'axisLabels',{'X [cm]','Y [cm]','t [s]',lambdatext,'Normalized power [W/W.incident]'},...
-      'fromZero',true,...
-      'axisDims',[1 2],...
-      'axisEqual',true);
-    if simFluorescence
-      h_f.Name = 'Collected fluorescence light';
-    else
-      h_f.Name = 'Collected light';
-    end
-    if LC.res > 1 && LC.nTimeBins > 0
-      title(h_a,{'Normalized time-resolved fluence rate in the image plane','at 1x magnification [W/cm^2/W.incident]'});
-      fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
-    elseif LC.res > 1
-      title(h_a,{['Normalized ' fluorescenceOrNothing 'fluence rate in the image plane'],' at 1x magnification [W/cm^2/W.incident]'});
-    elseif LC.nTimeBins > 0
-      title(h_a,'Normalized time-resolved power on the detector [W/W.incident]');
-      fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
-    else
-      title(h_a,'Normalized power on the detector [W/W.incident]');
-    end
-  end
+%   if LC.res > 1 || LC.nTimeBins > 0
+%     [h_f,h_a] = MCmatlab.NdimSliderPlot(MCorFMC.LC.image,...
+%       'nFig',8 + figNumOffset,...
+%       'axisValues',{MCorFMC.LC.X,MCorFMC.LC.Y,MCorFMC.LC.t,MCorFMC.wavelength},...
+%       'axisLabels',{'X [cm]','Y [cm]','t [s]',lambdatext,'Normalized power [W/W.incident]'},...
+%       'fromZero',true,...
+%       'axisDims',[1 2],...
+%       'axisEqual',true);
+%     if simFluorescence
+%       h_f.Name = 'Collected fluorescence light';
+%     else
+%       h_f.Name = 'Collected light';
+%     end
+%     if LC.res > 1 && LC.nTimeBins > 0
+%       title(h_a,{'Normalized time-resolved fluence rate in the image plane','at 1x magnification [W/cm^2/W.incident]'});
+%       fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
+%     elseif LC.res > 1
+%       title(h_a,{['Normalized ' fluorescenceOrNothing 'fluence rate in the image plane'],' at 1x magnification [W/cm^2/W.incident]'});
+%     elseif LC.nTimeBins > 0
+%       title(h_a,'Normalized time-resolved power on the detector [W/W.incident]');
+%       fprintf('Time-resolved light collector data plotted. Note that first time bin includes all\n  photons at earlier times and last time bin includes all photons at later times.\n');
+%     else
+%       title(h_a,'Normalized power on the detector [W/W.incident]');
+%     end
+%   end
 end
 
 %% Plot far field of escaped photons
@@ -305,3 +310,12 @@ end
 drawnow;
 end
 
+function w = axisRotate(r,u,psi)
+  st = sin(psi);
+  ct = cos(psi);
+
+  M = [u(1)*u(1)*(1-ct) +      ct , u(1)*u(2)*(1-ct) - u(3)*st , u(1)*u(3)*(1-ct) + u(2)*st;
+       u(2)*u(1)*(1-ct) + u(3)*st , u(2)*u(2)*(1-ct) +      ct , u(2)*u(3)*(1-ct) - u(1)*st;
+       u(3)*u(1)*(1-ct) - u(2)*st , u(3)*u(2)*(1-ct) + u(1)*st , u(3)*u(3)*(1-ct) +      ct];
+  w = (M*r(:)).';
+end
