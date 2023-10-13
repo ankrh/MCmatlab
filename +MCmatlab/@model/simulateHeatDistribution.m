@@ -454,11 +454,11 @@ function model = simulateHeatDistribution(model)
       writeVideo(writerObj,movieFrames);
       close(writerObj);
       if contains(computer, 'MAC') % macOS operating system
-        [~,~] = system([cd '/+MCmatlab/x264/x264_macOS -o "' cd '/' model.name '_heatSimoutput.mkv" "' cd '/temp.avi"']);
+        [~,~] = system(['"' cd '/+MCmatlab/x264/x264_macOS" -o "' cd '/' model.name '_heatSimoutput.mkv" "' cd '/temp.avi"']);
       elseif contains(computer, 'WIN') % Windows operating system
-        [~,~] = system([cd '\+MCmatlab\x264\x264_win64.exe -o "' cd '\' model.name '_heatSimoutput.mkv" "' cd '\temp.avi"']);
+        [~,~] = system(['"' cd '\+MCmatlab\x264\x264_win64.exe" -o "' cd '\' model.name '_heatSimoutput.mkv" "' cd '\temp.avi"']);
       else % Linux operating system
-        [~,~] = system([cd '/+MCmatlab/x264/x264_linux -o "' cd '/' model.name '_heatSimoutput.mkv" "' cd '/temp.avi"']);
+        [~,~] = system(['"' cd '/+MCmatlab/x264/x264_linux" -o "' cd '/' model.name '_heatSimoutput.mkv" "' cd '/temp.avi"']);
       end
       delete([cd '/temp.avi']);
       fprintf('\b Done\n');
