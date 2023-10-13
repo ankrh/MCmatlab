@@ -23,7 +23,13 @@ function model = plotMCmatlabHeat(model)
 %   along with MCmatlab.  If not, see <https://www.gnu.org/licenses/>.
 %%%%%
 
-com.mathworks.mde.desk.MLDesktop.getInstance.setDocumentBarPosition('Figures',7); % Set Figures window tabs to be on left side
+if strcmp(matlabdrive,'/MATLAB Drive') && strcmp(matlabroot, '/MATLAB')
+  % dirty hack to check whether we are on MATLAB online, 
+  % where the Figures window tabs can't be on the side of the figure window
+  com.mathworks.mde.desk.MLDesktop.getInstance.setDocumentBarPosition('Figures',1); % Set Figures window tabs to be on top
+else
+  com.mathworks.mde.desk.MLDesktop.getInstance.setDocumentBarPosition('Figures',7); % Set Figures window tabs to be on left side
+end
 model.G = model.G.updateGeometry;
 
 G = model.G;
