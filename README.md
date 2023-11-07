@@ -24,7 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ## How do I get set up?
 ### Requirements
 - Windows 7, macOS 10.12 (Sierra) or newer or Linux
-- MATLAB R2018a or newer
+- MATLAB R2018a or newer (only the intel-versions of MATLAB are supported)
 - (For GPU accelerated computation) A Windows PC with a CUDA-enabled graphics card and the MATLAB Parallel Computing Toolbox
 
 ### Helper files
