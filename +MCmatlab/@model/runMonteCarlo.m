@@ -29,9 +29,20 @@ function model = runMonteCarlo(model,varargin)
     if contains(cmdout,'com.apple.quarantine'); system('xattr -d com.apple.quarantine ./+MCmatlab/@model/private/MCmatlab.mexmaci64'); end
     [~,cmdout] = system('xattr -l ./+MCmatlab/@model/private/getDownsampledParamVals.mexmaci64');
     if contains(cmdout,'com.apple.quarantine'); system('xattr -d com.apple.quarantine ./+MCmatlab/@model/private/getDownsampledParamVals.mexmaci64'); end
+    [~,cmdout] = system('xattr -l ./+MCmatlab/@model/private/finiteElementHeatPropagator.mexmaci64');
+    if contains(cmdout,'com.apple.quarantine'); system('xattr -d com.apple.quarantine ./+MCmatlab/@model/private/finiteElementHeatPropagator.mexmaci64'); end
+    if strcmp(mexext,'mexmaca64')
+      error('MCmatlab isn''t supported on native Apple silicon MATLAB (only R2023b and newer) at the moment. Please use the intel-version of MATLAB instead.')
+      %[~,cmdout] = system('xattr -l ./+MCmatlab/@model/private/MCmatlab.mexmaca64');
+      %if contains(cmdout,'com.apple.quarantine'); system('xattr -d com.apple.quarantine ./+MCmatlab/@model/private/MCmatlab.mexmaca64'); end
+      %[~,cmdout] = system('xattr -l ./+MCmatlab/@model/private/getDownsampledParamVals.mexmaca64');
+      %if contains(cmdout,'com.apple.quarantine'); system('xattr -d com.apple.quarantine ./+MCmatlab/@model/private/getDownsampledParamVals.mexmaca64'); end
+      %[~,cmdout] = system('xattr -l ./+MCmatlab/@model/private/finiteElementHeatPropagator.mexmaca64');
+      %if contains(cmdout,'com.apple.quarantine'); system('xattr -d com.apple.quarantine ./+MCmatlab/@model/private/finiteElementHeatPropagator.mexmaca64'); end
+    end
   end
 
-  forceSingleThreaded = isunix && ~ismac && verLessThan('matlab','9.9');
+  forceSingleThreaded = isunix && ~ismac && isMATLABReleaseOlderThan('R2020b');
   if forceSingleThreaded % Multithreading doesn't work properly on Linux older than R2020b for some reason
     warning('Linux MCmatlab multithreading is disabled on MATLAB versions older than R2020b. Update your MATLAB to utilize multithreading.');
   end
