@@ -80,13 +80,13 @@
 #endif
 #include "lambert.c" // For calculating the Lambert W function, originally part of the GNU Scientific Library, created by K. Briggs, G. Jungman and B. Gough and slightly modified by A. Hansen for easier MCmatlab integration
 
-#ifndef __clang__ // If not compiling with CLANG (on Mac)
-  #ifdef __cplusplus
-  extern "C"
-  #endif
-  extern bool utIsInterruptPending(void); // Allows catching ctrl+c while executing the mex function
-#endif
-// bool utIsInterruptPending() {return false;}
+// #ifndef __clang__ // If not compiling with CLANG (on Mac)
+//   #ifdef __cplusplus
+//   extern "C"
+//   #endif
+//   extern bool utIsInterruptPending(void); // Allows catching ctrl+c while executing the mex function
+// #endif
+bool utIsInterruptPending() {return false;}
 
 #define USEFLOATSFORGPU 1 // Comment out this line if you want the Monte Carlo routine to work internally with double-precision floating point numbers
 #if defined(USEFLOATSFORGPU) && defined(__NVCC__)
@@ -429,8 +429,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   struct detectors *Dets = &Dets_var;
   Dets_var.nDetectors = (long)mxGetM(MatlabDets);
   Dets_var.ptr = (struct detector *)malloc(Dets->nDetectors*sizeof(struct detector));
-
-  for(idx=0;idx<Dets_var.nDetectors;idx++) {
+  for(idx=0;idx<Dets->nDetectors;idx++) {
     struct detector *Det = &Dets->ptr[idx];
     Det->r[0] = (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabDets,idx,"x")); // r field, xyz coordinates of center of detector
     Det->r[1] = (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabDets,idx,"y"));
@@ -440,13 +439,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     Det->psi   = (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabDets,idx,"psi"));
     Det->Xsize = (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabDets,idx,"Xsize"));
     Det->Ysize = (FLOATORDBL)*mxGetPr(mxGetPropertyShared(MatlabDets,idx,"Ysize"));
-    Det->shape = (unsigned char)*mxGetPr(mxGetPropertyShared(MatlabDets,idx,"shape"));
+    Det->shape = (unsigned char)MATLABenum2double(mxGetPropertyShared(MatlabDets,idx,"shape"));
     long nTimeBins = S_PDF? 0: (long)*mxGetPr(mxGetPropertyShared(MatlabDets,idx,"nTimeBins"));
     Det->res[0] = (long)*mxGetPr(mxGetPropertyShared(MatlabDets,idx,"res"));
     Det->res[1] = nTimeBins? nTimeBins+2: 1;
     Det->tStart = (FLOATORDBL)(S_PDF? 0: *mxGetPr(mxGetPropertyShared(MatlabDets,idx,"tStart")));
     Det->tEnd = (FLOATORDBL)(S_PDF? 0: *mxGetPr(mxGetPropertyShared(MatlabDets,idx,"tEnd")));
-    printDetector(*Det);
+    // printDetector(*Det);
   }
   
   // Paths definitions (example photon trajectories)
@@ -463,19 +462,21 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   plhs[0] = mxDuplicateArray(prhs[0]);
   
   mxArray *MCout = mxGetPropertyShared(plhs[0],0,simFluorescence? "FMC": "MC");
-  mxArray *Detsout = mxGetPropertyShared(MCout,0,"Dets");
-  
+  mxArray *MatlabDetsout = mxGetPropertyShared(MCout,0,"Dets");
+
   mwSize outDimPtr[4] = {dimPtr[0], dimPtr[1], dimPtr[2], (mwSize)nL};
   if(calcNFR)           mxSetPropertyShared(MCout,0,"NFR",mxCreateNumericArray(4,outDimPtr,mxSINGLE_CLASS,mxREAL));
-  for(idx = 0; idx < Dets->nDetectors; idx++) {
+  for(idx=0; idx<Dets->nDetectors; idx++) {
     struct detector *Det = &Dets->ptr[idx];
-    mwSize Detsize[4] = {(mwSize)Det[idx].res[0],(mwSize)Det[idx].res[0],(mwSize)Det[idx].res[1],(mwSize)nL};
-    mxSetPropertyShared(Detsout,idx,"signal", mxCreateNumericArray(4,Detsize,mxSINGLE_CLASS,mxREAL));
+    mwSize Detsize[4] = {(mwSize)Det->res[0],(mwSize)Det->res[0],(mwSize)Det->res[1],(mwSize)nL};
+    mxSetPropertyShared(MatlabDetsout,idx,"irradiance", mxCreateNumericArray(4,Detsize,mxSINGLE_CLASS,mxREAL));
   }
+
   if(G->farFieldRes)    {
     mwSize FFsize[3] = {(mwSize)G->farFieldRes,(mwSize)G->farFieldRes,(mwSize)nL};
     mxSetPropertyShared(MCout,0,"farField", mxCreateNumericArray(3,FFsize,mxSINGLE_CLASS,mxREAL));
   }
+
   if(G->boundaryType == 1) {
     mwSize NI_xSize[3] = {(mwSize)G->n[1],(mwSize)G->n[2],(mwSize)nL};
     mwSize NI_ySize[3] = {(mwSize)G->n[0],(mwSize)G->n[2],(mwSize)nL};
@@ -509,13 +510,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   };
   struct MATLABoutputs *O_MATLAB = &O_MATLAB_var;
   for(idx=0;idx<Dets->nDetectors;idx++) {
-    O_MATLAB->signals[idx] = (float *)mxGetPr(mxGetPropertyShared(Detsout,idx,"signal"));
+    O_MATLAB->irradiances[idx] = (float *)mxGetPr(mxGetPropertyShared(MatlabDetsout,idx,"irradiance"));
   }
-  
+
   struct outputs O_var = {
     0, // nPhotons
     0, // nPhotonsCollected
     calcNFR? (FLOATORDBL *)calloc(G->n[0]*G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
+    Dets->nDetectors? (FLOATORDBL **)malloc(Dets->nDetectors*sizeof(FLOATORDBL *)): NULL,
     G->farFieldRes? (FLOATORDBL *)calloc(G->farFieldRes*G->farFieldRes,sizeof(FLOATORDBL)): NULL,
     G->boundaryType == 1? (FLOATORDBL *)calloc(G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
     G->boundaryType == 1? (FLOATORDBL *)calloc(G->n[1]*G->n[2],sizeof(FLOATORDBL)): NULL,
@@ -526,9 +528,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     G->boundaryType != 0? (FLOATORDBL *)calloc(G->n[0]*G->n[1]*(G->boundaryType == 2? KILLRANGE*KILLRANGE: 1),sizeof(FLOATORDBL)): NULL
   };
   struct outputs *O = &O_var;
-  for(idx=0;idx<Dets->nDetectors;idx++) {
-    struct detector *Det = &Dets->ptr[idx];
-    Det->signal = (FLOATORDBL *)calloc(Det->res[0]*Det->res[0]*Det->res[1],sizeof(FLOATORDBL));
+  for(long iDet=0; iDet < Dets->nDetectors; iDet++) {
+    struct detector *Det = &Dets->ptr[iDet];
+    O->irradiances[iDet] = (FLOATORDBL *)calloc(Det->res[0]*Det->res[0]*Det->res[1],sizeof(FLOATORDBL));
   }
 
   // Beam struct definition
@@ -771,11 +773,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
   *mxGetPr(output) = simulationTimeCumulative;
   mxSetProperty(MCout,0,"simulationTime",output);
   mxDestroyArray(output);
-  for(idx=0;idx<Dets->nDetectors;idx++) {
-    if(Dets->ptr[idx].res[0]*Dets->ptr[idx].res[1]*nL == 1) {
+  for(long iDet=0;iDet<Dets->nDetectors;iDet++) {
+    struct detector *Det = &Dets->ptr[iDet];
+    if(Det->res[0]*Det->res[1]*nL == 1) {
       output = mxCreateNumericMatrix(1,1,mxSINGLE_CLASS,mxREAL);
-      *(float *)mxGetPr(output) = *(O_MATLAB->signals[idx]);
-      mxSetProperty(Detsout,idx,"signal",output);
+      *(float *)mxGetPr(output) = *(O_MATLAB->irradiances[iDet]);
+      mxSetProperty(MatlabDetsout,iDet,"irradiance",output);
       mxDestroyArray(output);
     }
   }
@@ -786,11 +789,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[]) {
     free(Pa->data);
   }
 
-  free(O_MATLAB->signals);
   free(B->S);
   free(smallArrays);
   free(G->M);
-  for(idx=0;idx<Dets->nDetectors;idx++) free(Dets->ptr[idx].signal);
+  for(long iDet=0;iDet<Dets->nDetectors;iDet++) {
+    free(O->irradiances[iDet]);
+  }
+  free(O->irradiances);
+  free(O_MATLAB->irradiances);
   free(Dets->ptr);
   free(O->NFR);
   free(O->FF);

@@ -6,27 +6,44 @@
   #define print(x);        printScl(__LINE__,#x,x);mexEvalString("drawnow; pause(.005);");mexEvalString("drawnow; pause(.005);");mexEvalString("drawnow; pause(.005);");
   #define printArray(x,N); printArr(__LINE__,#x,x,(int)N);mexEvalString("drawnow; pause(.005);");mexEvalString("drawnow; pause(.005);");mexEvalString("drawnow; pause(.005);");
 
-  // String output
-  void printScl(int line, char const *name, char const *       x) {printf("%d string %s:    %s\n",line,name,x);}
+  // // String output
+  // void printScl(int line, char const *name, char const *       x) {printf("%d string %s:    %s\n",line,name,x);}
 
   // Scalar outputs
+  void printScl(int line, char const *name, void *             x) {printf("%d void * %s:    %llu\n" ,line,name,x);}
+
   void printScl(int line, char const *name, bool               x) {printf("%d bool %s:    %s",line,name,x?"true\n":"false\n");}
+  void printScl(int line, char const *name, bool *             x) {printf("%d bool * %s:    %llu\n" ,line,name,x);}
 
   void printScl(int line, char const *name, signed char        x) {printf("%d signed char %s:    %hhi\n",line,name,x);}
+  void printScl(int line, char const *name, signed char *      x) {printf("%d signed char * %s:    %llu\n" ,line,name,x);}
   void printScl(int line, char const *name, signed short       x) {printf("%d signed short %s:    %hi\n" ,line,name,x);}
+  void printScl(int line, char const *name, signed short *     x) {printf("%d signed short * %s:    %llu\n" ,line,name,x);}
   void printScl(int line, char const *name, signed int         x) {printf("%d signed int %s:    %i\n"  ,line,name,x);}
+  void printScl(int line, char const *name, signed int *       x) {printf("%d signed int * %s:    %llu\n" ,line,name,x);}
   void printScl(int line, char const *name, signed long        x) {printf("%d signed long %s:    %li\n" ,line,name,x);}
+  void printScl(int line, char const *name, signed long *      x) {printf("%d signed long * %s:    %llu\n" ,line,name,x);}
   void printScl(int line, char const *name, signed long long   x) {printf("%d signed long long %s:    %lli\n",line,name,x);}
+  void printScl(int line, char const *name, signed long long * x) {printf("%d signed long long * %s:    %llu\n" ,line,name,x);}
 
   void printScl(int line, char const *name, unsigned char      x) {printf("%d unsigned char %s:    %hhu\n",line,name,x);}
+  void printScl(int line, char const *name, unsigned char *    x) {printf("%d unsigned char * %s:    %llu\n" ,line,name,x);}
   void printScl(int line, char const *name, unsigned short     x) {printf("%d unsigned short %s:    %hu\n" ,line,name,x);}
+  void printScl(int line, char const *name, unsigned short *   x) {printf("%d unsigned short * %s:    %llu\n" ,line,name,x);}
   void printScl(int line, char const *name, unsigned int       x) {printf("%d unsigned int %s:    %u\n"  ,line,name,x);}
+  void printScl(int line, char const *name, unsigned int *     x) {printf("%d unsigned int * %s:    %llu\n" ,line,name,x);}
   void printScl(int line, char const *name, unsigned long      x) {printf("%d unsigned long %s:    %lu\n" ,line,name,x);}
+  void printScl(int line, char const *name, unsigned long *    x) {printf("%d unsigned long * %s:    %llu\n" ,line,name,x);}
   void printScl(int line, char const *name, unsigned long long x) {printf("%d unsigned long long %s:    %llu\n",line,name,x);}
+  void printScl(int line, char const *name, unsigned long long *x) {printf("%d unsigned long long * %s:    %llu\n" ,line,name,x);}
 
   void printScl(int line, char const *name, float              x) {printf("%d float %s:    %g\n"  ,line,name,x);}
+  void printScl(int line, char const *name, float *            x) {printf("%d float * %s:    %llu\n" ,line,name,x);}
   void printScl(int line, char const *name, double             x) {printf("%d double %s:    %lg\n" ,line,name,x);}
+  void printScl(int line, char const *name, double *           x) {printf("%d double * %s:    %llu\n" ,line,name,x);}
   void printScl(int line, char const *name, long double        x) {printf("%d long double %s:    %Lg\n" ,line,name,x);}
+  void printScl(int line, char const *name, long double *      x) {printf("%d long double * %s:    %llu\n" ,line,name,x);}
+
 
   // Array outputs
   void printArr(int line, char const *name, bool * x, int N) {

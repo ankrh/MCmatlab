@@ -1,5 +1,7 @@
 %% Description
-% In this example, we show the use of multiple light collectors.
+% In this example, we show the use of multiple detectors. Detectors with
+% res > 1 are spatially resolved and plots will be generated in figures
+% 101, 102, 103 etc. with the irradiance distributions.
 
 %% MCmatlab abbreviations
 % G: Geometry, MC: Monte Carlo, FMC: Fluorescence Monte Carlo, HS: Heat
@@ -31,8 +33,8 @@ model = plot(model,'G');
 
 %% Monte Carlo simulation
 model.MC.useAllCPUs               = true; % If false, MCmatlab will leave one processor unused. Useful for doing other work on the PC while simulations are running.
-model.MC.simulationTimeRequested  = .01; % [min] Time duration of the simulation
-model.MC.nExamplePaths            = 100; % (Default: 0) This number of photons will have their paths stored and shown after completion, for illustrative purposes
+
+model.MC.simulationTimeRequested  = .1; % [min] Time duration of the simulation
 
 model.MC.matchedInterfaces        = true; % Assumes all refractive indices are the same
 model.MC.boundaryType             = 1; % 0: No escaping boundaries, 1: All cuboid boundaries are escaping, 2: Top cuboid boundary only is escaping, 3: Top and bottom boundaries are escaping, while the side boundaries are cyclic
@@ -42,35 +44,49 @@ model.MC.lightSource.sourceType   = 2; % 0: Pencil beam, 1: Isotropically emitti
 model.MC.lightSource.theta        = 0; % [rad] Polar angle of beam center axis
 model.MC.lightSource.phi          = 0; % [rad] Azimuthal angle of beam center axis
 
-model.MC.detectors(1).x      = 0; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
-model.MC.detectors(1).y      = 0; % [cm] y position
-model.MC.detectors(1).z      = -0.03; % [cm] z position
-model.MC.detectors(1).theta  = 0;
-model.MC.detectors(1).phi    = 0;
-model.MC.detectors(1).psi    = 0;
-model.MC.detectors(1).Xsize  = .03; % [cm] Size of the detectors in the X direction.
-model.MC.detectors(1).Ysize  = .06; % [cm] Size of the detectors in the X direction.
-model.MC.detectors(1).shape  = 'Ellipse'; % Can be either ellipse or rectangle.
-model.MC.detectors(1).res    = 3;
+j = 1;
+model.MC.detectors(j).x      = -0.051; % [cm] x position of the center of the detector
+model.MC.detectors(j).y      = 0.01; % [cm] y position
+model.MC.detectors(j).z      = 0.05; % [cm] z position
+model.MC.detectors(j).theta  = pi/2;
+model.MC.detectors(j).phi    = 0;
+model.MC.detectors(j).psi    = pi/2;
+model.MC.detectors(j).Xsize  = .15; % [cm] Size of the detectors in the X direction.
+model.MC.detectors(j).Ysize  = .10; % [cm] Size of the detectors in the X direction.
+model.MC.detectors(j).shape  = 'Ellipse'; % Can be either circle, ellipse, square or rectangle. Circle is an alias for ellipse and square is an alias for rectangle.
+model.MC.detectors(j).res    = 30;
 
-model.MC.detectors(2).x      = 0.02; % [cm] x position of either the center of the objective lens focal plane or the fiber tip
-model.MC.detectors(2).y      = 0; % [cm] y position
-model.MC.detectors(2).z      = -0.03; % [cm] z position
-model.MC.detectors(2).theta  = 0;
-model.MC.detectors(2).phi    = 0;
-model.MC.detectors(2).psi    = 0;
-model.MC.detectors(2).Xsize  = .06; % [cm] Size of the detectors in the X direction.
-model.MC.detectors(2).Ysize  = .02; % [cm] Size of the detectors in the X direction.
-model.MC.detectors(2).shape  = 'Rectangle'; % Can be either ellipse or rectangle.
+j = 2;
+model.MC.detectors(j).x      = 0.05; % [cm] x position of the center of the detector
+model.MC.detectors(j).y      = 0.05; % [cm] y position
+model.MC.detectors(j).z      = -0.005; % [cm] z position
+model.MC.detectors(j).theta  = 0;
+model.MC.detectors(j).phi    = 0;
+model.MC.detectors(j).psi    = pi/2;
+model.MC.detectors(j).Xsize  = .06; % [cm] Size of the detectors in the X direction.
+model.MC.detectors(j).Ysize  = .02; % [cm] Size of the detectors in the X direction.
+model.MC.detectors(j).shape  = 'Rectangle'; % Can be either circle, ellipse, square or rectangle. Circle is an alias for ellipse and square is an alias for rectangle.
+model.MC.detectors(j).res    = 30;
+
+j = 3;
+model.MC.detectors(j).x      = 0; % [cm] x position of the center of the detector
+model.MC.detectors(j).y      = 0; % [cm] y position
+model.MC.detectors(j).z      = 0.11; % [cm] z position
+model.MC.detectors(j).theta  = pi;
+model.MC.detectors(j).phi    = 0;
+model.MC.detectors(j).psi    = 0;
+model.MC.detectors(j).Xsize  = .15; % [cm] Size of the detectors in the X direction.
+model.MC.detectors(j).Ysize  = .15; % [cm] Size of the detectors in the X direction.
+model.MC.detectors(j).shape  = 'Rectangle'; % Can be either circle, ellipse, square or rectangle. Circle is an alias for ellipse and square is an alias for rectangle.
+model.MC.detectors(j).res    = 1;
 
 model = runMonteCarlo(model);
+
 model = plot(model,'MC');
 
 %% Geometry function(s) (see readme for details)
 function M = geometryDefinition(X,Y,Z,parameters)
-  cylinderradius  = 0.0100;
-  M = ones(size(X)); % fill background with fluorescence absorber
-  M(Y.^2 + (Z - 3*cylinderradius).^2 < cylinderradius^2) = 2; % fluorescer
+  M = ones(size(X));
 end
 
 %% Media Properties function (see readme for details)
@@ -78,30 +94,8 @@ function mediaProperties = mediaPropertiesFunc(parameters)
   mediaProperties = MCmatlab.mediumProperties;
 
   j=1;
-  mediaProperties(j).name  = 'fluorescence absorber';
-  mediaProperties(j).mua = @func1; % [cm^-1]
-  function mua = func1(wavelength)
-    if(wavelength<500)
-      mua = 1; % [cm^-1]
-    else
-      mua = 100; % [cm^-1]
-    end
-  end
-  mediaProperties(j).mus = 100; % [cm^-1]
-  mediaProperties(j).g   = 0.9;
-
-  j=2;
-  mediaProperties(j).name  = 'fluorescer';
-  mediaProperties(j).mua = @func2; % [cm^-1]
-  function mua = func2(wavelength)
-    if(wavelength<500)
-      mua = 100; % [cm^-1]
-    else
-      mua = 1; % [cm^-1]
-    end
-  end
-  mediaProperties(j).mus = 100; % [cm^-1]
-  mediaProperties(j).g   = 0.9;
-
-  mediaProperties(j).QY   = 0.4; % Fluorescence quantum yield
+  mediaProperties(j).name  = 'standard tissue';
+  mediaProperties(j).mua   = 1; % Absorption coefficient [cm^-1]
+  mediaProperties(j).mus   = 100; % Scattering coefficient [cm^-1]
+  mediaProperties(j).g     = 0.9; % Henyey-Greenstein scattering anisotropy
 end

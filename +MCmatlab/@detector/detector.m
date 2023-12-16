@@ -25,7 +25,8 @@ classdef detector
     nTimeBins (1,1) double {mustBeInteger, mustBeNonnegative} = 0 % Number of bins between tStart and tEnd. If zero, the measurement is not time-resolved.
 
     %% Calculated properties
-    signal = NaN
+    irradiance = NaN % (X,Y,lambda) array
+    power = NaN % Scalar, integral of irradiance
     X = NaN
     Y = NaN
     t = NaN
@@ -36,8 +37,8 @@ classdef detector
   end
 
   methods
-    function x   = get.image(obj  ); x = obj.signal; end
-    function obj = set.image(obj,x);     obj.signal = x; end  
+    function x   = get.image(obj  ); x = obj.irradiance; end
+    function obj = set.image(obj,x);     obj.irradiance = x; end  
   end
 end
 

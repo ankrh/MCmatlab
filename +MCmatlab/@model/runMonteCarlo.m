@@ -177,17 +177,19 @@ function model = runMonteCarlo(model,varargin)
   end
 
   if simType == 2
-    % Add positions of the centers of the pixels in the light collector
+    % Add positions of the centers of the pixels in the detector
     % image and the time array
-    if model.FMC.useLightCollector && model.FMC.D.res > 1
-      model.FMC.D.X = linspace(model.FMC.D.fieldSize*(1/model.FMC.D.res-1),model.FMC.D.fieldSize*(1-1/model.FMC.D.res),model.FMC.D.res)/2;
-      model.FMC.D.Y = model.FMC.D.X;
-    end
-    if model.FMC.useLightCollector && model.FMC.D.nTimeBins > 0
-      if model.FMC.matchedInterfaces
-        warning('Time tagging is on, but matchedInterfaces is true, which sets all refractive indices to 1.');
-      end
-      model.FMC.D.t = (-1/2:(model.FMC.D.nTimeBins+1/2))*(model.FMC.D.tEnd-model.FMC.D.tStart)/model.FMC.D.nTimeBins + model.FMC.D.tStart;
+    for iDet = 1:numel(model.FMC.Dets)
+        if model.FMC.Dets(iDet).res > 1
+          model.FMC.Dets(iDet).X = linspace(model.FMC.Dets(iDet).Xsize*(1/model.FMC.Dets(iDet).res-1),model.FMC.Dets(iDet).Xsize*(1-1/model.FMC.Dets(iDet).res),model.FMC.Dets(iDet).res)/2;
+          model.FMC.Dets(iDet).Y = linspace(model.FMC.Dets(iDet).Ysize*(1/model.FMC.Dets(iDet).res-1),model.FMC.Dets(iDet).Ysize*(1-1/model.FMC.Dets(iDet).res),model.FMC.Dets(iDet).res)/2;
+        end
+        if model.FMC.Dets(iDet).nTimeBins > 0
+          if model.FMC.matchedInterfaces
+            warning('Time tagging is on, but matchedInterfaces is true, which sets all refractive indices to 1.');
+          end
+          model.FMC.Dets(iDet).t = (-1/2:(model.FMC.Dets(iDet).nTimeBins+1/2))*(model.FMC.Dets(iDet).tEnd-model.FMC.Dets(iDet).tStart)/model.FMC.Dets(iDet).nTimeBins + model.FMC.Dets(iDet).tStart;
+        end
     end
 
     % Add angles of the centers of the far field pixels
@@ -196,17 +198,27 @@ function model = runMonteCarlo(model,varargin)
       model.FMC.farFieldPhi   = linspace(-pi+(2*pi)/model.FMC.farFieldRes/2,pi-(2*pi)/model.FMC.farFieldRes/2,model.FMC.farFieldRes);
     end
   else
-    % Add positions of the centers of the pixels in the light collector
+    % Add positions of the centers of the pixels in the detector
     % image and the time array
-    if model.MC.useLightCollector && model.MC.D.res > 1
-      model.MC.D.X = linspace(model.MC.D.fieldSize*(1/model.MC.D.res-1),model.MC.D.fieldSize*(1-1/model.MC.D.res),model.MC.D.res)/2;
-      model.MC.D.Y = model.MC.D.X;
-    end
-    if model.MC.useLightCollector && model.MC.D.nTimeBins > 0
-      if model.MC.matchedInterfaces
-        warning('Time tagging is on, but matchedInterfaces is true, which sets all refractive indices to 1.');
+    for iDet = 1:numel(model.MC.Dets)
+      D = model.MC.Dets(iDet);
+      if D.shape == MCmatlab.shape.Ellipse && D.res == 1
+        detectorAreaFactor = pi/4; % Area of circle (ellipse) divided by area of square (rectangle)
+      else
+        detectorAreaFactor = 1;
       end
-      model.MC.D.t = (-1/2:(model.MC.D.nTimeBins+1/2))*(model.MC.D.tEnd-model.MC.D.tStart)/model.MC.D.nTimeBins + model.MC.D.tStart;
+      model.MC.Dets(iDet).power = detectorAreaFactor*mean(mean(sum(D.irradiance(:,:,:),3)))*D.Xsize*D.Ysize;
+
+      if D.res > 1
+        model.MC.Dets(iDet).X = linspace(D.Xsize*(1/D.res-1),D.Xsize*(1-1/D.res),D.res)/2;
+        model.MC.Dets(iDet).Y = linspace(D.Ysize*(1/D.res-1),D.Ysize*(1-1/D.res),D.res)/2;
+      end
+      if D.nTimeBins > 0
+        if model.MC.matchedInterfaces
+          warning('Time tagging is on, but matchedInterfaces is true, which sets all refractive indices to 1.');
+        end
+        model.MC.Dets(iDet).t = (-1/2:(D.nTimeBins+1/2))*(D.tEnd-D.tStart)/D.nTimeBins + D.tStart;
+      end
     end
 
     % Add angles of the centers of the far field pixels
@@ -255,8 +267,8 @@ function checkMCinputFields(model,simType)
   if isnan(MCorFMC.wavelength)
     error('Error: No wavelength defined');
   end
-  if MCorFMC.depositionCriteria.onlyCollected && ~MCorFMC.useLightCollector
-    error('Error: depositionCriteria.onlyCollected is true, but no light collector is defined');
+  if MCorFMC.depositionCriteria.onlyCollected && isempty(MCorFMC.Dets)
+    error('Error: depositionCriteria.onlyCollected is true, but no detector is defined');
   end
   if MCorFMC.farFieldRes && MCorFMC.boundaryType == 0
     error('Error: If boundaryType == 0, no photons can escape to be registered in the far field. Set farFieldRes to zero or change boundaryType.');
