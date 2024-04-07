@@ -224,7 +224,7 @@ function model = getOpticalMediaProperties(model,simType)
     Gx = NaN(G.nx,G.ny,G.nz);
     Gy = NaN(G.nx,G.ny,G.nz);
     Gz = NaN(G.nx,G.ny,G.nz);
-    for iRI_unq = 1:numel(RI_unq)
+    for iRI_unq = 1:size(RI_unq,1)
       n_mat = MtoRImap(M) == iRI_unq;
       [Gy_Sobel, Gx_Sobel, Gz_Sobel] = imgradientxyz(n_mat);
       if smoothingLengthScale > 0
