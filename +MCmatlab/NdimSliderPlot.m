@@ -11,7 +11,7 @@ function [h_f,h_a] = NdimSliderPlot(data,varargin)
   addOptional(p,'nFig',NaN,@(x)isScalarPositiveIntegerOrNaN(x)); % An integer denoting which figure number to make the plot in. If NaN, the figure number will be generated automatically to avoid overwriting existing figures.
   addOptional(p,'axisValues',{},@(x)iscell(x)); % A (1,N) cell array, each element containing a 1D array of the values of that independent variable.
   addOptional(p,'axisLabels',{},@(x)iscell(x)); % A (1,N+1) cell array, each element containing the label of one dimension. The first N elements are for the N independent variables and the last element is for the dependent variable.
-  addOptional(p,'fromZero',false,@(x)islogical(x)); % If true, will set the lower dependent variable plot limit to zero when in linear plotting mode
+  addOptional(p,'plotLimits',[NaN NaN],@(x)(numel(x) == 2 && isnumeric(x) && all(~isinf(x))) && (any(isnan(x)) || x(2) > x(1))); % [lower, upper] limits for the data variable. If either limit is NaN, the plotting function will scale automatically to the minimum or maximum value in the data set. Minimum plot limits for log plots are always set to 40 dB under the max.
   addOptional(p,'axisEqual',false,@(x)islogical(x)); % If true, will set the scale of the axis dimensions to be equal. This is useful, for example, when the axis dimensions are spatial (x,y) or (x,y,z) and you want to preserve the actual spatial aspect ratios in the visualization
   addOptional(p,'reversedAxes',[],@isUniqueNaturalNumberArray); % An array of unique natural numbers denoting which of the plot axes to be reversed. For example, [1 3] will reverse the first and third axes, e.g., x and z.
   addOptional(p,'linColormap',MCmatlab.inferno,@(x)(isnumeric(x) && ismatrix(x))); % The colormap to use for linear plot mode
@@ -155,14 +155,18 @@ function [h_f,h_a] = NdimSliderPlot(data,varargin)
   h_checkbox = uicontrol('Parent',h_f,'Style','checkbox','String','log plot','BackgroundColor','w','Position',[10,nSl*20 + 13,55,20]);
 
   %% Do the plotting
-  maxelement = max(data(:));
-  if p.Results.fromZero
-    minelement = 0;
+  if ~isnan(p.Results.plotLimits(1)) 
+    plotLimLower = p.Results.plotLimits(1);
   else
-    minelement = min(data(:));
+    plotLimLower = min(data(:));
   end
-  if maxelement == minelement
-    maxelement = minelement + 1;
+  if ~isnan(p.Results.plotLimits(2)) 
+    plotLimUpper = p.Results.plotLimits(2);
+  else
+    plotLimUpper = max(data(:));
+  end
+  if plotLimUpper <= plotLimLower
+    plotLimUpper = plotLimLower + 1;
   end
 
   switch nAx
@@ -182,11 +186,7 @@ function [h_f,h_a] = NdimSliderPlot(data,varargin)
         h_a.YDir = 'reverse';
       end
       if isempty(p.Results.indexLabels)
-        if p.Results.fromZero
-          h_a.YLim = [0 maxelement];
-        else
-          h_a.YLim = [minelement maxelement];
-        end
+        h_a.YLim = [plotLimLower plotLimUpper];
       else
         set(h_checkbox,'Visible','off');
       end
@@ -199,7 +199,7 @@ function [h_f,h_a] = NdimSliderPlot(data,varargin)
         'h_checkbox',h_checkbox,'linColormap',p.Results.linColormap,...
         'logColormap',p.Results.logColormap,...
         'axisValues',{axisValues},'axisLabels',{axisLabels},...
-        'maxelement',maxelement,'minelement',minelement);
+        'plotLimits',p.Results.plotLimits);
     case 2 % 2D plot (two independent variable axes - the dependent variable is shown with color)
       h_2D = imagesc(axisValues{1},axisValues{2},data(subscriptIdxs{:}).');
       xlabel(axisLabels{1});
@@ -220,11 +220,7 @@ function [h_f,h_a] = NdimSliderPlot(data,varargin)
       if isempty(p.Results.indexLabels)
         colorbar;
         colormap(p.Results.linColormap);
-        if p.Results.fromZero
-          caxis(h_a,[0 maxelement]);
-        else
-          caxis(h_a,[minelement maxelement]);
-        end
+        caxis(h_a,[plotLimLower plotLimUpper]);
       else
         set(h_checkbox,'Visible','off');
         % To get the legend to display properly, we have to cheat MATLAB a
@@ -246,7 +242,7 @@ function [h_f,h_a] = NdimSliderPlot(data,varargin)
         'h_checkbox',h_checkbox,'linColormap',p.Results.linColormap,...
         'logColormap',p.Results.logColormap,...
         'axisValues',{axisValues},'axisLabels',{axisLabels},...
-        'maxelement',maxelement,'minelement',minelement);
+        'plotLimits',p.Results.plotLimits);
     case 3 % 3D plot (three independent variable axes - the dependent variable is shown with color)
       xraw = axisValues{1};
       yraw = axisValues{2};
@@ -328,11 +324,7 @@ function [h_f,h_a] = NdimSliderPlot(data,varargin)
       if isempty(p.Results.indexLabels)
         colorbar;
         linecolor = [0.5 0.5 0.5]; % Assume gray lines around all slices
-        if p.Results.fromZero
-          caxis(h_a,[0 maxelement]);
-        else
-          caxis(h_a,[minelement maxelement]);
-        end
+        caxis(h_a,[plotLimLower plotLimUpper]);
         colormap(p.Results.linColormap);
       else
         set(h_checkbox,'Visible','off');
@@ -379,7 +371,7 @@ function [h_f,h_a] = NdimSliderPlot(data,varargin)
         'h_checkbox',h_checkbox,'linColormap',p.Results.linColormap,...
         'logColormap',p.Results.logColormap,...
         'axisValues',{axisValues},'axisLabels',{axisLabels},...
-        'maxelement',maxelement,'minelement',minelement);
+        'plotLimits',p.Results.plotLimits);
   end
 
   set([h_centerbuttons h_sliders h_checkbox],'Callback',{@MCmatlab.NdimSliderPlotRedraw,vars});

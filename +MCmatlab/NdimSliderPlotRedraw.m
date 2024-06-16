@@ -1,4 +1,4 @@
-function generalizedPlotRedraw(src,~,v)
+function NdimSliderPlotRedraw(src,~,v)
   h_f = src.Parent;
   nSl = numel(v.h_sliders);
   nNonSi = find(size(h_f.UserData) > 1,1,'last');
@@ -34,7 +34,22 @@ function generalizedPlotRedraw(src,~,v)
     iD = iSl + nNonSl;
     subscriptIdxs{iD} = floor(get(v.h_sliders(iSl),'Value'));
   end
-  
+
+  %% Calculate plot limits
+  if ~isnan(v.plotLimits(1)) 
+    plotLimLower = v.plotLimits(1);
+  else
+    plotLimLower = min(h_f.UserData(:));
+  end
+  if ~isnan(v.plotLimits(2)) 
+    plotLimUpper = v.plotLimits(2);
+  else
+    plotLimUpper = max(h_f.UserData(:));
+  end
+  if plotLimUpper <= plotLimLower
+    plotLimUpper = plotLimLower + 1;
+  end
+
   %% Update plot
   switch nAx
     case 1
@@ -42,10 +57,10 @@ function generalizedPlotRedraw(src,~,v)
       v.h_1D.YData = h_f.UserData(subscriptIdxs{:});
       if v.h_checkbox.Value
         h_ax.YScale = 'log';
-        ylim(h_ax,[v.maxelement/10000 v.maxelement]);
+        ylim(h_ax,[plotLimUpper/10000 plotLimUpper]);
       else
         h_ax.YScale = 'lin';
-        ylim(h_ax,[v.minelement v.maxelement]);
+        ylim(h_ax,[plotLimLower plotLimUpper]);
       end
     case 2
       h_ax = v.h_2D.Parent;
@@ -57,11 +72,11 @@ function generalizedPlotRedraw(src,~,v)
       if v.h_checkbox.Visible
         if v.h_checkbox.Value
           h_ax.ColorScale = 'log';
-          caxis(h_ax,[v.maxelement/10000 v.maxelement]);
+          caxis(h_ax,[plotLimUpper/10000 plotLimUpper]);
           colormap(v.logColormap);
         else
           h_ax.ColorScale = 'lin';
-          caxis(h_ax,[v.minelement v.maxelement]);
+          caxis(h_ax,[plotLimLower plotLimUpper]);
           colormap(v.linColormap);
         end
       end
@@ -108,11 +123,11 @@ function generalizedPlotRedraw(src,~,v)
       if v.h_checkbox.Visible
         if v.h_checkbox.Value
           h_ax.ColorScale = 'log';
-          caxis(h_ax,[v.maxelement/10000 v.maxelement]);
+          caxis(h_ax,[plotLimUpper/10000 plotLimUpper]);
           colormap(v.logColormap);
         else
           h_ax.ColorScale = 'lin';
-          caxis(h_ax,[v.minelement v.maxelement]);
+          caxis(h_ax,[plotLimLower plotLimUpper]);
           colormap(v.linColormap);
         end
       end

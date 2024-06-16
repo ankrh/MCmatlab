@@ -515,7 +515,7 @@ Initial and final temperature, can be scalar or 3D array of dimensions nx, ny, n
 
 `model.HS.plotTempLimits`
 [deg C]
-An array of two values designating the expected range of temperatures, used only for setting the color scale in the plot.
+An array of two values designating the expected range of temperatures, used only for setting the color scale in the plot. One or both values can be NaN to let the limit be set to the minimum or maximum of the data. For example [NaN 100] means the lower color limit is automatically set to the minimum value in the data, but the upper color limit is fixed at 100.
 
 `model.HS.nUpdates`
 [-]

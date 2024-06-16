@@ -167,7 +167,7 @@ function model = simulateHeatDistribution(model)
     if model.HS.makeMovie
       set(heatsimFigure,'WindowStyle','Normal');
       drawnow;
-      heatsimFigure.Position = [40 160 1100 650]; % The size defined here will determine the movie resolution
+      heatsimFigure.Position = [0 0 1100 650]; % The size defined here will determine the movie resolution
       if firstHSrun % Make a temporary figure showing the geometry illustration to put into the beginning of the movie
         heatsimFigure = MCmatlab.NdimSliderPlot(G.M_raw,...
           'nFig',21,...
@@ -192,13 +192,13 @@ function model = simulateHeatDistribution(model)
       'axisValues',{G.x,G.y,G.z},...
       'axisLabels',{'x [cm]','y [cm]','z [cm]','Temperature evolution'},...
       'linColormap',hot(256),...
+      'plotLimits',model.HS.plotTempLimits,...
       'axisEqual',true,...
       'reversedAxes',3,...
       'slicePositions',model.HS.slicePositions,...
       'docked',~model.HS.makeMovie);
     heatsimFigure.Name = 'Temperature evolution';
     h_title = title(['Temperature evolution, t = ' num2str(updatesTimeVector(1),'%#.2g') ' s']);
-    caxis(model.HS.plotTempLimits); % User-defined color scale limits
     if model.HS.makeMovie && firstHSrun
       movieFrames(movieFrameidx) = getframe(heatsimFigure);
       movieFrameidx = movieFrameidx + 1;
@@ -603,8 +603,8 @@ function [li , w] = convertTempSensorPos(tempSensorPositions,x,y,z)
     end
 
     li(i) = ix    + ...
-      iy*nx + ...
-      iz*nx*ny;
+            iy*nx + ...
+            iz*nx*ny;
   end
 end
 
@@ -632,5 +632,22 @@ function updateTempPlot(h_f,M)
   set(v.h_surfxback,'CData',squeeze(h_f.UserData(v.xbi,:,:)));
   set(v.h_surfyback,'CData',squeeze(h_f.UserData(:,v.ybi,:)));
   set(v.h_surfzback,'CData',squeeze(h_f.UserData(:,:,v.zbi)));
+
+  if ~isnan(v.plotLimits(1)) 
+    plotLimLower = v.plotLimits(1);
+  else
+    plotLimLower = min(h_f.UserData(:));
+  end
+  if ~isnan(v.plotLimits(2)) 
+    plotLimUpper = v.plotLimits(2);
+  else
+    plotLimUpper = max(h_f.UserData(:));
+  end
+  if plotLimUpper <= plotLimLower
+    plotLimUpper = plotLimLower + 1;
+  end
+  h_ax = v.h_surfxslice.Parent;
+  caxis(h_ax,[plotLimLower plotLimUpper]);
+
   drawnow;
 end
