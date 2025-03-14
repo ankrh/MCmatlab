@@ -642,7 +642,7 @@ void launchPhoton(struct photon * const P, struct source const * const B, struct
         }
         if(*B->FPIDdist2 == -1) { // Top-hat Y distribution
           Y = B->FPIDwidth2*(RandomNum*2-1); // for target calculation
-        } else if(*B->FPIDdist1 == -2) { // Gaussian Y distribution
+        } else if(*B->FPIDdist2 == -2) { // Gaussian Y distribution
           Y = B->FPIDwidth2*SQRT(-0.5f*LOG(RandomNum))*COS(2*PI*RandomNum); // Box-Muller transform, for target calculation
         } else { // Custom distribution
           Y = B->FPIDwidth2*((binaryTreeSearch(RandomNum,B->L_FPID2-1,B->FPIDdist2)+RandomNum)/(B->L_FPID2-1)*2-1);
