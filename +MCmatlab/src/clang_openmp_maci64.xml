@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
+<!--
+    Custom MEX configuration for macOS with OpenMP support
+    Used by MCmatlab for parallel computation
+    Run 'mex -setup:/path/to/this/file C' to select this configuration
+-->
 <config
     Name="LLVM Clang OpenMP"
     ShortName="Clang OpenMP"
@@ -30,22 +35,22 @@
         CXX="/usr/local/opt/llvm/bin/clang++"
         DEFINES="$MATLABMEX"
         MATLABMEX="-DMATLAB_MEX_FILE"
-        MACOSX_DEPLOYMENT_TARGET="10.9"
-        CFLAGS="-fno-common -arch x86_64 -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -fexceptions -isysroot $ISYSROOT -fopenmp=libiomp5 -Wall -I/usr/local/opt/llvm/include"
+        MACOSX_DEPLOYMENT_TARGET="13.0"
+        CFLAGS="-fno-common -arch x86_64 -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -fexceptions -isysroot $ISYSROOT -fopenmp=libiomp5 -Wall -std=c11 -I/usr/local/opt/llvm/include"
         INCLUDE="-I&quot;$MATLABROOT/extern/include&quot; -I&quot;$MATLABROOT/simulink/include&quot;"
-        COPTIMFLAGS="-O2 -fwrapv -DNDEBUG"
+        COPTIMFLAGS="-DNDEBUG"
         CDEBUGFLAGS="-g"
 
         LD="$CC"
         LDXX="$CXX"
-        LDFLAGS="-Wl,-twolevel_namespace -undefined error -arch x86_64 -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -Wl,-syslibroot,$ISYSROOT $LDBUNDLE $LINKEXPORT -L$MATLABROOT/sys/os/maci64 -L/usr/local/opt/llvm/lib -Wl,-rpath,$MATLABROOT/sys/os/maci64:/usr/local/opt/llvm/lib -fopenmp=libiomp5"
+        LDFLAGS="-Wl,-twolevel_namespace -undefined dynamic_lookup -arch x86_64 -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -Wl,-syslibroot,$ISYSROOT $LDBUNDLE $LINKEXPORT -L$MATLABROOT/sys/os/maci64 -L/usr/local/opt/llvm/lib -Wl,-rpath,$MATLABROOT/sys/os/maci64:/usr/local/opt/llvm/lib -fopenmp=libiomp5"
         LDBUNDLE="-bundle "
         FUNCTIONMAP="&quot;$MATLABROOT/extern/lib/maci64/mexFunction.map&quot;"
         VERSIONMAP="&quot;$MATLABROOT/extern/lib/maci64/c_exportsmexfileversion.map&quot;"
         LINKEXPORT="-Wl,-exported_symbols_list,$FUNCTIONMAP"
         LINKEXPORTVER="-Wl,-exported_symbols_list,$VERSIONMAP"
         LINKLIBS="-L&quot;$MATLABROOT/bin/maci64&quot; -lmx -lmex -lmat -lc++"
-        LDOPTIMFLAGS="-O"
+        LDOPTIMFLAGS="-O3"
         LDDEBUGFLAGS="-g"
 
         OBJEXT=".o"
@@ -53,7 +58,7 @@
         SETENV="CC=&quot;$CC&quot;
                 CXX=&quot;$CXX&quot;
                 CFLAGS=&quot;$CFLAGS $DEFINES&quot;
-                CXXFLAGS=&quot;$CFLAGS -fobjc-arc -std=c++11 -stdlib=libc++ $DEFINES&quot;
+                CXXFLAGS=&quot;$CFLAGS -fobjc-arc -std=c++17 -stdlib=libc++ $DEFINES&quot;
                 COPTIMFLAGS=&quot;$COPTIMFLAGS&quot;
                 CXXOPTIMFLAGS=&quot;$COPTIMFLAGS&quot;
                 CDEBUGFLAGS=&quot;$CDEBUGFLAGS&quot;
@@ -74,7 +79,7 @@
        <mbuild
            CMDLINE150="$MATLABROOT/bin/maci64/macbundle $EXENAME &quot;$EXEDIR&quot;"
            CMDLINE200="$LD $LDFLAGS $OBJS $LINKOPTIM $LINKEXPORT $CLIBS $LINKLIBS -o &quot;$EXEDIR$EXENAME.app/Contents/MacOS/$EXENAME&quot;"
-           MACOSX_DEPLOYMENT_TARGET="10.9"
+           MACOSX_DEPLOYMENT_TARGET="13.0"
            CFLAGS="-fno-common -arch x86_64 -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -isysroot $ISYSROOT"
            DEFINES="-DUNIX -DX11"
            LDFLAGS="-arch x86_64 -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -Wl,-syslibroot,$ISYSROOT $LDTYPE $LINKEXPORT -framework CoreFoundation -bind_at_load"
